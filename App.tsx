@@ -12,6 +12,7 @@ import Login from './pages/Login';
 import { SubscriptionBanner } from './components/SubscriptionBanner';
 import { useStore } from './store';
 import { useAuth } from './hooks/useAuth';
+import { AuthProvider } from './hooks/AuthProvider';
 
 const AppContent: React.FC = () => {
   const currentCompanyId = useStore(state => state.currentCompanyId);
@@ -110,11 +111,14 @@ const AppContent: React.FC = () => {
   );
 };
 
+
 const App: React.FC = () => {
   return (
-    <HashRouter>
-      <AppContent />
-    </HashRouter>
+    <AuthProvider>
+      <HashRouter>
+        <AppContent />
+      </HashRouter>
+    </AuthProvider>
   );
 };
 
