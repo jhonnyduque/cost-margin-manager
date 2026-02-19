@@ -13,6 +13,12 @@ interface AuthContextType {
     isLoading: boolean;
     switchCompany: (companyId: string) => Promise<void>;
     resetState: () => void;
+    refreshAuth: () => Promise<void>;
+    // Impersonation Support
+    mode: 'platform' | 'company';
+    impersonatedCompanyId: string | null;
+    enterCompanyAsFounder: (companyId: string) => Promise<void>;
+    exitImpersonation: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,6 +31,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [suspensionLevel, setSuspensionLevel] = useState<SuspensionLevel>('none');
     const [isLoading, setIsLoading] = useState(true);
 
+    // Impersonation State
+    const [mode, setMode] = useState<'platform' | 'company'>('company');
+    const [impersonatedCompanyId, setImpersonatedCompanyId] = useState<string | null>(null);
+
     const setStoreCompany = useStore((state) => state.setCurrentCompany);
     const isFetching = useRef(false);
     const hasInitialized = useRef(false);
@@ -36,6 +46,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUserCompanies([]);
         setUserRole(null);
         setSuspensionLevel('none');
+        setMode('company');
+        setImpersonatedCompanyId(null);
         setIsLoading(false);
         useStore.getState().logout();
     }, []);
@@ -83,35 +95,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 .map((m: any) => m.companies)
                 .filter(Boolean);
 
-            console.log(`[AuthProvider] Data loaded. User: ${userData.id}, Companies: ${companies.length}`);
-
-            const targetCompany =
-                companies.find(c => c.id === userData.default_company_id) ||
-                companies[0];
-
-            const membership = memberships.find(
-                (m: any) => m.company_id === targetCompany?.id
-            );
+            console.log(`[AuthProvider] Data loaded. User: ${userData.id}, Companies: ${companies.length}, SuperAdmin: ${userData.is_super_admin}`);
 
             setUserCompanies(companies);
+            setUser(userData);
 
-            if (targetCompany && membership) {
-                const role = membership.role as UserRole;
-                const level = getSuspensionLevel(
-                    targetCompany.subscription_status,
-                    targetCompany.grace_period_ends_at
-                );
-
-                setCurrentCompany(targetCompany);
-                setUserRole(role);
-                setSuspensionLevel(level);
-                useStore.getState().setCurrentCompany(targetCompany.id, role);
-            } else {
+            // LOGICA DE IMPERSONACIÓN / REDIRECCIÓN
+            if (userData.is_super_admin) {
+                // Si es Super Admin, por defecto entra en modo plataforma y no auto-selecciona empresa
+                // a menos que estemos ya impersonando (re-load) o tenga una por defecto y NO queramos forzar plataforma.
+                // Pero según el plan: "if is_super_admin: DO NOT auto-select company on login, route to Platform Home"
+                setMode('platform');
                 setCurrentCompany(null);
                 setUserRole(null);
-            }
+                useStore.getState().setImpersonation(false, null);
+            } else {
+                // Flujo estándar para usuarios normales
+                const targetCompany =
+                    companies.find(c => c.id === userData.default_company_id) ||
+                    companies[0];
 
-            setUser(userData);
+                const membership = memberships.find(
+                    (m: any) => m.company_id === targetCompany?.id
+                );
+
+                if (targetCompany && membership) {
+                    const role = membership.role as UserRole;
+                    const level = getSuspensionLevel(
+                        targetCompany.subscription_status,
+                        targetCompany.grace_period_ends_at
+                    );
+
+                    setCurrentCompany(targetCompany);
+                    setUserRole(role);
+                    setSuspensionLevel(level);
+                    setMode('company');
+                    useStore.getState().setImpersonation(false, null); // Usuario normal no impersona
+                    useStore.getState().setCurrentCompany(targetCompany.id, role);
+                } else {
+                    setCurrentCompany(null);
+                    setUserRole(null);
+                    setMode('company');
+                    useStore.getState().setImpersonation(false, null);
+                }
+            }
 
         } catch (error) {
             console.error('[AuthProvider] loadUserData - CRITICAL:', error);
@@ -122,6 +149,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             isFetching.current = false;
         }
     }, [resetState]);
+
+    const refreshAuth = useCallback(async () => {
+        console.log('[AuthProvider] refreshAuth called manually');
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+            await loadUserData(session.user.id);
+        } else {
+            resetState();
+        }
+    }, [loadUserData, resetState]);
 
     useEffect(() => {
         if (hasInitialized.current) return;
@@ -165,8 +202,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
     }, [loadUserData, resetState]);
 
+    const enterCompanyAsFounder = async (companyId: string) => {
+        if (!user?.is_super_admin) return;
+
+        console.log('[AuthProvider] enterCompanyAsFounder:', companyId);
+        setIsLoading(true);
+        try {
+            const { data: company, error } = await supabase
+                .from('companies')
+                .select('*')
+                .eq('id', companyId)
+                .single();
+
+            if (error || !company) throw error || new Error('Company not found');
+
+            setMode('company');
+            setImpersonatedCompanyId(companyId);
+            setCurrentCompany(company);
+            setUserRole('admin'); // Rol virtual para el fundador
+
+            const level = getSuspensionLevel(
+                company.subscription_status,
+                company.grace_period_ends_at
+            );
+            setSuspensionLevel(level);
+            setStoreCompany(companyId, 'admin');
+
+        } catch (error) {
+            console.error('Error entering company as founder:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const exitImpersonation = () => {
+        console.log('[AuthProvider] exitImpersonation');
+        setMode('platform');
+        setImpersonatedCompanyId(null);
+        setCurrentCompany(null);
+        setUserRole(null);
+        setSuspensionLevel('none');
+        useStore.getState().setImpersonation(false, null);
+        // No llamamos a logout(), solo reseteamos el context a nivel plataforma
+    };
+
     const switchCompany = async (companyId: string) => {
         if (!user) return;
+
+        // Si estamos impersonando, switchCompany debería quizás resetear impersonación o simplemente cambiar de empresa impersonada
+        // Para simplificar, si es super admin, dejamos que use enterCompanyAsFounder. 
+        // Si es usuario normal, sigue su flujo.
+        if (user.is_super_admin) {
+            await enterCompanyAsFounder(companyId);
+            return;
+        }
+
         const target = userCompanies.find(c => c.id === companyId);
         if (!target) return;
 
@@ -190,6 +280,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             target.grace_period_ends_at
         );
 
+        setMode('company');
+        setImpersonatedCompanyId(null);
         setCurrentCompany(target);
         setUserRole(role);
         setSuspensionLevel(level);
@@ -212,7 +304,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             suspensionLevel,
             isLoading,
             switchCompany,
-            resetState
+            resetState,
+            refreshAuth,
+            mode,
+            impersonatedCompanyId,
+            enterCompanyAsFounder,
+            exitImpersonation
         }}>
             {children}
         </AuthContext.Provider>

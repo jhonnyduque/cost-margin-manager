@@ -9,6 +9,10 @@ interface AppState {
   currentCompanyId: string | null;
   currentUserRole: UserRole | null;
   setCurrentCompany: (companyId: string, role: UserRole) => void;
+  // Impersonation Support
+  isImpersonating: boolean;
+  impersonatedCompanyId: string | null;
+  setImpersonation: (active: boolean, companyId: string | null) => void;
 
   products: Product[];
   rawMaterials: RawMaterial[];
@@ -132,6 +136,8 @@ export const useStore = create<AppState>()(
       // 🔹 INIT TENANT STATE
       currentCompanyId: null,
       currentUserRole: null,
+      isImpersonating: false,
+      impersonatedCompanyId: null,
 
       setCurrentCompany: (companyId, role) => {
         set({ currentCompanyId: companyId, currentUserRole: role });
@@ -140,6 +146,10 @@ export const useStore = create<AppState>()(
         get().loadRawMaterialsFromSupabase();
         get().loadBatchesFromSupabase();
         get().loadMovementsFromSupabase();
+      },
+
+      setImpersonation: (active, companyId) => {
+        set({ isImpersonating: active, impersonatedCompanyId: companyId });
       },
 
       products: [],
@@ -229,6 +239,8 @@ export const useStore = create<AppState>()(
         set({
           currentCompanyId: null,
           currentUserRole: null,
+          isImpersonating: false,
+          impersonatedCompanyId: null,
           products: [],
           rawMaterials: [],
           batches: [],

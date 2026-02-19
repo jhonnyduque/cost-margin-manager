@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 
 export default function PlatformAdmin() {
-    const { user } = useAuth();
+    const { user, enterCompanyAsFounder } = useAuth();
     const [companies, setCompanies] = useState<any[]>([]);
     const [metrics, setMetrics] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -270,15 +270,21 @@ export default function PlatformAdmin() {
                                     </div>
                                 </div>
 
-                                <div className="pt-6 border-t border-slate-50 flex items-center justify-between">
-                                    <div className="flex -space-x-2">
-                                        {[1, 2, 3].map(i => (
-                                            <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-400">
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <button className="text-slate-900 font-black text-xs flex items-center gap-2 hover:translate-x-2 transition-transform">
-                                        Detalles <ArrowRight size={14} />
+                                <div className="flex -space-x-2">
+                                    {[1, 2, 3].map(i => (
+                                        <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-400">
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => enterCompanyAsFounder(company.id)}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-100 transition-all active:scale-95 flex items-center gap-2"
+                                    >
+                                        Entrar <ArrowRight size={12} />
+                                    </button>
+                                    <button className="text-slate-400 hover:text-slate-900 transition-colors">
+                                        <Plus size={16} />
                                     </button>
                                 </div>
                             </div>

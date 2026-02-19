@@ -9,14 +9,17 @@ import {
   Menu,
   X,
   Calculator,
-  Users // New Icon
+  Users,
+  Settings as SettingsIcon
 } from 'lucide-react';
+import ImpersonationBanner from './ImpersonationBanner';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
 import { supabase } from '../services/supabase';
+import { useAuth } from '../hooks/useAuth';
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
@@ -30,11 +33,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
   };
 
+  const { user, mode, exitImpersonation } = useAuth();
+  const isSuperAdmin = (user as any)?.is_super_admin;
+  const isImpersonating = mode === 'company' && isSuperAdmin;
+
   const navItems = [
-    { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/productos', icon: Package, label: 'Productos' },
     { to: '/materias-primas', icon: Layers, label: 'Materias Primas' },
-    { to: '/equipo', icon: Users, label: 'Equipo' }, // New Item
+    { to: '/equipo', icon: Users, label: 'Equipo' },
+    { to: '/settings', icon: SettingsIcon, label: 'Ajustes' },
   ];
 
   const activeClass = "bg-blue-50 text-blue-600 font-medium";
@@ -84,10 +92,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </nav>
 
           {/* User Section / Bottom */}
-          <div className="p-4 border-t border-gray-100">
+          <div className="p-4 border-t border-gray-100 space-y-2">
+            {isImpersonating && (
+              <button
+                onClick={exitImpersonation}
+                className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-sm bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md shadow-blue-100"
+              >
+                <Calculator size={20} />
+                Volver a Plataforma
+              </button>
+            )}
+
             <button
               onClick={handleLogout}
-              className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-sm text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all"
+              className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-sm text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all font-medium"
             >
               <LogOut size={20} />
               Cerrar Sesión
@@ -119,8 +137,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </header>
 
         {/* Content Area */}
-        <div className="p-4 md:p-8 max-w-7xl mx-auto w-full">
-          {children}
+        <div className="relative flex flex-col flex-1">
+          <ImpersonationBanner />
+          <div className="p-4 md:p-8 max-w-7xl mx-auto w-full">
+            {children}
+          </div>
         </div>
       </main>
     </div>

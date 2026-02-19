@@ -129,16 +129,37 @@ serve(async (req) => {
 
             console.log(`[TEAM] Updating user ${target_user_id} in company ${company_id}`)
 
+            // 1. Update Membership Role (only if provided and different)
             if (role) {
-                // Security check: only managers/admins/owners can change roles
-                const { error: roleErr } = await supabaseClient
+                // Fetch current role to avoid redundant updates that trigger RLS/Triggers
+                const { data: currentMemb } = await supabaseClient
                     .from('company_members')
-                    .update({ role })
+                    .select('role')
                     .eq('user_id', target_user_id)
                     .eq('company_id', company_id)
-                if (roleErr) throw roleErr
+                    .single()
+
+                if (currentMemb && currentMemb.role !== role) {
+                    console.log(`[TEAM] Changing role from ${currentMemb.role} to ${role}`)
+                    const { error: roleErr } = await supabaseClient
+                        .from('company_members')
+                        .update({ role })
+                        .eq('user_id', target_user_id)
+                        .eq('company_id', company_id)
+                    if (roleErr) throw roleErr
+                }
             }
 
+            // 2. Update Public Profile (public.users)
+            if (full_name) {
+                const { error: publicErr } = await supabaseClient
+                    .from('users')
+                    .update({ full_name })
+                    .eq('id', target_user_id)
+                if (publicErr) throw publicErr
+            }
+
+            // 3. Update Auth Metadata / Password
             const authUpdates: any = {}
             if (full_name) authUpdates.user_metadata = { full_name }
             if (password) authUpdates.password = password

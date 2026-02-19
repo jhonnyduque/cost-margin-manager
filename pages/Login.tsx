@@ -11,11 +11,11 @@ const Login: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
-    const { user, isLoading } = useAuth();
+    const { user, isLoading, refreshAuth } = useAuth();
 
     // Redirigir si ya está logueado
     if (!isLoading && user) {
-        return <Navigate to="/" replace />;
+        return <Navigate to="/dashboard" replace />;
     }
 
     const handleLogin = async (e: React.FormEvent) => {
@@ -24,21 +24,25 @@ const Login: React.FC = () => {
         setError(null);
 
         try {
-            const { data, error: authError } = await supabase.auth.signInWithPassword({
+            console.log('[Login] Attempting sign in...');
+            const { error: authError } = await supabase.auth.signInWithPassword({
                 email,
                 password,
             });
 
             if (authError) throw authError;
 
-            // Optional: If we have a session, we can force a short wait or navigate
-            // but the AuthProvider should handle the redirect via 'user' state.
-            // Adding a small delay to allow AuthProvider to transition to isLoading=true
-            console.log('Login success, waiting for AuthProvider...');
+            console.log('[Login] Sign in success, triggering refreshAuth...');
+            await refreshAuth();
+
+            // Si llegamos aquí y seguimos en esta página, significa que refreshAuth terminó
+            // pero el usuario no ha sido redirigido aún por el render logic.
+            // No resetamos loading inmediatamente para evitar que el botón parpadee
+            // si el App.tsx está a punto de desmontarnos.
         } catch (err: any) {
-            console.error('Login error:', err);
+            console.error('[Login] error:', err);
             setError(err.message || 'Credenciales inválidas o error de conexión.');
-            setLoading(false); // Only reset loading on error
+            setLoading(false);
         }
     };
 

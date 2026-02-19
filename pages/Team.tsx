@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
-import { LimitIndicator } from '../components/LimitIndicator';
 import { UserPlus, Trash2, Shield, Mail } from 'lucide-react';
 import { EntityList } from '../components/entity/EntityList';
 import { EntityModal } from '../components/entity/EntityModal';
@@ -121,12 +120,14 @@ export default function Team() {
         if (!editingMember) return;
         try {
             setLoading(true);
+            const isRoleChanged = isManager && editRole !== editingMember.role;
+
             const { error } = await supabase.functions.invoke('beto-manage-team', {
                 body: {
                     action: 'update',
                     target_user_id: editingMember.user_id,
-                    full_name: editName,
-                    role: isManager ? editRole : undefined,
+                    full_name: isManager ? editName : undefined,
+                    role: isRoleChanged ? editRole : undefined,
                     password: editPassword || undefined,
                     company_id: currentCompany?.id
                 }
@@ -314,8 +315,6 @@ export default function Team() {
                 </div>
 
                 <aside className="space-y-8">
-                    <LimitIndicator manualData={{ currentUsers: currentUsersCount, maxUsers, percentageUsed }} />
-
                     {upgradeRecommended && (
                         <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 rounded-[2rem] p-8 text-white shadow-2xl relative overflow-hidden group">
                             <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700" />
@@ -375,7 +374,15 @@ export default function Team() {
                 <div className="grid grid-cols-1 gap-5">
                     <div className="space-y-1.5">
                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nombre Completo</label>
-                        <input type="text" className="w-full px-5 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all" value={editName} onChange={(e) => setEditName(e.target.value)} required />
+                        <input
+                            type="text"
+                            className={`w-full px-5 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all ${!isManager ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            disabled={!isManager}
+                            required
+                        />
+                        {!isManager && <p className="text-[10px] text-orange-600 font-bold ml-1">Solo Managers pueden editar nombres.</p>}
                     </div>
                     <div className="space-y-1.5">
                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Rol</label>

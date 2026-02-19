@@ -12,5 +12,11 @@ export function useAuth() {
         isLoading: context.isLoading,
         switchCompany: context.switchCompany,
         resetState: context.resetState,
+        refreshAuth: context.refreshAuth,
+        // Impersonation Support
+        mode: context.mode,
+        impersonatedCompanyId: context.impersonatedCompanyId,
+        enterCompanyAsFounder: context.enterCompanyAsFounder,
+        exitImpersonation: context.exitImpersonation,
     };
 }
