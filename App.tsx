@@ -7,8 +7,9 @@ import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
 import RawMaterials from './pages/RawMaterials';
 import Team from './pages/Team';
-import Onboarding from './pages/Onboarding';
 import Login from './pages/Login';
+import NotProvisioned from './pages/NotProvisioned';
+import PlatformAdmin from './pages/PlatformAdmin';
 import { SubscriptionBanner } from './components/SubscriptionBanner';
 import { useStore } from './store';
 import { useAuth } from './hooks/useAuth';
@@ -20,16 +21,19 @@ const AppContent: React.FC = () => {
   const { isLoading: isAuthLoading, user } = useAuth();
   const location = useLocation();
 
-  const isOnboarding = location.pathname.startsWith('/onboarding');
   const isLoginPage = location.pathname === '/login';
+  const isNotProvisionedPage = location.pathname === '/not-provisioned';
+  const isPlatformAdminPage = location.pathname === '/beto';
 
   console.log('[App] Render:', {
     isAuthLoading,
     userId: user?.id,
     companyId: currentCompanyId,
     path: location.pathname,
-    isOnboarding,
-    isLoginPage
+    isLoginPage,
+    isNotProvisionedPage,
+    isPlatformAdminPage,
+    isSuperAdmin: (user as any)?.app_metadata?.is_super_admin
   });
 
   useEffect(() => {
@@ -66,16 +70,14 @@ const AppContent: React.FC = () => {
     return <Navigate to="/" replace />;
   }
 
-  // Redirección forzada a Onboarding si está logueado pero no tiene empresa activa
-  if (user && !currentCompanyId && !isOnboarding) {
-    console.log('[App] Decision: No company -> Redirect to Onboarding');
-    return <Navigate to="/onboarding/create-company" replace />;
-  }
+  // 🛡️ PROVISIONING GUARD: Si está logueado pero no tiene empresa activa
+  // Solo aplica si NO es un super admin de plataforma (BETO), ya que el super admin 
+  // puede no estar asociado a ninguna empresa específica.
+  const isSuperAdmin = (user as any)?.app_metadata?.is_super_admin;
 
-  // Redirección fuera de Onboarding si ya tiene empresa
-  if (currentCompanyId && isOnboarding) {
-    console.log('[App] Decision: Has company -> Redirect away from Onboarding');
-    return <Navigate to="/" replace />;
+  if (user && !currentCompanyId && !isNotProvisionedPage && !isSuperAdmin) {
+    console.log('[App] Decision: No company -> Redirect to NotProvisioned');
+    return <Navigate to="/not-provisioned" replace />;
   }
 
   // Render para rutas especiales (sin Layout)
@@ -87,10 +89,21 @@ const AppContent: React.FC = () => {
     );
   }
 
-  if (isOnboarding) {
+  if (isNotProvisionedPage) {
     return (
       <Routes>
-        <Route path="/onboarding/create-company" element={<Onboarding />} />
+        <Route path="/not-provisioned" element={<NotProvisioned />} />
+      </Routes>
+    );
+  }
+
+  if (isPlatformAdminPage) {
+    if (!isSuperAdmin) {
+      return <Navigate to="/" replace />;
+    }
+    return (
+      <Routes>
+        <Route path="/beto" element={<PlatformAdmin />} />
       </Routes>
     );
   }

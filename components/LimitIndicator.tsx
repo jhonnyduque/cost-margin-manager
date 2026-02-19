@@ -1,6 +1,8 @@
 import { usePlanLimits } from '../hooks/usePlanLimits';
 
-export function LimitIndicator() {
+export function LimitIndicator({ manualData }: { manualData?: { currentUsers: number, maxUsers: number, percentageUsed: number } }) {
+    const hookData = usePlanLimits();
+
     const {
         currentUsers,
         maxUsers,
@@ -8,7 +10,12 @@ export function LimitIndicator() {
         isNearLimit,
         isAtLimit,
         isLoading
-    } = usePlanLimits();
+    } = manualData ? {
+        ...manualData,
+        isNearLimit: manualData.percentageUsed >= 80,
+        isAtLimit: manualData.currentUsers >= manualData.maxUsers,
+        isLoading: false
+    } : hookData;
 
     if (isLoading) return <div className="animate-pulse h-4 bg-gray-200 rounded w-full"></div>;
 
