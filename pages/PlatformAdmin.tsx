@@ -1,28 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { tokens } from '../src/design/design-tokens';
 import {
     Plus,
     Building2,
-    Users,
     Search,
     ArrowRight,
-    ShieldCheck,
     Globe,
-    Mail,
     Loader2,
     CheckCircle2,
-    AlertCircle
+    AlertCircle,
+    ShieldCheck
 } from 'lucide-react';
+import { PageHeader } from '../src/components/ui/PageHeader';
+import { Button } from '../src/components/ui/Button';
+import { Card } from '../src/components/ui/Card';
+import { StatCard } from '../src/components/ui/StatCard';
+import { Input } from '../src/components/ui/Input';
+import { Badge } from '../src/components/ui/Badge';
+import { EmptyState } from '../src/components/ui/EmptyState';
+import EditTenantModal from '../components/EditTenantModal';
 
 export default function PlatformAdmin() {
-    const { user, enterCompanyAsFounder } = useAuth();
+    const { enterCompanyAsFounder } = useAuth();
     const [companies, setCompanies] = useState<any[]>([]);
     const [metrics, setMetrics] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [editingCompany, setEditingCompany] = useState<any | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
     // Form states
     const [companyName, setCompanyName] = useState('');
@@ -65,11 +74,10 @@ export default function PlatformAdmin() {
         setStatusMessage(null);
 
         try {
-            // Llamar a la Edge Function (BETA: beto-create-company)
             const { data, error } = await supabase.functions.invoke('beto-create-company', {
                 body: {
                     company_name: companyName,
-                    company_slug: companySlug,
+                    company_slug: companySlug.toLowerCase(),
                     admin_email: adminEmail
                 }
             });
@@ -78,10 +86,9 @@ export default function PlatformAdmin() {
 
             setStatusMessage({
                 type: 'success',
-                text: `Tenant provisionado con éxito: ${adminEmail}. El ID de empresa es ${data.company_id}.`
+                text: `Tenant provisionado con éxito: ${adminEmail}.`
             });
 
-            // Limpiar form y refrescar lista
             setCompanyName('');
             setCompanySlug('');
             setAdminEmail('');
@@ -98,200 +105,216 @@ export default function PlatformAdmin() {
         }
     };
 
+    const filteredCompanies = companies.filter(c =>
+        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.slug.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     return (
-        <div className="min-h-screen bg-[#f8fafc] p-8 md:p-12 animate-in fade-in duration-700">
-            <header className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-                <div>
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200">
-                            <ShieldCheck size={24} />
-                        </div>
-                        <span className="font-black text-blue-600 tracking-widest text-sm uppercase">Panel de Plataforma</span>
-                    </div>
-                    <h1 className="text-4xl font-black text-slate-900 tracking-tight">Control Maestro BETO</h1>
-                    <p className="text-slate-500 font-medium mt-2">Gestión global de tenants y provisión de servicios.</p>
+        <div className="min-h-screen" style={{ backgroundColor: tokens.colors.bg, padding: tokens.spacing.xl }}>
+            <div className="max-w-7xl mx-auto space-y-8">
+
+                {/* Header */}
+                <PageHeader
+                    title="Control Maestro BETO"
+                    description="Gestión global de tenants y provisión de servicios."
+                    actions={
+                        <Button
+                            icon={<Plus size={20} />}
+                            onClick={() => setShowForm(!showForm)}
+                        >
+                            Provisionar Tenant
+                        </Button>
+                    }
+                />
+
+                {/* Metrics */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <StatCard
+                        title="Total Tenants"
+                        value={metrics?.total_tenants || 0}
+                        icon={Building2}
+                    />
+                    <StatCard
+                        title="Activos"
+                        value={metrics?.active_tenants || 0}
+                        icon={CheckCircle2}
+                    />
+                    <StatCard
+                        title="Suspendidos"
+                        value={metrics?.suspended_tenants || 0}
+                        icon={AlertCircle}
+                    />
+                    <StatCard
+                        title="MRR Estimado"
+                        value={`$${metrics?.mrr_estimate || 0}`}
+                        icon={Globe}
+                    />
                 </div>
 
-                <button
-                    onClick={() => setShowForm(!showForm)}
-                    className="group bg-slate-900 hover:bg-black text-white px-8 py-4 rounded-2xl font-black flex items-center gap-3 transition-all shadow-xl shadow-slate-200 active:scale-95"
-                >
-                    <Plus size={20} className="group-hover:rotate-90 transition-transform" />
-                    Provisionar Nuevo Tenant
-                </button>
-            </header>
-
-            <main className="max-w-7xl mx-auto space-y-12">
-
-                {/* METRICS SUMMARY BAR */}
-                <section className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                    {[
-                        { label: 'Total Tenants', value: metrics?.total_tenants || 0, icon: Building2, color: 'blue' },
-                        { label: 'Activos', value: metrics?.active_tenants || 0, icon: CheckCircle2, color: 'emerald' },
-                        { label: 'Suspendidos', value: metrics?.suspended_tenants || 0, icon: AlertCircle, color: 'red' },
-                        { label: 'MRR Est.', value: `$${metrics?.mrr_estimate || 0}`, icon: Globe, color: 'indigo' }
-                    ].map((stat, i) => (
-                        <div key={i} className="bg-white rounded-3xl p-8 border border-white shadow-[0_8px_32px_-12px_rgba(0,0,0,0.04)] relative overflow-hidden group">
-                            <div className={`absolute top-0 right-0 w-16 h-16 bg-${stat.color}-50 rounded-bl-full opacity-40 transform translate-x-4 -translate-y-4`}></div>
-                            <div className="flex items-center gap-4">
-                                <div className={`w-12 h-12 bg-${stat.color}-50 text-${stat.color}-600 rounded-2xl flex items-center justify-center`}>
-                                    <stat.icon size={20} />
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</p>
-                                    <p className="text-2xl font-black text-slate-900 tracking-tight">{stat.value}</p>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </section>
-
+                {/* Status Messages */}
                 {statusMessage && (
-                    <div className={`p-4 rounded-2xl flex items-center gap-4 animate-in slide-in-from-top-4 duration-500 ${statusMessage.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'
-                        }`}>
-                        {statusMessage.type === 'success' ? <CheckCircle2 size={24} /> : <AlertCircle size={24} />}
-                        <p className="font-bold">{statusMessage.text}</p>
+                    <div
+                        style={{
+                            padding: tokens.spacing.md,
+                            borderRadius: tokens.radius.md,
+                            backgroundColor: statusMessage.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                            border: `1px solid ${statusMessage.type === 'success' ? tokens.colors.success : tokens.colors.error}`,
+                            color: statusMessage.type === 'success' ? '#059669' : '#DC2626',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: tokens.spacing.sm
+                        }}
+                    >
+                        {statusMessage.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+                        <span style={{ fontWeight: 500 }}>{statusMessage.text}</span>
                     </div>
                 )}
 
+                {/* Provision Form */}
                 {showForm && (
-                    <section className="bg-white rounded-[2.5rem] p-10 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.06)] border border-white relative overflow-hidden animate-in zoom-in-95 duration-500">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-full opacity-50"></div>
-                        <h2 className="text-2xl font-black text-slate-900 mb-8 flex items-center gap-3">
-                            <Building2 className="text-blue-600" /> Detalle de Provisión
-                        </h2>
+                    <Card className="animate-in slide-in-from-top-4 fade-in duration-300">
+                        <div className="mb-6 flex items-center gap-2">
+                            <Building2 size={24} style={{ color: tokens.colors.brand }} />
+                            <h2 style={{ ...tokens.typography.titleMd, margin: 0 }}>Detalle de Provisión</h2>
+                        </div>
 
-                        <form onSubmit={handleProvision} className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                            <div className="space-y-2">
-                                <label className="text-xs font-black text-slate-400 uppercase tracking-wider ml-1">Nombre Comercial</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={companyName}
-                                    onChange={e => setCompanyName(e.target.value)}
-                                    placeholder="Ej: Manufactura Norte"
-                                    className="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 focus:ring-2 focus:ring-blue-500 font-bold transition-all"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-black text-slate-400 uppercase tracking-wider ml-1">ID / Slug único</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={companySlug}
-                                    onChange={e => setCompanySlug(e.target.value)}
-                                    placeholder="ej-slug-empresa"
-                                    className="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 focus:ring-2 focus:ring-blue-500 font-bold transition-all lowercase"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-black text-slate-400 uppercase tracking-wider ml-1">Email del Administrador</label>
-                                <input
-                                    type="email"
-                                    required
-                                    value={adminEmail}
-                                    onChange={e => setAdminEmail(e.target.value)}
-                                    placeholder="admin@empresa.com"
-                                    className="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 focus:ring-2 focus:ring-blue-500 font-bold transition-all"
-                                />
-                            </div>
+                        <form onSubmit={handleProvision} className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <Input
+                                label="Nombre Comercial"
+                                placeholder="Ej: Manufactura Norte"
+                                value={companyName}
+                                onChange={e => setCompanyName(e.target.value)}
+                                required
+                            />
+                            <Input
+                                label="ID / Slug único"
+                                placeholder="ej-slug-empresa"
+                                value={companySlug}
+                                onChange={e => setCompanySlug(e.target.value)}
+                                required
+                            />
+                            <Input
+                                label="Email del Administrador"
+                                placeholder="admin@empresa.com"
+                                type="email"
+                                value={adminEmail}
+                                onChange={e => setAdminEmail(e.target.value)}
+                                required
+                            />
 
-                            <div className="md:col-span-3 flex justify-end items-center gap-6 pt-4 border-t border-slate-50">
-                                <button
+                            <div className="md:col-span-3 flex justify-end gap-3 pt-4 border-t" style={{ borderColor: tokens.colors.border }}>
+                                <Button
                                     type="button"
+                                    variant="ghost"
                                     onClick={() => setShowForm(false)}
-                                    className="text-slate-400 font-black hover:text-slate-900 transition-colors"
                                 >
                                     Cancelar
-                                </button>
-                                <button
-                                    disabled={isSubmitting}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-4 rounded-2xl font-black shadow-xl shadow-blue-100 flex items-center gap-3 transition-all active:scale-95 disabled:opacity-50"
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    isLoading={isSubmitting}
+                                    icon={<ArrowRight size={16} />}
                                 >
-                                    {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <ArrowRight size={20} />}
                                     Ejecutar Provisión
-                                </button>
+                                </Button>
                             </div>
                         </form>
-                    </section>
+                    </Card>
                 )}
 
-                <section>
-                    <div className="flex items-center justify-between mb-8">
-                        <h2 className="text-2xl font-black text-slate-900 flex items-center gap-3">
-                            Tenants Activos <span className="text-slate-300 font-medium text-lg italic ml-2">{companies.length}</span>
+                {/* Tenants List */}
+                <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <h2 style={{ ...tokens.typography.titleMd, margin: 0 }}>
+                            Tenants Activos
+                            <span style={{ color: tokens.colors.text.muted, marginLeft: tokens.spacing.sm }}>
+                                {companies.length}
+                            </span>
                         </h2>
-                        <div className="relative">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                            <input
-                                type="text"
+                        <div className="w-full sm:w-auto sm:min-w-[300px]">
+                            <Input
                                 placeholder="Buscar empresa..."
-                                className="bg-white border-none rounded-2xl pl-12 pr-6 py-3 text-sm font-bold shadow-sm focus:ring-2 focus:ring-blue-500 transition-all w-64"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {loading ? (
-                            Array(6).fill(0).map((_, i) => (
-                                <div key={i} className="bg-white h-48 rounded-[2.5rem] animate-pulse border border-slate-50"></div>
-                            ))
-                        ) : companies.map(company => (
-                            <div key={company.id} className="group bg-white rounded-[2.5rem] p-8 border border-white shadow-[0_16px_32px_-12px_rgba(0,0,0,0.04)] hover:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.08)] transition-all duration-500 relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-full opacity-20 transform translate-x-12 -translate-y-12 group-hover:translate-x-0 group-hover:translate-y-0 transition-transform duration-700"></div>
-
-                                <div className="flex items-center gap-4 mb-6">
-                                    <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors duration-500">
-                                        <Building2 size={24} />
-                                    </div>
+                    {loading ? (
+                        <div className="flex justify-center py-12">
+                            <Loader2 className="animate-spin text-slate-400" size={32} />
+                        </div>
+                    ) : filteredCompanies.length === 0 ? (
+                        <div className="py-12">
+                            <EmptyState
+                                title="No se encontraron empresas"
+                                description={searchTerm ? `No hay resultados para "${searchTerm}"` : "No hay empresas registradas aún."}
+                                icon={Building2}
+                            />
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {filteredCompanies.map(company => (
+                                <Card key={company.id} className="group hover:shadow-lg transition-all duration-300 flex flex-col justify-between h-full">
                                     <div>
-                                        <h3 className="font-black text-slate-900 tracking-tight group-hover:text-blue-600 transition-colors">{company.name}</h3>
-                                        <div className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest mt-0.5">
-                                            <Globe size={10} />
-                                            {company.slug}
+                                        <div className="flex items-start justify-between mb-4">
+                                            <div className="flex items-center gap-3">
+                                                <div
+                                                    className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                                                    style={{ backgroundColor: tokens.colors.bg }}
+                                                >
+                                                    <Building2 size={20} style={{ color: tokens.colors.text.secondary }} />
+                                                </div>
+                                                <div className="overflow-hidden">
+                                                    <h3 className="truncate" style={{ ...tokens.typography.body, fontWeight: 600 }}>{company.name}</h3>
+                                                    <p className="truncate" style={{ ...tokens.typography.caption }}>{company.slug}</p>
+                                                </div>
+                                            </div>
+                                            <Badge
+                                                variant={company.subscription_status === 'active' ? 'success' : 'warning'}
+                                                className="shrink-0"
+                                            >
+                                                {company.subscription_status || 'unknown'}
+                                            </Badge>
+                                        </div>
+
+                                        <div className="space-y-3 mb-6">
+                                            <div className="flex justify-between text-sm">
+                                                <span style={{ color: tokens.colors.text.secondary }}>Plan</span>
+                                                <Badge variant="neutral">{company.subscription_tier || 'Free'}</Badge>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <div className="space-y-3 mb-6">
-                                    <div className="flex items-center justify-between text-sm">
-                                        <span className="text-slate-400 font-black tracking-widest text-[10px] uppercase">Plan</span>
-                                        <span className={`font-black uppercase text-[10px] tracking-widest px-3 py-1 rounded-full ${company.subscription_tier === 'premium' ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-50 text-slate-500'
-                                            }`}>
-                                            {company.subscription_tier}
-                                        </span>
+                                    <div className="flex gap-2 pt-4 border-t mt-auto" style={{ borderColor: tokens.colors.border }}>
+                                        <Button
+                                            variant="primary"
+                                            className="w-full"
+                                            onClick={() => enterCompanyAsFounder(company.id)}
+                                            icon={<ArrowRight size={14} />}
+                                            style={{ height: '32px', fontSize: '0.75rem' }}
+                                        >
+                                            Entrar
+                                        </Button>
                                     </div>
-                                    <div className="flex items-center justify-between text-sm">
-                                        <span className="text-slate-400 font-black tracking-widest text-[10px] uppercase">Estado</span>
-                                        <span className="text-emerald-500 font-black tracking-widest text-[10px] uppercase flex items-center gap-1">
-                                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
-                                            {company.subscription_status}
-                                        </span>
-                                    </div>
-                                </div>
+                                </Card>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
 
-                                <div className="flex -space-x-2">
-                                    {[1, 2, 3].map(i => (
-                                        <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-400">
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={() => enterCompanyAsFounder(company.id)}
-                                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-100 transition-all active:scale-95 flex items-center gap-2"
-                                    >
-                                        Entrar <ArrowRight size={12} />
-                                    </button>
-                                    <button className="text-slate-400 hover:text-slate-900 transition-colors">
-                                        <Plus size={16} />
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </section>
-            </main>
+            {editingCompany && (
+                <EditTenantModal
+                    company={editingCompany}
+                    onClose={() => setEditingCompany(null)}
+                    onUpdate={() => {
+                        fetchCompanies();
+                        setStatusMessage({ type: 'success', text: 'Empresa actualizada correctamente.' });
+                    }}
+                />
+            )}
         </div>
     );
 }

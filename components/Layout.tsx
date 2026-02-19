@@ -1,41 +1,38 @@
-
-import React from 'react';
-import { NavLink, Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
   Package,
   Layers,
   LogOut,
   Menu,
-  X,
   Calculator,
   Users,
   Settings as SettingsIcon
 } from 'lucide-react';
 import ImpersonationBanner from './ImpersonationBanner';
+import { supabase } from '../services/supabase';
+import { useAuth } from '../hooks/useAuth';
+import { tokens } from '@/src/design/design-tokens';
+import { Button } from '@/src/components/ui/Button';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
-import { supabase } from '../services/supabase';
-import { useAuth } from '../hooks/useAuth';
-
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user, mode, exitImpersonation } = useAuth();
+  const isSuperAdmin = (user as any)?.is_super_admin;
+  const isImpersonating = mode === 'company' && isSuperAdmin;
 
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
-      // No necesitamos navegar manualmente, App.tsx detectará el cambio de sesión
     } catch (error) {
       console.error('Error logging out:', error);
     }
   };
-
-  const { user, mode, exitImpersonation } = useAuth();
-  const isSuperAdmin = (user as any)?.is_super_admin;
-  const isImpersonating = mode === 'company' && isSuperAdmin;
 
   const navItems = [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -45,11 +42,42 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { to: '/settings', icon: SettingsIcon, label: 'Ajustes' },
   ];
 
-  const activeClass = "bg-blue-50 text-blue-600 font-medium";
-  const inactiveClass = "text-gray-500 hover:bg-gray-100 transition-all duration-200";
+  // Styles derived from tokens
+  const sidebarStyle = {
+    backgroundColor: tokens.colors.surface,
+    borderRight: `1px solid ${tokens.colors.border}`,
+  };
+
+  const mainContentStyle = {
+    backgroundColor: tokens.colors.bg,
+  };
+
+  const linkBaseStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacing.sm,
+    padding: `${tokens.spacing.sm} ${tokens.spacing.md}`,
+    borderRadius: tokens.radius.md,
+    fontSize: tokens.typography.body.fontSize,
+    fontWeight: tokens.typography.body.fontWeight,
+    textDecoration: 'none',
+    transition: 'all 0.2s',
+    marginBottom: '2px',
+  };
+
+  const linkActiveStyle = {
+    backgroundColor: 'rgba(37, 99, 235, 0.08)', // Brand color with opacity
+    color: tokens.colors.brand,
+    fontWeight: 600,
+  };
+
+  const linkInactiveStyle = {
+    color: tokens.colors.text.secondary,
+    backgroundColor: 'transparent',
+  };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen" style={mainContentStyle}>
       {/* Mobile Backdrop */}
       {isMobileMenuOpen && (
         <div
@@ -59,53 +87,100 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       )}
 
       {/* Sidebar */}
-      <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out
-        md:relative md:translate-x-0
-        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
+      <aside
+        style={sidebarStyle}
+        className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}
+      >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="p-6 border-b border-gray-100 flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white">
+          <div
+            style={{
+              padding: tokens.spacing.lg,
+              borderBottom: `1px solid ${tokens.colors.border}`,
+              display: 'flex',
+              alignItems: 'center',
+              gap: tokens.spacing.sm
+            }}
+          >
+            <div
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: tokens.radius.md,
+                backgroundColor: tokens.colors.brand,
+                color: tokens.colors.surface,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
               <Calculator size={24} />
             </div>
-            <h1 className="text-xl font-bold text-gray-900 tracking-tight">Calculadora</h1>
+            <h1
+              style={{
+                fontSize: tokens.typography.titleMd.fontSize,
+                fontWeight: tokens.typography.titleMd.fontWeight,
+                color: tokens.colors.text.primary
+              }}
+            >
+              Calculadora
+            </h1>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1">
+          <nav className="flex-1" style={{ padding: tokens.spacing.md }}>
             {navItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={({ isActive }) => `
-                  flex items-center gap-3 px-4 py-3 rounded-lg text-sm
-                  ${isActive ? activeClass : inactiveClass}
-                `}
+                style={({ isActive }) => ({
+                  ...linkBaseStyle,
+                  ...(isActive ? linkActiveStyle : linkInactiveStyle)
+                })}
               >
-                <item.icon size={20} />
-                {item.label}
+                {({ isActive }) => (
+                  <>
+                    <item.icon size={20} />
+                    {item.label}
+                  </>
+                )}
               </NavLink>
             ))}
           </nav>
 
           {/* User Section / Bottom */}
-          <div className="p-4 border-t border-gray-100 space-y-2">
+          <div
+            style={{
+              padding: tokens.spacing.md,
+              borderTop: `1px solid ${tokens.colors.border}`,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: tokens.spacing.sm
+            }}
+          >
             {isImpersonating && (
-              <button
+              <Button
+                variant="primary"
                 onClick={exitImpersonation}
-                className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-sm bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md shadow-blue-100"
+                icon={<Calculator size={18} />}
+                className="w-full justify-center"
               >
-                <Calculator size={20} />
                 Volver a Plataforma
-              </button>
+              </Button>
             )}
 
             <button
               onClick={handleLogout}
-              className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-sm text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all font-medium"
+              style={{
+                ...linkBaseStyle,
+                color: tokens.colors.text.secondary,
+                width: '100%',
+                cursor: 'pointer',
+                border: 'none',
+                background: 'transparent'
+              }}
+              className="hover:bg-red-50 hover:text-red-600"
             >
               <LogOut size={20} />
               Cerrar Sesión
@@ -117,20 +192,47 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0">
         {/* Top Header (Mobile Only) */}
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center px-4 md:px-8 justify-between sticky top-0 z-30">
+        <header
+          className="md:hidden sticky top-0 z-30 flex items-center justify-between"
+          style={{
+            height: '64px',
+            backgroundColor: tokens.colors.surface,
+            borderBottom: `1px solid ${tokens.colors.border}`,
+            padding: `0 ${tokens.spacing.lg}`
+          }}
+        >
           <div className="flex items-center gap-4">
             <button
-              className="p-2 md:hidden text-gray-500"
+              style={{ color: tokens.colors.text.secondary }}
               onClick={() => setIsMobileMenuOpen(true)}
             >
               <Menu size={24} />
             </button>
-            <h2 className="text-lg font-semibold text-gray-800 hidden md:block">
+            <h2
+              style={{
+                fontSize: tokens.typography.titleMd.fontSize,
+                fontWeight: tokens.typography.titleMd.fontWeight,
+                color: tokens.colors.text.primary
+              }}
+            >
               Panel de Control
             </h2>
           </div>
           <div className="flex items-center gap-4">
-            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: tokens.radius.full,
+                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                color: tokens.colors.brand,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '0.75rem',
+                fontWeight: 700
+              }}
+            >
               AD
             </div>
           </div>
@@ -139,7 +241,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         {/* Content Area */}
         <div className="relative flex flex-col flex-1">
           <ImpersonationBanner />
-          <div className="p-4 md:p-8 max-w-7xl mx-auto w-full">
+          <div className="w-full" style={{ padding: tokens.spacing.xl, maxWidth: '1280px', margin: '0 auto' }}>
             {children}
           </div>
         </div>
