@@ -24,19 +24,21 @@ const Login: React.FC = () => {
         setError(null);
 
         try {
-            const { error: authError } = await supabase.auth.signInWithPassword({
+            const { data, error: authError } = await supabase.auth.signInWithPassword({
                 email,
                 password,
             });
 
             if (authError) throw authError;
 
-            // El hook useAuth detectará el cambio y cargará los datos automáticamente
+            // Optional: If we have a session, we can force a short wait or navigate
+            // but the AuthProvider should handle the redirect via 'user' state.
+            // Adding a small delay to allow AuthProvider to transition to isLoading=true
+            console.log('Login success, waiting for AuthProvider...');
         } catch (err: any) {
             console.error('Login error:', err);
             setError(err.message || 'Credenciales inválidas o error de conexión.');
-        } finally {
-            setLoading(false);
+            setLoading(false); // Only reset loading on error
         }
     };
 

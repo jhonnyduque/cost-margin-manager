@@ -51,11 +51,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
             setIsLoading(true);
 
-            console.log('[AuthProvider] Fetching user + memberships...');
-            const [userRes, membRes] = await Promise.all([
-                supabase.from('users').select('*').eq('id', userId).single(),
-                supabase.from('company_members').select('company_id, role, companies(*)').eq('user_id', userId).eq('is_active', true)
-            ]);
+            let userRes = await supabase.from('users').select('*').eq('id', userId).single();
+
+            // Reintento rápido si no se encuentra el usuario (posible retraso en trigger)
+            if (userRes.error && userRes.error.code === 'PGRST116') {
+                console.warn('[AuthProvider] User record not found, retrying once...');
+                await new Promise(r => setTimeout(r, 1000));
+                userRes = await supabase.from('users').select('*').eq('id', userId).single();
+            }
 
             if (userRes.error) {
                 console.error('[AuthProvider] User Fetch Error:', userRes.error);
@@ -63,9 +66,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 return;
             }
 
+            const membRes = await supabase.from('company_members').select('company_id, role, companies(*)').eq('user_id', userId).eq('is_active', true);
+
             if (membRes.error) {
                 console.error('[AuthProvider] Memberships Fetch Error:', membRes.error);
-                resetState();
+                // No llamo a resetState aquí para permitir que el perfil de usuario se mantenga
+                // incluso si no tiene compañías (onboarding incompleto)
+                setUser(userRes.data);
+                setIsLoading(false);
                 return;
             }
 
@@ -134,12 +142,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const { data: { subscription } } =
             supabase.auth.onAuthStateChange(async (event, session) => {
-                console.log('[AuthProvider] Auth Event:', event);
+                console.log('[AuthProvider] Auth Event:', event, 'User:', session?.user?.id);
+
                 if (event === 'SIGNED_IN' && session?.user) {
+                    // Si ya estamos cargando este usuario, no interrumpir
+                    if (user?.id === session.user.id && !isLoading) {
+                        console.log('[AuthProvider] SIGNED_IN - Already have user, skipping load');
+                        return;
+                    }
                     await loadUserData(session.user.id);
-                }
-                if (event === 'SIGNED_OUT') {
+                } else if (event === 'SIGNED_OUT') {
                     resetState();
+                } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+                    if (!user) await loadUserData(session.user.id);
+                } else if (event === 'INITIAL_SESSION' && session?.user) {
+                    if (!user) await loadUserData(session.user.id);
                 }
             });
 
