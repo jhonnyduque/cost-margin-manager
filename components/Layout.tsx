@@ -1,27 +1,40 @@
 
 import React from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Package, 
-  Layers, 
-  LogOut, 
-  Menu, 
+import {
+  LayoutDashboard,
+  Package,
+  Layers,
+  LogOut,
+  Menu,
   X,
-  Calculator
+  Calculator,
+  Users // New Icon
 } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
+import { supabase } from '../services/supabase';
+
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      // No necesitamos navegar manualmente, App.tsx detectará el cambio de sesión
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
 
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/productos', icon: Package, label: 'Productos' },
     { to: '/materias-primas', icon: Layers, label: 'Materias Primas' },
+    { to: '/equipo', icon: Users, label: 'Equipo' }, // New Item
   ];
 
   const activeClass = "bg-blue-50 text-blue-600 font-medium";
@@ -31,8 +44,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div className="flex min-h-screen bg-gray-50">
       {/* Mobile Backdrop */}
       {isMobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 md:hidden" 
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
@@ -72,7 +85,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
           {/* User Section / Bottom */}
           <div className="p-4 border-t border-gray-100">
-            <button className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-sm text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all">
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-sm text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all"
+            >
               <LogOut size={20} />
               Cerrar Sesión
             </button>
@@ -85,8 +101,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         {/* Top Header (Mobile Only) */}
         <header className="h-16 bg-white border-b border-gray-200 flex items-center px-4 md:px-8 justify-between sticky top-0 z-30">
           <div className="flex items-center gap-4">
-            <button 
-              className="p-2 md:hidden text-gray-500" 
+            <button
+              className="p-2 md:hidden text-gray-500"
               onClick={() => setIsMobileMenuOpen(true)}
             >
               <Menu size={24} />

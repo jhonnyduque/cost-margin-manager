@@ -14,16 +14,16 @@ const formatCurrency = (value: number) => {
 };
 
 const RawMaterials: React.FC = () => {
-  const { rawMaterials, batches, addRawMaterial, deleteRawMaterial, updateRawMaterial, addBatch, deleteBatch, updateBatch } = useStore();
+  const { currentCompanyId, rawMaterials, batches, addRawMaterial, deleteRawMaterial, updateRawMaterial, addBatch, deleteBatch, updateBatch } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const [activeMaterialId, setActiveMaterialId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [entryMode, setEntryMode] = useState<'rollo' | 'pieza'>('rollo');
-  
+
   const [editingBatchData, setEditingBatchData] = useState<MaterialBatch | null>(null);
-  
+
   const [formData, setFormData] = useState<any>({
     name: '',
     description: '',
@@ -41,7 +41,7 @@ const RawMaterials: React.FC = () => {
     provider: '', initialQuantity: 0, unitCost: 0, reference: '', width: 140, length: 0
   });
 
-  const filteredMaterials = rawMaterials.filter(m => 
+  const filteredMaterials = rawMaterials.filter(m =>
     m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     m.provider.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -52,17 +52,17 @@ const RawMaterials: React.FC = () => {
     const totalRemainingQty = matBatches.reduce((acc, b) => acc + b.remainingQuantity, 0);
     const totalValue = matBatches.reduce((acc, b) => acc + (b.unitCost * b.initialQuantity), 0);
     const weightedAvgCost = totalOriginalQty > 0 ? totalValue / totalOriginalQty : 0;
-    
+
     const totalArea = matBatches.reduce((acc, b) => acc + (b.area || 0), 0);
     const avgCostPerM2 = totalArea > 0 ? totalValue / totalArea : 0;
-    
+
     return { totalOriginalQty, totalRemainingQty, totalValue, weightedAvgCost, totalArea, avgCostPerM2 };
   };
 
   const handleMasterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const materialId = editingId || Date.now().toString();
-    
+    const materialId = editingId || crypto.randomUUID();
+
     const materialData: RawMaterial = {
       id: materialId,
       name: formData.name,
@@ -70,9 +70,10 @@ const RawMaterials: React.FC = () => {
       type: formData.type,
       unit: formData.unit,
       provider: formData.provider,
-      status: formData.status
+      status: formData.status,
+      company_id: currentCompanyId || ''
     };
-    
+
     if (editingId) {
       updateRawMaterial(materialData);
     } else {
@@ -80,7 +81,7 @@ const RawMaterials: React.FC = () => {
       if (formData.initialQty > 0) {
         const area = formData.unit === 'metro' ? formData.initialQty * ((formData.width || 0) / 100) : undefined;
         const batch: MaterialBatch = {
-          id: `batch-${Date.now()}`,
+          id: crypto.randomUUID(),
           materialId: materialId,
           date: new Date().toISOString().split('T')[0],
           provider: formData.provider || 'Carga Inicial',
@@ -90,7 +91,8 @@ const RawMaterials: React.FC = () => {
           reference: 'Carga Inicial',
           width: formData.width,
           area: area,
-          entryMode: 'rollo'
+          entryMode: 'rollo',
+          company_id: currentCompanyId || ''
         };
         addBatch(batch);
       }
@@ -103,7 +105,7 @@ const RawMaterials: React.FC = () => {
     e.preventDefault();
     if (!activeMaterialId) return;
     const material = rawMaterials.find(m => m.id === activeMaterialId);
-    
+
     let area = 0;
     let finalQty = batchFormData.initialQuantity || 0;
     let finalUnitCost = batchFormData.unitCost || 0;
@@ -117,23 +119,24 @@ const RawMaterials: React.FC = () => {
       finalUnitCost = (batchFormData.unitCost || 0) / finalQty; // Costo por metro para FIFO
     }
 
-    const data = { 
-      ...batchFormData, 
-      id: Date.now().toString(), 
-      materialId: activeMaterialId, 
+    const data = {
+      ...batchFormData,
+      id: crypto.randomUUID(),
+      materialId: activeMaterialId,
       initialQuantity: finalQty,
       remainingQuantity: finalQty,
       unitCost: finalUnitCost,
       area: area,
-      entryMode: entryMode
+      entryMode: entryMode,
+      company_id: currentCompanyId || ''
     } as MaterialBatch;
-    
+
     addBatch(data);
-    setBatchFormData({ 
-      date: new Date().toISOString().split('T')[0], 
-      provider: material?.provider || '', 
-      initialQuantity: 0, 
-      unitCost: 0, 
+    setBatchFormData({
+      date: new Date().toISOString().split('T')[0],
+      provider: material?.provider || '',
+      initialQuantity: 0,
+      unitCost: 0,
       reference: '',
       width: 140,
       length: 0
@@ -163,7 +166,7 @@ const RawMaterials: React.FC = () => {
           finalQty = (editingBatchData.length || 0) / 100;
           finalUnitCost = (editingBatchData.unitCost || 0) / finalQty;
         }
-        
+
         updateBatch({
           ...editingBatchData,
           initialQuantity: finalQty,
@@ -207,7 +210,7 @@ const RawMaterials: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Materias Primas</h1>
           <p className="text-gray-500 font-medium">Inventario Maestro y Gestión FIFO</p>
         </div>
-        <button 
+        <button
           onClick={() => {
             setEditingId(null);
             setFormData({ name: '', description: '', type: 'Tela', unit: 'metro', provider: '', status: 'activa', initialQty: 0, unitCost: 0, width: 140 });
@@ -230,7 +233,7 @@ const RawMaterials: React.FC = () => {
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-        <input 
+        <input
           type="text" placeholder="Buscar material o proveedor..."
           className="w-full pl-10 pr-4 py-3.5 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-[#4f46e5] outline-none transition-all"
           value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
@@ -274,11 +277,11 @@ const RawMaterials: React.FC = () => {
                   <td className="px-8 py-4 text-right">
                     <div className="flex justify-end gap-1">
                       <button onClick={() => { setActiveMaterialId(m.id); setIsBatchModalOpen(true); }} className="p-2 text-indigo-400 hover:bg-indigo-50 rounded-lg transition-colors" title="Ver Lotes"><History size={18} /></button>
-                      <button onClick={() => { 
+                      <button onClick={() => {
                         const stats = getBatchStats(m.id);
-                        setEditingId(m.id); 
-                        setFormData({ ...m, initialQty: stats.totalRemainingQty, unitCost: stats.weightedAvgCost }); 
-                        setIsModalOpen(true); 
+                        setEditingId(m.id);
+                        setFormData({ ...m, initialQty: stats.totalRemainingQty, unitCost: stats.weightedAvgCost });
+                        setIsModalOpen(true);
                       }} className="p-2 text-gray-400 hover:bg-gray-50 rounded-lg transition-colors"><Edit2 size={18} /></button>
                       <button onClick={() => deleteRawMaterial(m.id)} className="p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-lg transition-colors"><Trash2 size={18} /></button>
                     </div>
@@ -296,23 +299,23 @@ const RawMaterials: React.FC = () => {
             <h3 className="text-2xl font-black text-gray-900 mb-8">
               {editingId ? 'Editar' : 'Nueva'} Materia Prima
             </h3>
-            
+
             <form onSubmit={handleMasterSubmit} className="space-y-6">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nombre</label>
-                <input required className="w-full px-5 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-[#4f46e5] text-gray-900 font-medium placeholder-gray-300" 
-                  value={formData.name} 
-                  onChange={e => setFormData({...formData, name: e.target.value})} 
-                  placeholder="Ej. Tela de Corazón" 
+                <input required className="w-full px-5 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-[#4f46e5] text-gray-900 font-medium placeholder-gray-300"
+                  value={formData.name}
+                  onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Ej. Tela de Corazón"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Tipo / Categoría</label>
-                  <select className="w-full px-5 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl outline-none text-gray-900 font-medium appearance-none cursor-pointer" 
-                    value={formData.type} 
-                    onChange={e => setFormData({...formData, type: e.target.value})}
+                  <select className="w-full px-5 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl outline-none text-gray-900 font-medium appearance-none cursor-pointer"
+                    value={formData.type}
+                    onChange={e => setFormData({ ...formData, type: e.target.value })}
                   >
                     <option value="Tela">Tela</option>
                     <option value="Hilo">Hilo</option>
@@ -323,29 +326,29 @@ const RawMaterials: React.FC = () => {
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Proveedor</label>
-                  <input className="w-full px-5 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl outline-none text-gray-900 font-medium placeholder-gray-300" 
-                    value={formData.provider} 
-                    onChange={e => setFormData({...formData, provider: e.target.value})} 
-                    placeholder="Ej. Textiles Premium" 
+                  <input className="w-full px-5 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl outline-none text-gray-900 font-medium placeholder-gray-300"
+                    value={formData.provider}
+                    onChange={e => setFormData({ ...formData, provider: e.target.value })}
+                    placeholder="Ej. Textiles Premium"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Descripción</label>
-                <input className="w-full px-5 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl outline-none text-gray-900 font-medium placeholder-gray-300" 
-                  value={formData.description} 
-                  onChange={e => setFormData({...formData, description: e.target.value})} 
-                  placeholder="Detalles de la materia prima..." 
+                <input className="w-full px-5 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl outline-none text-gray-900 font-medium placeholder-gray-300"
+                  value={formData.description}
+                  onChange={e => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Detalles de la materia prima..."
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-1">Unidad de Medida</label>
-                  <select className="w-full px-5 py-4 bg-indigo-50/30 border border-indigo-100 rounded-2xl outline-none text-indigo-900 font-black appearance-none cursor-pointer" 
-                    value={formData.unit} 
-                    onChange={e => setFormData({...formData, unit: e.target.value as Unit})}
+                  <select className="w-full px-5 py-4 bg-indigo-50/30 border border-indigo-100 rounded-2xl outline-none text-indigo-900 font-black appearance-none cursor-pointer"
+                    value={formData.unit}
+                    onChange={e => setFormData({ ...formData, unit: e.target.value as Unit })}
                   >
                     <option value="metro">Metro (m)</option>
                     <option value="cm">Centímetro (cm)</option>
@@ -360,10 +363,10 @@ const RawMaterials: React.FC = () => {
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Costo por {formData.unit}</label>
                   <div className="relative">
                     <span className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 font-bold">€</span>
-                    <input type="number" step="0.01" 
-                      className="w-full pl-10 pr-5 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl outline-none text-gray-900 font-black" 
-                      value={formData.unitCost || ''} 
-                      onChange={e => setFormData({...formData, unitCost: parseFloat(e.target.value)})} 
+                    <input type="number" step="0.01"
+                      className="w-full pl-10 pr-5 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl outline-none text-gray-900 font-black"
+                      value={formData.unitCost || ''}
+                      onChange={e => setFormData({ ...formData, unitCost: parseFloat(e.target.value) })}
                       placeholder="0"
                       disabled={!!editingId}
                     />
@@ -372,28 +375,28 @@ const RawMaterials: React.FC = () => {
               </div>
 
               {formData.unit === 'metro' && (
-                 <div className="space-y-2 animate-in fade-in zoom-in-95">
-                    <label className="text-[10px] font-black text-emerald-500 uppercase tracking-widest ml-1">Ancho útil (cm)</label>
-                    <div className="relative">
-                      <input type="number" step="1" 
-                        className="w-full px-5 py-4 bg-emerald-50/30 border border-emerald-100 rounded-2xl outline-none text-emerald-700 font-black" 
-                        value={formData.width || ''} 
-                        onChange={e => setFormData({...formData, width: parseInt(e.target.value)})} 
-                        placeholder="140"
-                      />
-                      <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-emerald-300 uppercase">cm</span>
-                    </div>
-                 </div>
+                <div className="space-y-2 animate-in fade-in zoom-in-95">
+                  <label className="text-[10px] font-black text-emerald-500 uppercase tracking-widest ml-1">Ancho útil (cm)</label>
+                  <div className="relative">
+                    <input type="number" step="1"
+                      className="w-full px-5 py-4 bg-emerald-50/30 border border-emerald-100 rounded-2xl outline-none text-emerald-700 font-black"
+                      value={formData.width || ''}
+                      onChange={e => setFormData({ ...formData, width: parseInt(e.target.value) })}
+                      placeholder="140"
+                    />
+                    <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-emerald-300 uppercase">cm</span>
+                  </div>
+                </div>
               )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Cantidad en Inventario</label>
                   <div className="relative group">
-                    <input type="number" step="0.01" 
-                      className="w-full px-5 py-4 bg-white border-2 border-[#4f46e5] rounded-2xl outline-none text-gray-900 font-black text-center shadow-sm" 
-                      value={formData.initialQty || ''} 
-                      onChange={e => setFormData({...formData, initialQty: parseFloat(e.target.value)})} 
+                    <input type="number" step="0.01"
+                      className="w-full px-5 py-4 bg-white border-2 border-[#4f46e5] rounded-2xl outline-none text-gray-900 font-black text-center shadow-sm"
+                      value={formData.initialQty || ''}
+                      onChange={e => setFormData({ ...formData, initialQty: parseFloat(e.target.value) })}
                       placeholder="0"
                       disabled={!!editingId}
                     />
@@ -404,9 +407,9 @@ const RawMaterials: React.FC = () => {
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Estado</label>
-                  <select className="w-full px-5 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl outline-none text-gray-900 font-medium appearance-none cursor-pointer" 
-                    value={formData.status} 
-                    onChange={e => setFormData({...formData, status: e.target.value as Status})}
+                  <select className="w-full px-5 py-4 bg-gray-50/50 border border-gray-100 rounded-2xl outline-none text-gray-900 font-medium appearance-none cursor-pointer"
+                    value={formData.status}
+                    onChange={e => setFormData({ ...formData, status: e.target.value as Status })}
                   >
                     <option value="activa">Activa</option>
                     <option value="inactiva">Inactiva</option>
@@ -444,14 +447,14 @@ const RawMaterials: React.FC = () => {
                     <ShoppingCart size={14} /> Registrar Nueva Entrada de Stock
                   </h4>
                   <div className="bg-white p-1 rounded-xl border border-indigo-100 flex gap-1">
-                    <button 
+                    <button
                       type="button"
                       onClick={() => setEntryMode('rollo')}
                       className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase flex items-center gap-2 transition-all ${entryMode === 'rollo' ? 'bg-[#4f46e5] text-white shadow-md' : 'text-gray-400 hover:bg-gray-50'}`}
                     >
                       <RotateCcw size={12} /> Rollo Lineal
                     </button>
-                    <button 
+                    <button
                       type="button"
                       onClick={() => setEntryMode('pieza')}
                       className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase flex items-center gap-2 transition-all ${entryMode === 'pieza' ? 'bg-[#4f46e5] text-white shadow-md' : 'text-gray-400 hover:bg-gray-50'}`}
@@ -465,33 +468,33 @@ const RawMaterials: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4 items-end">
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Fecha</label>
-                      <input type="date" required className="w-full px-5 py-3 bg-white border border-gray-200 rounded-xl text-sm outline-none" value={batchFormData.date} onChange={e => setBatchFormData({...batchFormData, date: e.target.value})} />
+                      <input type="date" required className="w-full px-5 py-3 bg-white border border-gray-200 rounded-xl text-sm outline-none" value={batchFormData.date} onChange={e => setBatchFormData({ ...batchFormData, date: e.target.value })} />
                     </div>
                     <div className="space-y-1.5 lg:col-span-2">
                       <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Proveedor / Ref.</label>
-                      <input className="w-full px-5 py-3 bg-white border border-gray-200 rounded-xl text-sm outline-none" value={batchFormData.provider} onChange={e => setBatchFormData({...batchFormData, provider: e.target.value})} />
+                      <input className="w-full px-5 py-3 bg-white border border-gray-200 rounded-xl text-sm outline-none" value={batchFormData.provider} onChange={e => setBatchFormData({ ...batchFormData, provider: e.target.value })} />
                     </div>
-                    
+
                     {entryMode === 'rollo' ? (
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Metros Lineales</label>
-                        <input type="number" step="0.01" required className="w-full px-5 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold outline-none" value={batchFormData.initialQuantity || ''} onChange={e => setBatchFormData({...batchFormData, initialQuantity: parseFloat(e.target.value)})} />
+                        <input type="number" step="0.01" required className="w-full px-5 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold outline-none" value={batchFormData.initialQuantity || ''} onChange={e => setBatchFormData({ ...batchFormData, initialQuantity: parseFloat(e.target.value) })} />
                       </div>
                     ) : (
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Largo (cm)</label>
-                        <input type="number" step="0.01" required className="w-full px-5 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold outline-none" value={batchFormData.length || ''} onChange={e => setBatchFormData({...batchFormData, length: parseFloat(e.target.value)})} />
+                        <input type="number" step="0.01" required className="w-full px-5 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold outline-none" value={batchFormData.length || ''} onChange={e => setBatchFormData({ ...batchFormData, length: parseFloat(e.target.value) })} />
                       </div>
                     )}
 
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-emerald-500 uppercase ml-1">Ancho (cm)</label>
-                      <input type="number" step="1" required className="w-full px-5 py-3 bg-emerald-50 border border-emerald-100 rounded-xl text-sm font-bold outline-none text-emerald-700" value={batchFormData.width || ''} onChange={e => setBatchFormData({...batchFormData, width: parseInt(e.target.value)})} />
+                      <input type="number" step="1" required className="w-full px-5 py-3 bg-emerald-50 border border-emerald-100 rounded-xl text-sm font-bold outline-none text-emerald-700" value={batchFormData.width || ''} onChange={e => setBatchFormData({ ...batchFormData, width: parseInt(e.target.value) })} />
                     </div>
-                    
+
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">{entryMode === 'rollo' ? 'Costo/Metro (€)' : 'Costo Total (€)'}</label>
-                      <input type="number" step="0.01" required className="w-full px-5 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold outline-none" value={batchFormData.unitCost || ''} onChange={e => setBatchFormData({...batchFormData, unitCost: parseFloat(e.target.value)})} />
+                      <input type="number" step="0.01" required className="w-full px-5 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold outline-none" value={batchFormData.unitCost || ''} onChange={e => setBatchFormData({ ...batchFormData, unitCost: parseFloat(e.target.value) })} />
                     </div>
                   </div>
 
@@ -531,35 +534,35 @@ const RawMaterials: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {batches.filter(b => b.materialId === activeMaterialId).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((batch) => {
-                         const currentTotalPurchaseCost = batch.entryMode === 'pieza' ? (batch.unitCost * batch.initialQuantity) : (batch.unitCost * batch.initialQuantity);
-                         const currentCostPerM2 = batch.area && batch.area > 0 ? currentTotalPurchaseCost / batch.area : 0;
-                         
-                         return (
+                      {batches.filter(b => b.materialId === activeMaterialId).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((batch) => {
+                        const currentTotalPurchaseCost = batch.entryMode === 'pieza' ? (batch.unitCost * batch.initialQuantity) : (batch.unitCost * batch.initialQuantity);
+                        const currentCostPerM2 = batch.area && batch.area > 0 ? currentTotalPurchaseCost / batch.area : 0;
+
+                        return (
                           <tr key={batch.id} className="hover:bg-gray-50 transition-colors">
                             <td className="px-4 py-4 text-center">
                               <ArrowDownToLine size={16} className="text-emerald-500 mx-auto" />
                             </td>
                             <td className="px-6 py-4 text-[11px] font-bold text-gray-600">{batch.date}</td>
                             <td className="px-6 py-4">
-                               <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[9px] font-black uppercase ${batch.entryMode === 'pieza' ? 'bg-amber-50 text-amber-700' : 'bg-indigo-50 text-indigo-700'}`}>
-                                 {batch.entryMode === 'pieza' ? <Scissors size={10}/> : <RotateCcw size={10}/>}
-                                 {batch.entryMode || 'Rollo'}
-                               </div>
+                              <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[9px] font-black uppercase ${batch.entryMode === 'pieza' ? 'bg-amber-50 text-amber-700' : 'bg-indigo-50 text-indigo-700'}`}>
+                                {batch.entryMode === 'pieza' ? <Scissors size={10} /> : <RotateCcw size={10} />}
+                                {batch.entryMode || 'Rollo'}
+                              </div>
                             </td>
                             <td className="px-6 py-4 text-[11px] font-black text-gray-900">{batch.provider}</td>
                             <td className="px-6 py-4 text-right">
-                               <div className="flex flex-col items-end">
-                                 <span className="text-[11px] font-bold text-gray-900">
-                                   {batch.entryMode === 'pieza' ? `${batch.length} × ${batch.width} cm` : `${batch.initialQuantity.toFixed(2)} m lineales`}
-                                 </span>
-                                 <span className="text-[9px] text-gray-400 font-bold uppercase">{batch.width} cm ancho</span>
-                               </div>
+                              <div className="flex flex-col items-end">
+                                <span className="text-[11px] font-bold text-gray-900">
+                                  {batch.entryMode === 'pieza' ? `${batch.length} × ${batch.width} cm` : `${batch.initialQuantity.toFixed(2)} m lineales`}
+                                </span>
+                                <span className="text-[9px] text-gray-400 font-bold uppercase">{batch.width} cm ancho</span>
+                              </div>
                             </td>
                             <td className="px-6 py-4 text-[11px] font-black text-right text-emerald-600 font-mono">{batch.area ? `${batch.area.toFixed(2)} m²` : '---'}</td>
                             <td className="px-6 py-4 text-[11px] font-black text-right font-mono text-gray-900">{formatCurrency(currentTotalPurchaseCost)}</td>
                             <td className="px-6 py-4 text-[11px] font-black text-right font-mono text-indigo-600">
-                               {currentCostPerM2 > 0 ? formatCurrency(currentCostPerM2) : '---'}
+                              {currentCostPerM2 > 0 ? formatCurrency(currentCostPerM2) : '---'}
                             </td>
                             <td className="px-6 py-4 text-right">
                               <span className={`px-2 py-1 rounded-lg font-black text-[11px] ${batch.remainingQuantity > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-300'}`}>
@@ -567,15 +570,15 @@ const RawMaterials: React.FC = () => {
                               </span>
                             </td>
                             <td className="px-6 py-4 text-center no-print">
-                               <div className="flex justify-center gap-1">
-                                 <button onClick={() => setEditingBatchData(batch)} className="p-2 text-gray-300 hover:text-indigo-600 transition-colors" title="Editar Lote"><Pencil size={16}/></button>
-                                 <button onClick={() => deleteBatch(batch.id)} className="p-2 text-gray-300 hover:text-red-500 transition-colors" title="Eliminar Lote"><Trash2 size={16}/></button>
-                               </div>
+                              <div className="flex justify-center gap-1">
+                                <button onClick={() => setEditingBatchData(batch)} className="p-2 text-gray-300 hover:text-indigo-600 transition-colors" title="Editar Lote"><Pencil size={16} /></button>
+                                <button onClick={() => deleteBatch(batch.id)} className="p-2 text-gray-300 hover:text-red-500 transition-colors" title="Eliminar Lote"><Trash2 size={16} /></button>
+                              </div>
                             </td>
                           </tr>
                         );
                       })}
-                      
+
                       {activeMaterialId && (
                         <tr className="bg-gray-50/80 font-black border-t-2 border-gray-200">
                           <td className="px-4"></td>
@@ -619,7 +622,7 @@ const RawMaterials: React.FC = () => {
             <h4 className="text-xl font-black text-gray-900 mb-6 flex items-center gap-2">
               <Pencil size={18} className="text-indigo-500" /> Editar Registro
             </h4>
-            
+
             <form onSubmit={handleEditBatchSubmit} className="space-y-4">
               {editingBatchData.remainingQuantity < editingBatchData.initialQuantity && (
                 <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 flex items-start gap-3">
@@ -632,58 +635,58 @@ const RawMaterials: React.FC = () => {
 
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-400 uppercase">Fecha</label>
-                <input type="date" required className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none" 
-                  value={editingBatchData.date} onChange={e => setEditingBatchData({...editingBatchData, date: e.target.value})} />
+                <input type="date" required className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none"
+                  value={editingBatchData.date} onChange={e => setEditingBatchData({ ...editingBatchData, date: e.target.value })} />
               </div>
 
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-400 uppercase">Proveedor / Referencia</label>
-                <input className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none" 
-                  value={editingBatchData.provider} onChange={e => setEditingBatchData({...editingBatchData, provider: e.target.value})} />
+                <input className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none"
+                  value={editingBatchData.provider} onChange={e => setEditingBatchData({ ...editingBatchData, provider: e.target.value })} />
               </div>
 
               {editingBatchData.entryMode === 'pieza' ? (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label className="text-[9px] font-black text-gray-400 uppercase">Largo (cm)</label>
-                    <input type="number" step="0.01" 
+                    <input type="number" step="0.01"
                       disabled={editingBatchData.remainingQuantity < editingBatchData.initialQuantity}
-                      className="w-full px-3 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none disabled:opacity-50 font-bold text-sm" 
-                      value={editingBatchData.length || ''} onChange={e => setEditingBatchData({...editingBatchData, length: parseFloat(e.target.value)})} />
+                      className="w-full px-3 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none disabled:opacity-50 font-bold text-sm"
+                      value={editingBatchData.length || ''} onChange={e => setEditingBatchData({ ...editingBatchData, length: parseFloat(e.target.value) })} />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[9px] font-black text-emerald-500 uppercase">Ancho (cm)</label>
-                    <input type="number" step="1" 
+                    <input type="number" step="1"
                       disabled={editingBatchData.remainingQuantity < editingBatchData.initialQuantity}
-                      className="w-full px-3 py-3 bg-emerald-50/50 border border-emerald-100 rounded-xl outline-none disabled:opacity-50 font-bold text-sm text-emerald-700" 
-                      value={editingBatchData.width || ''} onChange={e => setEditingBatchData({...editingBatchData, width: parseInt(e.target.value)})} />
+                      className="w-full px-3 py-3 bg-emerald-50/50 border border-emerald-100 rounded-xl outline-none disabled:opacity-50 font-bold text-sm text-emerald-700"
+                      value={editingBatchData.width || ''} onChange={e => setEditingBatchData({ ...editingBatchData, width: parseInt(e.target.value) })} />
                   </div>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label className="text-[9px] font-black text-gray-400 uppercase">M. Lineales</label>
-                    <input type="number" step="0.01" 
+                    <input type="number" step="0.01"
                       disabled={editingBatchData.remainingQuantity < editingBatchData.initialQuantity}
-                      className="w-full px-3 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none disabled:opacity-50 font-bold text-sm" 
-                      value={editingBatchData.initialQuantity} onChange={e => setEditingBatchData({...editingBatchData, initialQuantity: parseFloat(e.target.value)})} />
+                      className="w-full px-3 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none disabled:opacity-50 font-bold text-sm"
+                      value={editingBatchData.initialQuantity} onChange={e => setEditingBatchData({ ...editingBatchData, initialQuantity: parseFloat(e.target.value) })} />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[9px] font-black text-emerald-500 uppercase">Ancho (cm)</label>
-                    <input type="number" step="1" 
+                    <input type="number" step="1"
                       disabled={editingBatchData.remainingQuantity < editingBatchData.initialQuantity}
-                      className="w-full px-3 py-3 bg-emerald-50/50 border border-emerald-100 rounded-xl outline-none disabled:opacity-50 font-bold text-sm text-emerald-700" 
-                      value={editingBatchData.width || ''} onChange={e => setEditingBatchData({...editingBatchData, width: parseInt(e.target.value)})} />
+                      className="w-full px-3 py-3 bg-emerald-50/50 border border-emerald-100 rounded-xl outline-none disabled:opacity-50 font-bold text-sm text-emerald-700"
+                      value={editingBatchData.width || ''} onChange={e => setEditingBatchData({ ...editingBatchData, width: parseInt(e.target.value) })} />
                   </div>
                 </div>
               )}
 
               <div className="space-y-1">
                 <label className="text-[9px] font-black text-gray-400 uppercase">{editingBatchData.entryMode === 'pieza' ? 'Costo Total (€)' : 'Costo Unitario (€/m)'}</label>
-                <input type="number" step="0.01" 
+                <input type="number" step="0.01"
                   disabled={editingBatchData.remainingQuantity < editingBatchData.initialQuantity}
-                  className="w-full px-3 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none disabled:opacity-50 font-bold text-sm" 
-                  value={editingBatchData.unitCost} onChange={e => setEditingBatchData({...editingBatchData, unitCost: parseFloat(e.target.value)})} />
+                  className="w-full px-3 py-3 bg-gray-50 border border-gray-100 rounded-xl outline-none disabled:opacity-50 font-bold text-sm"
+                  value={editingBatchData.unitCost} onChange={e => setEditingBatchData({ ...editingBatchData, unitCost: parseFloat(e.target.value) })} />
               </div>
 
               <div className="flex gap-3 pt-4">

@@ -1,40 +1,52 @@
-
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Product, RawMaterial, MaterialBatch } from "../types";
 import { calculateProductCost, calculateMargin } from "../store";
 
-// Updated to accept batches to use FIFO cost calculation from store.ts
-export const getPricingInsights = async (products: Product[], materials: RawMaterial[], batches: MaterialBatch[]) => {
-  if (products.length === 0) return "Agrega productos para obtener análisis de IA.";
+export const getPricingInsights = async (
+  products: Product[],
+  materials: RawMaterial[],
+  batches: MaterialBatch[]
+) => {
+  if (products.length === 0) {
+    return "Agrega productos para obtener análisis de IA.";
+  }
 
-  // Fix: Initializing GoogleGenAI right before making an API call to ensure it uses the correct context/key.
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
-  const dataString = products.map(p => {
-    // Using calculateProductCost to correctly calculate FIFO cost instead of missing property costPerUnit
-    const cost = calculateProductCost(p, batches, materials);
-    const margin = calculateMargin(p.price, cost);
-    return `Producto: ${p.name}, Costo: ${cost.toFixed(2)}, Precio: ${p.price.toFixed(2)}, Margen: ${margin.toFixed(1)}%`;
-  }).join("\n");
+  if (!apiKey) {
+    console.warn("VITE_GEMINI_API_KEY no está configurada.");
+    return "Falta la API Key de Gemini.";
+  }
 
   try {
-    // Calling generateContent directly with the required model and contents.
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `Analiza la rentabilidad de estos productos y dame 3 consejos breves para mejorar el margen de beneficio en español. Sé conciso y profesional.
-      
-      Datos:
-      ${dataString}`,
-      config: {
-        temperature: 0.7,
-        // Removed maxOutputTokens to follow guidelines recommending avoidance when thinkingBudget is not used.
-      }
-    });
+    const genAI = new GoogleGenerativeAI(apiKey);
 
-    // Extracting the text output using the .text property directly.
-    return response.text;
-  } catch (error) {
-    console.error("Gemini Error:", error);
-    return "No se pudo obtener el análisis de IA en este momento.";
+    // Modelo que funciona en free tier febrero 2026
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    const dataString = products
+      .map((p) => {
+        const cost = calculateProductCost(p, batches, materials);
+        const margin = calculateMargin(p.price, cost);
+        return `Producto: ${p.name || 'Sin nombre'}, Costo FIFO: ${cost.toFixed(2)}, Precio: ${p.price.toFixed(2)}, Margen: ${margin.toFixed(1)}%`;
+      })
+      .join("\n");
+
+    const prompt = `
+Analiza la rentabilidad de estos productos y dame 3 consejos breves y prácticos para mejorar el margen de beneficio. 
+Responde en español, sé conciso y profesional.
+
+Datos:
+${dataString}
+    `.trim();
+
+    const result = await model.generateContent(prompt);
+
+    const responseText = result.response.text?.() || "No se recibió respuesta.";
+
+    return responseText;
+  } catch (error: any) {
+    console.error("Error Gemini:", error.message || error);
+    return `Error: ${error.message || "desconocido"}`;
   }
 };

@@ -29,7 +29,7 @@ interface ProductMaterialUI extends ProductMaterial {
 }
 
 const Products: React.FC = () => {
-  const { products, rawMaterials, batches, addProduct, deleteProduct, updateProduct, consumeStock } = useStore();
+  const { currentCompanyId, products, rawMaterials, batches, addProduct, deleteProduct, updateProduct, consumeStock } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -39,7 +39,7 @@ const Products: React.FC = () => {
     name: '', reference: '', price: 0, targetMargin: 30, materials: [], status: 'activa'
   });
 
-  const filteredProducts = products.filter(p => 
+  const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.reference.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -50,7 +50,7 @@ const Products: React.FC = () => {
       if (pm.mode === 'pieces' && pm.pieces) {
         // Obtenemos el ancho del lote más reciente como referencia para la UI
         // El cálculo real de costo lo hace el store.ts a través de FIFO
-        const latestBatch = batches.filter(b => b.materialId === pm.materialId).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+        const latestBatch = batches.filter(b => b.materialId === pm.materialId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
         const width = latestBatch?.width || 140;
         const totalAreaCm2 = pm.pieces.reduce((acc: number, p: any) => acc + (p.length * p.width), 0);
         effectiveQty = (totalAreaCm2 / width) / 100;
@@ -72,9 +72,9 @@ const Products: React.FC = () => {
   const handleAddMaterial = () => {
     if (rawMaterials.length === 0) return;
     const material = rawMaterials[0];
-    const materials = [...(formData.materials || []), { 
-      materialId: material.id, 
-      quantity: 1, 
+    const materials = [...(formData.materials || []), {
+      materialId: material.id,
+      quantity: 1,
       consumptionUnit: material.unit,
       mode: 'linear',
       pieces: [{ length: 50, width: material.unit === 'metro' ? 140 : 0 }]
@@ -85,7 +85,7 @@ const Products: React.FC = () => {
   const updateMaterial = (idx: number, field: string, value: any) => {
     const materials = [...(formData.materials || [])];
     materials[idx] = { ...materials[idx], [field]: value };
-    
+
     if (field === 'materialId') {
       const selectedBase = rawMaterials.find(m => m.id === value);
       if (selectedBase) {
@@ -110,7 +110,7 @@ const Products: React.FC = () => {
   const addPiece = (idx: number) => {
     const materials = [...(formData.materials || [])];
     const mat = materials[idx];
-    const latestBatch = batches.filter(b => b.materialId === mat.materialId).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+    const latestBatch = batches.filter(b => b.materialId === mat.materialId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
     mat.pieces = [...(mat.pieces || []), { length: 10, width: latestBatch?.width || 140 }];
     setFormData({ ...formData, materials });
   };
@@ -144,7 +144,7 @@ const Products: React.FC = () => {
     e.preventDefault();
     const processedMaterials = formData.materials.map((pm: any) => {
       if (pm.mode === 'pieces' && pm.pieces) {
-        const latestBatch = batches.filter(b => b.materialId === pm.materialId).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+        const latestBatch = batches.filter(b => b.materialId === pm.materialId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
         const width = latestBatch?.width || 140;
         const totalAreaCm2 = pm.pieces.reduce((acc: number, p: any) => acc + (p.length * p.width), 0);
         return { ...pm, quantity: (totalAreaCm2 / width) / 100 };
@@ -155,7 +155,8 @@ const Products: React.FC = () => {
     const data = {
       ...formData,
       materials: processedMaterials,
-      id: editingId || Date.now().toString(),
+      id: editingId || crypto.randomUUID(),
+      company_id: currentCompanyId || '',
       createdAt: editingId ? (products.find(p => p.id === editingId)?.createdAt) : new Date().toISOString()
     } as Product;
 
@@ -174,7 +175,7 @@ const Products: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Catálogo de Productos</h1>
           <p className="text-gray-500 font-medium">Gestión de Escandallos (Costos FIFO)</p>
         </div>
-        <button 
+        <button
           onClick={() => {
             setEditingId(null);
             setFormData({ name: '', reference: '', price: 0, targetMargin: 30, materials: [], status: 'activa' });
@@ -188,7 +189,7 @@ const Products: React.FC = () => {
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-        <input 
+        <input
           type="text" placeholder="Buscar por nombre o SKU..."
           className="w-full pl-10 pr-4 py-3.5 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-[#4f46e5] outline-none"
           value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
@@ -224,7 +225,7 @@ const Products: React.FC = () => {
                   </td>
                   <td className="px-8 py-5 text-right">
                     <div className="flex justify-end gap-1">
-                      <button onClick={() => { if(window.confirm('¿Registrar consumo de stock?')) consumeStock(p.id); }} className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors" title="Producir"><PlayCircle size={18} /></button>
+                      <button onClick={() => { if (window.confirm('¿Registrar consumo de stock?')) consumeStock(p.id); }} className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors" title="Producir"><PlayCircle size={18} /></button>
                       <button onClick={() => handleDuplicate(p)} className="p-2 text-indigo-400 hover:bg-indigo-50 rounded-lg transition-colors" title="Duplicar"><Copy size={18} /></button>
                       <button onClick={() => { setEditingId(p.id); setFormData(p); setIsModalOpen(true); }} className="p-2 text-gray-400 hover:bg-gray-50 rounded-lg transition-colors" title="Editar"><Edit2 size={18} /></button>
                       <button onClick={() => deleteProduct(p.id)} className="p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-lg transition-colors" title="Eliminar"><Trash2 size={18} /></button>
@@ -244,16 +245,16 @@ const Products: React.FC = () => {
               <h3 className="text-2xl font-black text-gray-900">{editingId ? 'Editar Receta' : 'Nueva Receta de Producto'}</h3>
               <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-all"><X size={24} className="text-gray-400" /></button>
             </div>
-            
+
             <form onSubmit={handleSubmit} className="p-10 overflow-y-auto flex-1 space-y-10">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nombre Comercial</label>
-                  <input required className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#4f46e5] font-bold" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Ej. Bolso de Mano Primavera" />
+                  <input required className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#4f46e5] font-bold" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Ej. Bolso de Mano Primavera" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Referencia / SKU</label>
-                  <input className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none font-mono font-bold uppercase" value={formData.reference} onChange={e => setFormData({...formData, reference: e.target.value})} placeholder="REF-001" />
+                  <input className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none font-mono font-bold uppercase" value={formData.reference} onChange={e => setFormData({ ...formData, reference: e.target.value })} placeholder="REF-001" />
                 </div>
               </div>
 
@@ -266,22 +267,22 @@ const Products: React.FC = () => {
                     + Añadir Insumo
                   </button>
                 </div>
-                
+
                 <div className="space-y-4">
                   {(formData.materials || []).map((pm: any, idx: number) => {
                     const material = rawMaterials.find(m => m.id === pm.materialId);
                     const isFabric = material?.unit === 'metro';
-                    
+
                     let effectiveQty = pm.quantity;
                     let areaM2 = 0;
                     if (pm.mode === 'pieces' && pm.pieces) {
-                      const latestBatch = batches.filter(b => b.materialId === pm.materialId).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+                      const latestBatch = batches.filter(b => b.materialId === pm.materialId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
                       const width = latestBatch?.width || 140;
                       const totalAreaCm2 = pm.pieces.reduce((acc: number, p: any) => acc + (p.length * p.width), 0);
                       areaM2 = totalAreaCm2 / 10000;
                       effectiveQty = (totalAreaCm2 / width) / 100;
                     } else if (isFabric) {
-                      const latestBatch = batches.filter(b => b.materialId === pm.materialId).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+                      const latestBatch = batches.filter(b => b.materialId === pm.materialId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
                       areaM2 = pm.quantity * ((latestBatch?.width || 140) / 100);
                     }
 
@@ -312,10 +313,10 @@ const Products: React.FC = () => {
                               <label className="text-[9px] font-black text-gray-400 uppercase mb-1 block text-center">Modo Uso</label>
                               <div className="bg-gray-100 p-1 rounded-xl flex gap-1">
                                 <button type="button" onClick={() => updateMaterial(idx, 'mode', 'linear')} className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase flex items-center gap-1.5 transition-all ${pm.mode === 'linear' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400'}`}>
-                                  <RotateCcw size={10}/> Lineal
+                                  <RotateCcw size={10} /> Lineal
                                 </button>
                                 <button type="button" onClick={() => updateMaterial(idx, 'mode', 'pieces')} className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase flex items-center gap-1.5 transition-all ${pm.mode === 'pieces' ? 'bg-[#4f46e5] text-white shadow-sm' : 'text-gray-400'}`}>
-                                  <Scissors size={10}/> Piezas
+                                  <Scissors size={10} /> Piezas
                                 </button>
                               </div>
                             </div>
@@ -336,7 +337,7 @@ const Products: React.FC = () => {
                               </>
                             )}
                           </div>
-                          
+
                           <div className="flex-1 min-w-[150px] text-right">
                             <label className="text-[9px] font-black text-gray-400 uppercase mb-1 block">Costo Aplicado</label>
                             <div className={`text-lg font-black ${hasMissingStock ? 'text-red-500' : 'text-[#4f46e5]'}`}>
@@ -348,8 +349,8 @@ const Products: React.FC = () => {
                           </div>
 
                           <div className="flex gap-1 self-end mb-1">
-                            <button type="button" onClick={() => setExpandedMaterial(isExpanded ? null : idx)} className={`p-3 rounded-xl transition-all ${isExpanded ? 'bg-[#4f46e5] text-white shadow-lg' : 'bg-gray-100 text-gray-400'}`}><Info size={18}/></button>
-                            <button type="button" onClick={() => removeMaterial(idx)} className="p-3 text-gray-300 hover:text-red-500 rounded-xl"><Trash2 size={18}/></button>
+                            <button type="button" onClick={() => setExpandedMaterial(isExpanded ? null : idx)} className={`p-3 rounded-xl transition-all ${isExpanded ? 'bg-[#4f46e5] text-white shadow-lg' : 'bg-gray-100 text-gray-400'}`}><Info size={18} /></button>
+                            <button type="button" onClick={() => removeMaterial(idx)} className="p-3 text-gray-300 hover:text-red-500 rounded-xl"><Trash2 size={18} /></button>
                           </div>
                         </div>
 
@@ -358,72 +359,72 @@ const Products: React.FC = () => {
                             {pm.mode === 'pieces' && (
                               <div className="space-y-4">
                                 <div className="flex items-center justify-between">
-                                   <h5 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest flex items-center gap-2"><Scissors size={12}/> Desglose de piezas (cm)</h5>
-                                   <button type="button" onClick={() => addPiece(idx)} className="text-[9px] font-bold text-indigo-600 bg-white border border-indigo-100 px-3 py-1.5 rounded-lg">+ Añadir Pieza</button>
+                                  <h5 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest flex items-center gap-2"><Scissors size={12} /> Desglose de piezas (cm)</h5>
+                                  <button type="button" onClick={() => addPiece(idx)} className="text-[9px] font-bold text-indigo-600 bg-white border border-indigo-100 px-3 py-1.5 rounded-lg">+ Añadir Pieza</button>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                   {(pm.pieces || []).map((piece: any, pIdx: number) => (
-                                      <div key={pIdx} className="bg-white p-4 rounded-2xl border border-gray-100 flex items-center gap-3 shadow-sm group">
-                                         <div className="flex-1 space-y-1">
-                                            <label className="text-[8px] font-bold text-gray-400 uppercase block ml-1">Largo</label>
-                                            <input type="number" className="w-full bg-gray-50 border-none rounded-lg text-xs font-bold px-2 py-1.5" value={piece.length} onChange={e => updatePiece(idx, pIdx, 'length', parseFloat(e.target.value))} />
-                                         </div>
-                                         <div className="text-gray-300 mt-4">×</div>
-                                         <div className="flex-1 space-y-1">
-                                            <label className="text-[8px] font-bold text-gray-400 uppercase block ml-1">Ancho</label>
-                                            <input type="number" className="w-full bg-gray-50 border-none rounded-lg text-xs font-bold px-2 py-1.5" value={piece.width} onChange={e => updatePiece(idx, pIdx, 'width', parseFloat(e.target.value))} />
-                                         </div>
-                                         <button type="button" onClick={() => removePiece(idx, pIdx)} className="p-2 text-gray-300 hover:text-red-500"><X size={14}/></button>
+                                  {(pm.pieces || []).map((piece: any, pIdx: number) => (
+                                    <div key={pIdx} className="bg-white p-4 rounded-2xl border border-gray-100 flex items-center gap-3 shadow-sm group">
+                                      <div className="flex-1 space-y-1">
+                                        <label className="text-[8px] font-bold text-gray-400 uppercase block ml-1">Largo</label>
+                                        <input type="number" className="w-full bg-gray-50 border-none rounded-lg text-xs font-bold px-2 py-1.5" value={piece.length} onChange={e => updatePiece(idx, pIdx, 'length', parseFloat(e.target.value))} />
                                       </div>
-                                   ))}
+                                      <div className="text-gray-300 mt-4">×</div>
+                                      <div className="flex-1 space-y-1">
+                                        <label className="text-[8px] font-bold text-gray-400 uppercase block ml-1">Ancho</label>
+                                        <input type="number" className="w-full bg-gray-50 border-none rounded-lg text-xs font-bold px-2 py-1.5" value={piece.width} onChange={e => updatePiece(idx, pIdx, 'width', parseFloat(e.target.value))} />
+                                      </div>
+                                      <button type="button" onClick={() => removePiece(idx, pIdx)} className="p-2 text-gray-300 hover:text-red-500"><X size={14} /></button>
+                                    </div>
+                                  ))}
                                 </div>
                                 <div className="p-4 bg-indigo-600 rounded-2xl text-white flex justify-between items-center shadow-lg shadow-indigo-100">
-                                   <div className="flex items-center gap-3">
-                                      <div className="p-2 bg-white/20 rounded-lg"><Ruler size={16}/></div>
-                                      <div>
-                                         <div className="text-[8px] font-black uppercase opacity-60 tracking-widest text-white">Consumo Geométrico</div>
-                                         <div className="text-sm font-black text-white">{pm.pieces?.map((p:any) => `${p.length}×${p.width}`).join(' + ')} cm</div>
-                                      </div>
-                                   </div>
-                                   <div className="text-right">
-                                      <div className="text-[14px] font-black text-white">{areaM2.toFixed(4)} m²</div>
-                                      <div className="text-[9px] font-bold opacity-60 text-white">Equivale a: {effectiveQty.toFixed(3)} m lineales</div>
-                                   </div>
+                                  <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-white/20 rounded-lg"><Ruler size={16} /></div>
+                                    <div>
+                                      <div className="text-[8px] font-black uppercase opacity-60 tracking-widest text-white">Consumo Geométrico</div>
+                                      <div className="text-sm font-black text-white">{pm.pieces?.map((p: any) => `${p.length}×${p.width}`).join(' + ')} cm</div>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="text-[14px] font-black text-white">{areaM2.toFixed(4)} m²</div>
+                                    <div className="text-[9px] font-bold opacity-60 text-white">Equivale a: {effectiveQty.toFixed(3)} m lineales</div>
+                                  </div>
                                 </div>
                               </div>
                             )}
 
-                             <div className="space-y-2">
-                                <h5 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2"><History size={12}/> Trazabilidad FIFO por m²</h5>
-                                {breakdown.map((item, bIdx) => {
-                                  const batch = batches.find(b => b.id === item.batchId);
-                                  const batchWidth = batch?.width || 140;
-                                  const m2InBatch = (item.quantityUsed * batchWidth) / 100;
-                                  const costPerM2 = item.unitCost / (batchWidth / 100);
+                            <div className="space-y-2">
+                              <h5 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2"><History size={12} /> Trazabilidad FIFO por m²</h5>
+                              {breakdown.map((item, bIdx) => {
+                                const batch = batches.find(b => b.id === item.batchId);
+                                const batchWidth = batch?.width || 140;
+                                const m2InBatch = (item.quantityUsed * batchWidth) / 100;
+                                const costPerM2 = item.unitCost / (batchWidth / 100);
 
-                                  return (
-                                    <div key={bIdx} className={`flex justify-between items-center text-[10px] p-4 bg-white rounded-2xl border shadow-sm ${item.isMissing ? 'border-red-100 bg-red-50' : 'border-emerald-50'}`}>
-                                       <span className={`font-bold ${item.isMissing ? 'text-red-500' : 'text-gray-600'}`}>
-                                          {item.isMissing ? 'SIN STOCK DISPONIBLE' : `Lote ${item.date} (${batch?.provider})`}
-                                       </span>
-                                       <div className="flex gap-6 items-center">
-                                          <div className="text-right">
-                                             <div className="text-gray-400 font-bold uppercase text-[8px]">Área Aplicada</div>
-                                             <div className="font-black text-gray-900">{m2InBatch.toFixed(3)} m²</div>
-                                          </div>
-                                          <div className="text-right">
-                                             <div className="text-gray-400 font-bold uppercase text-[8px]">Precio Real m²</div>
-                                             <div className="font-black text-indigo-600">{formatCurrency(costPerM2)}/m²</div>
-                                          </div>
-                                          <div className="text-right pl-4 border-l border-gray-100">
-                                             <div className="text-gray-400 font-bold uppercase text-[8px]">Costo Parcial</div>
-                                             <div className="font-black text-[#4f46e5]">{formatCurrency(item.subtotal)}</div>
-                                          </div>
-                                       </div>
+                                return (
+                                  <div key={bIdx} className={`flex justify-between items-center text-[10px] p-4 bg-white rounded-2xl border shadow-sm ${item.isMissing ? 'border-red-100 bg-red-50' : 'border-emerald-50'}`}>
+                                    <span className={`font-bold ${item.isMissing ? 'text-red-500' : 'text-gray-600'}`}>
+                                      {item.isMissing ? 'SIN STOCK DISPONIBLE' : `Lote ${item.date} (${batch?.provider})`}
+                                    </span>
+                                    <div className="flex gap-6 items-center">
+                                      <div className="text-right">
+                                        <div className="text-gray-400 font-bold uppercase text-[8px]">Área Aplicada</div>
+                                        <div className="font-black text-gray-900">{m2InBatch.toFixed(3)} m²</div>
+                                      </div>
+                                      <div className="text-right">
+                                        <div className="text-gray-400 font-bold uppercase text-[8px]">Precio Real m²</div>
+                                        <div className="font-black text-indigo-600">{formatCurrency(costPerM2)}/m²</div>
+                                      </div>
+                                      <div className="text-right pl-4 border-l border-gray-100">
+                                        <div className="text-gray-400 font-bold uppercase text-[8px]">Costo Parcial</div>
+                                        <div className="font-black text-[#4f46e5]">{formatCurrency(item.subtotal)}</div>
+                                      </div>
                                     </div>
-                                  );
-                                })}
-                             </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -441,16 +442,16 @@ const Products: React.FC = () => {
                       <span className="text-4xl font-black text-indigo-900">{formatCurrency(totalCurrentCost)}</span>
                     </div>
                   </div>
-                  
+
                   <div className="space-y-4">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Precios Sugeridos ({formData.targetMargin}%)</label>
                     <div className="grid grid-cols-2 gap-4">
-                      <button type="button" onClick={() => setFormData({...formData, price: exactSuggestedPrice})} className="bg-white p-5 rounded-3xl border border-indigo-100 text-left">
+                      <button type="button" onClick={() => setFormData({ ...formData, price: exactSuggestedPrice })} className="bg-white p-5 rounded-3xl border border-indigo-100 text-left">
                         <div className="text-[9px] font-bold text-gray-400 uppercase mb-1">Margen Exacto</div>
                         <div className="text-lg font-black text-indigo-600">{formatCurrency(exactSuggestedPrice)}</div>
                       </button>
-                      <button type="button" onClick={() => setFormData({...formData, price: commercialSuggestedPrice})} className="bg-white p-5 rounded-3xl border-2 border-emerald-200 text-left">
-                        <div className="text-[9px] font-bold text-gray-400 uppercase mb-1 flex items-center gap-1"><TrendingUp size={10}/> Redondeo</div>
+                      <button type="button" onClick={() => setFormData({ ...formData, price: commercialSuggestedPrice })} className="bg-white p-5 rounded-3xl border-2 border-emerald-200 text-left">
+                        <div className="text-[9px] font-bold text-gray-400 uppercase mb-1 flex items-center gap-1"><TrendingUp size={10} /> Redondeo</div>
                         <div className="text-lg font-black text-emerald-600">{formatCurrency(commercialSuggestedPrice)}</div>
                       </button>
                     </div>
@@ -458,10 +459,10 @@ const Products: React.FC = () => {
 
                   <div className="space-y-2">
                     <div className="flex justify-between text-[10px] font-black uppercase text-gray-400">
-                       <span>Margen Objetivo</span>
-                       <span className="text-indigo-600">{formData.targetMargin}%</span>
+                      <span>Margen Objetivo</span>
+                      <span className="text-indigo-600">{formData.targetMargin}%</span>
                     </div>
-                    <input type="range" min="10" max="90" className="w-full h-2 bg-indigo-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={formData.targetMargin} onChange={e => setFormData({...formData, targetMargin: parseFloat(e.target.value)})} />
+                    <input type="range" min="10" max="90" className="w-full h-2 bg-indigo-100 rounded-lg appearance-none cursor-pointer accent-indigo-600" value={formData.targetMargin} onChange={e => setFormData({ ...formData, targetMargin: parseFloat(e.target.value) })} />
                   </div>
                 </div>
 
@@ -470,20 +471,20 @@ const Products: React.FC = () => {
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Precio Final al Público</label>
                     <div className="relative">
                       <span className="absolute left-6 top-1/2 -translate-y-1/2 text-emerald-400 font-black text-4xl opacity-50">€</span>
-                      <input required type="number" step="0.01" className="w-full pl-16 pr-6 py-8 bg-gray-800/50 border-2 border-emerald-500/30 rounded-[2rem] text-4xl font-black text-emerald-400 outline-none" value={formData.price || ''} onChange={e => setFormData({...formData, price: parseFloat(e.target.value)})} />
+                      <input required type="number" step="0.01" className="w-full pl-16 pr-6 py-8 bg-gray-800/50 border-2 border-emerald-500/30 rounded-[2rem] text-4xl font-black text-emerald-400 outline-none" value={formData.price || ''} onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) })} />
                     </div>
                   </div>
 
                   {formData.price && formData.price > 0 && (
                     <div className="space-y-4">
                       <div className="flex justify-between items-center p-8 bg-gray-800/30 rounded-[2rem] border border-gray-700">
-                         <div className="flex flex-col">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Margen Real</span>
-                            <span className="text-4xl font-black text-white">{calculateMargin(formData.price, totalCurrentCost).toFixed(1)}%</span>
-                         </div>
-                         <CheckCircle2 size={40} className="text-emerald-500 opacity-20" />
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Margen Real</span>
+                          <span className="text-4xl font-black text-white">{calculateMargin(formData.price, totalCurrentCost).toFixed(1)}%</span>
+                        </div>
+                        <CheckCircle2 size={40} className="text-emerald-500 opacity-20" />
                       </div>
-                      
+
                       <div className={`text-[12px] font-bold flex items-center gap-2 px-4 py-3 rounded-xl ${diffPrice >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
                         {diffPrice >= 0 ? '+' : ''}{formatCurrency(diffPrice)} vs costo ({diffPrice >= 0 ? '+' : ''}{diffPercent.toFixed(1)}%)
                       </div>
@@ -496,7 +497,7 @@ const Products: React.FC = () => {
             <div className="px-10 py-8 border-t border-gray-100 bg-gray-50 flex gap-4">
               <button type="button" onClick={() => setIsModalOpen(false)} className="px-10 py-5 border border-gray-200 rounded-2xl font-bold text-gray-500">Descartar</button>
               <button onClick={handleSubmit} className="flex-1 px-10 py-5 bg-[#4f46e5] text-white rounded-2xl font-black shadow-xl flex items-center justify-center gap-2">
-                <CheckCircle2 size={20}/> Guardar Receta
+                <CheckCircle2 size={20} /> Guardar Receta
               </button>
             </div>
           </div>
