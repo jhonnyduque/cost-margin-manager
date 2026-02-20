@@ -27,7 +27,7 @@ import { AuthProvider } from '@/hooks/AuthProvider';
 
 const AppContent: React.FC = () => {
     const currentCompanyId = useStore(state => state.currentCompanyId);
-    const { isLoading: isAuthLoading, user, mode } = useAuth();
+    const { isLoading: isAuthLoading, user, mode, isSigningOut } = useAuth();
     const location = useLocation();
 
     // -- BOOT & LOADING --
@@ -46,11 +46,11 @@ const AppContent: React.FC = () => {
 
     // -- ROUTING LOGIC --
 
-    if (isAuthLoading) {
+    if (isAuthLoading || isSigningOut) {
         return (
             <div className="flex h-screen w-full flex-col items-center justify-center bg-slate-50 text-slate-500">
                 <Loader2 className="h-10 w-10 animate-spin text-indigo-600 mb-4" />
-                <p className="font-medium">OS Handling Session...</p>
+                <p className="font-medium">{isSigningOut ? 'Signing out...' : 'OS Handling Session...'}</p>
             </div>
         );
     }

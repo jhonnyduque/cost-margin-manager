@@ -19,6 +19,9 @@ interface AuthContextType {
     impersonatedCompanyId: string | null;
     enterCompanyAsFounder: (companyId: string) => Promise<void>;
     exitImpersonation: () => void;
+    // Logout Guard Support
+    isSigningOut: boolean;
+    setIsSigningOut: (val: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,6 +37,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Impersonation State
     const [mode, setMode] = useState<'platform' | 'company'>('company');
     const [impersonatedCompanyId, setImpersonatedCompanyId] = useState<string | null>(null);
+
+    // Logout Lock
+    const [isSigningOut, setIsSigningOut] = useState(false);
 
     const setStoreCompany = useStore((state) => state.setCurrentCompany);
     const isFetching = useRef(false);
@@ -55,11 +61,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // El loading se pone en false al final
         setIsLoading(false);
+        setIsSigningOut(false);
     }, []);
 
     const loadUserData = useCallback(async (userId: string) => {
-        if (isFetching.current) {
-            console.log('[AuthProvider] loadUserData - SKIPPED (Already fetching)');
+        if (isSigningOut || isFetching.current) {
+            console.log(`[AuthProvider] loadUserData - SKIPPED (SigningOut: ${isSigningOut}, Fetching: ${isFetching.current})`);
             return;
         }
         isFetching.current = true;
@@ -314,7 +321,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             mode,
             impersonatedCompanyId,
             enterCompanyAsFounder,
-            exitImpersonation
+            exitImpersonation,
+            isSigningOut,
+            setIsSigningOut
         }}>
             {children}
         </AuthContext.Provider>

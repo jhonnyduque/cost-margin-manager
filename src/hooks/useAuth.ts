@@ -18,5 +18,7 @@ export function useAuth() {
         impersonatedCompanyId: context.impersonatedCompanyId,
         enterCompanyAsFounder: context.enterCompanyAsFounder,
         exitImpersonation: context.exitImpersonation,
+        isSigningOut: context.isSigningOut,
+        setIsSigningOut: context.setIsSigningOut,
     };
 }

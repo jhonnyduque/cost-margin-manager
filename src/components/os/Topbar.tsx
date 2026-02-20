@@ -6,7 +6,7 @@ import { supabase } from '@/services/supabase';
 import { useNavigate } from 'react-router-dom';
 
 export const Topbar: React.FC = () => {
-    const { user, currentCompany, mode, exitImpersonation } = useAuth();
+    const { user, currentCompany, mode, exitImpersonation, setIsSigningOut } = useAuth();
     const logout = useStore(state => state.logout);
     const navigate = useNavigate();
     const [menuOpen, setMenuOpen] = useState(false);
@@ -24,14 +24,13 @@ export const Topbar: React.FC = () => {
     }, []);
 
     const handleLogout = async () => {
+        setIsSigningOut(true);
+        logout(); // Limpiar store inmediatamente
         try {
             await supabase.auth.signOut();
-            logout();
-            navigate('/login', { replace: true });
         } catch (error) {
             console.error('Logout error:', error);
-            // Even if signOut fails on the server, we should clear local state and force login
-            logout();
+        } finally {
             navigate('/login', { replace: true });
         }
     };
