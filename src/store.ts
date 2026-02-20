@@ -50,35 +50,35 @@ export const getConversionFactor = (buyUnit: Unit, useUnit: Unit): number => {
 };
 
 export const getFifoBreakdown = (
-  materialId: string,
+  material_id: string,
   requiredQuantity: number,
   targetUnit: Unit,
   batches: MaterialBatch[],
   rawMaterials: RawMaterial[]
 ) => {
-  const material = rawMaterials.find(m => m.id === materialId);
+  const material = rawMaterials.find(m => m.id === material_id);
   if (!material) return [];
 
   const factor = getConversionFactor(material.unit, targetUnit);
   let remainingToCover = requiredQuantity / factor;
 
   const materialBatches = batches
-    .filter(b => b.materialId === materialId && b.remainingQuantity > 0)
+    .filter(b => b.material_id === material_id && b.remaining_quantity > 0)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   const breakdown: any[] = [];
 
   for (const batch of materialBatches) {
     if (remainingToCover <= 0) break;
-    const amountFromThisBatch = Math.min(remainingToCover, batch.remainingQuantity);
+    const amountFromThisBatch = Math.min(remainingToCover, batch.remaining_quantity);
 
     breakdown.push({
-      batchId: batch.id,
+      batch_id: batch.id,
       date: batch.date,
-      unitCost: batch.unitCost,
-      quantityUsed: amountFromThisBatch,
-      quantityUsedInTargetUnit: amountFromThisBatch * factor,
-      subtotal: amountFromThisBatch * batch.unitCost
+      unit_cost: batch.unit_cost,
+      quantity_used: amountFromThisBatch,
+      quantity_used_in_target_unit: amountFromThisBatch * factor,
+      subtotal: amountFromThisBatch * batch.unit_cost
     });
 
     remainingToCover -= amountFromThisBatch;
@@ -86,15 +86,15 @@ export const getFifoBreakdown = (
 
   if (remainingToCover > 0) {
     const lastBatch = materialBatches[materialBatches.length - 1];
-    const fallbackPrice = lastBatch ? lastBatch.unitCost : 0;
+    const fallbackPrice = lastBatch ? lastBatch.unit_cost : 0;
     breakdown.push({
-      batchId: 'faltante',
+      batch_id: 'faltante',
       date: 'N/A (Sin Stock)',
-      unitCost: fallbackPrice,
-      quantityUsed: remainingToCover,
-      quantityUsedInTargetUnit: remainingToCover * factor,
+      unit_cost: fallbackPrice,
+      quantity_used: remainingToCover,
+      quantity_used_in_target_unit: remainingToCover * factor,
       subtotal: remainingToCover * fallbackPrice,
-      isMissing: true
+      is_missing: true
     });
   }
 
@@ -102,13 +102,13 @@ export const getFifoBreakdown = (
 };
 
 export const calculateFifoCost = (
-  materialId: string,
+  material_id: string,
   requiredQuantity: number,
   targetUnit: Unit,
   batches: MaterialBatch[],
   rawMaterials: RawMaterial[]
 ): number => {
-  const breakdown = getFifoBreakdown(materialId, requiredQuantity, targetUnit, batches, rawMaterials);
+  const breakdown = getFifoBreakdown(material_id, requiredQuantity, targetUnit, batches, rawMaterials);
   return breakdown.reduce((acc, item) => acc + (item.subtotal ?? 0), 0);
 };
 
@@ -120,9 +120,9 @@ export const calculateProductCost = (
   const materials = product.materials ?? [];
   return materials.reduce((total, pm) => {
     const fifoCost = calculateFifoCost(
-      pm.materialId,
+      pm.material_id,
       pm.quantity,
-      pm.consumptionUnit,
+      pm.consumption_unit,
       batches,
       rawMaterials
     );
@@ -168,13 +168,7 @@ export const useStore = create<AppState>()(
           .is('deleted_at', null);
 
         if (!error && data) {
-          // Mapeo de DB a Store (camelCase)
-          const mapped = (data as any[]).map(p => ({
-            ...p,
-            targetMargin: p.target_margin,
-            createdAt: p.created_at
-          }));
-          set({ products: mapped as Product[] });
+          set({ products: data as Product[] });
         }
       },
 
@@ -202,16 +196,7 @@ export const useStore = create<AppState>()(
           .is('deleted_at', null);
 
         if (!error && data) {
-          // Mapeo snake_case a camelCase si aplica (initial_quantity -> initialQuantity)
-          const mapped = data.map((b: any) => ({
-            ...b,
-            initialQuantity: b.initial_quantity,
-            remainingQuantity: b.remaining_quantity,
-            unitCost: b.unit_cost,
-            entryMode: b.entry_mode,
-            materialId: b.material_id
-          }));
-          set({ batches: mapped as MaterialBatch[] });
+          set({ batches: data as MaterialBatch[] });
         }
       },
 
@@ -225,13 +210,7 @@ export const useStore = create<AppState>()(
           .eq('company_id', companyId);
 
         if (!error && data) {
-          const mapped = data.map((m: any) => ({
-            ...m,
-            materialId: m.material_id,
-            batchId: m.batch_id,
-            unitCost: m.unit_cost
-          }));
-          set({ movements: mapped as StockMovement[] });
+          set({ movements: data as StockMovement[] });
         }
       },
 
@@ -260,11 +239,11 @@ export const useStore = create<AppState>()(
           name: product.name,
           reference: product.reference,
           price: product.price,
-          target_margin: product.targetMargin,
+          target_margin: product.target_margin,
           cost_fifo: calculateProductCost(product, get().batches, get().rawMaterials),
           materials: product.materials, // JSONB
           status: product.status,
-          created_at: product.createdAt,
+          created_at: product.created_at,
         }).then(({ error }) => {
           if (error) console.error('[Supabase] addProduct Error:', error.message);
         });
@@ -280,7 +259,7 @@ export const useStore = create<AppState>()(
             name: product.name,
             reference: product.reference,
             price: product.price,
-            target_margin: product.targetMargin,
+            target_margin: product.target_margin,
             materials: product.materials,
             cost_fifo: calculateProductCost(product, get().batches, get().rawMaterials),
             status: product.status,
@@ -345,8 +324,8 @@ export const useStore = create<AppState>()(
       deleteRawMaterial: (id) => {
         set((state) => ({
           rawMaterials: state.rawMaterials.filter((m) => m.id !== id),
-          batches: state.batches.filter((b) => b.materialId !== id),
-          movements: state.movements.filter((mov) => mov.materialId !== id),
+          batches: state.batches.filter((b) => b.material_id !== id),
+          movements: state.movements.filter((mov) => mov.material_id !== id),
         }));
 
         supabase.from('raw_materials')
@@ -362,13 +341,14 @@ export const useStore = create<AppState>()(
         const movement: StockMovement = {
           id: crypto.randomUUID(),
           company_id: companyId,
-          materialId: batch.materialId,
-          batchId: batch.id,
+          material_id: batch.material_id,
+          batch_id: batch.id,
           date: batch.date,
           type: 'ingreso',
-          quantity: batch.initialQuantity,
-          unitCost: batch.unitCost,
+          quantity: batch.initial_quantity,
+          unit_cost: batch.unit_cost,
           reference: batch.provider,
+          created_at: new Date().toISOString()
         };
 
         set((state) => ({
@@ -380,17 +360,17 @@ export const useStore = create<AppState>()(
         supabase.from('material_batches').insert({
           id: batch.id,
           company_id: companyId,
-          material_id: batch.materialId,
+          material_id: batch.material_id,
           date: batch.date,
           provider: batch.provider,
-          initial_quantity: batch.initialQuantity,
-          remaining_quantity: batch.remainingQuantity,
-          unit_cost: batch.unitCost,
+          initial_quantity: batch.initial_quantity,
+          remaining_quantity: batch.remaining_quantity,
+          unit_cost: batch.unit_cost,
           reference: batch.reference,
           width: batch.width,
           length: batch.length,
           area: batch.area,
-          entry_mode: batch.entryMode,
+          entry_mode: batch.entry_mode,
         }).then(({ error }) => {
           if (error) console.error('[Supabase] addBatch Error:', error.message);
         });
@@ -398,12 +378,12 @@ export const useStore = create<AppState>()(
         supabase.from('stock_movements').insert({
           id: movement.id,
           company_id: companyId,
-          material_id: movement.materialId,
-          batch_id: movement.batchId,
+          material_id: movement.material_id,
+          batch_id: movement.batch_id,
           date: movement.date,
           type: movement.type,
           quantity: movement.quantity,
-          unit_cost: movement.unitCost,
+          unit_cost: movement.unit_cost,
           reference: movement.reference,
         }).then(({ error }) => {
           if (error) console.error('[Supabase] addMovement Error:', error.message);
@@ -414,7 +394,7 @@ export const useStore = create<AppState>()(
         const companyId = get().currentCompanyId;
         set((state) => ({
           batches: state.batches.filter((b) => b.id !== id),
-          movements: state.movements.filter((mov) => mov.batchId !== id),
+          movements: state.movements.filter((mov) => mov.batch_id !== id),
         }));
 
         supabase.from('material_batches')
@@ -429,11 +409,11 @@ export const useStore = create<AppState>()(
         const companyId = get().currentCompanyId;
         set((state) => {
           const updatedMovements = state.movements.map((mov) =>
-            mov.batchId === batch.id && mov.type === 'ingreso'
+            mov.batch_id === batch.id && mov.type === 'ingreso'
               ? {
                 ...mov,
-                quantity: batch.initialQuantity,
-                unitCost: batch.unitCost,
+                quantity: batch.initial_quantity,
+                unit_cost: batch.unit_cost,
                 reference: batch.provider,
                 date: batch.date,
               }
@@ -450,14 +430,14 @@ export const useStore = create<AppState>()(
         supabase.from('material_batches').update({
           date: batch.date,
           provider: batch.provider,
-          initial_quantity: batch.initialQuantity,
-          remaining_quantity: batch.remainingQuantity,
-          unit_cost: batch.unitCost,
+          initial_quantity: batch.initial_quantity,
+          remaining_quantity: batch.remaining_quantity,
+          unit_cost: batch.unit_cost,
           reference: batch.reference,
           width: batch.width,
           length: batch.length,
           area: batch.area,
-          entry_mode: batch.entryMode,
+          entry_mode: batch.entry_mode,
           updated_at: new Date().toISOString()
         })
           .eq('id', batch.id)
@@ -468,7 +448,7 @@ export const useStore = create<AppState>()(
         const companyId = get().currentCompanyId;
         set((state) => ({
           batches: state.batches.map((b) =>
-            b.id === id ? { ...b, remainingQuantity: newQty } : b
+            b.id === id ? { ...b, remaining_quantity: newQty } : b
           ),
         }));
 
@@ -490,22 +470,22 @@ export const useStore = create<AppState>()(
 
           product.materials?.forEach(pm => {
             const breakdown = getFifoBreakdown(
-              pm.materialId,
+              pm.material_id,
               pm.quantity,
-              pm.consumptionUnit,
+              pm.consumption_unit,
               currentBatches,
               state.rawMaterials
             );
 
             breakdown.forEach(item => {
-              if (item.batchId === 'faltante') return;
+              if (item.batch_id === 'faltante') return;
 
               currentBatches = currentBatches.map(b => {
-                if (b.id === item.batchId) {
-                  const newRemaining = Math.max(0, b.remainingQuantity - item.quantityUsed);
+                if (b.id === item.batch_id) {
+                  const newRemaining = Math.max(0, b.remaining_quantity - item.quantity_used);
                   // Sync update batch remaining
                   supabase.from('material_batches').update({ remaining_quantity: newRemaining }).eq('id', b.id).eq('company_id', companyId).then();
-                  return { ...b, remainingQuantity: newRemaining };
+                  return { ...b, remaining_quantity: newRemaining };
                 }
                 return b;
               });
@@ -514,13 +494,14 @@ export const useStore = create<AppState>()(
               syncMovements.push({
                 id: movId,
                 company_id: companyId,
-                material_id: pm.materialId,
-                batch_id: item.batchId,
+                material_id: pm.material_id,
+                batch_id: item.batch_id,
                 date: now,
                 type: 'egreso',
-                quantity: item.quantityUsed,
-                unit_cost: item.unitCost,
+                quantity: item.quantity_used,
+                unit_cost: item.unit_cost,
                 reference: `Prod: ${product.name}`,
+                created_at: now
               });
             });
           });
@@ -532,12 +513,7 @@ export const useStore = create<AppState>()(
 
           return {
             batches: currentBatches,
-            movements: [...state.movements, ...syncMovements.map(m => ({
-              ...m,
-              materialId: m.material_id,
-              batchId: m.batch_id,
-              unitCost: m.unit_cost
-            } as StockMovement))],
+            movements: [...state.movements, ...syncMovements] as StockMovement[],
           };
         });
       },

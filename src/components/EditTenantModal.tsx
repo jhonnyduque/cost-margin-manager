@@ -44,8 +44,6 @@ const EditTenantModal: React.FC<EditTenantModalProps> = ({ isOpen, company, onCl
                 .update({
                     name,
                     slug: slug.toLowerCase(),
-                    name,
-                    slug: slug.toLowerCase(),
                     subscription_status: status,
                     subscription_tier: tier,
                     seat_limit: seatLimit,
@@ -191,9 +189,9 @@ const EditTenantModal: React.FC<EditTenantModalProps> = ({ isOpen, company, onCl
                                         <div className="h-2 w-2 rounded-full bg-red-500" />
                                     )}
                                     <span className="capitalize">{status}</span>
-                                    {company.current_period_end && (
+                                    {company.current_period_end_at && (
                                         <span className="ml-auto text-xs text-slate-400">
-                                            Vence: {new Date(company.current_period_end).toLocaleDateString()}
+                                            Vence: {new Date(company.current_period_end_at).toLocaleDateString()}
                                         </span>
                                     )}
                                 </div>
@@ -207,6 +205,7 @@ const EditTenantModal: React.FC<EditTenantModalProps> = ({ isOpen, company, onCl
                                     value={tier || 'starter'}
                                     onChange={e => setTier(e.target.value)}
                                 >
+                                    <option value="demo">Demo</option>
                                     <option value="starter">Starter</option>
                                     <option value="growth">Growth</option>
                                     <option value="scale">Scale</option>

@@ -35,7 +35,7 @@ const RawMaterials: React.FC = () => {
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const [activeMaterialId, setActiveMaterialId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [entryMode, setEntryMode] = useState<'rollo' | 'pieza'>('rollo');
+  const [entry_mode, set_entry_mode] = useState<'rollo' | 'pieza'>('rollo');
 
   const [editingBatchData, setEditingBatchData] = useState<MaterialBatch | null>(null);
 
@@ -53,7 +53,7 @@ const RawMaterials: React.FC = () => {
 
   const [batchFormData, setBatchFormData] = useState<Partial<MaterialBatch>>({
     date: new Date().toISOString().split('T')[0],
-    provider: '', initialQuantity: 0, unitCost: 0, reference: '', width: 140, length: 0
+    provider: '', initial_quantity: 0, unit_cost: 0, reference: '', width: 140, length: 0
   });
 
   const filteredMaterials = rawMaterials.filter(m =>
@@ -62,10 +62,10 @@ const RawMaterials: React.FC = () => {
   );
 
   const getBatchStats = (materialId: string) => {
-    const matBatches = batches.filter(b => b.materialId === materialId);
-    const totalOriginalQty = matBatches.reduce((acc, b) => acc + b.initialQuantity, 0);
-    const totalRemainingQty = matBatches.reduce((acc, b) => acc + b.remainingQuantity, 0);
-    const totalValue = matBatches.reduce((acc, b) => acc + (b.unitCost * b.initialQuantity), 0);
+    const matBatches = batches.filter(b => b.material_id === materialId);
+    const totalOriginalQty = matBatches.reduce((acc, b) => acc + b.initial_quantity, 0);
+    const totalRemainingQty = matBatches.reduce((acc, b) => acc + b.remaining_quantity, 0);
+    const totalValue = matBatches.reduce((acc, b) => acc + (b.unit_cost * b.initial_quantity), 0);
     const weightedAvgCost = totalOriginalQty > 0 ? totalValue / totalOriginalQty : 0;
 
     const totalArea = matBatches.reduce((acc, b) => acc + (b.area || 0), 0);
@@ -86,7 +86,9 @@ const RawMaterials: React.FC = () => {
       unit: formData.unit,
       provider: formData.provider,
       status: formData.status,
-      company_id: currentCompanyId || ''
+      company_id: currentCompanyId || '',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
 
     if (editingId) {
@@ -97,17 +99,19 @@ const RawMaterials: React.FC = () => {
         const area = formData.unit === 'metro' ? formData.initialQty * ((formData.width || 0) / 100) : undefined;
         const batch: MaterialBatch = {
           id: crypto.randomUUID(),
-          materialId: materialId,
+          material_id: materialId,
           date: new Date().toISOString().split('T')[0],
           provider: formData.provider || 'Carga Inicial',
-          initialQuantity: formData.initialQty,
-          remainingQuantity: formData.initialQty,
-          unitCost: formData.unitCost,
+          initial_quantity: formData.initialQty,
+          remaining_quantity: formData.initialQty,
+          unit_cost: formData.unitCost,
           reference: 'Carga Inicial',
           width: formData.width,
           area: area,
-          entryMode: 'rollo',
-          company_id: currentCompanyId || ''
+          entry_mode: 'rollo',
+          company_id: currentCompanyId || '',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         };
         addBatch(batch);
       }
@@ -122,36 +126,38 @@ const RawMaterials: React.FC = () => {
     const material = rawMaterials.find(m => m.id === activeMaterialId);
 
     let area = 0;
-    let finalQty = batchFormData.initialQuantity || 0;
-    let finalUnitCost = batchFormData.unitCost || 0;
+    let finalQty = batchFormData.initial_quantity || 0;
+    let finalUnitCost = batchFormData.unit_cost || 0;
 
-    if (entryMode === 'rollo') {
-      area = (batchFormData.initialQuantity || 0) * ((batchFormData.width || 0) / 100);
-      finalUnitCost = batchFormData.unitCost || 0;
+    if (entry_mode === 'rollo') {
+      area = (batchFormData.initial_quantity || 0) * ((batchFormData.width || 0) / 100);
+      finalUnitCost = batchFormData.unit_cost || 0;
     } else {
       area = ((batchFormData.length || 0) * (batchFormData.width || 0)) / 10000;
       finalQty = (batchFormData.length || 0) / 100; // Largo en metros para FIFO
-      finalUnitCost = (batchFormData.unitCost || 0) / finalQty; // Costo por metro para FIFO
+      finalUnitCost = (batchFormData.unit_cost || 0) / finalQty; // Costo por metro para FIFO
     }
 
     const data = {
       ...batchFormData,
       id: crypto.randomUUID(),
-      materialId: activeMaterialId,
-      initialQuantity: finalQty,
-      remainingQuantity: finalQty,
-      unitCost: finalUnitCost,
+      material_id: activeMaterialId,
+      initial_quantity: finalQty,
+      remaining_quantity: finalQty,
+      unit_cost: finalUnitCost,
       area: area,
-      entryMode: entryMode,
-      company_id: currentCompanyId || ''
+      entry_mode: entry_mode,
+      company_id: currentCompanyId || '',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     } as MaterialBatch;
 
     addBatch(data);
     setBatchFormData({
       date: new Date().toISOString().split('T')[0],
       provider: material?.provider || '',
-      initialQuantity: 0,
-      unitCost: 0,
+      initial_quantity: 0,
+      unit_cost: 0,
       reference: '',
       width: 140,
       length: 0
@@ -162,32 +168,32 @@ const RawMaterials: React.FC = () => {
     e.preventDefault();
     if (editingBatchData) {
       const original = batches.find(b => b.id === editingBatchData.id);
-      if (original && original.remainingQuantity < original.initialQuantity) {
+      if (original && original.remaining_quantity < original.initial_quantity) {
         updateBatch({
           ...editingBatchData,
-          initialQuantity: original.initialQuantity,
-          unitCost: original.unitCost
+          initial_quantity: original.initial_quantity,
+          unit_cost: original.unit_cost
         });
       } else {
         let area = 0;
-        let finalQty = editingBatchData.initialQuantity;
-        let finalUnitCost = editingBatchData.unitCost;
+        let finalQty = editingBatchData.initial_quantity;
+        let finalUnitCost = editingBatchData.unit_cost;
 
-        if (editingBatchData.entryMode === 'rollo') {
-          area = editingBatchData.initialQuantity * ((editingBatchData.width || 0) / 100);
-          finalUnitCost = editingBatchData.unitCost;
+        if (editingBatchData.entry_mode === 'rollo') {
+          area = editingBatchData.initial_quantity * ((editingBatchData.width || 0) / 100);
+          finalUnitCost = editingBatchData.unit_cost;
         } else {
           area = ((editingBatchData.length || 0) * (editingBatchData.width || 0)) / 10000;
           finalQty = (editingBatchData.length || 0) / 100;
-          finalUnitCost = (editingBatchData.unitCost || 0) / finalQty;
+          finalUnitCost = (editingBatchData.unit_cost || 0) / finalQty;
         }
 
         updateBatch({
           ...editingBatchData,
-          initialQuantity: finalQty,
-          unitCost: finalUnitCost,
+          initial_quantity: finalQty,
+          unit_cost: finalUnitCost,
           area: area,
-          remainingQuantity: finalQty
+          remaining_quantity: finalQty
         });
       }
       setEditingBatchData(null);
@@ -195,22 +201,22 @@ const RawMaterials: React.FC = () => {
   };
 
   const calculatedArea = useMemo(() => {
-    if (entryMode === 'rollo') {
-      return (batchFormData.initialQuantity || 0) * ((batchFormData.width || 0) / 100);
+    if (entry_mode === 'rollo') {
+      return (batchFormData.initial_quantity || 0) * ((batchFormData.width || 0) / 100);
     } else {
       return ((batchFormData.length || 0) * (batchFormData.width || 0)) / 10000;
     }
-  }, [entryMode, batchFormData.initialQuantity, batchFormData.width, batchFormData.length]);
+  }, [entry_mode, batchFormData.initial_quantity, batchFormData.width, batchFormData.length]);
 
   const calculatedCostPerM2 = useMemo(() => {
-    const totalCostInput = batchFormData.unitCost || 0;
-    if (entryMode === 'rollo') {
-      const totalCost = (batchFormData.initialQuantity || 0) * totalCostInput;
+    const totalCostInput = batchFormData.unit_cost || 0;
+    if (entry_mode === 'rollo') {
+      const totalCost = (batchFormData.initial_quantity || 0) * totalCostInput;
       return calculatedArea > 0 ? totalCost / calculatedArea : 0;
     } else {
       return calculatedArea > 0 ? totalCostInput / calculatedArea : 0;
     }
-  }, [entryMode, batchFormData.unitCost, batchFormData.initialQuantity, calculatedArea]);
+  }, [entry_mode, batchFormData.unit_cost, batchFormData.initial_quantity, calculatedArea]);
 
   const handlePrint = () => {
     window.print();
@@ -228,7 +234,7 @@ const RawMaterials: React.FC = () => {
             variant="primary"
             onClick={() => {
               setEditingId(null);
-              setFormData({ name: '', description: '', type: 'Tela', unit: 'metro', provider: '', status: 'activa', initialQty: 0, unitCost: 0, width: 140 });
+              setFormData({ name: '', description: '', type: 'Tela', unit: 'metro', provider: '', status: 'activa', initial_qty: 0, unit_cost: 0, width: 140 });
               setIsModalOpen(true);
             }}
             icon={<Plus size={18} />}
@@ -302,7 +308,7 @@ const RawMaterials: React.FC = () => {
                     <Button variant="ghost" size="sm" onClick={() => {
                       const stats = getBatchStats(m.id);
                       setEditingId(m.id);
-                      setFormData({ ...m, initialQty: stats.totalRemainingQty, unitCost: stats.weightedAvgCost });
+                      setFormData({ ...m, initial_qty: stats.totalRemainingQty, unit_cost: stats.weightedAvgCost });
                       setIsModalOpen(true);
                     }}>
                       <Edit2 size={16} />
@@ -384,8 +390,8 @@ const RawMaterials: React.FC = () => {
                   <Input
                     type="number"
                     step="0.01"
-                    value={formData.unitCost || ''}
-                    onChange={e => setFormData({ ...formData, unitCost: parseFloat(e.target.value) })}
+                    value={formData.unit_cost || ''}
+                    onChange={e => setFormData({ ...formData, unit_cost: parseFloat(e.target.value) })}
                     placeholder="0"
                     disabled={!!editingId}
                   />
@@ -464,15 +470,15 @@ const RawMaterials: React.FC = () => {
                   <div className="flex gap-1 rounded-xl border border-indigo-100 bg-white p-1">
                     <button
                       type="button"
-                      onClick={() => setEntryMode('rollo')}
-                      className={`flex items-center gap-2 rounded-lg px-4 py-1.5 text-xs font-bold uppercase transition-all ${entryMode === 'rollo' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:bg-gray-50'}`}
+                      onClick={() => set_entry_mode('rollo')}
+                      className={`flex items-center gap-2 rounded-lg px-4 py-1.5 text-xs font-bold uppercase transition-all ${entry_mode === 'rollo' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:bg-gray-50'}`}
                     >
                       <RotateCcw size={12} /> Rollo
                     </button>
                     <button
                       type="button"
-                      onClick={() => setEntryMode('pieza')}
-                      className={`flex items-center gap-2 rounded-lg px-4 py-1.5 text-xs font-bold uppercase transition-all ${entryMode === 'pieza' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:bg-gray-50'}`}
+                      onClick={() => set_entry_mode('pieza')}
+                      className={`flex items-center gap-2 rounded-lg px-4 py-1.5 text-xs font-bold uppercase transition-all ${entry_mode === 'pieza' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:bg-gray-50'}`}
                     >
                       <Scissors size={12} /> Pieza
                     </button>
@@ -496,13 +502,13 @@ const RawMaterials: React.FC = () => {
                       />
                     </div>
 
-                    {entryMode === 'rollo' ? (
+                    {entry_mode === 'rollo' ? (
                       <Input
                         label="Metros Lineales"
                         type="number"
                         step="0.01"
-                        value={batchFormData.initialQuantity || ''}
-                        onChange={e => setBatchFormData({ ...batchFormData, initialQuantity: parseFloat(e.target.value) })}
+                        value={batchFormData.initial_quantity || ''}
+                        onChange={e => setBatchFormData({ ...batchFormData, initial_quantity: parseFloat(e.target.value) })}
                         required
                       />
                     ) : (
@@ -527,11 +533,11 @@ const RawMaterials: React.FC = () => {
                     />
 
                     <Input
-                      label={entryMode === 'rollo' ? 'Costo/Metro (€)' : 'Costo Total (€)'}
+                      label={entry_mode === 'rollo' ? 'Costo/Metro (€)' : 'Costo Total (€)'}
                       type="number"
                       step="0.01"
-                      value={batchFormData.unitCost || ''}
-                      onChange={e => setBatchFormData({ ...batchFormData, unitCost: parseFloat(e.target.value) })}
+                      value={batchFormData.unit_cost || ''}
+                      onChange={e => setBatchFormData({ ...batchFormData, unit_cost: parseFloat(e.target.value) })}
                       required
                     />
                   </div>
@@ -572,8 +578,8 @@ const RawMaterials: React.FC = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {batches.filter(b => b.materialId === activeMaterialId).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((batch) => {
-                      const currentTotalPurchaseCost = batch.entryMode === 'pieza' ? (batch.unitCost * batch.initialQuantity) : (batch.unitCost * batch.initialQuantity);
+                    {batches.filter(b => b.material_id === activeMaterialId).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((batch) => {
+                      const currentTotalPurchaseCost = batch.entry_mode === 'pieza' ? (batch.unit_cost * batch.initial_quantity) : (batch.unit_cost * batch.initial_quantity);
                       const currentCostPerM2 = batch.area && batch.area > 0 ? currentTotalPurchaseCost / batch.area : 0;
 
                       return (
@@ -581,16 +587,16 @@ const RawMaterials: React.FC = () => {
                           <TableCell className="text-center"><ArrowDownToLine size={16} className="mx-auto text-emerald-500" /></TableCell>
                           <TableCell className="font-mono text-xs font-bold text-gray-600">{batch.date}</TableCell>
                           <TableCell>
-                            <Badge variant={batch.entryMode === 'pieza' ? 'warning' : 'default'} className="flex w-fit items-center gap-1">
-                              {batch.entryMode === 'pieza' ? <Scissors size={10} /> : <RotateCcw size={10} />}
-                              {batch.entryMode || 'Rollo'}
+                            <Badge variant={batch.entry_mode === 'pieza' ? 'warning' : 'default'} className="flex w-fit items-center gap-1">
+                              {batch.entry_mode === 'pieza' ? <Scissors size={10} /> : <RotateCcw size={10} />}
+                              {batch.entry_mode || 'Rollo'}
                             </Badge>
                           </TableCell>
                           <TableCell className="font-bold">{batch.provider}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex flex-col items-end">
                               <span className="text-xs font-bold text-gray-900">
-                                {batch.entryMode === 'pieza' ? `${batch.length} × ${batch.width} cm` : `${batch.initialQuantity.toFixed(2)} m lineales`}
+                                {batch.entry_mode === 'pieza' ? `${batch.length} × ${batch.width} cm` : `${batch.initial_quantity.toFixed(2)} m lineales`}
                               </span>
                               <span className="text-[10px] font-bold uppercase text-gray-400">{batch.width} cm ancho</span>
                             </div>
@@ -599,8 +605,8 @@ const RawMaterials: React.FC = () => {
                           <TableCell className="text-right font-mono text-xs font-bold">{formatCurrency(currentTotalPurchaseCost)}</TableCell>
                           <TableCell className="text-right font-mono text-xs font-bold text-indigo-600">{currentCostPerM2 > 0 ? formatCurrency(currentCostPerM2) : '---'}</TableCell>
                           <TableCell className="text-right">
-                            <Badge variant={batch.remainingQuantity > 0 ? 'success' : 'default'}>
-                              {batch.remainingQuantity.toFixed(2)} m
+                            <Badge variant={batch.remaining_quantity > 0 ? 'success' : 'default'}>
+                              {batch.remaining_quantity.toFixed(2)} m
                             </Badge>
                           </TableCell>
                           <TableCell className="no-print text-center">
@@ -649,7 +655,7 @@ const RawMaterials: React.FC = () => {
             </h4>
 
             <form onSubmit={handleEditBatchSubmit} className="space-y-4">
-              {editingBatchData.remainingQuantity < editingBatchData.initialQuantity && (
+              {editingBatchData.remaining_quantity < editingBatchData.initial_quantity && (
                 <div className="flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50 p-4">
                   <AlertCircle size={20} className="mt-0.5 shrink-0 text-amber-500" />
                   <p className="text-xs font-bold leading-tight text-amber-700">
@@ -672,19 +678,19 @@ const RawMaterials: React.FC = () => {
                 onChange={e => setEditingBatchData({ ...editingBatchData, provider: e.target.value })}
               />
 
-              {editingBatchData.entryMode === 'pieza' ? (
+              {editingBatchData.entry_mode === 'pieza' ? (
                 <div className="grid grid-cols-2 gap-3">
                   <Input
                     label="Largo (cm)"
                     type="number" step="0.01"
-                    disabled={editingBatchData.remainingQuantity < editingBatchData.initialQuantity}
+                    disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity}
                     value={editingBatchData.length || ''}
                     onChange={e => setEditingBatchData({ ...editingBatchData, length: parseFloat(e.target.value) })}
                   />
                   <Input
                     label="Ancho (cm)"
                     type="number" step="1"
-                    disabled={editingBatchData.remainingQuantity < editingBatchData.initialQuantity}
+                    disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity}
                     value={editingBatchData.width || ''}
                     onChange={e => setEditingBatchData({ ...editingBatchData, width: parseInt(e.target.value) })}
                   />
@@ -694,14 +700,14 @@ const RawMaterials: React.FC = () => {
                   <Input
                     label="M. Lineales"
                     type="number" step="0.01"
-                    disabled={editingBatchData.remainingQuantity < editingBatchData.initialQuantity}
-                    value={editingBatchData.initialQuantity}
-                    onChange={e => setEditingBatchData({ ...editingBatchData, initialQuantity: parseFloat(e.target.value) })}
+                    disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity}
+                    value={editingBatchData.initial_quantity}
+                    onChange={e => setEditingBatchData({ ...editingBatchData, initial_quantity: parseFloat(e.target.value) })}
                   />
                   <Input
                     label="Ancho (cm)"
                     type="number" step="1"
-                    disabled={editingBatchData.remainingQuantity < editingBatchData.initialQuantity}
+                    disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity}
                     value={editingBatchData.width || ''}
                     onChange={e => setEditingBatchData({ ...editingBatchData, width: parseInt(e.target.value) })}
                   />
@@ -709,11 +715,11 @@ const RawMaterials: React.FC = () => {
               )}
 
               <Input
-                label={editingBatchData.entryMode === 'pieza' ? 'Costo Total (€)' : 'Costo Unitario (€/m)'}
+                label={editingBatchData.entry_mode === 'pieza' ? 'Costo Total (€)' : 'Costo Unitario (€/m)'}
                 type="number" step="0.01"
-                disabled={editingBatchData.remainingQuantity < editingBatchData.initialQuantity}
-                value={editingBatchData.unitCost}
-                onChange={e => setEditingBatchData({ ...editingBatchData, unitCost: parseFloat(e.target.value) })}
+                disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity}
+                value={editingBatchData.unit_cost}
+                onChange={e => setEditingBatchData({ ...editingBatchData, unit_cost: parseFloat(e.target.value) })}
               />
 
               <div className="flex gap-3 pt-4">

@@ -23,13 +23,15 @@ export async function fetchRawMaterials(companyId: string): Promise<RawMaterial[
 
     return (data || []).map(row => ({
         id: row.id,
-        companyId: row.company_id, // Fix: Added missing field
+        company_id: row.company_id,
         name: row.name,
         description: row.description,
         type: row.type,
         unit: row.unit,
         provider: row.provider,
-        status: row.status as 'activa' | 'inactiva'
+        status: row.status as 'activa' | 'inactiva',
+        created_at: row.created_at,
+        updated_at: row.updated_at
     }));
 }
 
@@ -82,17 +84,19 @@ export async function fetchAllBatches(companyId: string): Promise<MaterialBatch[
 function mapBatches(data: any[]): MaterialBatch[] {
     return data.map(row => ({
         id: row.id,
-        companyId: row.company_id, // Fix: Added missing field
-        materialId: row.material_id, // Mapper camelCase
+        company_id: row.company_id,
+        material_id: row.material_id,
         date: row.date ? row.date.split('T')[0] : new Date().toISOString().split('T')[0],
         provider: row.provider,
-        initialQuantity: Number(row.initial_quantity),
-        remainingQuantity: Number(row.remaining_quantity),
-        unitCost: Number(row.unit_cost),
+        initial_quantity: Number(row.initial_quantity),
+        remaining_quantity: Number(row.remaining_quantity),
+        unit_cost: Number(row.unit_cost),
         reference: row.reference,
         width: row.width ? Number(row.width) : undefined,
         length: row.length ? Number(row.length) : undefined,
         area: row.area ? Number(row.area) : undefined,
-        entryMode: row.entry_mode as 'rollo' | 'pieza'
+        entry_mode: row.entry_mode as 'rollo' | 'pieza',
+        created_at: row.created_at,
+        updated_at: row.updated_at
     }));
 }

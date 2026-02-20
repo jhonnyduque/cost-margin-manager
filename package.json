@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:reset": "supabase db reset",
+    "db:start": "supabase start"
   },
   "dependencies": {
     "@google/genai": "^1.39.0",

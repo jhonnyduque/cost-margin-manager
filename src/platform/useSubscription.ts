@@ -8,7 +8,7 @@ export function useSubscription() {
     // 1. Get raw company data
     const stripePriceId = currentCompany?.stripe_price_id;
     const status = currentCompany?.subscription_status || 'trialing'; // Default safer than 'active'
-    const currentPeriodEnd = currentCompany?.current_period_end;
+    const currentPeriodEndAt = currentCompany?.current_period_end_at;
 
     // 2. Resolve Plan Key
     let planKey: PlanKey = 'demo'; // Default fallback (SAFE BOOT)
@@ -83,7 +83,7 @@ export function useSubscription() {
 
     return {
         status,
-        periodEnd: currentPeriodEnd,
+        periodEnd: currentPeriodEndAt,
         planKey,
         planLabel: subscriptionConfig.plans[planKey].label,
         seatLimitEffective,

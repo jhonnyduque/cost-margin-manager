@@ -24,7 +24,7 @@ const Dashboard: React.FC = () => {
   const lowMarginCount = productCalculations.filter(p => p.margin < 20).length;
   const avgCost = productCalculations.length > 0
     ? productCalculations.reduce((acc, curr) => acc + curr.cost, 0) / productCalculations.length : 0;
-  const totalStockItems = batches.reduce((acc, b) => acc + b.remainingQuantity, 0);
+  const totalStockItems = batches.reduce((acc, b) => acc + b.remaining_quantity, 0);
 
   const fetchAi = useCallback(async () => {
     if (products.length === 0) return;
@@ -90,7 +90,7 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="flex justify-between py-2" style={{ borderBottom: `1px solid ${tokens.colors.bg}` }}>
               <span style={{ color: tokens.colors.text.secondary }}>Lotes Activos</span>
-              <span style={{ fontWeight: 600, color: tokens.colors.text.primary }}>{batches.filter(b => b.remainingQuantity > 0).length}</span>
+              <span style={{ fontWeight: 600, color: tokens.colors.text.primary }}>{batches.filter(b => b.remaining_quantity > 0).length}</span>
             </div>
             <div className="flex justify-between py-2" style={{ borderBottom: `1px solid ${tokens.colors.bg}` }}>
               <span style={{ color: tokens.colors.text.secondary }}>Productos Rentables</span>

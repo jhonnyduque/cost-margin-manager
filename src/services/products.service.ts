@@ -15,17 +15,17 @@ export async function fetchProductsFromSupabase(): Promise<Product[]> {
 
   if (!data) return [];
 
-  // 🔥 MAPEO CRÍTICO
   return data.map((row) => ({
     id: row.id,
-    companyId: row.company_id, // Fix: Added missing field
+    company_id: row.company_id,
     name: row.name,
-    reference: row.sku,
+    reference: row.reference || '',
     price: row.price ?? 0,
-    targetMargin: row.target_margin ?? 0,
-    // Fix: Mapeo correcto del JSONB materials, preservando la estructura guardada
+    target_margin: row.target_margin ?? 0,
+    cost_fifo: row.cost_fifo ?? 0,
     materials: Array.isArray(row.materials) ? row.materials : [],
-    status: row.status as 'activa' | 'inactiva', // Fix: Added missing field
-    createdAt: row.created_at
+    status: row.status as 'activa' | 'inactiva',
+    created_at: row.created_at,
+    updated_at: row.updated_at
   }));
 }

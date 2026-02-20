@@ -51,7 +51,7 @@ const Products: React.FC = () => {
   const [expandedMaterial, setExpandedMaterial] = useState<number | null>(null);
 
   const [formData, setFormData] = useState<any>({
-    name: '', reference: '', price: 0, targetMargin: 30, materials: [], status: 'activa'
+    name: '', reference: '', price: 0, target_margin: 30, materials: [], status: 'activa'
   });
 
   const filteredProducts = products.filter(p =>
@@ -63,22 +63,22 @@ const Products: React.FC = () => {
     return (materials || []).reduce((total: number, pm: any) => {
       let effectiveQty = pm.quantity;
       if (pm.mode === 'pieces' && pm.pieces) {
-        const latestBatch = batches.filter(b => b.materialId === pm.materialId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+        const latestBatch = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
         const width = latestBatch?.width || 140;
         const totalAreaCm2 = pm.pieces.reduce((acc: number, p: any) => acc + (p.length * p.width), 0);
         effectiveQty = (totalAreaCm2 / width) / 100;
       }
-      return total + calculateFifoCost(pm.materialId, effectiveQty, pm.consumptionUnit, batches, rawMaterials);
+      return total + calculateFifoCost(pm.material_id, effectiveQty, pm.consumption_unit, batches, rawMaterials);
     }, 0);
   };
 
   const totalCurrentCost = useMemo(() => calculateTotalCost(formData.materials), [formData.materials, batches, rawMaterials]);
 
   const exactSuggestedPrice = useMemo(() => {
-    const margin = formData.targetMargin || 0;
+    const margin = formData.target_margin || 0;
     if (margin >= 100) return 0;
     return totalCurrentCost / (1 - margin / 100);
-  }, [totalCurrentCost, formData.targetMargin]);
+  }, [totalCurrentCost, formData.target_margin]);
 
   const commercialSuggestedPrice = useMemo(() => getCommercialPrice(exactSuggestedPrice), [exactSuggestedPrice]);
 
@@ -86,9 +86,9 @@ const Products: React.FC = () => {
     if (rawMaterials.length === 0) return;
     const material = rawMaterials[0];
     const materials = [...(formData.materials || []), {
-      materialId: material.id,
+      material_id: material.id,
       quantity: 1,
-      consumptionUnit: material.unit,
+      consumption_unit: material.unit,
       mode: 'linear',
       pieces: [{ length: 50, width: material.unit === 'metro' ? 140 : 0 }]
     }];
@@ -99,10 +99,10 @@ const Products: React.FC = () => {
     const materials = [...(formData.materials || [])];
     materials[idx] = { ...materials[idx], [field]: value };
 
-    if (field === 'materialId') {
+    if (field === 'material_id') {
       const selectedBase = rawMaterials.find(m => m.id === value);
       if (selectedBase) {
-        materials[idx].consumptionUnit = selectedBase.unit;
+        materials[idx].consumption_unit = selectedBase.unit;
         materials[idx].mode = 'linear';
       }
     }
@@ -122,7 +122,7 @@ const Products: React.FC = () => {
   const addPiece = (idx: number) => {
     const materials = [...(formData.materials || [])];
     const mat = materials[idx];
-    const latestBatch = batches.filter(b => b.materialId === mat.materialId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+    const latestBatch = batches.filter(b => b.material_id === mat.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
     mat.pieces = [...(mat.pieces || []), { length: 10, width: latestBatch?.width || 140 }];
     setFormData({ ...formData, materials });
   };
@@ -144,7 +144,8 @@ const Products: React.FC = () => {
       ...product,
       name: `${product.name} (copia)`,
       reference: product.reference ? `${product.reference}-COPIA` : '',
-      createdAt: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
     setEditingId(null);
     setFormData(duplicatedProduct);
@@ -155,7 +156,7 @@ const Products: React.FC = () => {
     e.preventDefault();
     const processedMaterials = formData.materials.map((pm: any) => {
       if (pm.mode === 'pieces' && pm.pieces) {
-        const latestBatch = batches.filter(b => b.materialId === pm.materialId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+        const latestBatch = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
         const width = latestBatch?.width || 140;
         const totalAreaCm2 = pm.pieces.reduce((acc: number, p: any) => acc + (p.length * p.width), 0);
         return { ...pm, quantity: (totalAreaCm2 / width) / 100 };
@@ -163,12 +164,14 @@ const Products: React.FC = () => {
       return pm;
     });
 
+    const now = new Date().toISOString();
     const data = {
       ...formData,
       materials: processedMaterials,
       id: editingId || crypto.randomUUID(),
       company_id: currentCompanyId || '',
-      createdAt: editingId ? (products.find(p => p.id === editingId)?.createdAt) : new Date().toISOString()
+      created_at: editingId ? (products.find(p => p.id === editingId)?.created_at) : now,
+      updated_at: now
     } as Product;
 
     if (editingId) updateProduct(data);
@@ -189,7 +192,7 @@ const Products: React.FC = () => {
             variant="primary"
             onClick={() => {
               setEditingId(null);
-              setFormData({ name: '', reference: '', price: 0, targetMargin: 30, materials: [], status: 'activa' });
+              setFormData({ name: '', reference: '', price: 0, target_margin: 30, materials: [], status: 'activa' });
               setIsModalOpen(true);
             }}
             icon={<Plus size={18} />}
@@ -308,31 +311,31 @@ const Products: React.FC = () => {
 
                   <div className="space-y-4">
                     {(formData.materials || []).map((pm: any, idx: number) => {
-                      const material = rawMaterials.find(m => m.id === pm.materialId);
+                      const material = rawMaterials.find(m => m.id === pm.material_id);
                       const isFabric = material?.unit === 'metro';
 
                       let effectiveQty = pm.quantity;
                       let areaM2 = 0;
                       if (pm.mode === 'pieces' && pm.pieces) {
-                        const latestBatch = batches.filter(b => b.materialId === pm.materialId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+                        const latestBatch = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
                         const width = latestBatch?.width || 140;
                         const totalAreaCm2 = pm.pieces.reduce((acc: number, p: any) => acc + (p.length * p.width), 0);
                         areaM2 = totalAreaCm2 / 10000;
                         effectiveQty = (totalAreaCm2 / width) / 100;
                       } else if (isFabric) {
-                        const latestBatch = batches.filter(b => b.materialId === pm.materialId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+                        const latestBatch = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
                         areaM2 = pm.quantity * ((latestBatch?.width || 140) / 100);
                       }
 
-                      const breakdown = getFifoBreakdown(pm.materialId, effectiveQty, pm.consumptionUnit, batches, rawMaterials);
+                      const breakdown = getFifoBreakdown(pm.material_id, effectiveQty, pm.consumption_unit, batches, rawMaterials);
                       const costRow = breakdown.reduce((acc, item) => acc + item.subtotal, 0);
                       const isExpanded = expandedMaterial === idx;
-                      const hasMissingStock = breakdown.some(b => b.isMissing);
+                      const hasMissingStock = breakdown.some(b => b.is_missing);
 
                       let mainBatchInfo = '';
-                      if (breakdown.length > 0 && !breakdown[0].isMissing) {
-                        const batch = batches.find(b => b.id === breakdown[0].batchId);
-                        const costPerM2 = breakdown[0].unitCost / ((batch?.width || 140) / 100);
+                      if (breakdown.length > 0 && !breakdown[0].is_missing) {
+                        const batch = batches.find(b => b.id === breakdown[0].batch_id);
+                        const costPerM2 = breakdown[0].unit_cost / ((batch?.width || 140) / 100);
                         mainBatchInfo = `FIFO → lote ${breakdown[0].date} @ ${formatCurrency(costPerM2)}/m²`;
                       }
 
@@ -342,8 +345,8 @@ const Products: React.FC = () => {
                             <div className="min-w-[200px] flex-1">
                               <Select
                                 label="Insumo"
-                                value={pm.materialId}
-                                onChange={e => updateMaterial(idx, 'materialId', e.target.value)}
+                                value={pm.material_id}
+                                onChange={e => updateMaterial(idx, 'material_id', e.target.value)}
                               >
                                 {rawMaterials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                               </Select>
@@ -368,7 +371,7 @@ const Products: React.FC = () => {
                                 <Input
                                   type="number"
                                   step="0.01"
-                                  label={`Cant. (${pm.consumptionUnit}s)`}
+                                  label={`Cant. (${pm.consumption_unit}s)`}
                                   value={pm.quantity}
                                   onChange={e => updateMaterial(idx, 'quantity', parseFloat(e.target.value))}
                                 />
@@ -444,7 +447,7 @@ const Products: React.FC = () => {
                     </div>
 
                     <div className="space-y-4">
-                      <label className="text-xs font-bold uppercase text-gray-400">Precios Sugeridos ({formData.targetMargin}%)</label>
+                      <label className="text-xs font-bold uppercase text-gray-400">Precios Sugeridos ({formData.target_margin}%)</label>
                       <div className="grid grid-cols-2 gap-4">
                         <button type="button" onClick={() => setFormData({ ...formData, price: exactSuggestedPrice })} className="rounded-xl border border-indigo-100 bg-white p-4 text-left transition-shadow hover:shadow-md">
                           <div className="text-[10px] font-bold uppercase text-gray-400">Margen Exacto</div>
@@ -460,9 +463,9 @@ const Products: React.FC = () => {
                     <div>
                       <div className="mb-2 flex justify-between text-xs font-bold uppercase text-gray-400">
                         <span>Margen Objetivo</span>
-                        <span className="text-indigo-600">{formData.targetMargin}%</span>
+                        <span className="text-indigo-600">{formData.target_margin}%</span>
                       </div>
-                      <input type="range" min="10" max="90" className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-indigo-100 accent-indigo-600" value={formData.targetMargin} onChange={e => setFormData({ ...formData, targetMargin: parseFloat(e.target.value) })} />
+                      <input type="range" min="10" max="90" className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-indigo-100 accent-indigo-600" value={formData.target_margin} onChange={e => setFormData({ ...formData, target_margin: parseFloat(e.target.value) })} />
                     </div>
                   </Card>
 

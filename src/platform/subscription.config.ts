@@ -1,19 +1,23 @@
 import { Capability } from './capabilities.config';
 
-export type PlanKey = 'demo' | 'starter' | 'growth';
+export type PlanKey = 'demo' | 'starter' | 'growth' | 'scale' | 'enterprise';
 
 // Placeholder Stripe Price IDs - Replace with actual IDs from Stripe Dashboard
 const STRIPE_PRICES = {
     DEMO: 'price_demo_id_placeholder',
     STARTER: 'price_starter_id_placeholder',
-    GROWTH: 'price_growth_id_placeholder'
+    GROWTH: 'price_growth_id_placeholder',
+    SCALE: 'price_scale_id_placeholder',
+    ENTERPRISE: 'price_enterprise_id_placeholder'
 };
 
 export const subscriptionConfig = {
     priceToPlan: {
         [STRIPE_PRICES.DEMO]: 'demo',
         [STRIPE_PRICES.STARTER]: 'starter',
-        [STRIPE_PRICES.GROWTH]: 'growth'
+        [STRIPE_PRICES.GROWTH]: 'growth',
+        [STRIPE_PRICES.SCALE]: 'scale',
+        [STRIPE_PRICES.ENTERPRISE]: 'enterprise'
     } as Record<string, PlanKey>,
 
     plans: {
@@ -38,6 +42,18 @@ export const subscriptionConfig = {
         growth: {
             label: 'Growth',
             seat_limit: 10,
+            enabledModules: ['*'],
+            allowedCapabilities: ['*']
+        },
+        scale: {
+            label: 'Scale',
+            seat_limit: 25,
+            enabledModules: ['*'],
+            allowedCapabilities: ['*']
+        },
+        enterprise: {
+            label: 'Enterprise',
+            seat_limit: 999,
             enabledModules: ['*'],
             allowedCapabilities: ['*']
         }
