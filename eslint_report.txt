@@ -1,0 +1,528 @@
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\App.tsx
+  21:9   error    'productsLength' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  38:28  error    Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+  57:12  warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  72:35  error    Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+  76:33  error    Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\components\EditTenantModal.tsx
+    8:5   error    'Loader2' is defined but never used                  @typescript-eslint/no-unused-vars
+   17:14  error    Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+   51:23  error    Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+   61:13  warning  Arbitrary value detected in 'z-[100]'                tailwindcss/no-arbitrary-value
+   68:17  warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+   68:17  warning  Classname 'animate-in' is not a Tailwind CSS class!  tailwindcss/no-custom-classname
+   68:17  warning  Classname 'zoom-in-95' is not a Tailwind CSS class!  tailwindcss/no-custom-classname
+   83:21  warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  122:25  warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  149:26  warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\components\ImpersonationBanner.tsx
+   8:35  error    Unexpected any. Specify a different type                    @typescript-eslint/no-explicit-any
+  14:14  warning  Invalid Tailwind CSS classnames order                       tailwindcss/classnames-order
+  14:14  warning  Arbitrary value detected in 'z-[60]'                        tailwindcss/no-arbitrary-value
+  14:14  warning  Classname 'animate-in' is not a Tailwind CSS class!         tailwindcss/no-custom-classname
+  14:14  warning  Classname 'slide-in-from-top' is not a Tailwind CSS class!  tailwindcss/no-custom-classname
+  16:22  warning  Invalid Tailwind CSS classnames order                       tailwindcss/classnames-order
+  20:24  warning  Invalid Tailwind CSS classnames order                       tailwindcss/classnames-order
+  22:31  warning  Invalid Tailwind CSS classnames order                       tailwindcss/classnames-order
+  30:17  warning  Invalid Tailwind CSS classnames order                       tailwindcss/classnames-order
+  30:17  warning  Arbitrary value detected in 'text-[10px]'                   tailwindcss/no-arbitrary-value
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\components\Layout.tsx
+   26:33  error    Unexpected any. Specify a different type                 @typescript-eslint/no-explicit-any
+   84:11  warning  Invalid Tailwind CSS classnames order                    tailwindcss/classnames-order
+   92:9   warning  Classname 'transform' is not needed in Tailwind CSS v3!  tailwindcss/migration-from-tailwind-2
+   94:14  warning  Invalid Tailwind CSS classnames order                    tailwindcss/classnames-order
+  142:21  error    'isActive' is defined but never used                     @typescript-eslint/no-unused-vars
+  193:13  warning  Invalid Tailwind CSS classnames order                    tailwindcss/classnames-order
+  196:11  warning  Invalid Tailwind CSS classnames order                    tailwindcss/classnames-order
+  242:14  warning  Invalid Tailwind CSS classnames order                    tailwindcss/classnames-order
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\components\LimitIndicator.tsx
+  20:32  warning  Invalid Tailwind CSS classnames order  tailwindcss/classnames-order
+  27:14  warning  Invalid Tailwind CSS classnames order  tailwindcss/classnames-order
+  28:18  warning  Invalid Tailwind CSS classnames order  tailwindcss/classnames-order
+  30:23  warning  Invalid Tailwind CSS classnames order  tailwindcss/classnames-order
+  36:18  warning  Invalid Tailwind CSS classnames order  tailwindcss/classnames-order
+  46:22  warning  Invalid Tailwind CSS classnames order  tailwindcss/classnames-order
+  53:22  warning  Invalid Tailwind CSS classnames order  tailwindcss/classnames-order
+  59:22  warning  Invalid Tailwind CSS classnames order  tailwindcss/classnames-order
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\components\SubscriptionBanner.tsx
+  23:18  warning  Invalid Tailwind CSS classnames order  tailwindcss/classnames-order
+  26:25  warning  Invalid Tailwind CSS classnames order  tailwindcss/classnames-order
+  39:22  warning  Invalid Tailwind CSS classnames order  tailwindcss/classnames-order
+  41:29  warning  Invalid Tailwind CSS classnames order  tailwindcss/classnames-order
+  52:18  warning  Invalid Tailwind CSS classnames order  tailwindcss/classnames-order
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\components\entity\EntityCard.tsx
+  19:14   warning  Invalid Tailwind CSS classnames order                               tailwindcss/classnames-order
+  26:25   warning  Classnames 'h-5, w-5' could be replaced by the 'size-5' shorthand!  tailwindcss/enforces-shorthand
+  31:79   error    Unexpected any. Specify a different type                            @typescript-eslint/no-explicit-any
+  40:35   warning  Invalid Tailwind CSS classnames order                               tailwindcss/classnames-order
+  40:35   warning  Arbitrary value detected in 'text-[10px]'                           tailwindcss/no-arbitrary-value
+  41:43   error    Unexpected any. Specify a different type                            @typescript-eslint/no-explicit-any
+  48:18   warning  Invalid Tailwind CSS classnames order                               tailwindcss/classnames-order
+  51:40   warning  Arbitrary value detected in 'text-[10px]'                           tailwindcss/no-arbitrary-value
+  52:138  error    Unexpected any. Specify a different type                            @typescript-eslint/no-explicit-any
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\components\entity\EntityDetail.tsx
+  15:14  warning  Arbitrary value detected in 'z-[110]'                         tailwindcss/no-arbitrary-value
+  19:22  warning  Invalid Tailwind CSS classnames order                         tailwindcss/classnames-order
+  19:22  warning  Classname 'transform' is not needed in Tailwind CSS v3!       tailwindcss/migration-from-tailwind-2
+  19:22  warning  Classname 'animate-in' is not a Tailwind CSS class!           tailwindcss/no-custom-classname
+  19:22  warning  Classname 'slide-in-from-right' is not a Tailwind CSS class!  tailwindcss/no-custom-classname
+  29:41  warning  Invalid Tailwind CSS classnames order                         tailwindcss/classnames-order
+  39:38  warning  Invalid Tailwind CSS classnames order                         tailwindcss/classnames-order
+  40:54  error    Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  49:45  warning  Invalid Tailwind CSS classnames order                         tailwindcss/classnames-order
+  52:45  warning  Invalid Tailwind CSS classnames order                         tailwindcss/classnames-order
+  53:98  error    Unexpected any. Specify a different type                      @typescript-eslint/no-explicit-any
+  60:37  warning  Invalid Tailwind CSS classnames order                         tailwindcss/classnames-order
+  69:45  warning  Invalid Tailwind CSS classnames order                         tailwindcss/classnames-order
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\components\entity\EntityList.tsx
+   41:18  warning  Invalid Tailwind CSS classnames order                                                  tailwindcss/classnames-order
+   42:22  warning  Invalid Tailwind CSS classnames order                                                  tailwindcss/classnames-order
+   43:26  warning  Invalid Tailwind CSS classnames order                                                  tailwindcss/classnames-order
+   43:26  warning  Classnames 'w-10, h-10' could be replaced by the 'size-10' shorthand!                  tailwindcss/enforces-shorthand
+   52:18  warning  Invalid Tailwind CSS classnames order                                                  tailwindcss/classnames-order
+   53:22  warning  Invalid Tailwind CSS classnames order                                                  tailwindcss/classnames-order
+   54:21  warning  Invalid Tailwind CSS classnames order                                                  tailwindcss/classnames-order
+   61:14  warning  Invalid Tailwind CSS classnames order                                                  tailwindcss/classnames-order
+   64:22  warning  Invalid Tailwind CSS classnames order                                                  tailwindcss/classnames-order
+   64:22  warning  Classnames 'left-6, right-6' could be replaced by the 'inset-x-6' shorthand!           tailwindcss/enforces-shorthand
+   64:22  warning  Classnames 'md:left-0, md:right-0' could be replaced by the 'md:inset-x-0' shorthand!  tailwindcss/enforces-shorthand
+   64:22  warning  Arbitrary value detected in 'z-[60]'                                                   tailwindcss/no-arbitrary-value
+   64:22  warning  Classname 'animate-in' is not a Tailwind CSS class!                                    tailwindcss/no-custom-classname
+   64:22  warning  Classname 'slide-in-from-bottom-6' is not a Tailwind CSS class!                        tailwindcss/no-custom-classname
+   64:22  warning  Classname 'md:slide-in-from-top-2' is not a Tailwind CSS class!                        tailwindcss/no-custom-classname
+   70:26  warning  Invalid Tailwind CSS classnames order                                                  tailwindcss/classnames-order
+   71:26  warning  Invalid Tailwind CSS classnames order                                                  tailwindcss/classnames-order
+   79:33  warning  Invalid Tailwind CSS classnames order                                                  tailwindcss/classnames-order
+   91:18  warning  Invalid Tailwind CSS classnames order                                                  tailwindcss/classnames-order
+  107:41  warning  Invalid Tailwind CSS classnames order                                                  tailwindcss/classnames-order
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\components\entity\EntityModal.tsx
+  29:14  warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  29:14  warning  Arbitrary value detected in 'z-[100]'                                  tailwindcss/no-arbitrary-value
+  30:18  warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  30:18  warning  Arbitrary value detected in 'rounded-t-[2.5rem]'                       tailwindcss/no-arbitrary-value
+  30:18  warning  Classname 'animate-in' is not a Tailwind CSS class!                    tailwindcss/no-custom-classname
+  30:18  warning  Classname 'slide-in-from-bottom' is not a Tailwind CSS class!          tailwindcss/no-custom-classname
+  30:18  warning  Classname 'md:zoom-in-95' is not a Tailwind CSS class!                 tailwindcss/no-custom-classname
+  31:22  warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  33:29  warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  34:39  warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  38:25  warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  38:25  warning  Classnames 'w-10, h-10' could be replaced by the 'size-10' shorthand!  tailwindcss/enforces-shorthand
+  49:42  error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+  51:21  warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  59:29  warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  66:29  warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  66:29  warning  Arbitrary value detected in 'flex-[1.5]'                               tailwindcss/no-arbitrary-value
+  66:29  warning  Arbitrary value detected in 'active:scale-[0.98]'                      tailwindcss/no-arbitrary-value
+  70:42  warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  70:42  warning  Classnames 'w-4, h-4' could be replaced by the 'size-4' shorthand!     tailwindcss/enforces-shorthand
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\components\entity\EntityTable.tsx
+  16:14  warning  Invalid Tailwind CSS classnames order                               tailwindcss/classnames-order
+  17:20  warning  Invalid Tailwind CSS classnames order                               tailwindcss/classnames-order
+  18:24  warning  Invalid Tailwind CSS classnames order                               tailwindcss/classnames-order
+  21:33  warning  Invalid Tailwind CSS classnames order                               tailwindcss/classnames-order
+  26:37  warning  Invalid Tailwind CSS classnames order                               tailwindcss/classnames-order
+  26:37  warning  Classnames 'h-4, w-4' could be replaced by the 'size-4' shorthand!  tailwindcss/enforces-shorthand
+  54:45  warning  Invalid Tailwind CSS classnames order                               tailwindcss/classnames-order
+  54:45  warning  Classnames 'h-4, w-4' could be replaced by the 'size-4' shorthand!  tailwindcss/enforces-shorthand
+  60:87  error    Unexpected any. Specify a different type                            @typescript-eslint/no-explicit-any
+  64:42  warning  Invalid Tailwind CSS classnames order                               tailwindcss/classnames-order
+  70:53  warning  Invalid Tailwind CSS classnames order                               tailwindcss/classnames-order
+  70:53  warning  Invalid Tailwind CSS classnames order                               tailwindcss/classnames-order
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\components\entity\types.ts
+  9:39  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\hooks\AuthProvider.tsx
+   95:26  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  119:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\pages\Dashboard.tsx
+    2:64  error    'ArrowRight' is defined but never used               @typescript-eslint/no-unused-vars
+   42:10  warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+   42:10  warning  Classname 'animate-in' is not a Tailwind CSS class!  tailwindcss/no-custom-classname
+   42:10  warning  Classname 'fade-in' is not a Tailwind CSS class!     tailwindcss/no-custom-classname
+   48:12  warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+   73:12  warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  103:16  warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  128:20  warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  129:22  warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  130:22  warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\pages\Login.tsx
+    3:22  error    'Mail' is defined but never used               @typescript-eslint/no-unused-vars
+    3:28  error    'Lock' is defined but never used               @typescript-eslint/no-unused-vars
+   16:11  error    'navigate' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   36:23  error    Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+   45:18  warning  Invalid Tailwind CSS classnames order          tailwindcss/classnames-order
+   54:13  warning  Invalid Tailwind CSS classnames order          tailwindcss/classnames-order
+   58:23  warning  Invalid Tailwind CSS classnames order          tailwindcss/classnames-order
+  159:21  warning  Invalid Tailwind CSS classnames order          tailwindcss/classnames-order
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\pages\NotProvisioned.tsx
+  16:14  warning  Invalid Tailwind CSS classnames order                                           tailwindcss/classnames-order
+  16:14  warning  Arbitrary value detected in 'bg-[#f8fafc]'                                      tailwindcss/no-arbitrary-value
+  18:18  warning  Invalid Tailwind CSS classnames order                                           tailwindcss/classnames-order
+  18:18  warning  Classnames 'w-[40%], h-[40%]' could be replaced by the 'size-[40%]' shorthand!  tailwindcss/enforces-shorthand
+  18:18  warning  Arbitrary value detected in 'right-[-10%]'                                      tailwindcss/no-arbitrary-value
+  18:18  warning  Arbitrary value detected in 'w-[40%]'                                           tailwindcss/no-arbitrary-value
+  18:18  warning  Arbitrary value detected in 'h-[40%]'                                           tailwindcss/no-arbitrary-value
+  18:18  warning  Arbitrary value detected in 'blur-[120px]'                                      tailwindcss/no-arbitrary-value
+  18:18  warning  Classname 'top-[-10%' is not a Tailwind CSS class!                              tailwindcss/no-custom-classname
+  18:18  warning  Classname ']' is not a Tailwind CSS class!                                      tailwindcss/no-custom-classname
+  18:18  warning  The arbitrary class 'w-[40%], h-[40%]' could be replaced by 'w-2/5, h-2/5'      tailwindcss/no-unnecessary-arbitrary-value
+  19:18  warning  Invalid Tailwind CSS classnames order                                           tailwindcss/classnames-order
+  19:18  warning  Classnames 'w-[40%], h-[40%]' could be replaced by the 'size-[40%]' shorthand!  tailwindcss/enforces-shorthand
+  19:18  warning  Arbitrary value detected in 'bottom-[-10%]'                                     tailwindcss/no-arbitrary-value
+  19:18  warning  Arbitrary value detected in 'left-[-10%]'                                       tailwindcss/no-arbitrary-value
+  19:18  warning  Arbitrary value detected in 'w-[40%]'                                           tailwindcss/no-arbitrary-value
+  19:18  warning  Arbitrary value detected in 'h-[40%]'                                           tailwindcss/no-arbitrary-value
+  19:18  warning  Arbitrary value detected in 'blur-[120px]'                                      tailwindcss/no-arbitrary-value
+  19:18  warning  The arbitrary class 'w-[40%], h-[40%]' could be replaced by 'w-2/5, h-2/5'      tailwindcss/no-unnecessary-arbitrary-value
+  21:18  warning  Invalid Tailwind CSS classnames order                                           tailwindcss/classnames-order
+  22:22  warning  Invalid Tailwind CSS classnames order                                           tailwindcss/classnames-order
+  22:22  warning  Arbitrary value detected in 'rounded-[2.5rem]'                                  tailwindcss/no-arbitrary-value
+  22:22  warning  Arbitrary value detected in 'shadow-[0_32px_64px_-16px_rgba(0,0,0,0.08)]'       tailwindcss/no-arbitrary-value
+  24:30  warning  Invalid Tailwind CSS classnames order                                           tailwindcss/classnames-order
+  24:30  warning  Classnames 'w-16, h-16' could be replaced by the 'size-16' shorthand!           tailwindcss/enforces-shorthand
+  29:25  warning  Invalid Tailwind CSS classnames order                                           tailwindcss/classnames-order
+  33:24  warning  Invalid Tailwind CSS classnames order                                           tailwindcss/classnames-order
+  41:29  warning  Invalid Tailwind CSS classnames order                                           tailwindcss/classnames-order
+  41:29  warning  Arbitrary value detected in 'active:scale-[0.98]'                               tailwindcss/no-arbitrary-value
+  48:29  warning  Invalid Tailwind CSS classnames order                                           tailwindcss/classnames-order
+  48:29  warning  Arbitrary value detected in 'active:scale-[0.98]'                               tailwindcss/no-arbitrary-value
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\pages\PlatformAdmin.tsx
+    8:5   error    'Search' is defined but never used                                     @typescript-eslint/no-unused-vars
+   14:5   error    'ShieldCheck' is defined but never used                                @typescript-eslint/no-unused-vars
+   27:48  error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+   28:44  error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+   33:58  error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+   77:21  error    'data' is assigned a value but never used                              @typescript-eslint/no-unused-vars
+   97:23  error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+  115:18  warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  132:22  warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  176:27  warning  Classname 'animate-in' is not a Tailwind CSS class!                    tailwindcss/no-custom-classname
+  176:27  warning  Classname 'slide-in-from-top-4' is not a Tailwind CSS class!           tailwindcss/no-custom-classname
+  176:27  warning  Classname 'fade-in' is not a Tailwind CSS class!                       tailwindcss/no-custom-classname
+  182:58  warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  206:34  warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  228:26  warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  235:30  warning  Arbitrary value detected in 'sm:min-w-[300px]'                         tailwindcss/no-arbitrary-value
+  257:30  warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  259:56  warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  261:46  warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  264:53  warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  264:53  warning  Classnames 'w-10, h-10' could be replaced by the 'size-10' shorthand!  tailwindcss/enforces-shorthand
+  282:46  warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  290:42  warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\pages\Products.tsx
+    2:94   error    'ChevronRight' is defined but never used          @typescript-eslint/no-unused-vars
+    2:108  error    'AlertTriangle' is defined but never used         @typescript-eslint/no-unused-vars
+    2:144  error    'Ruler' is defined but never used                 @typescript-eslint/no-unused-vars
+    2:151  error    'History' is defined but never used               @typescript-eslint/no-unused-vars
+    4:36   error    'Status' is defined but never used                @typescript-eslint/no-unused-vars
+    4:44   error    'Unit' is defined but never used                  @typescript-eslint/no-unused-vars
+    4:50   error    'RawMaterial' is defined but never used           @typescript-eslint/no-unused-vars
+    4:63   error    'MaterialBatch' is defined but never used         @typescript-eslint/no-unused-vars
+   12:3    error    'Table' is defined but never used                 @typescript-eslint/no-unused-vars
+   41:11   error    'ProductMaterialUI' is defined but never used     @typescript-eslint/no-unused-vars
+   53:44   error    Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+   62:42   error    Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+   63:57   error    Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+   68:64   error    Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+   98:62   error    Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+  113:61   error    Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+  138:68   error    Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+  156:60   error    Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+  160:64   error    Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+  180:9    error    'diffPercent' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  203:14   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  273:19   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  273:19   warning  Arbitrary value detected in 'max-h-[90vh]'        tailwindcss/no-arbitrary-value
+  274:20   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  279:45   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  280:22   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  299:23   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  310:58   error    Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+  319:80   error    Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+  340:40   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  341:32   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  342:34   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  342:34   warning  Arbitrary value detected in 'min-w-[200px]'       tailwindcss/no-arbitrary-value
+  354:40   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  355:38   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  356:111  warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  356:111  warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  359:111  warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  377:42   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  378:40   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  378:40   warning  Arbitrary value detected in 'h-[40px]'            tailwindcss/no-arbitrary-value
+  385:34   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  385:34   warning  Arbitrary value detected in 'min-w-[150px]'       tailwindcss/no-arbitrary-value
+  386:38   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  395:34   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  402:34   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  406:41   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  409:40   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  410:68   error    Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+  411:55   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  413:50   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  413:50   warning  Arbitrary value detected in 'text-[10px]'         tailwindcss/no-arbitrary-value
+  414:64   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  418:50   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  418:50   warning  Arbitrary value detected in 'text-[10px]'         tailwindcss/no-arbitrary-value
+  419:64   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  435:22   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  437:25   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  439:27   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  440:28   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  441:31   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  447:30   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  449:120  warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  450:32   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  450:32   warning  Arbitrary value detected in 'text-[10px]'         tailwindcss/no-arbitrary-value
+  453:125  warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  454:32   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  454:32   warning  Arbitrary value detected in 'text-[10px]'         tailwindcss/no-arbitrary-value
+  461:28   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  465:61   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  469:25   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  471:30   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  473:31   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  478:27   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  487:30   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  489:34   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  494:30   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+  503:20   warning  Invalid Tailwind CSS classnames order             tailwindcss/classnames-order
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\pages\RawMaterials.tsx
+    2:112  error    'Maximize2' is defined but never used                @typescript-eslint/no-unused-vars
+   12:3    error    'Table' is defined but never used                    @typescript-eslint/no-unused-vars
+   42:44   error    Unexpected any. Specify a different type             @typescript-eslint/no-explicit-any
+  251:14   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  292:25   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  327:17   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  328:17   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  383:26   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  396:22   warning  Classname 'animate-in' is not a Tailwind CSS class!  tailwindcss/no-custom-classname
+  396:22   warning  Classname 'fade-in' is not a Tailwind CSS class!     tailwindcss/no-custom-classname
+  396:22   warning  Classname 'zoom-in-95' is not a Tailwind CSS class!  tailwindcss/no-custom-classname
+  397:26   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  404:21   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  411:26   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  446:17   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  446:17   warning  Arbitrary value detected in 'max-w-[90vw]'           tailwindcss/no-arbitrary-value
+  446:17   warning  Arbitrary value detected in 'max-h-[90vh]'           tailwindcss/no-arbitrary-value
+  447:18   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  452:20   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  452:20   warning  Classname 'no-print' is not a Tailwind CSS class!    tailwindcss/no-custom-classname
+  458:18   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  459:20   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  459:20   warning  Classname 'no-print' is not a Tailwind CSS class!    tailwindcss/no-custom-classname
+  460:22   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  461:23   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  464:24   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  468:23   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  475:23   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  483:24   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  539:24   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  541:29   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  541:29   warning  Arbitrary value detected in 'text-[10px]'            tailwindcss/no-arbitrary-value
+  544:26   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  546:29   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  546:29   warning  Arbitrary value detected in 'text-[10px]'            tailwindcss/no-arbitrary-value
+  557:21   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  557:21   warning  Classname 'no-print' is not a Tailwind CSS class!    tailwindcss/no-custom-classname
+  571:34   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  571:34   warning  Classname 'no-print' is not a Tailwind CSS class!    tailwindcss/no-custom-classname
+  581:89   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  582:38   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  584:98   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  595:37   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  595:37   warning  Arbitrary value detected in 'text-[10px]'            tailwindcss/no-arbitrary-value
+  598:38   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  599:38   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  600:38   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  606:38   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  606:38   warning  Classname 'no-print' is not a Tailwind CSS class!    tailwindcss/no-custom-classname
+  617:33   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  619:48   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  620:36   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  621:36   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  622:36   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  623:36   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  624:36   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  634:18   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  634:18   warning  Classname 'no-print' is not a Tailwind CSS class!    tailwindcss/no-custom-classname
+  643:11   warning  Arbitrary value detected in 'z-[60]'                 tailwindcss/no-arbitrary-value
+  647:17   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  653:22   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  654:42   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+  655:22   warning  Invalid Tailwind CSS classnames order                tailwindcss/classnames-order
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\pages\Settings.tsx
+   8:14  warning  Invalid Tailwind CSS classnames order                                      tailwindcss/classnames-order
+   8:14  warning  Classname 'animate-in' is not a Tailwind CSS class!                        tailwindcss/no-custom-classname
+   8:14  warning  Classname 'fade-in' is not a Tailwind CSS class!                           tailwindcss/no-custom-classname
+  11:22  warning  Invalid Tailwind CSS classnames order                                      tailwindcss/classnames-order
+  12:26  warning  Invalid Tailwind CSS classnames order                                      tailwindcss/classnames-order
+  12:26  warning  Classnames 'w-10, h-10' could be replaced by the 'size-10' shorthand!      tailwindcss/enforces-shorthand
+  15:27  warning  Invalid Tailwind CSS classnames order                                      tailwindcss/classnames-order
+  17:21  warning  Invalid Tailwind CSS classnames order                                      tailwindcss/classnames-order
+  18:20  warning  Invalid Tailwind CSS classnames order                                      tailwindcss/classnames-order
+  23:26  warning  Invalid Tailwind CSS classnames order                                      tailwindcss/classnames-order
+  23:26  warning  Arbitrary value detected in 'rounded-[2.5rem]'                             tailwindcss/no-arbitrary-value
+  23:26  warning  Arbitrary value detected in 'shadow-[0_32px_64px_-16px_rgba(0,0,0,0.06)]'  tailwindcss/no-arbitrary-value
+  24:26  warning  Invalid Tailwind CSS classnames order                                      tailwindcss/classnames-order
+  24:26  warning  Classnames 'w-32, h-32' could be replaced by the 'size-32' shorthand!      tailwindcss/enforces-shorthand
+  26:26  warning  Invalid Tailwind CSS classnames order                                      tailwindcss/classnames-order
+  27:30  warning  Invalid Tailwind CSS classnames order                                      tailwindcss/classnames-order
+  27:30  warning  Classnames 'w-12, h-12' could be replaced by the 'size-12' shorthand!      tailwindcss/enforces-shorthand
+  31:33  warning  Invalid Tailwind CSS classnames order                                      tailwindcss/classnames-order
+  32:32  warning  Invalid Tailwind CSS classnames order                                      tailwindcss/classnames-order
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\pages\Team.tsx
+  112:25   error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+  141:25   error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+  161:25   error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+  186:25   error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+  204:30   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  204:30   warning  Classnames 'w-8, h-8' could be replaced by the 'size-8' shorthand!     tailwindcss/enforces-shorthand
+  219:27   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  219:27   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  219:27   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  228:38   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  234:38   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  269:14   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  269:14   warning  Classname 'animate-in' is not a Tailwind CSS class!                    tailwindcss/no-custom-classname
+  269:14   warning  Classname 'fade-in' is not a Tailwind CSS class!                       tailwindcss/no-custom-classname
+  270:21   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  272:25   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  273:24   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  276:22   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  280:25   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  280:25   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  280:25   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  291:30   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  291:30   warning  Classname 'animate-in' is not a Tailwind CSS class!                    tailwindcss/no-custom-classname
+  291:30   warning  Classname 'fade-in' is not a Tailwind CSS class!                       tailwindcss/no-custom-classname
+  291:30   warning  Classname 'slide-in-from-bottom-2' is not a Tailwind CSS class!        tailwindcss/no-custom-classname
+  298:18   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  299:22   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  301:30   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  301:30   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  301:30   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  301:30   warning  Classname 'animate-in' is not a Tailwind CSS class!                    tailwindcss/no-custom-classname
+  301:30   warning  Classname 'slide-in-from-top-4' is not a Tailwind CSS class!           tailwindcss/no-custom-classname
+  302:34   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  302:34   warning  Classnames 'w-10, h-10' could be replaced by the 'size-10' shorthand!  tailwindcss/enforces-shorthand
+  305:32   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  319:30   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  319:30   warning  Arbitrary value detected in 'rounded-[2rem]'                           tailwindcss/no-arbitrary-value
+  320:34   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  320:34   warning  Classnames 'w-24, h-24' could be replaced by the 'size-24' shorthand!  tailwindcss/enforces-shorthand
+  321:33   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  322:32   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  325:37   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  343:32   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  343:32   warning  Arbitrary value detected in 'text-[10px]'                              tailwindcss/no-arbitrary-value
+  344:90   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  347:32   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  347:32   warning  Arbitrary value detected in 'text-[10px]'                              tailwindcss/no-arbitrary-value
+  348:45   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  348:193  error    Unexpected any. Specify a different type                               @typescript-eslint/no-explicit-any
+  355:32   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  355:32   warning  Arbitrary value detected in 'text-[10px]'                              tailwindcss/no-arbitrary-value
+  356:96   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  359:32   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  359:32   warning  Arbitrary value detected in 'text-[10px]'                              tailwindcss/no-arbitrary-value
+  360:87   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  376:32   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  376:32   warning  Arbitrary value detected in 'text-[10px]'                              tailwindcss/no-arbitrary-value
+  379:29   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  379:29   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  385:43   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  385:43   warning  Arbitrary value detected in 'text-[10px]'                              tailwindcss/no-arbitrary-value
+  388:32   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  388:32   warning  Arbitrary value detected in 'text-[10px]'                              tailwindcss/no-arbitrary-value
+  389:33   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  389:33   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  394:43   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  394:43   warning  Arbitrary value detected in 'text-[10px]'                              tailwindcss/no-arbitrary-value
+  397:32   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+  397:32   warning  Arbitrary value detected in 'text-[10px]'                              tailwindcss/no-arbitrary-value
+  398:94   warning  Invalid Tailwind CSS classnames order                                  tailwindcss/classnames-order
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\services\geminiService.ts
+  48:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\services\inventory.service.ts
+  82:27  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\services\supabase.ts
+  14:67  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\src\components\ui\EmptyState.tsx
+  26:13  warning  Invalid Tailwind CSS classnames order  tailwindcss/classnames-order
+  37:21  warning  Invalid Tailwind CSS classnames order  tailwindcss/classnames-order
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\src\components\ui\Input.tsx
+  46:17  warning  Invalid Tailwind CSS classnames order  tailwindcss/classnames-order
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\src\components\ui\PageHeader.tsx
+  19:13  warning  Invalid Tailwind CSS classnames order  tailwindcss/classnames-order
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\src\components\ui\Select.tsx
+  51:21  warning  Invalid Tailwind CSS classnames order  tailwindcss/classnames-order
+  65:21  warning  Invalid Tailwind CSS classnames order  tailwindcss/classnames-order
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\src\components\ui\StatCard.tsx
+  38:25  warning  Invalid Tailwind CSS classnames order  tailwindcss/classnames-order
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\src\components\ui\Table.tsx
+  20:16  warning  Invalid Tailwind CSS classnames order  tailwindcss/classnames-order
+  41:9   warning  Invalid Tailwind CSS classnames order  tailwindcss/classnames-order
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\store.ts
+    3:38  error  'ProductMaterial' is defined but never used            @typescript-eslint/no-unused-vars
+    5:10  error  'fetchProductsFromSupabase' is defined but never used  @typescript-eslint/no-unused-vars
+   69:20  error  Unexpected any. Specify a different type               @typescript-eslint/no-explicit-any
+  172:35  error  Unexpected any. Specify a different type               @typescript-eslint/no-explicit-any
+  206:39  error  Unexpected any. Specify a different type               @typescript-eslint/no-explicit-any
+  228:39  error  Unexpected any. Specify a different type               @typescript-eslint/no-explicit-any
+  488:32  error  Unexpected any. Specify a different type               @typescript-eslint/no-explicit-any
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\supabase\functions\beto-create-company\index.ts
+  104:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\supabase\functions\beto-manage-team\index.ts
+   46:42  error  'membError' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  163:32  error  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+  212:21  error  Unexpected any. Specify a different type        @typescript-eslint/no-explicit-any
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\supabase\functions\stripe-webhook\index.ts
+  119:55  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  144:56  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  152:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  164:45  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  180:75  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Beto\Documents\APP\cost-margin-manager\types.ts
+  64:28  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+Ô£û 454 problems (83 errors, 371 warnings)
+  0 errors and 282 warnings potentially fixable with the `--fix` option.
+

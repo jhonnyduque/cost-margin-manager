@@ -35,7 +35,7 @@ export const StatCard: React.FC<StatCardProps> = ({
                 </span>
                 {Icon && (
                     <div
-                        className="p-2 rounded-full"
+                        className="rounded-full p-2"
                         style={{
                             backgroundColor: tokens.colors.bg,
                             color: tokens.colors.text.secondary

@@ -50,7 +50,7 @@ serve(async (req) => {
             .eq('user_id', requester.id)
             .single()
 
-        const isPlatformAdmin = requester.app_metadata?.is_super_admin === true
+        const isPlatformAdmin = !!requester.app_metadata?.is_super_admin
         const isCompanyAdmin = ['admin', 'owner'].includes(membership?.role)
 
         if (!isPlatformAdmin && !isCompanyAdmin) {

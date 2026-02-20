@@ -1,0 +1,47 @@
+App.tsx(5,20): error TS2307: Cannot find module './components/Layout' or its corresponding type declarations.
+App.tsx(6,23): error TS2307: Cannot find module './pages/Dashboard' or its corresponding type declarations.
+App.tsx(7,22): error TS2307: Cannot find module './pages/Products' or its corresponding type declarations.
+App.tsx(8,26): error TS2307: Cannot find module './pages/RawMaterials' or its corresponding type declarations.
+App.tsx(9,18): error TS2307: Cannot find module './pages/Team' or its corresponding type declarations.
+App.tsx(10,19): error TS2307: Cannot find module './pages/Login' or its corresponding type declarations.
+App.tsx(11,28): error TS2307: Cannot find module './pages/NotProvisioned' or its corresponding type declarations.
+App.tsx(12,27): error TS2307: Cannot find module './pages/PlatformAdmin' or its corresponding type declarations.
+App.tsx(13,22): error TS2307: Cannot find module './pages/Settings' or its corresponding type declarations.
+App.tsx(14,36): error TS2307: Cannot find module './components/SubscriptionBanner' or its corresponding type declarations.
+App.tsx(15,26): error TS2307: Cannot find module './store' or its corresponding type declarations.
+App.tsx(16,25): error TS2307: Cannot find module './hooks/useAuth' or its corresponding type declarations.
+App.tsx(17,30): error TS2307: Cannot find module './hooks/AuthProvider' or its corresponding type declarations.
+src/components/Layout.tsx(155,14): error TS2304: Cannot find name 'navigation'.
+src/pages/platform/EnvironmentsPage.tsx(7,10): error TS2614: Module '"../../components/EditTenantModal"' has no exported member 'EditTenantModal'. Did you mean to use 'import EditTenantModal from "../../components/EditTenantModal"' instead?
+src/services/inventory.service.ts(24,5): error TS2322: Type '{ id: any; companyId: any; name: any; description: any; type: any; unit: any; provider: any; status: "activa" | "inactiva"; }[]' is not assignable to type 'RawMaterial[]'.
+  Property 'company_id' is missing in type '{ id: any; companyId: any; name: any; description: any; type: any; unit: any; provider: any; status: "activa" | "inactiva"; }' but required in type 'RawMaterial'.
+src/services/inventory.service.ts(83,5): error TS2322: Type '{ id: any; companyId: any; materialId: any; date: any; provider: any; initialQuantity: number; remainingQuantity: number; unitCost: number; reference: any; width: number; length: number; area: number; entryMode: "rollo" | "pieza"; }[]' is not assignable to type 'MaterialBatch[]'.
+  Property 'company_id' is missing in type '{ id: any; companyId: any; materialId: any; date: any; provider: any; initialQuantity: number; remainingQuantity: number; unitCost: number; reference: any; width: number; length: number; area: number; entryMode: "rollo" | "pieza"; }' but required in type 'MaterialBatch'.
+src/services/products.service.ts(19,3): error TS2322: Type '{ id: any; companyId: any; name: any; reference: any; price: any; targetMargin: any; materials: any; status: "activa" | "inactiva"; createdAt: any; }[]' is not assignable to type 'Product[]'.
+  Property 'company_id' is missing in type '{ id: any; companyId: any; name: any; reference: any; price: any; targetMargin: any; materials: any; status: "activa" | "inactiva"; createdAt: any; }' but required in type 'Product'.
+supabase/functions/beto-create-company/index.ts(1,23): error TS2307: Cannot find module 'https://deno.land/std@0.168.0/http/server.ts' or its corresponding type declarations.
+supabase/functions/beto-create-company/index.ts(2,30): error TS2307: Cannot find module 'https://esm.sh/@supabase/supabase-js@2.39.7' or its corresponding type declarations.
+supabase/functions/beto-create-company/index.ts(3,20): error TS2307: Cannot find module 'https://esm.sh/stripe@14.14.0' or its corresponding type declarations.
+supabase/functions/beto-create-company/index.ts(18,13): error TS2304: Cannot find name 'Deno'.
+supabase/functions/beto-create-company/index.ts(19,13): error TS2304: Cannot find name 'Deno'.
+supabase/functions/beto-create-company/index.ts(57,27): error TS2304: Cannot find name 'Deno'.
+supabase/functions/beto-manage-team/index.ts(1,23): error TS2307: Cannot find module 'https://deno.land/std@0.168.0/http/server.ts' or its corresponding type declarations.
+supabase/functions/beto-manage-team/index.ts(2,30): error TS2307: Cannot find module 'https://esm.sh/@supabase/supabase-js@2.39.7' or its corresponding type declarations.
+supabase/functions/beto-manage-team/index.ts(17,13): error TS2304: Cannot find name 'Deno'.
+supabase/functions/beto-manage-team/index.ts(18,13): error TS2304: Cannot find name 'Deno'.
+supabase/functions/stripe-webhook-handler/index.ts(1,23): error TS2307: Cannot find module 'https://deno.land/std@0.168.0/http/server.ts' or its corresponding type declarations.
+supabase/functions/stripe-webhook-handler/index.ts(2,30): error TS2307: Cannot find module 'https://esm.sh/@supabase/supabase-js@2.39.7' or its corresponding type declarations.
+supabase/functions/stripe-webhook-handler/index.ts(3,20): error TS2307: Cannot find module 'https://esm.sh/stripe@14.14.0' or its corresponding type declarations.
+supabase/functions/stripe-webhook-handler/index.ts(5,27): error TS2304: Cannot find name 'Deno'.
+supabase/functions/stripe-webhook-handler/index.ts(14,27): error TS2304: Cannot find name 'Deno'.
+supabase/functions/stripe-webhook-handler/index.ts(33,13): error TS2304: Cannot find name 'Deno'.
+supabase/functions/stripe-webhook-handler/index.ts(34,13): error TS2304: Cannot find name 'Deno'.
+supabase/functions/stripe-webhook/index.ts(1,23): error TS2307: Cannot find module 'https://deno.land/std@0.168.0/http/server.ts' or its corresponding type declarations.
+supabase/functions/stripe-webhook/index.ts(2,30): error TS2307: Cannot find module 'https://esm.sh/@supabase/supabase-js@2' or its corresponding type declarations.
+supabase/functions/stripe-webhook/index.ts(3,20): error TS2307: Cannot find module 'https://esm.sh/stripe@12.0.0' or its corresponding type declarations.
+supabase/functions/stripe-webhook/index.ts(5,27): error TS2304: Cannot find name 'Deno'.
+supabase/functions/stripe-webhook/index.ts(13,5): error TS2304: Cannot find name 'Deno'.
+supabase/functions/stripe-webhook/index.ts(14,5): error TS2304: Cannot find name 'Deno'.
+supabase/functions/stripe-webhook/index.ts(23,31): error TS2304: Cannot find name 'Deno'.
+types/auth.ts(2,41): error TS2307: Cannot find module '../types' or its corresponding type declarations.
+types/auth.ts(3,33): error TS2307: Cannot find module '../utils/subscription' or its corresponding type declarations.

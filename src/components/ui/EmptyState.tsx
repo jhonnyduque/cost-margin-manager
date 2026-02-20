@@ -23,7 +23,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 }) => {
     return (
         <div
-            className={`flex flex-col items-center justify-center text-center p-8 ${className}`}
+            className={`flex flex-col items-center justify-center p-8 text-center ${className}`}
             style={{
                 borderRadius: tokens.radius.lg,
                 border: `2px dashed ${tokens.colors.border}`,
@@ -34,7 +34,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         >
             {Icon && (
                 <div
-                    className="mb-4 p-3 rounded-full"
+                    className="mb-4 rounded-full p-3"
                     style={{
                         backgroundColor: tokens.colors.bg, // darker circle
                         color: tokens.colors.text.muted

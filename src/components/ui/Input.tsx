@@ -43,7 +43,7 @@ export const Input: React.FC<InputProps> = ({
             )}
             <input
                 style={{ ...inputStyles, ...style }}
-                className="focus:ring-2 focus:ring-blue-100 placeholder:text-gray-400"
+                className="placeholder:text-gray-400 focus:ring-2 focus:ring-blue-100"
                 onFocus={(e) => {
                     e.currentTarget.style.borderColor = tokens.colors.brand;
                     props.onFocus?.(e);

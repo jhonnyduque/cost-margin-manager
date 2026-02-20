@@ -17,7 +17,7 @@ export const TableContainer: React.FC<BaseTableProps> = ({ children, className =
             boxShadow: tokens.shadow.subtle,
         }}
     >
-        <table className="w-full text-left border-collapse">
+        <table className="w-full border-collapse text-left">
             {children}
         </table>
     </div>
@@ -38,7 +38,7 @@ export const TableBody: React.FC<{ children: React.ReactNode }> = ({ children })
 export const TableRow: React.FC<{ children: React.ReactNode; onClick?: () => void }> = ({ children, onClick }) => (
     <tr
         onClick={onClick}
-        className={onClick ? "cursor-pointer hover:bg-gray-50 transition-colors" : ""}
+        className={onClick ? "cursor-pointer transition-colors hover:bg-gray-50" : ""}
     >
         {children}
     </tr>

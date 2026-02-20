@@ -1,0 +1,179 @@
+import React, { useState } from 'react';
+import { X, Loader2, Save } from 'lucide-react';
+import { supabase } from '@/services/supabase';
+
+interface CreateTenantModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSuccess: () => void;
+}
+
+export const CreateTenantModal: React.FC<CreateTenantModalProps> = ({ isOpen, onClose, onSuccess }) => {
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const [formData, setFormData] = useState({
+        name: '',
+        slug: '',
+        admin_email: '',
+        seat_limit: 5,
+        initial_plan: 'starter'
+    });
+
+    if (!isOpen) return null;
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: name === 'seat_limit' ? parseInt(value) || 1 : value
+        }));
+
+        // Auto-generate slug from name if slug is empty or user hasn't manually edited it much
+        if (name === 'name' && !formData.slug) {
+            const slug = value.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+            setFormData(prev => ({ ...prev, slug }));
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+
+        try {
+            const { data, error } = await supabase.functions.invoke('beto-create-company', {
+                body: {
+                    company_name: formData.name,
+                    company_slug: formData.slug,
+                    admin_email: formData.admin_email,
+                    seat_limit: formData.seat_limit,
+                    initial_plan: formData.initial_plan
+                }
+            });
+
+            if (error) throw error;
+            // The function might return error in body 
+            if (data && data.error) throw new Error(data.error);
+
+            onSuccess();
+            onClose();
+        } catch (err: any) {
+            console.error('Provisioning error:', err);
+            setError(err.message || 'Failed to create environment.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-lg rounded-xl bg-white shadow-2xl">
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                    <h2 className="text-lg font-semibold text-slate-800">Provision New Environment</h2>
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+                        <X size={20} />
+                    </button>
+                </div>
+
+                {/* Body */}
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    {error && (
+                        <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-600 border border-red-100">
+                            {error}
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="col-span-2">
+                            <label className="block text-sm font-medium text-slate-700">Environment Name</label>
+                            <input
+                                type="text"
+                                name="name"
+                                required
+                                value={formData.name}
+                                onChange={handleChange}
+                                placeholder="Acme Corp"
+                                className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                        </div>
+
+                        <div className="col-span-2">
+                            <label className="block text-sm font-medium text-slate-700">Unique Slug</label>
+                            <input
+                                type="text"
+                                name="slug"
+                                required
+                                value={formData.slug}
+                                onChange={handleChange}
+                                placeholder="acme-corp"
+                                className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 font-mono"
+                            />
+                        </div>
+
+                        <div className="col-span-2">
+                            <label className="block text-sm font-medium text-slate-700">Admin Email</label>
+                            <input
+                                type="email"
+                                name="admin_email"
+                                required
+                                value={formData.admin_email}
+                                onChange={handleChange}
+                                placeholder="admin@acme.com"
+                                className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700">Seat Limit</label>
+                            <input
+                                type="number"
+                                name="seat_limit"
+                                required
+                                min="1"
+                                value={formData.seat_limit}
+                                onChange={handleChange}
+                                className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700">Initial Plan</label>
+                            <select
+                                name="initial_plan"
+                                value={formData.initial_plan}
+                                onChange={handleChange}
+                                className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            >
+                                <option value="demo">Demo</option>
+                                <option value="starter">Starter</option>
+                                <option value="growth">Growth</option>
+                                <option value="professional">Professional</option>
+                                <option value="enterprise">Enterprise</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-slate-50">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                        >
+                            {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                            Provision Environment
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};

@@ -48,7 +48,7 @@ export const Select: React.FC<SelectProps> = ({
             <div className="relative">
                 <select
                     style={{ ...selectStyles, ...style }}
-                    className="focus:ring-2 focus:ring-blue-100 placeholder:text-gray-400"
+                    className="placeholder:text-gray-400 focus:ring-2 focus:ring-blue-100"
                     onFocus={(e) => {
                         e.currentTarget.style.borderColor = tokens.colors.brand;
                         props.onFocus?.(e);
@@ -62,7 +62,7 @@ export const Select: React.FC<SelectProps> = ({
                     {children}
                 </select>
                 <div
-                    className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2"
                     style={{ color: tokens.colors.text.secondary }}
                 >
                     <ChevronDown size={16} />

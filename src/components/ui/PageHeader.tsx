@@ -1,26 +1,17 @@
 import React from 'react';
-import { tokens } from '../../design/design-tokens';
+import { tokens } from '@/design/design-tokens';
 
 interface PageHeaderProps {
     title: string;
     description?: string;
     actions?: React.ReactNode;
-    className?: string; // Adding className for layout utilities
 }
 
-export const PageHeader: React.FC<PageHeaderProps> = ({
-    title,
-    description,
-    actions,
-    className = ''
-}) => {
+export const PageHeader: React.FC<PageHeaderProps> = ({ title, description, actions }) => {
     return (
         <div
-            className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 ${className}`}
-            style={{
-                paddingBottom: tokens.spacing.lg,
-                borderBottom: `1px solid ${tokens.colors.border}`,
-            }}
+            className="flex flex-col gap-4 border-b pb-6 sm:flex-row sm:items-center sm:justify-between"
+            style={{ borderColor: tokens.colors.border }}
         >
             <div>
                 <h1
@@ -44,12 +35,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                     </p>
                 )}
             </div>
-
-            {actions && (
-                <div className="flex items-center gap-3">
-                    {actions}
-                </div>
-            )}
+            {actions && <div className="flex gap-3">{actions}</div>}
         </div>
     );
 };
