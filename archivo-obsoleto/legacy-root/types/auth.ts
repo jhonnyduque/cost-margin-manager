@@ -1,6 +1,6 @@
 import React from 'react';
-import { User, Company, UserRole } from '../types';
-import { SuspensionLevel } from '../utils/subscription';
+import { User, Company, UserRole } from '@/types';
+import { SuspensionLevel } from '@/utils/subscription';
 
 export interface AuthContextType {
     user: User | null;

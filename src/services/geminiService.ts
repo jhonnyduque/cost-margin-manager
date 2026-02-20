@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { Product, RawMaterial, MaterialBatch } from "../types";
+import { Product, RawMaterial, MaterialBatch } from "@/types";
 import { calculateProductCost, calculateMargin } from "../store";
 
 export const getPricingInsights = async (

@@ -20,7 +20,7 @@ interface TeamMember {
 }
 
 export default function Team() {
-    const { currentCompany, userRole, isLoading: authLoading } = useAuth();
+    const { user, currentCompany, userRole, isLoading: authLoading } = useAuth();
     const [members, setMembers] = useState<TeamMember[]>([]);
     const [maxUsers, setMaxUsers] = useState(3);
     const [loading, setLoading] = useState(true);
@@ -139,20 +139,32 @@ export default function Team() {
         if (!editingMember) return;
         try {
             setLoading(true);
+            const isSelfUpdate = editingMember.user_id === user?.id;
             const isRoleChanged = isManager && editRole !== editingMember.role;
 
-            const { error } = await supabase.functions.invoke('beto-manage-team', {
-                body: {
-                    action: 'update',
-                    target_user_id: editingMember.user_id,
-                    full_name: isManager ? editName : undefined,
-                    role: isRoleChanged ? editRole : undefined,
-                    password: editPassword || undefined,
-                    company_id: currentCompany?.id
-                }
-            });
+            const { error } = await (isSelfUpdate
+                ? supabase.functions.invoke('beto-update-profile', {
+                    body: { full_name: editName, password: editPassword || undefined }
+                })
+                : supabase.functions.invoke('beto-manage-team', {
+                    body: {
+                        action: 'update',
+                        target_user_id: editingMember.user_id,
+                        full_name: isManager ? editName : undefined,
+                        role: isRoleChanged ? editRole : undefined,
+                        password: editPassword || undefined,
+                        company_id: currentCompany?.id
+                    }
+                })
+            );
 
-            if (error) throw error;
+            if (error) {
+                if (isSelfUpdate && (error.code === 'not_found' || error.status === 404)) {
+                    throw new Error('Función beto-update-profile no desplegada. Ejecuta: supabase functions deploy beto-update-profile');
+                }
+                throw error;
+            }
+
             setEditingMember(null);
             setEditPassword('');
             fetchMembers();

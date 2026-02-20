@@ -1,6 +1,6 @@
 
 import { supabase } from './supabase';
-import { RawMaterial, MaterialBatch } from '../types';
+import { RawMaterial, MaterialBatch } from '@/types';
 
 /**
  * Carga todas las materias primas de una empresa.
@@ -31,7 +31,8 @@ export async function fetchRawMaterials(companyId: string): Promise<RawMaterial[
         provider: row.provider,
         status: row.status as 'activa' | 'inactiva',
         created_at: row.created_at,
-        updated_at: row.updated_at
+        updated_at: row.updated_at,
+        deleted_at: row.deleted_at
     }));
 }
 
@@ -92,11 +93,12 @@ function mapBatches(data: any[]): MaterialBatch[] {
         remaining_quantity: Number(row.remaining_quantity),
         unit_cost: Number(row.unit_cost),
         reference: row.reference,
-        width: row.width ? Number(row.width) : undefined,
-        length: row.length ? Number(row.length) : undefined,
-        area: row.area ? Number(row.area) : undefined,
+        width: row.width ? Number(row.width) : 0,
+        length: row.length ? Number(row.length) : 0,
+        area: row.area ? Number(row.area) : 0,
         entry_mode: row.entry_mode as 'rollo' | 'pieza',
         created_at: row.created_at,
-        updated_at: row.updated_at
+        updated_at: row.updated_at,
+        deleted_at: row.deleted_at
     }));
 }

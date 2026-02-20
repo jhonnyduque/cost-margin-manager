@@ -28,6 +28,7 @@
     "noEmit": true
   },
   "exclude": [
-    "supabase"
+    "supabase",
+    "archivo-obsoleto"
   ]
 }

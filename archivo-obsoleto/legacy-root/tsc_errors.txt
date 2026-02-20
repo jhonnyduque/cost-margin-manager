@@ -1,0 +1,176 @@
+[96msrc/hooks/AuthProvider.tsx[0m:[93m4[0m:[93m10[0m - [91merror[0m[90m TS2305: [0mModule '"../types"' has no exported member 'User'.
+
+[7m4[0m import { User, Company, UserRole } from '../types';
+[7m [0m [91m         ~~~~[0m
+
+[96msrc/hooks/AuthProvider.tsx[0m:[93m4[0m:[93m16[0m - [91merror[0m[90m TS2305: [0mModule '"../types"' has no exported member 'Company'.
+
+[7m4[0m import { User, Company, UserRole } from '../types';
+[7m [0m [91m               ~~~~~~~[0m
+
+[96msrc/hooks/AuthProvider.tsx[0m:[93m4[0m:[93m25[0m - [91merror[0m[90m TS2305: [0mModule '"../types"' has no exported member 'UserRole'.
+
+[7m4[0m import { User, Company, UserRole } from '../types';
+[7m [0m [91m                        ~~~~~~~~[0m
+
+[96msrc/pages/platform/EnvironmentsPage.tsx[0m:[93m6[0m:[93m10[0m - [91merror[0m[90m TS2305: [0mModule '"@/types"' has no exported member 'Company'.
+
+[7m6[0m import { Company } from '@/types';
+[7m [0m [91m         ~~~~~~~[0m
+
+[96msrc/pages/PlatformAdmin.tsx[0m:[93m3[0m:[93m10[0m - [91merror[0m[90m TS2305: [0mModule '"@/types"' has no exported member 'Company'.
+
+[7m3[0m import { Company } from '@/types';
+[7m [0m [91m         ~~~~~~~[0m
+
+[96msrc/pages/Products.tsx[0m:[93m4[0m:[93m10[0m - [91merror[0m[90m TS2305: [0mModule '"../types"' has no exported member 'Product'.
+
+[7m4[0m import { Product, ProductMaterial, Status, Unit, RawMaterial, MaterialBatch } from '../types';
+[7m [0m [91m         ~~~~~~~[0m
+
+[96msrc/pages/Products.tsx[0m:[93m4[0m:[93m19[0m - [91merror[0m[90m TS2305: [0mModule '"../types"' has no exported member 'ProductMaterial'.
+
+[7m4[0m import { Product, ProductMaterial, Status, Unit, RawMaterial, MaterialBatch } from '../types';
+[7m [0m [91m                  ~~~~~~~~~~~~~~~[0m
+
+[96msrc/pages/Products.tsx[0m:[93m4[0m:[93m36[0m - [91merror[0m[90m TS2305: [0mModule '"../types"' has no exported member 'Status'.
+
+[7m4[0m import { Product, ProductMaterial, Status, Unit, RawMaterial, MaterialBatch } from '../types';
+[7m [0m [91m                                   ~~~~~~[0m
+
+[96msrc/pages/Products.tsx[0m:[93m4[0m:[93m44[0m - [91merror[0m[90m TS2305: [0mModule '"../types"' has no exported member 'Unit'.
+
+[7m4[0m import { Product, ProductMaterial, Status, Unit, RawMaterial, MaterialBatch } from '../types';
+[7m [0m [91m                                           ~~~~[0m
+
+[96msrc/pages/Products.tsx[0m:[93m4[0m:[93m50[0m - [91merror[0m[90m TS2305: [0mModule '"../types"' has no exported member 'RawMaterial'.
+
+[7m4[0m import { Product, ProductMaterial, Status, Unit, RawMaterial, MaterialBatch } from '../types';
+[7m [0m [91m                                                 ~~~~~~~~~~~[0m
+
+[96msrc/pages/Products.tsx[0m:[93m4[0m:[93m63[0m - [91merror[0m[90m TS2305: [0mModule '"../types"' has no exported member 'MaterialBatch'.
+
+[7m4[0m import { Product, ProductMaterial, Status, Unit, RawMaterial, MaterialBatch } from '../types';
+[7m [0m [91m                                                              ~~~~~~~~~~~~~[0m
+
+[96msrc/pages/RawMaterials.tsx[0m:[93m4[0m:[93m10[0m - [91merror[0m[90m TS2305: [0mModule '"../types"' has no exported member 'RawMaterial'.
+
+[7m4[0m import { RawMaterial, Status, Unit, MaterialBatch } from '../types';
+[7m [0m [91m         ~~~~~~~~~~~[0m
+
+[96msrc/pages/RawMaterials.tsx[0m:[93m4[0m:[93m23[0m - [91merror[0m[90m TS2305: [0mModule '"../types"' has no exported member 'Status'.
+
+[7m4[0m import { RawMaterial, Status, Unit, MaterialBatch } from '../types';
+[7m [0m [91m                      ~~~~~~[0m
+
+[96msrc/pages/RawMaterials.tsx[0m:[93m4[0m:[93m31[0m - [91merror[0m[90m TS2305: [0mModule '"../types"' has no exported member 'Unit'.
+
+[7m4[0m import { RawMaterial, Status, Unit, MaterialBatch } from '../types';
+[7m [0m [91m                              ~~~~[0m
+
+[96msrc/pages/RawMaterials.tsx[0m:[93m4[0m:[93m37[0m - [91merror[0m[90m TS2305: [0mModule '"../types"' has no exported member 'MaterialBatch'.
+
+[7m4[0m import { RawMaterial, Status, Unit, MaterialBatch } from '../types';
+[7m [0m [91m                                    ~~~~~~~~~~~~~[0m
+
+[96msrc/services/geminiService.ts[0m:[93m2[0m:[93m10[0m - [91merror[0m[90m TS2305: [0mModule '"../types"' has no exported member 'Product'.
+
+[7m2[0m import { Product, RawMaterial, MaterialBatch } from "../types";
+[7m [0m [91m         ~~~~~~~[0m
+
+[96msrc/services/geminiService.ts[0m:[93m2[0m:[93m19[0m - [91merror[0m[90m TS2305: [0mModule '"../types"' has no exported member 'RawMaterial'.
+
+[7m2[0m import { Product, RawMaterial, MaterialBatch } from "../types";
+[7m [0m [91m                  ~~~~~~~~~~~[0m
+
+[96msrc/services/geminiService.ts[0m:[93m2[0m:[93m32[0m - [91merror[0m[90m TS2305: [0mModule '"../types"' has no exported member 'MaterialBatch'.
+
+[7m2[0m import { Product, RawMaterial, MaterialBatch } from "../types";
+[7m [0m [91m                               ~~~~~~~~~~~~~[0m
+
+[96msrc/services/inventory.service.ts[0m:[93m3[0m:[93m10[0m - [91merror[0m[90m TS2305: [0mModule '"../types"' has no exported member 'RawMaterial'.
+
+[7m3[0m import { RawMaterial, MaterialBatch } from '../types';
+[7m [0m [91m         ~~~~~~~~~~~[0m
+
+[96msrc/services/inventory.service.ts[0m:[93m3[0m:[93m23[0m - [91merror[0m[90m TS2305: [0mModule '"../types"' has no exported member 'MaterialBatch'.
+
+[7m3[0m import { RawMaterial, MaterialBatch } from '../types';
+[7m [0m [91m                      ~~~~~~~~~~~~~[0m
+
+[96msrc/services/products.service.ts[0m:[93m2[0m:[93m10[0m - [91merror[0m[90m TS2305: [0mModule '"../types"' has no exported member 'Product'.
+
+[7m2[0m import { Product } from '../types';
+[7m [0m [91m         ~~~~~~~[0m
+
+[96msrc/services/supabase.ts[0m:[93m16[0m:[93m5[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'functions' does not exist in type 'SupabaseClientOptions<"public">'.
+
+[7m16[0m     functions: {
+[7m  [0m [91m    ~~~~~~~~~[0m
+
+[96msrc/store.ts[0m:[93m3[0m:[93m10[0m - [91merror[0m[90m TS2305: [0mModule '"./types"' has no exported member 'Product'.
+
+[7m3[0m import { Product, RawMaterial, Unit, ProductMaterial, MaterialBatch, StockMovement, UserRole } from './types';
+[7m [0m [91m         ~~~~~~~[0m
+
+[96msrc/store.ts[0m:[93m3[0m:[93m19[0m - [91merror[0m[90m TS2305: [0mModule '"./types"' has no exported member 'RawMaterial'.
+
+[7m3[0m import { Product, RawMaterial, Unit, ProductMaterial, MaterialBatch, StockMovement, UserRole } from './types';
+[7m [0m [91m                  ~~~~~~~~~~~[0m
+
+[96msrc/store.ts[0m:[93m3[0m:[93m32[0m - [91merror[0m[90m TS2305: [0mModule '"./types"' has no exported member 'Unit'.
+
+[7m3[0m import { Product, RawMaterial, Unit, ProductMaterial, MaterialBatch, StockMovement, UserRole } from './types';
+[7m [0m [91m                               ~~~~[0m
+
+[96msrc/store.ts[0m:[93m3[0m:[93m38[0m - [91merror[0m[90m TS2305: [0mModule '"./types"' has no exported member 'ProductMaterial'.
+
+[7m3[0m import { Product, RawMaterial, Unit, ProductMaterial, MaterialBatch, StockMovement, UserRole } from './types';
+[7m [0m [91m                                     ~~~~~~~~~~~~~~~[0m
+
+[96msrc/store.ts[0m:[93m3[0m:[93m55[0m - [91merror[0m[90m TS2305: [0mModule '"./types"' has no exported member 'MaterialBatch'.
+
+[7m3[0m import { Product, RawMaterial, Unit, ProductMaterial, MaterialBatch, StockMovement, UserRole } from './types';
+[7m [0m [91m                                                      ~~~~~~~~~~~~~[0m
+
+[96msrc/store.ts[0m:[93m3[0m:[93m70[0m - [91merror[0m[90m TS2305: [0mModule '"./types"' has no exported member 'StockMovement'.
+
+[7m3[0m import { Product, RawMaterial, Unit, ProductMaterial, MaterialBatch, StockMovement, UserRole } from './types';
+[7m [0m [91m                                                                     ~~~~~~~~~~~~~[0m
+
+[96msrc/store.ts[0m:[93m3[0m:[93m85[0m - [91merror[0m[90m TS2305: [0mModule '"./types"' has no exported member 'UserRole'.
+
+[7m3[0m import { Product, RawMaterial, Unit, ProductMaterial, MaterialBatch, StockMovement, UserRole } from './types';
+[7m [0m [91m                                                                                    ~~~~~~~~[0m
+
+[96msrc/utils/subscription.ts[0m:[93m1[0m:[93m10[0m - [91merror[0m[90m TS2305: [0mModule '"../types"' has no exported member 'SubscriptionStatus'.
+
+[7m1[0m import { SubscriptionStatus } from '../types';
+[7m [0m [91m         ~~~~~~~~~~~~~~~~~~[0m
+
+[96mtypes/auth.ts[0m:[93m2[0m:[93m41[0m - [91merror[0m[90m TS2307: [0mCannot find module '../types' or its corresponding type declarations.
+
+[7m2[0m import { User, Company, UserRole } from '../types';
+[7m [0m [91m                                        ~~~~~~~~~~[0m
+
+[96mtypes/auth.ts[0m:[93m3[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module '../utils/subscription' or its corresponding type declarations.
+
+[7m3[0m import { SuspensionLevel } from '../utils/subscription';
+[7m [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+Found 32 errors in 12 files.
+
+Errors  Files
+     3  src/hooks/AuthProvider.tsx[90m:4[0m
+     1  src/pages/platform/EnvironmentsPage.tsx[90m:6[0m
+     1  src/pages/PlatformAdmin.tsx[90m:3[0m
+     6  src/pages/Products.tsx[90m:4[0m
+     4  src/pages/RawMaterials.tsx[90m:4[0m
+     3  src/services/geminiService.ts[90m:2[0m
+     2  src/services/inventory.service.ts[90m:3[0m
+     1  src/services/products.service.ts[90m:2[0m
+     1  src/services/supabase.ts[90m:16[0m
+     7  src/store.ts[90m:3[0m
+     1  src/utils/subscription.ts[90m:1[0m
+     2  types/auth.ts[90m:2[0m

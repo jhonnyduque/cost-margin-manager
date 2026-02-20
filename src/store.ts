@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Product, RawMaterial, Unit, ProductMaterial, MaterialBatch, StockMovement, UserRole } from './types';
+import { Product, RawMaterial, Unit, ProductMaterial, MaterialBatch, StockMovement, UserRole } from '@/types';
 import { supabase } from './services/supabase';
 import { fetchProductsFromSupabase } from './services/products.service';
 
@@ -59,7 +59,7 @@ export const getFifoBreakdown = (
   const material = rawMaterials.find(m => m.id === material_id);
   if (!material) return [];
 
-  const factor = getConversionFactor(material.unit, targetUnit);
+  const factor = getConversionFactor(material.unit as Unit, targetUnit);
   let remainingToCover = requiredQuantity / factor;
 
   const materialBatches = batches

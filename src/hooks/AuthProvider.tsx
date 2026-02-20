@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '../services/supabase';
 import { useStore } from '../store';
-import { User, Company, UserRole } from '../types';
+import { User, Company, UserRole } from '@/types';
 import { getSuspensionLevel, SuspensionLevel } from '../utils/subscription';
 
 interface AuthContextType {
@@ -41,6 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const resetState = useCallback(() => {
         console.log('[AuthProvider] resetState called');
+        // Usamos un solo bloque para minimizar re-renders y periodos de "inconsistencia"
         setUser(null);
         setCurrentCompany(null);
         setUserCompanies([]);
@@ -48,8 +49,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSuspensionLevel('none');
         setMode('company');
         setImpersonatedCompanyId(null);
-        setIsLoading(false);
+
+        // Limpiamos el store global
         useStore.getState().logout();
+
+        // El loading se pone en false al final
+        setIsLoading(false);
     }, []);
 
     const loadUserData = useCallback(async (userId: string) => {

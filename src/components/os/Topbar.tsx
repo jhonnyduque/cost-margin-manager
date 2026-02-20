@@ -24,9 +24,16 @@ export const Topbar: React.FC = () => {
     }, []);
 
     const handleLogout = async () => {
-        await supabase.auth.signOut();
-        logout();
-        navigate('/login');
+        try {
+            await supabase.auth.signOut();
+            logout();
+            navigate('/login', { replace: true });
+        } catch (error) {
+            console.error('Logout error:', error);
+            // Even if signOut fails on the server, we should clear local state and force login
+            logout();
+            navigate('/login', { replace: true });
+        }
     };
 
     const handleSwitchToPlatform = () => {

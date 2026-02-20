@@ -68,8 +68,10 @@ const AppContent: React.FC = () => {
         return <Navigate to="/login" replace />;
     }
 
-    // Non-Provisioned State (User has no company and is not Super Admin)
-    if (!currentCompanyId && !user.is_super_admin && location.pathname !== '/not-provisioned') {
+    // Non-Provisioned State: Usuario autenticado pero sin empresa y no es Super Admin
+    // Añadimos una comprobación extra para evitar la carrera durante el logout
+    const isNotProvisioned = user && !currentCompanyId && !user.is_super_admin;
+    if (isNotProvisioned && location.pathname !== '/not-provisioned') {
         return <Navigate to="/not-provisioned" replace />;
     }
 

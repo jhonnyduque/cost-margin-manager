@@ -1,4 +1,4 @@
-import { SubscriptionStatus } from '../types';
+import { SubscriptionStatus } from '@/types';
 
 export type SuspensionLevel = 'none' | 'read_only' | 'blocked';
 
@@ -24,7 +24,7 @@ export function getSuspensionLevel(
         return 'read_only';
     }
 
-    if (status === 'suspended' || status === 'canceled') {
+    if (status === 'canceled' || status === 'unpaid') {
         return 'blocked';
     }
 

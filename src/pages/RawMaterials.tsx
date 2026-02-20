@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, Trash2, Edit2, Search, X, History, ShoppingCart, ArrowDownToLine, Printer, Pencil, AlertCircle, Maximize2, Scissors, RotateCcw } from 'lucide-react';
 import { useStore } from '../store';
-import { RawMaterial, Status, Unit, MaterialBatch } from '../types';
+import { RawMaterial, Status, Unit, MaterialBatch } from '@/types';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -88,7 +88,8 @@ const RawMaterials: React.FC = () => {
       status: formData.status,
       company_id: currentCompanyId || '',
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      deleted_at: null
     };
 
     if (editingId) {
@@ -96,7 +97,7 @@ const RawMaterials: React.FC = () => {
     } else {
       addRawMaterial(materialData);
       if (formData.initialQty > 0) {
-        const area = formData.unit === 'metro' ? formData.initialQty * ((formData.width || 0) / 100) : undefined;
+        const area = formData.unit === 'metro' ? formData.initialQty * ((formData.width || 0) / 100) : 0;
         const batch: MaterialBatch = {
           id: crypto.randomUUID(),
           material_id: materialId,
@@ -107,11 +108,13 @@ const RawMaterials: React.FC = () => {
           unit_cost: formData.unitCost,
           reference: 'Carga Inicial',
           width: formData.width,
+          length: 0,
           area: area,
           entry_mode: 'rollo',
           company_id: currentCompanyId || '',
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          deleted_at: null
         };
         addBatch(batch);
       }

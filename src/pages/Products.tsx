@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, Trash2, Edit2, Search, PlayCircle, Info, Layers, TrendingUp, CheckCircle2, X, ChevronRight, AlertTriangle, Scissors, RotateCcw, Ruler, History, Copy } from 'lucide-react';
 import { useStore, calculateProductCost, calculateMargin, calculateFifoCost, getFifoBreakdown } from '../store';
-import { Product, ProductMaterial, Status, Unit, RawMaterial, MaterialBatch } from '../types';
+import { Product, ProductMaterial, Status, Unit, RawMaterial, MaterialBatch } from '@/types';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
