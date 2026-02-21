@@ -41,13 +41,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Logout Lock
     const [isSigningOut, setIsSigningOut] = useState(false);
 
+    // 🔧 FIX #1: Ref para evitar stale closure en el listener de auth
+    const isSigningOutRef = useRef(false);
+
+    // 🔧 FIX #1: Setter seguro que sincroniza estado + ref
+    const setIsSigningOutSafe = useCallback((val: boolean) => {
+        isSigningOutRef.current = val;
+        setIsSigningOut(val);
+    }, []);
+
     const setStoreCompany = useStore((state) => state.setCurrentCompany);
     const isFetching = useRef(false);
     const hasInitialized = useRef(false);
 
     const resetState = useCallback(() => {
         console.log('[AuthProvider] resetState called');
-        // Usamos un solo bloque para minimizar re-renders y periodos de "inconsistencia"
         setUser(null);
         setCurrentCompany(null);
         setUserCompanies([]);
@@ -55,18 +63,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSuspensionLevel('none');
         setMode('company');
         setImpersonatedCompanyId(null);
-
-        // Limpiamos el store global
+        isSigningOutRef.current = false; // 🔧 FIX #1: Resetear ref también
         useStore.getState().logout();
-
-        // El loading se pone en false al final
         setIsLoading(false);
         setIsSigningOut(false);
     }, []);
 
     const loadUserData = useCallback(async (userId: string) => {
-        if (isSigningOut || isFetching.current) {
-            console.log(`[AuthProvider] loadUserData - SKIPPED (SigningOut: ${isSigningOut}, Fetching: ${isFetching.current})`);
+        // 🔧 FIX #2: Guard con ref (más confiable que estado en callbacks)
+        if (isSigningOutRef.current || isFetching.current) {
+            console.log(`[AuthProvider] loadUserData - SKIPPED (SigningOut: ${isSigningOutRef.current}, Fetching: ${isFetching.current})`);
             return;
         }
         isFetching.current = true;
@@ -77,7 +83,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             let userRes = await supabase.from('users').select('*').eq('id', userId).single();
 
-            // Reintento rápido si no se encuentra el usuario (posible retraso en trigger)
             if (userRes.error && userRes.error.code === 'PGRST116') {
                 console.warn('[AuthProvider] User record not found, retrying once...');
                 await new Promise(r => setTimeout(r, 1000));
@@ -94,8 +99,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             if (membRes.error) {
                 console.error('[AuthProvider] Memberships Fetch Error:', membRes.error);
-                // No llamo a resetState aquí para permitir que el perfil de usuario se mantenga
-                // incluso si no tiene compañías (onboarding incompleto)
                 setUser(userRes.data);
                 setIsLoading(false);
                 return;
@@ -112,17 +115,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUserCompanies(companies);
             setUser(userData);
 
-            // LOGICA DE IMPERSONACIÓN / REDIRECCIÓN
             if (userData.is_super_admin) {
-                // Si es Super Admin, por defecto entra en modo plataforma y no auto-selecciona empresa
-                // a menos que estemos ya impersonando (re-load) o tenga una por defecto y NO queramos forzar plataforma.
-                // Pero según el plan: "if is_super_admin: DO NOT auto-select company on login, route to Platform Home"
                 setMode('platform');
                 setCurrentCompany(null);
                 setUserRole(null);
                 useStore.getState().setImpersonation(false, null);
             } else {
-                // Flujo estándar para usuarios normales
                 const targetCompany =
                     companies.find(c => c.id === userData.default_company_id) ||
                     companies[0];
@@ -142,7 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     setUserRole(role);
                     setSuspensionLevel(level);
                     setMode('company');
-                    useStore.getState().setImpersonation(false, null); // Usuario normal no impersona
+                    useStore.getState().setImpersonation(false, null);
                     useStore.getState().setCurrentCompany(targetCompany.id, role);
                 } else {
                     setCurrentCompany(null);
@@ -179,6 +177,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('[AuthProvider] Initializing...');
 
         const init = async () => {
+            // 🔧 FIX #2: Guard en init() para evitar rehidratación durante logout
+            if (isSigningOutRef.current) {
+                console.log('[AuthProvider] init() aborted: signing out');
+                resetState();
+                return;
+            }
+
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user) {
                 await loadUserData(session.user.id);
@@ -191,21 +196,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const { data: { subscription } } =
             supabase.auth.onAuthStateChange(async (event, session) => {
-                console.log('[AuthProvider] Auth Event:', event, 'User:', session?.user?.id);
+                console.log('[AuthProvider] Auth Event:', event);
 
+                // 🔧 FIX #1: Usar ref.current para evitar stale closure
+                if (isSigningOutRef.current && event !== 'SIGNED_OUT') {
+                    console.log('[AuthProvider] Ignored event during signout');
+                    return;
+                }
+
+                if (event === 'SIGNED_OUT') {
+                    console.log('[AuthProvider] SIGNED_OUT → resetState');
+                    resetState();
+                    return;
+                }
+
+                // 🔧 FIX #2: Guards en eventos que podrían rehidratar
                 if (event === 'SIGNED_IN' && session?.user) {
-                    // Si ya estamos cargando este usuario, no interrumpir
-                    if (user?.id === session.user.id && !isLoading) {
-                        console.log('[AuthProvider] SIGNED_IN - Already have user, skipping load');
+                    if (isSigningOutRef.current) {
+                        console.log('[AuthProvider] SIGNED_IN ignored: signing out');
                         return;
                     }
                     await loadUserData(session.user.id);
-                } else if (event === 'SIGNED_OUT') {
-                    resetState();
-                } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-                    if (!user) await loadUserData(session.user.id);
-                } else if (event === 'INITIAL_SESSION' && session?.user) {
-                    if (!user) await loadUserData(session.user.id);
+                    return;
+                }
+
+                if (event === 'INITIAL_SESSION' && session?.user) {
+                    if (isSigningOutRef.current) {
+                        console.log('[AuthProvider] INITIAL_SESSION ignored: signing out');
+                        return;
+                    }
+                    await loadUserData(session.user.id);
+                    return;
                 }
             });
 
@@ -213,6 +234,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             subscription.unsubscribe();
         };
     }, [loadUserData, resetState]);
+
+    useEffect(() => {
+        if (!isLoading && user && window.location.pathname === '/login') {
+            console.log('[AuthProvider] User detected on /login, triggering redirect');
+        }
+    }, [user, isLoading]);
 
     const enterCompanyAsFounder = async (companyId: string) => {
         if (!user?.is_super_admin) return;
@@ -231,7 +258,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setMode('company');
             setImpersonatedCompanyId(companyId);
             setCurrentCompany(company);
-            setUserRole('admin'); // Rol virtual para el fundador
+            setUserRole('admin');
 
             const level = getSuspensionLevel(
                 company.subscription_status,
@@ -255,15 +282,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUserRole(null);
         setSuspensionLevel('none');
         useStore.getState().setImpersonation(false, null);
-        // No llamamos a logout(), solo reseteamos el context a nivel plataforma
     };
 
     const switchCompany = async (companyId: string) => {
         if (!user) return;
 
-        // Si estamos impersonando, switchCompany debería quizás resetear impersonación o simplemente cambiar de empresa impersonada
-        // Para simplificar, si es super admin, dejamos que use enterCompanyAsFounder. 
-        // Si es usuario normal, sigue su flujo.
         if (user.is_super_admin) {
             await enterCompanyAsFounder(companyId);
             return;
@@ -323,7 +346,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             enterCompanyAsFounder,
             exitImpersonation,
             isSigningOut,
-            setIsSigningOut
+            setIsSigningOut: setIsSigningOutSafe, // 🔧 FIX #1: Exportar setter seguro
         }}>
             {children}
         </AuthContext.Provider>

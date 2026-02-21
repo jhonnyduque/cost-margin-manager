@@ -6,7 +6,6 @@ import { Loader2 } from 'lucide-react';
 import { OSLayout } from './layouts/OSLayout';
 
 // Pages
-// Pages (Legacy in Root)
 import Dashboard from '@/pages/Dashboard';
 import Products from '@/pages/Products';
 import RawMaterials from '@/pages/RawMaterials';
@@ -16,7 +15,7 @@ import NotProvisioned from '@/pages/NotProvisioned';
 import Settings from '@/pages/Settings';
 
 // Pages (New in Src)
-import PlatformAdmin from './pages/PlatformAdmin'; // Now Control Center
+import PlatformAdmin from './pages/PlatformAdmin';
 import { EnvironmentsPage } from './pages/platform/EnvironmentsPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 
@@ -30,9 +29,7 @@ const AppContent: React.FC = () => {
     const { isLoading: isAuthLoading, user, mode, isSigningOut } = useAuth();
     const location = useLocation();
 
-    // -- BOOT & LOADING --
-
-    // Global Data Sync
+    // ✅ PRIMERO: Todos los hooks SIEMPRE se ejecutan
     useEffect(() => {
         if (user && currentCompanyId) {
             console.log('[App] Triggering full business data load');
@@ -44,20 +41,35 @@ const AppContent: React.FC = () => {
         }
     }, [user, currentCompanyId]);
 
-    // -- ROUTING LOGIC --
+    // ✅ SEGUNDO: Checks de estado (DESPUÉS de hooks)
 
-    if (isAuthLoading || isSigningOut) {
+    // 🔥 Loading inicial
+    if (isAuthLoading) {
         return (
             <div className="flex h-screen w-full flex-col items-center justify-center bg-slate-50 text-slate-500">
                 <Loader2 className="h-10 w-10 animate-spin text-indigo-600 mb-4" />
-                <p className="font-medium">{isSigningOut ? 'Signing out...' : 'OS Handling Session...'}</p>
+                <p className="font-medium">OS Handling Session...</p>
             </div>
         );
     }
 
+    // 🔥 Signing out - AHORA SÍ (después de hooks)
+    if (isSigningOut) {
+        console.log('[App] Blocking routing during signout');
+        return (
+            <div className="flex h-screen w-full flex-col items-center justify-center bg-slate-50 text-slate-500">
+                <Loader2 className="h-10 w-10 animate-spin text-indigo-600 mb-4" />
+                <p className="font-medium">Signing out...</p>
+            </div>
+        );
+    }
+
+    // -- ROUTING LOGIC --
+
     // Public Routes
     if (location.pathname === '/login') {
         if (user) {
+            console.log('[App] User detected on /login, redirecting to dashboard');
             return <Navigate to={user.is_super_admin ? "/control-center" : "/dashboard"} replace />;
         }
         return <Login />;
@@ -68,8 +80,7 @@ const AppContent: React.FC = () => {
         return <Navigate to="/login" replace />;
     }
 
-    // Non-Provisioned State: Usuario autenticado pero sin empresa y no es Super Admin
-    // Añadimos una comprobación extra para evitar la carrera durante el logout
+    // Non-Provisioned State
     const isNotProvisioned = user && !currentCompanyId && !user.is_super_admin;
     if (isNotProvisioned && location.pathname !== '/not-provisioned') {
         return <Navigate to="/not-provisioned" replace />;
@@ -80,7 +91,6 @@ const AppContent: React.FC = () => {
     }
 
     // -- BETO OS SHELL --
-    // All authenticated routes live inside OSLayout
     return (
         <OSLayout>
             <Routes>
@@ -92,15 +102,15 @@ const AppContent: React.FC = () => {
                 <Route path="/platform/environments" element={user.is_super_admin ? <EnvironmentsPage /> : <Navigate to="/dashboard" />} />
                 <Route path="/platform/*" element={user.is_super_admin ? <Navigate to="/control-center" /> : <Navigate to="/dashboard" />} />
 
-                {/* Tenant / User Routes (Mapped to Sidebar/Registry) */}
-                <Route path="/dashboard" element={<Dashboard />} /> {/* Cost Manager */}
-                <Route path="/control-center" element={user.is_super_admin ? <PlatformAdmin /> : <Dashboard />} /> {/* Fallback/Alias */}
+                {/* Tenant / User Routes */}
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/control-center" element={user.is_super_admin ? <PlatformAdmin /> : <Dashboard />} />
 
                 {/* Modules */}
                 <Route path="/productos" element={<Products />} />
                 <Route path="/materias-primas" element={<RawMaterials />} />
-                <Route path="/equipo" element={<Team />} /> {/* Users Module */}
-                <Route path="/platform/users" element={<Team />} /> {/* Alias for Team */}
+                <Route path="/equipo" element={<Team />} />
+                <Route path="/platform/users" element={<Team />} />
                 <Route path="/platform/billing" element={<PlaceholderPage />} />
                 <Route path="/ai" element={<PlaceholderPage />} />
                 <Route path="/analytics" element={<PlaceholderPage />} />
