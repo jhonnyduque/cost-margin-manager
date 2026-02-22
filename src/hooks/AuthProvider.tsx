@@ -74,6 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsSigningOut(false);
     }, []);
 
+    // ✅ ÚNICA DEFINICIÓN DE loadUserData - Completa con debug logs
     const loadUserData = useCallback(async (userId: string, force: boolean = false) => {
         const now = Date.now();
 
@@ -93,10 +94,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         lastLoadTimeRef.current = now;
         console.log('[AuthProvider] loadUserData - START for:', userId);
 
+        // 🔧 DEBUG: Verificar variables de entorno en producción
+        console.log('[AuthProvider] Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
+        console.log('[AuthProvider] Supabase Anon Key:', import.meta.env.VITE_SUPABASE_ANON_KEY ? 'EXISTS' : 'MISSING');
+
         try {
             setIsLoading(true);
 
+            console.log('[AuthProvider] Fetching user from Supabase...');
+
             let userRes = await supabase.from('users').select('*').eq('id', userId).single();
+
+            console.log('[AuthProvider] User query result:', {
+                error: userRes.error,
+                hasData: !!userRes.data
+            });
 
             if (userRes.error && userRes.error.code === 'PGRST116') {
                 console.warn('[AuthProvider] User record not found, retrying once...');
@@ -106,11 +118,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             if (userRes.error) {
                 console.error('[AuthProvider] User Fetch Error:', userRes.error);
+                console.error('[AuthProvider] Error details:', JSON.stringify(userRes.error, null, 2));
                 resetState();
                 return;
             }
 
-            const membRes = await supabase.from('company_members').select('company_id, role, companies(*)').eq('user_id', userId).eq('is_active', true);
+            const membRes = await supabase.from('company_members')
+                .select('company_id, role, companies(*)')
+                .eq('user_id', userId)
+                .eq('is_active', true);
 
             if (membRes.error) {
                 console.error('[AuthProvider] Memberships Fetch Error:', membRes.error);
@@ -165,8 +181,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
             }
 
-        } catch (error) {
+        } catch (error: any) {
             console.error('[AuthProvider] loadUserData - CRITICAL:', error);
+            console.error('[AuthProvider] Error stack:', error?.stack);
             resetState();
         } finally {
             console.log('[AuthProvider] loadUserData - COMPLETED');
