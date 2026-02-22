@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
-import { UserPlus, Trash2, Shield, Mail } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Mail, Building2 } from 'lucide-react';
 import { EntityList } from '../components/entity/EntityList';
 import { EntityModal } from '../components/entity/EntityModal';
 import { EntityDetail } from '../components/entity/EntityDetail';
@@ -17,6 +17,7 @@ interface TeamMember {
     joined_at: string;
     last_sign_in_at: string | null;
     company_id: string;
+    company_name?: string | null;
 }
 
 export default function Team() {
@@ -24,6 +25,9 @@ export default function Team() {
     const [members, setMembers] = useState<TeamMember[]>([]);
     const [maxUsers, setMaxUsers] = useState(3);
     const [loading, setLoading] = useState(true);
+
+    // Filtro por empresa (solo SuperAdmin)
+    const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<string>('all');
 
     // Create form state
     const [newUserEmail, setNewUserEmail] = useState('');
@@ -42,46 +46,93 @@ export default function Team() {
     const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
     const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
+    const isSuperAdmin = user != null && !currentCompany;
     const isManager = userRole === 'manager' || userRole === 'owner';
+    const canEdit = isManager || isSuperAdmin;
     const currentUsersCount = members.length;
-    const isAtLimit = currentUsersCount >= maxUsers;
+    const isAtLimit = !isSuperAdmin && currentUsersCount >= maxUsers;
     const percentageUsed = Math.min(100, (currentUsersCount / maxUsers) * 100);
-    const upgradeRecommended = percentageUsed >= 80;
+    const upgradeRecommended = !isSuperAdmin && percentageUsed >= 80;
 
+    // Lista de empresas únicas para el dropdown (solo SuperAdmin)
+    const companyOptions = useMemo(() => {
+        if (!isSuperAdmin) return [];
+        const map = new Map<string, string>();
+        members.forEach(m => {
+            if (m.company_id) {
+                map.set(m.company_id, m.company_name || m.company_id);
+            }
+        });
+        return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+    }, [members, isSuperAdmin]);
+
+    // Miembros filtrados según el dropdown
+    const filteredMembers = useMemo(() => {
+        if (!isSuperAdmin || selectedCompanyFilter === 'all') return members;
+        return members.filter(m => m.company_id === selectedCompanyFilter);
+    }, [members, isSuperAdmin, selectedCompanyFilter]);
+
+    // 🔧 FIX: Disparar cuando hay user, sin requerir currentCompany (SuperAdmin no lo tiene)
     useEffect(() => {
-        if (!authLoading && currentCompany) {
+        if (!authLoading && user) {
             fetchMembers();
-            fetchMaxUsers();
+            if (currentCompany) fetchMaxUsers();
         }
-    }, [authLoading, currentCompany?.id, currentCompany?.subscription_tier]);
+    }, [authLoading, user?.id, currentCompany?.id]);
 
     const fetchMaxUsers = async () => {
         if (!currentCompany) return;
         try {
             const { data, error } = await supabase
-                .from('subscription_plans')
-                .select('max_users')
-                .eq('slug', currentCompany.subscription_tier)
+                .from('companies')
+                .select('seat_limit')
+                .eq('id', currentCompany.id)
                 .single();
-            if (!error && data) setMaxUsers(data.max_users);
+
+            if (error) throw error;
+            if (data?.seat_limit) {
+                setMaxUsers(data.seat_limit);
+                console.log('[Team] Seat limit loaded:', data.seat_limit);
+            }
         } catch (err) {
-            console.error('Error fetching max users:', err);
+            console.error('[Team] Error fetching seat_limit:', err);
+            setMaxUsers(3);
         }
     };
 
     const fetchMembers = async () => {
+        console.log('[Team] Fetching members. SuperAdmin:', isSuperAdmin, '| Company:', currentCompany?.id);
         try {
             setLoading(true);
-            const { data, error } = await supabase
-                .from('team_members_view')
-                .select('*')
-                .eq('company_id', currentCompany?.id)
-                .order('joined_at', { ascending: true });
 
-            if (error) throw error;
-            setMembers(data || []);
+            if (isSuperAdmin) {
+                // SuperAdmin: traer todos los miembros con nombre de empresa
+                const { data, error } = await supabase
+                    .from('team_members_view')
+                    .select('*, companies(name)')
+                    .order('joined_at', { ascending: true });
+
+                if (error) throw error;
+
+                const mapped = (data || []).map((m: any) => ({
+                    ...m,
+                    company_name: m.companies?.name || null,
+                }));
+                setMembers(mapped);
+            } else {
+                // Usuario normal: solo su empresa
+                const { data, error } = await supabase
+                    .from('team_members_view')
+                    .select('*')
+                    .eq('company_id', currentCompany?.id)
+                    .order('joined_at', { ascending: true });
+
+                if (error) throw error;
+                setMembers(data || []);
+            }
         } catch (error) {
             console.error('Error fetching members:', error);
+            setMembers([]);
         } finally {
             setLoading(false);
         }
@@ -91,9 +142,7 @@ export default function Team() {
         if (isAtLimit) return;
         try {
             setLoading(true);
-            console.log('Invoking beto-manage-team...');
 
-            // Create a promise that rejects after 15 seconds
             const timeoutPromise = new Promise((_, reject) => {
                 setTimeout(() => reject(new Error('La solicitud tardó demasiado. Verifica que las Edge Functions estén desplegadas.')), 15000);
             });
@@ -112,15 +161,12 @@ export default function Team() {
             const { data, error } = await Promise.race([invokePromise, timeoutPromise]) as any;
 
             if (error) {
-                console.error('Edge Function Error:', error);
-                // Handle specific 404 (Function not found)
                 if (error.code === 'not_found' || error.status === 404) {
                     throw new Error('La función del sistema no está desplegada. Ejecuta "supabase functions deploy beto-manage-team".');
                 }
                 throw error;
             }
 
-            console.log('User created:', data);
             setStatusMessage({ type: 'success', text: `Usuario ${newUserEmail} creado con éxito.` });
             setNewUserEmail('');
             setNewUserFullName('');
@@ -128,7 +174,6 @@ export default function Team() {
             setShowCreateModal(false);
             fetchMembers();
         } catch (error: any) {
-            console.error('Creation Error:', error);
             setStatusMessage({ type: 'error', text: error.message || 'Error al crear el usuario.' });
         } finally {
             setLoading(false);
@@ -140,7 +185,7 @@ export default function Team() {
         try {
             setLoading(true);
             const isSelfUpdate = editingMember.user_id === user?.id;
-            const isRoleChanged = isManager && editRole !== editingMember.role;
+            const isRoleChanged = canEdit && editRole !== editingMember.role;
 
             const { error } = await (isSelfUpdate
                 ? supabase.functions.invoke('beto-update-profile', {
@@ -150,10 +195,10 @@ export default function Team() {
                     body: {
                         action: 'update',
                         target_user_id: editingMember.user_id,
-                        full_name: isManager ? editName : undefined,
+                        full_name: canEdit ? editName : undefined,
                         role: isRoleChanged ? editRole : undefined,
                         password: editPassword || undefined,
-                        company_id: currentCompany?.id
+                        company_id: editingMember.company_id || currentCompany?.id
                     }
                 })
             );
@@ -180,11 +225,12 @@ export default function Team() {
         if (!confirm('¿Estás seguro de que deseas eliminar este miembro?')) return;
         try {
             setLoading(true);
+            const member = members.find(m => m.user_id === userId);
             const { error } = await supabase.functions.invoke('beto-manage-team', {
                 body: {
                     action: 'delete',
                     target_user_id: userId,
-                    company_id: currentCompany?.id
+                    company_id: member?.company_id || currentCompany?.id
                 }
             });
             if (error) throw error;
@@ -197,11 +243,8 @@ export default function Team() {
     };
 
     const handleBulkAction = async (action: string, ids: string[]) => {
-        if (action === 'Archivar') {
-            await executeBulk('bulk_archive', ids);
-        } else if (action === 'Eliminar') {
-            await executeBulk('bulk_delete', ids);
-        }
+        if (action === 'Archivar') await executeBulk('bulk_archive', ids);
+        else if (action === 'Eliminar') await executeBulk('bulk_delete', ids);
     };
 
     const executeBulk = async (action: string, ids: string[]) => {
@@ -242,6 +285,18 @@ export default function Team() {
                     </div>
                 )
             },
+            // Columna Empresa — solo visible para SuperAdmin
+            ...(isSuperAdmin ? [{
+                key: 'company_name' as keyof TeamMember,
+                label: 'Empresa',
+                type: 'text' as const,
+                render: (m: TeamMember) => (
+                    <span className="inline-flex items-center gap-1 rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-600">
+                        <Building2 size={11} />
+                        {m.company_name || m.company_id}
+                    </span>
+                )
+            }] : []),
             {
                 key: 'role',
                 label: 'Rol',
@@ -301,28 +356,51 @@ export default function Team() {
             <header className="flex items-end justify-between">
                 <div>
                     <h1 className="text-3xl font-black tracking-tight text-gray-900">Equipo</h1>
-                    <p className="mt-1 font-medium text-gray-500">Gestión de acceso para {currentCompany?.name}</p>
+                    <p className="mt-1 font-medium text-gray-500">
+                        {isSuperAdmin
+                            ? `Todos los usuarios de la plataforma · ${filteredMembers.length} miembros`
+                            : `Gestión de acceso para ${currentCompany?.name}`}
+                    </p>
                 </div>
 
-                <div className="group relative">
-                    <button
-                        onClick={() => setShowCreateModal(true)}
-                        disabled={isAtLimit}
-                        className={`
-                            flex items-center gap-2 rounded-2xl px-6 py-3 font-bold shadow-lg transition-all
-                            ${isAtLimit
-                                ? 'cursor-not-allowed bg-gray-100 text-gray-400 shadow-none'
-                                : 'bg-indigo-600 text-white shadow-indigo-100 hover:bg-indigo-700 active:scale-95'}
-                        `}
-                    >
-                        <UserPlus size={20} />
-                        <span>Crear Miembro</span>
-                    </button>
-                    {isAtLimit && (
-                        <div className="animate-in fade-in slide-in-from-bottom-2 absolute bottom-full right-0 z-50 mb-3 hidden w-64 rounded-2xl bg-gray-900 p-4 text-xs text-white shadow-2xl group-hover:block">
-                            Límite alcanzado. Actualiza tu plan para invitar más personas.
+                <div className="flex items-center gap-3">
+                    {/* Dropdown filtro empresa — solo SuperAdmin */}
+                    {isSuperAdmin && (
+                        <div className="flex items-center gap-2">
+                            <Building2 size={16} className="text-gray-400" />
+                            <select
+                                value={selectedCompanyFilter}
+                                onChange={(e) => setSelectedCompanyFilter(e.target.value)}
+                                className="rounded-2xl border-none bg-white px-4 py-2.5 text-sm font-bold text-gray-700 shadow-sm ring-1 ring-gray-200 transition-all focus:ring-2 focus:ring-indigo-500"
+                            >
+                                <option value="all">Todas las empresas</option>
+                                {companyOptions.map(c => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                ))}
+                            </select>
                         </div>
                     )}
+
+                    <div className="group relative">
+                        <button
+                            onClick={() => setShowCreateModal(true)}
+                            disabled={isAtLimit}
+                            className={`
+                                flex items-center gap-2 rounded-2xl px-6 py-3 font-bold shadow-lg transition-all
+                                ${isAtLimit
+                                    ? 'cursor-not-allowed bg-gray-100 text-gray-400 shadow-none'
+                                    : 'bg-indigo-600 text-white shadow-indigo-100 hover:bg-indigo-700 active:scale-95'}
+                            `}
+                        >
+                            <UserPlus size={20} />
+                            <span>Crear Miembro</span>
+                        </button>
+                        {isAtLimit && (
+                            <div className="animate-in fade-in slide-in-from-bottom-2 absolute bottom-full right-0 z-50 mb-3 hidden w-64 rounded-2xl bg-gray-900 p-4 text-xs text-white shadow-2xl group-hover:block">
+                                Límite alcanzado. Actualiza tu plan para invitar más personas.
+                            </div>
+                        )}
+                    </div>
                 </div>
             </header>
 
@@ -340,7 +418,7 @@ export default function Team() {
 
                     <EntityList
                         config={teamConfig}
-                        items={members}
+                        items={filteredMembers}
                         loading={loading}
                     />
                 </div>
@@ -407,22 +485,27 @@ export default function Team() {
                         <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Nombre Completo</label>
                         <input
                             type="text"
-                            className={`w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500 ${!isManager ? 'cursor-not-allowed opacity-50' : ''}`}
+                            className={`w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500 ${!canEdit ? 'cursor-not-allowed opacity-50' : ''}`}
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
-                            disabled={!isManager}
+                            disabled={!canEdit}
                             required
                         />
-                        {!isManager && <p className="ml-1 text-[10px] font-bold text-orange-600">Solo Managers pueden editar nombres.</p>}
+                        {!canEdit && <p className="ml-1 text-[10px] font-bold text-orange-600">Solo Managers pueden editar nombres.</p>}
                     </div>
                     <div className="space-y-1.5">
                         <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Rol</label>
-                        <select className={`w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500 ${!isManager ? 'cursor-not-allowed opacity-50' : ''}`} value={editRole} onChange={(e) => setEditRole(e.target.value)} disabled={!isManager}>
+                        <select
+                            className={`w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500 ${!canEdit ? 'cursor-not-allowed opacity-50' : ''}`}
+                            value={editRole}
+                            onChange={(e) => setEditRole(e.target.value)}
+                            disabled={!canEdit}
+                        >
                             <option value="manager">Manager</option>
                             <option value="operator">Operador</option>
                             <option value="viewer">Lector</option>
                         </select>
-                        {!isManager && <p className="ml-1 text-[10px] font-bold text-orange-600">Solo Managers pueden cambiar roles.</p>}
+                        {!canEdit && <p className="ml-1 text-[10px] font-bold text-orange-600">Solo Managers pueden cambiar roles.</p>}
                     </div>
                     <div className="space-y-1.5">
                         <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Nueva Contraseña (Opcional)</label>
