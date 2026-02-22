@@ -44,6 +44,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 🔧 FIX #1: Ref para evitar stale closure en el listener de auth
     const isSigningOutRef = useRef(false);
 
+    // 🔧 FIX #4: Prevenir loads rápidos consecutivos (race condition entre tabs)
+    const lastLoadTimeRef = useRef<number>(0);
+    const LOAD_DEBOUNCE_MS = 1000; // Mínimo 1 segundo entre loads
+
     // 🔧 FIX #1: Setter seguro que sincroniza estado + ref
     const setIsSigningOutSafe = useCallback((val: boolean) => {
         isSigningOutRef.current = val;
@@ -63,19 +67,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSuspensionLevel('none');
         setMode('company');
         setImpersonatedCompanyId(null);
-        isSigningOutRef.current = false; // 🔧 FIX #1: Resetear ref también
+        isSigningOutRef.current = false;
+        lastLoadTimeRef.current = 0;
         useStore.getState().logout();
         setIsLoading(false);
         setIsSigningOut(false);
     }, []);
 
-    const loadUserData = useCallback(async (userId: string) => {
+    const loadUserData = useCallback(async (userId: string, force: boolean = false) => {
+        const now = Date.now();
+
+        // 🔧 FIX #4: Prevenir loads demasiado rápidos (excepto si es forzado)
+        if (!force && (now - lastLoadTimeRef.current) < LOAD_DEBOUNCE_MS) {
+            console.log(`[AuthProvider] loadUserData - DEBOUNCED (${now - lastLoadTimeRef.current}ms)`);
+            return;
+        }
+
         // 🔧 FIX #2: Guard con ref (más confiable que estado en callbacks)
         if (isSigningOutRef.current || isFetching.current) {
             console.log(`[AuthProvider] loadUserData - SKIPPED (SigningOut: ${isSigningOutRef.current}, Fetching: ${isFetching.current})`);
             return;
         }
+
         isFetching.current = true;
+        lastLoadTimeRef.current = now;
         console.log('[AuthProvider] loadUserData - START for:', userId);
 
         try {
@@ -164,7 +179,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('[AuthProvider] refreshAuth called manually');
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
-            await loadUserData(session.user.id);
+            await loadUserData(session.user.id, true); // Force refresh
         } else {
             resetState();
         }
@@ -186,7 +201,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user) {
-                await loadUserData(session.user.id);
+                await loadUserData(session.user.id, true);
             } else {
                 resetState();
             }
@@ -196,11 +211,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const { data: { subscription } } =
             supabase.auth.onAuthStateChange(async (event, session) => {
-                console.log('[AuthProvider] Auth Event:', event);
+                console.log('[AuthProvider] Auth Event:', event, 'Session:', !!session);
 
                 // 🔧 FIX #1: Usar ref.current para evitar stale closure
                 if (isSigningOutRef.current && event !== 'SIGNED_OUT') {
-                    console.log('[AuthProvider] Ignored event during signout');
+                    console.log('[AuthProvider] Ignored event during signout:', event);
+                    return;
+                }
+
+                // 🔧 FIX NUEVO #3: Ignorar TOKEN_REFRESHED - no requiere recargar datos
+                if (event === 'TOKEN_REFRESHED') {
+                    console.log('[AuthProvider] Token refreshed, no reload needed');
+                    return;
+                }
+
+                // 🔧 FIX NUEVO #3: Ignorar USER_UPDATED - no requiere recargar datos
+                if (event === 'USER_UPDATED') {
+                    console.log('[AuthProvider] User updated, no reload needed');
                     return;
                 }
 
@@ -216,7 +243,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         console.log('[AuthProvider] SIGNED_IN ignored: signing out');
                         return;
                     }
-                    await loadUserData(session.user.id);
+                    console.log('[AuthProvider] SIGNED_IN → loadUserData');
+                    await loadUserData(session.user.id, true);
                     return;
                 }
 
@@ -225,12 +253,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         console.log('[AuthProvider] INITIAL_SESSION ignored: signing out');
                         return;
                     }
-                    await loadUserData(session.user.id);
+                    console.log('[AuthProvider] INITIAL_SESSION → loadUserData');
+                    await loadUserData(session.user.id, true);
                     return;
                 }
             });
 
         return () => {
+            console.log('[AuthProvider] Unsubscribing from auth events');
             subscription.unsubscribe();
         };
     }, [loadUserData, resetState]);
@@ -346,7 +376,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             enterCompanyAsFounder,
             exitImpersonation,
             isSigningOut,
-            setIsSigningOut: setIsSigningOutSafe, // 🔧 FIX #1: Exportar setter seguro
+            setIsSigningOut: setIsSigningOutSafe,
         }}>
             {children}
         </AuthContext.Provider>
