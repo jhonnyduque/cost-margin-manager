@@ -14,12 +14,10 @@ interface AuthContextType {
     switchCompany: (companyId: string) => Promise<void>;
     resetState: () => void;
     refreshAuth: () => Promise<void>;
-    // Impersonation Support
     mode: 'platform' | 'company';
     impersonatedCompanyId: string | null;
     enterCompanyAsFounder: (companyId: string) => Promise<void>;
     exitImpersonation: () => void;
-    // Logout Guard Support
     isSigningOut: boolean;
     setIsSigningOut: (val: boolean) => void;
 }
@@ -34,18 +32,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [suspensionLevel, setSuspensionLevel] = useState<SuspensionLevel>('none');
     const [isLoading, setIsLoading] = useState(true);
 
-    // Impersonation State
     const [mode, setMode] = useState<'platform' | 'company'>('company');
     const [impersonatedCompanyId, setImpersonatedCompanyId] = useState<string | null>(null);
 
-    // Logout Lock
     const [isSigningOut, setIsSigningOut] = useState(false);
 
     const isSigningOutRef = useRef(false);
-
-    // Aumentado a 3000ms para dar más margen en producción/multi-tab
+    const isFetching = useRef(false);
     const lastLoadTimeRef = useRef<number>(0);
-    const LOAD_DEBOUNCE_MS = 3000;
+    const LOAD_DEBOUNCE_MS = 4000; // 4 segundos para evitar ráfagas en multi-tab
+
+    // Refs para leer estado actual en callbacks asíncronos y listeners
+    const userRef = useRef<User | null>(null);
+    const userCompaniesRef = useRef<Company[]>([]);
 
     const setIsSigningOutSafe = useCallback((val: boolean) => {
         isSigningOutRef.current = val;
@@ -53,8 +52,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     const setStoreCompany = useStore((state) => state.setCurrentCompany);
-    const isFetching = useRef(false);
     const hasInitialized = useRef(false);
+
+    // Sincronizar refs con estados
+    useEffect(() => {
+        userRef.current = user;
+        userCompaniesRef.current = userCompanies;
+    }, [user, userCompanies]);
+
+    // Cleanup de refs al desmontar (opcional pero buena práctica)
+    useEffect(() => {
+        return () => {
+            userRef.current = null;
+            userCompaniesRef.current = [];
+        };
+    }, []);
 
     const resetState = useCallback(() => {
         console.log('[AuthProvider] resetState called');
@@ -75,25 +87,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const loadUserData = useCallback(async (userId: string, force: boolean = false) => {
         const now = Date.now();
 
-        // Guard extra: skip si ya está cargado el mismo usuario y no es force
-        if (!force && user?.id === userId) {
-            console.log(`[loadUserData] Already loaded user ${userId}, skipping unless forced`);
+        // Mutex: si ya hay fetch en curso → skip incluso force
+        if (isFetching.current) {
+            console.log(`[loadUserData] Fetch ya en curso → SKIP (userId: ${userId}, force: ${force})`);
             return;
         }
 
-        if (!force && (now - lastLoadTimeRef.current) < LOAD_DEBOUNCE_MS) {
-            console.log(`[AuthProvider] loadUserData - DEBOUNCED (${now - lastLoadTimeRef.current}ms)`);
+        // Debounce global (aplica siempre, incluso force)
+        if ((now - lastLoadTimeRef.current) < LOAD_DEBOUNCE_MS) {
+            console.log(`[loadUserData] DEBOUNCED (${now - lastLoadTimeRef.current}ms) - force: ${force}`);
             return;
         }
 
-        if (isSigningOutRef.current || isFetching.current) {
-            console.log(`[AuthProvider] loadUserData - SKIPPED (SigningOut: ${isSigningOutRef.current}, Fetching: ${isFetching.current})`);
+        // Guard completo usando refs (valor actual real)
+        const fullyLoaded = userRef.current?.id === userId &&
+            userCompaniesRef.current.length > 0 &&
+            (currentCompany !== undefined || userRef.current?.is_super_admin);
+
+        if (!force && fullyLoaded) {
+            console.log(`[loadUserData] Datos completos ya cargados → SKIP completo`);
             return;
         }
 
         isFetching.current = true;
         lastLoadTimeRef.current = now;
-        console.log('[AuthProvider] loadUserData - START for:', userId, 'current user:', user?.id || 'none', 'force:', force);
+
+        console.log('[loadUserData] START', {
+            userId,
+            currentUser: userRef.current?.id || 'none',
+            force,
+            fullyLoaded,
+            companiesLoaded: userCompaniesRef.current.length
+        });
 
         console.log('[AuthProvider] Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
         console.log('[AuthProvider] Supabase Anon Key:', import.meta.env.VITE_SUPABASE_ANON_KEY ? 'EXISTS' : 'MISSING');
@@ -101,24 +126,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
             setIsLoading(true);
 
-            console.log('[AuthProvider] Fetching user from Supabase...');
-
             let userRes = await supabase.from('users').select('*').eq('id', userId).single();
 
-            console.log('[AuthProvider] User query result:', {
-                error: userRes.error,
-                hasData: !!userRes.data
-            });
-
             if (userRes.error && userRes.error.code === 'PGRST116') {
-                console.warn('[AuthProvider] User record not found, retrying once...');
+                console.warn('[AuthProvider] User not found, retrying once...');
                 await new Promise(r => setTimeout(r, 1000));
                 userRes = await supabase.from('users').select('*').eq('id', userId).single();
             }
 
             if (userRes.error) {
                 console.error('[AuthProvider] User Fetch Error:', userRes.error);
-                console.error('[AuthProvider] Error details:', JSON.stringify(userRes.error, null, 2));
                 resetState();
                 return;
             }
@@ -137,9 +154,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             const userData = userRes.data;
             const memberships = membRes.data || [];
-            const companies: Company[] = memberships
-                .map((m: any) => m.companies)
-                .filter(Boolean);
+            const companies: Company[] = memberships.map((m: any) => m.companies).filter(Boolean);
 
             console.log(`[AuthProvider] Data loaded. User: ${userData.id}, Companies: ${companies.length}, SuperAdmin: ${userData.is_super_admin}`);
 
@@ -152,13 +167,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setUserRole(null);
                 useStore.getState().setImpersonation(false, null);
             } else {
-                const targetCompany =
-                    companies.find(c => c.id === userData.default_company_id) ||
-                    companies[0];
-
-                const membership = memberships.find(
-                    (m: any) => m.company_id === targetCompany?.id
-                );
+                const targetCompany = companies.find(c => c.id === userData.default_company_id) || companies[0];
+                const membership = memberships.find((m: any) => m.company_id === targetCompany?.id);
 
                 if (targetCompany && membership) {
                     const role = membership.role as UserRole;
@@ -183,14 +193,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         } catch (error: any) {
             console.error('[AuthProvider] loadUserData - CRITICAL:', error);
-            console.error('[AuthProvider] Error stack:', error?.stack);
             resetState();
         } finally {
             console.log('[AuthProvider] loadUserData - COMPLETED');
             setIsLoading(false);
             isFetching.current = false;
         }
-    }, [resetState, user?.id]);  // ← Agregado user?.id como dependencia para que el guard funcione bien
+    }, [resetState, currentCompany]); // Dependencias mínimas y correctas
 
     const refreshAuth = useCallback(async () => {
         console.log('[AuthProvider] refreshAuth called manually');
@@ -229,12 +238,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log('[AuthProvider] Auth Event:', event, 'Session user ID:', session?.user?.id || 'none');
 
             if (isSigningOutRef.current && event !== 'SIGNED_OUT') {
-                console.log('[AuthProvider] Ignored event during signout:', event);
+                console.log('[AuthProvider] Ignored during signout:', event);
                 return;
             }
 
             if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-                console.log(`[AuthProvider] Ignored ${event} (no data reload needed)`);
+                console.log(`[AuthProvider] Ignored ${event}`);
                 return;
             }
 
@@ -245,15 +254,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
 
             if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
-                const incomingUserId = session.user.id;
-                const currentUserId = user?.id;
+                // Delay para agrupar eventos rápidos en multi-tab
+                await new Promise(r => setTimeout(r, 200));
 
-                if (currentUserId === incomingUserId) {
-                    console.log('[AuthProvider] SIGNED_IN/INITIAL_SESSION but same user already loaded → SKIP reload');
+                const incomingUserId = session.user.id;
+
+                // Guard usando refs (valor real actual)
+                const fullyLoaded = userRef.current?.id === incomingUserId &&
+                    userCompaniesRef.current.length > 0;
+
+                if (fullyLoaded) {
+                    console.log('[AuthProvider] User fully loaded after delay → SKIP');
                     return;
                 }
 
-                console.log('[AuthProvider] SIGNED_IN/INITIAL_SESSION → NEW or unknown user → loadUserData');
+                console.log('[AuthProvider] Loading data for new/unknown user');
                 await loadUserData(incomingUserId, true);
             }
         });
@@ -262,7 +277,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log('[AuthProvider] Unsubscribing from auth events');
             subscription.unsubscribe();
         };
-    }, [loadUserData, resetState, user?.id]);  // ← Dependencia agregada para que use el user actual
+    }, [loadUserData, resetState]); // Dependencias mínimas y seguras
 
     useEffect(() => {
         if (!isLoading && user && window.location.pathname === '/login') {
