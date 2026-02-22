@@ -41,14 +41,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Logout Lock
     const [isSigningOut, setIsSigningOut] = useState(false);
 
-    // 🔧 FIX #1: Ref para evitar stale closure en el listener de auth
     const isSigningOutRef = useRef(false);
 
-    // 🔧 FIX #4: Prevenir loads rápidos consecutivos (race condition entre tabs)
+    // Aumentado a 3000ms para dar más margen en producción/multi-tab
     const lastLoadTimeRef = useRef<number>(0);
-    const LOAD_DEBOUNCE_MS = 1000; // Mínimo 1 segundo entre loads
+    const LOAD_DEBOUNCE_MS = 3000;
 
-    // 🔧 FIX #1: Setter seguro que sincroniza estado + ref
     const setIsSigningOutSafe = useCallback((val: boolean) => {
         isSigningOutRef.current = val;
         setIsSigningOut(val);
@@ -74,17 +72,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsSigningOut(false);
     }, []);
 
-    // ✅ ÚNICA DEFINICIÓN DE loadUserData - Completa con debug logs
     const loadUserData = useCallback(async (userId: string, force: boolean = false) => {
         const now = Date.now();
 
-        // 🔧 FIX #4: Prevenir loads demasiado rápidos (excepto si es forzado)
+        // Guard extra: skip si ya está cargado el mismo usuario y no es force
+        if (!force && user?.id === userId) {
+            console.log(`[loadUserData] Already loaded user ${userId}, skipping unless forced`);
+            return;
+        }
+
         if (!force && (now - lastLoadTimeRef.current) < LOAD_DEBOUNCE_MS) {
             console.log(`[AuthProvider] loadUserData - DEBOUNCED (${now - lastLoadTimeRef.current}ms)`);
             return;
         }
 
-        // 🔧 FIX #2: Guard con ref (más confiable que estado en callbacks)
         if (isSigningOutRef.current || isFetching.current) {
             console.log(`[AuthProvider] loadUserData - SKIPPED (SigningOut: ${isSigningOutRef.current}, Fetching: ${isFetching.current})`);
             return;
@@ -92,9 +93,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         isFetching.current = true;
         lastLoadTimeRef.current = now;
-        console.log('[AuthProvider] loadUserData - START for:', userId);
+        console.log('[AuthProvider] loadUserData - START for:', userId, 'current user:', user?.id || 'none', 'force:', force);
 
-        // 🔧 DEBUG: Verificar variables de entorno en producción
         console.log('[AuthProvider] Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
         console.log('[AuthProvider] Supabase Anon Key:', import.meta.env.VITE_SUPABASE_ANON_KEY ? 'EXISTS' : 'MISSING');
 
@@ -190,13 +190,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setIsLoading(false);
             isFetching.current = false;
         }
-    }, [resetState]);
+    }, [resetState, user?.id]);  // ← Agregado user?.id como dependencia para que el guard funcione bien
 
     const refreshAuth = useCallback(async () => {
         console.log('[AuthProvider] refreshAuth called manually');
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
-            await loadUserData(session.user.id, true); // Force refresh
+            await loadUserData(session.user.id, true);
         } else {
             resetState();
         }
@@ -209,7 +209,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('[AuthProvider] Initializing...');
 
         const init = async () => {
-            // 🔧 FIX #2: Guard en init() para evitar rehidratación durante logout
             if (isSigningOutRef.current) {
                 console.log('[AuthProvider] init() aborted: signing out');
                 resetState();
@@ -226,61 +225,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         init();
 
-        const { data: { subscription } } =
-            supabase.auth.onAuthStateChange(async (event, session) => {
-                console.log('[AuthProvider] Auth Event:', event, 'Session:', !!session);
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log('[AuthProvider] Auth Event:', event, 'Session user ID:', session?.user?.id || 'none');
 
-                // 🔧 FIX #1: Usar ref.current para evitar stale closure
-                if (isSigningOutRef.current && event !== 'SIGNED_OUT') {
-                    console.log('[AuthProvider] Ignored event during signout:', event);
+            if (isSigningOutRef.current && event !== 'SIGNED_OUT') {
+                console.log('[AuthProvider] Ignored event during signout:', event);
+                return;
+            }
+
+            if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+                console.log(`[AuthProvider] Ignored ${event} (no data reload needed)`);
+                return;
+            }
+
+            if (event === 'SIGNED_OUT') {
+                console.log('[AuthProvider] SIGNED_OUT → resetState');
+                resetState();
+                return;
+            }
+
+            if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
+                const incomingUserId = session.user.id;
+                const currentUserId = user?.id;
+
+                if (currentUserId === incomingUserId) {
+                    console.log('[AuthProvider] SIGNED_IN/INITIAL_SESSION but same user already loaded → SKIP reload');
                     return;
                 }
 
-                // 🔧 FIX NUEVO #3: Ignorar TOKEN_REFRESHED - no requiere recargar datos
-                if (event === 'TOKEN_REFRESHED') {
-                    console.log('[AuthProvider] Token refreshed, no reload needed');
-                    return;
-                }
-
-                // 🔧 FIX NUEVO #3: Ignorar USER_UPDATED - no requiere recargar datos
-                if (event === 'USER_UPDATED') {
-                    console.log('[AuthProvider] User updated, no reload needed');
-                    return;
-                }
-
-                if (event === 'SIGNED_OUT') {
-                    console.log('[AuthProvider] SIGNED_OUT → resetState');
-                    resetState();
-                    return;
-                }
-
-                // 🔧 FIX #2: Guards en eventos que podrían rehidratar
-                if (event === 'SIGNED_IN' && session?.user) {
-                    if (isSigningOutRef.current) {
-                        console.log('[AuthProvider] SIGNED_IN ignored: signing out');
-                        return;
-                    }
-                    console.log('[AuthProvider] SIGNED_IN → loadUserData');
-                    await loadUserData(session.user.id, true);
-                    return;
-                }
-
-                if (event === 'INITIAL_SESSION' && session?.user) {
-                    if (isSigningOutRef.current) {
-                        console.log('[AuthProvider] INITIAL_SESSION ignored: signing out');
-                        return;
-                    }
-                    console.log('[AuthProvider] INITIAL_SESSION → loadUserData');
-                    await loadUserData(session.user.id, true);
-                    return;
-                }
-            });
+                console.log('[AuthProvider] SIGNED_IN/INITIAL_SESSION → NEW or unknown user → loadUserData');
+                await loadUserData(incomingUserId, true);
+            }
+        });
 
         return () => {
             console.log('[AuthProvider] Unsubscribing from auth events');
             subscription.unsubscribe();
         };
-    }, [loadUserData, resetState]);
+    }, [loadUserData, resetState, user?.id]);  // ← Dependencia agregada para que use el user actual
 
     useEffect(() => {
         if (!isLoading && user && window.location.pathname === '/login') {
