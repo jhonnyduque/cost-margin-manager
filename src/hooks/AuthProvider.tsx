@@ -4,6 +4,15 @@ import { useStore } from '../store';
 import { User, Company, UserRole } from '@/types';
 import { getSuspensionLevel, SuspensionLevel } from '../utils/subscription';
 
+// 🔧 Logging helper - solo muestra logs informativos en desarrollo
+// Errores y warnings SIEMPRE se muestran (en cualquier entorno)
+const log = {
+    debug: (...args: any[]) => import.meta.env.DEV && console.debug('[AuthProvider]', ...args),
+    info: (...args: any[]) => import.meta.env.DEV && console.info('[AuthProvider]', ...args),
+    warn: (...args: any[]) => console.warn('[AuthProvider]', ...args),
+    error: (...args: any[]) => console.error('[AuthProvider]', ...args),
+};
+
 interface AuthContextType {
     user: User | null;
     currentCompany: Company | null;
@@ -68,7 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const setStoreCompany = useStore((state) => state.setCurrentCompany);
 
     const resetState = useCallback(() => {
-        console.log('[AuthProvider] resetState called');
+        log.info('resetState called');
         setUser(null);
         setCurrentCompany(null);
         setUserCompanies([]);
@@ -89,48 +98,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // Guard: skip si ya está cargado el mismo usuario y no es force
         if (!force && userIdRef.current === userId) {
-            console.log(`[loadUserData] Already loaded user ${userId}, skipping unless forced`);
+            log.info(`Already loaded user ${userId}, skipping unless forced`);
             return;
         }
 
         if (!force && (now - lastLoadTimeRef.current) < LOAD_DEBOUNCE_MS) {
-            console.log(`[AuthProvider] loadUserData - DEBOUNCED (${now - lastLoadTimeRef.current}ms)`);
+            log.debug(`loadUserData - DEBOUNCED (${now - lastLoadTimeRef.current}ms)`);
             return;
         }
 
         if (isSigningOutRef.current || isFetchingRef.current) {
-            console.log(`[AuthProvider] loadUserData - SKIPPED (SigningOut: ${isSigningOutRef.current}, Fetching: ${isFetchingRef.current})`);
+            log.debug(`loadUserData - SKIPPED (SigningOut: ${isSigningOutRef.current}, Fetching: ${isFetchingRef.current})`);
             return;
         }
 
         isFetchingRef.current = true;
         lastLoadTimeRef.current = now;
-        console.log('[AuthProvider] loadUserData - START for:', userId, 'current user:', userIdRef.current || 'none', 'force:', force);
+        log.debug('loadUserData - START for:', userId, 'current user:', userIdRef.current || 'none', 'force:', force);
 
-        console.log('[AuthProvider] Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
-        console.log('[AuthProvider] Supabase Anon Key:', import.meta.env.VITE_SUPABASE_ANON_KEY ? 'EXISTS' : 'MISSING');
+        log.debug('Supabase URL:', import.meta.env.VITE_SUPABASE_URL ? 'EXISTS' : 'MISSING');
+        log.debug('Supabase Anon Key:', import.meta.env.VITE_SUPABASE_ANON_KEY ? 'EXISTS' : 'MISSING');
 
         try {
             setIsLoading(true);
 
-            console.log('[AuthProvider] Fetching user from Supabase...');
+            log.debug('Fetching user from Supabase...');
 
             let userRes = await supabase.from('users').select('*').eq('id', userId).single();
 
-            console.log('[AuthProvider] User query result:', {
+            log.debug('User query result:', {
                 error: userRes.error,
                 hasData: !!userRes.data
             });
 
             if (userRes.error && userRes.error.code === 'PGRST116') {
-                console.warn('[AuthProvider] User record not found, retrying once...');
+                log.warn('User record not found, retrying once...');
                 await new Promise(r => setTimeout(r, 1000));
                 userRes = await supabase.from('users').select('*').eq('id', userId).single();
             }
 
             if (userRes.error) {
-                console.error('[AuthProvider] User Fetch Error:', userRes.error);
-                console.error('[AuthProvider] Error details:', JSON.stringify(userRes.error, null, 2));
+                log.error('User Fetch Error:', userRes.error);
+                log.error('Error details:', JSON.stringify(userRes.error, null, 2));
                 resetState();
                 return;
             }
@@ -141,7 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 .eq('is_active', true);
 
             if (membRes.error) {
-                console.error('[AuthProvider] Memberships Fetch Error:', membRes.error);
+                log.error('Memberships Fetch Error:', membRes.error);
                 setUser(userRes.data);
                 setIsLoading(false);
                 return;
@@ -153,7 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 .map((m: any) => m.companies)
                 .filter(Boolean);
 
-            console.log(`[AuthProvider] Data loaded. User: ${userData.id}, Companies: ${companies.length}, SuperAdmin: ${userData.is_super_admin}`);
+            log.info(`Data loaded. User: ${userData.id}, Companies: ${companies.length}, SuperAdmin: ${userData.is_super_admin}`);
 
             setUserCompanies(companies);
             setUser(userData);
@@ -194,18 +203,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
 
         } catch (error: any) {
-            console.error('[AuthProvider] loadUserData - CRITICAL:', error);
-            console.error('[AuthProvider] Error stack:', error?.stack);
+            log.error('loadUserData - CRITICAL:', error);
+            log.error('Error stack:', error?.stack);
             resetState();
         } finally {
-            console.log('[AuthProvider] loadUserData - COMPLETED');
+            log.debug('loadUserData - COMPLETED');
             setIsLoading(false);
             isFetchingRef.current = false;
         }
     }, [resetState]); // ← 🔧 ELIMINADO user?.id de las dependencias
 
     const refreshAuth = useCallback(async () => {
-        console.log('[AuthProvider] refreshAuth called manually');
+        log.info('refreshAuth called manually');
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
             await loadUserData(session.user.id, true);
@@ -219,11 +228,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (hasInitializedRef.current) return;
         hasInitializedRef.current = true;
 
-        console.log('[AuthProvider] Initializing...');
+        log.info('Initializing...');
 
         const init = async () => {
             if (isSigningOutRef.current) {
-                console.log('[AuthProvider] init() aborted: signing out');
+                log.info('init() aborted: signing out');
                 resetState();
                 return;
             }
@@ -239,20 +248,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         init();
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            console.log('[AuthProvider] Auth Event:', event, 'Session user ID:', session?.user?.id || 'none');
+            log.debug('Auth Event:', event, 'Session user ID:', session?.user?.id || 'none');
 
             if (isSigningOutRef.current && event !== 'SIGNED_OUT') {
-                console.log('[AuthProvider] Ignored event during signout:', event);
+                log.debug('Ignored event during signout:', event);
                 return;
             }
 
             if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-                console.log(`[AuthProvider] Ignored ${event} (no data reload needed)`);
+                log.debug(`Ignored ${event} (no data reload needed)`);
                 return;
             }
 
             if (event === 'SIGNED_OUT') {
-                console.log('[AuthProvider] SIGNED_OUT → resetState');
+                log.info('SIGNED_OUT → resetState');
                 resetState();
                 return;
             }
@@ -262,17 +271,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
                 // 🔧 FIX #5: Guard más robusto usando ref + isLoading
                 if (isLoading || (userIdRef.current && userIdRef.current === incomingUserId)) {
-                    console.log('[AuthProvider] SIGNED_IN/INITIAL_SESSION but user already loaded → SKIP reload');
+                    log.info('SIGNED_IN/INITIAL_SESSION but user already loaded → SKIP reload');
                     return;
                 }
 
-                console.log('[AuthProvider] SIGNED_IN/INITIAL_SESSION → NEW or unknown user → loadUserData');
+                log.info('SIGNED_IN/INITIAL_SESSION → NEW or unknown user → loadUserData');
                 await loadUserData(incomingUserId, true);
             }
         });
 
         return () => {
-            console.log('[AuthProvider] Unsubscribing from auth events');
+            log.debug('Unsubscribing from auth events');
             subscription.unsubscribe();
         };
     }, [loadUserData, resetState]); // ← 🔧 ELIMINADO user?.id de las dependencias
@@ -280,14 +289,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Efecto para redirección desde login (sin causar loops)
     useEffect(() => {
         if (!isLoading && user && window.location.pathname === '/login') {
-            console.log('[AuthProvider] User detected on /login, triggering redirect');
+            log.info('User detected on /login, triggering redirect');
         }
     }, [user, isLoading]);
 
     const enterCompanyAsFounder = async (companyId: string) => {
         if (!user?.is_super_admin) return;
 
-        console.log('[AuthProvider] enterCompanyAsFounder:', companyId);
+        log.info('enterCompanyAsFounder:', companyId);
         setIsLoading(true);
         try {
             const { data: company, error } = await supabase
@@ -311,14 +320,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setStoreCompany(companyId, 'admin');
 
         } catch (error) {
-            console.error('Error entering company as founder:', error);
+            log.error('Error entering company as founder:', error);
         } finally {
             setIsLoading(false);
         }
     };
 
     const exitImpersonation = () => {
-        console.log('[AuthProvider] exitImpersonation');
+        log.info('exitImpersonation');
         setMode('platform');
         setImpersonatedCompanyId(null);
         setCurrentCompany(null);
@@ -347,7 +356,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .single();
 
         if (error || !membership) {
-            console.error('Error switching company:', error);
+            log.error('Error switching company:', error);
             setIsLoading(false);
             return;
         }
