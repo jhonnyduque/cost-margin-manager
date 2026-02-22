@@ -57,6 +57,20 @@ serve(async (req) => {
             throw new Error('Access Denied: Insufficient permissions.')
         }
 
+        // 🔧 FIX: Obtener el seat_limit desde la tabla companies
+        const { data: companyData, error: companyError } = await supabaseClient
+            .from('companies')
+            .select('seat_limit')
+            .eq('id', company_id)
+            .single()
+
+        if (companyError) {
+            console.warn('[TEAM] Could not fetch seat_limit, using default 3')
+        }
+
+        const SEAT_LIMIT = companyData?.seat_limit ?? 3
+        console.log(`[TEAM] Seat limit for company ${company_id}: ${SEAT_LIMIT}`)
+
         // 4. Action Routing
         if (action === 'create') {
             const { email, role, password, full_name } = payload
@@ -65,7 +79,7 @@ serve(async (req) => {
                 throw new Error('Missing required fields para creación.')
             }
 
-            // Limit Check (Max 3 active users per company)
+            // 🔧 FIX: Usar SEAT_LIMIT dinámico en lugar de hardcodear 3
             const { count, error: countError } = await supabaseClient
                 .from('company_members')
                 .select('*', { count: 'exact', head: true })
@@ -73,8 +87,8 @@ serve(async (req) => {
                 .eq('is_active', true)
 
             if (countError) throw countError
-            if (count && count >= 3) {
-                throw new Error('User limit reached: Max 3 users per company allowed.')
+            if (count && count >= SEAT_LIMIT) {
+                throw new Error(`User limit reached: Max ${SEAT_LIMIT} users per company allowed.`)
             }
 
             console.log(`[TEAM] Creating user ${email} for company ${company_id}`)
