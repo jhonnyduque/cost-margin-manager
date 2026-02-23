@@ -269,8 +269,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
                 const incomingUserId = session.user.id;
 
-                // 🔧 FIX #5: Guard robusto usando ref (evita stale closure con isLoading)
-                if (isFetchingRef.current || (userIdRef.current && userIdRef.current === incomingUserId)) {
+                // 🔧 FIX #5: Guard más robusto usando ref + isLoading
+                if (isLoading || (userIdRef.current && userIdRef.current === incomingUserId)) {
                     log.info('SIGNED_IN/INITIAL_SESSION but user already loaded → SKIP reload');
                     return;
                 }
