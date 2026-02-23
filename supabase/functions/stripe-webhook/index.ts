@@ -82,7 +82,7 @@ serve(async (req) => {
 
         try {
             const body = await req.text();
-            event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+            event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
         } catch (err: any) {
             log.error('Webhook signature verification failed', {
                 error: err.message
@@ -102,15 +102,15 @@ serve(async (req) => {
         const eventType = event.type;
         const eventData = event.data.object as Stripe.Subscription | Stripe.Invoice | Stripe.Customer;
 
-        // Helper to update company subscription
+        // ✅ FIX: Helper actualizado para buscar por stripe_customer_id (no por subscription_id)
         const updateCompanySubscription = async (
-            subscriptionId: string,
+            customerId: string,
             updates: Record<string, any>
         ) => {
             const { error } = await supabase
                 .from('companies')
                 .update(updates)
-                .eq('stripe_subscription_id', subscriptionId);
+                .eq('stripe_customer_id', customerId);
 
             if (error) {
                 throw error;
@@ -153,11 +153,11 @@ serve(async (req) => {
                     subscription.customer as string
                 );
 
-                await updateCompanySubscription(subscription.id, {
+                // ✅ FIX: Pasar customer ID, no subscription ID
+                await updateCompanySubscription(subscription.customer as string, {
                     stripe_subscription_id: subscription.id,
                     subscription_status: subscription.status,
                     subscription_tier: subscription.metadata.plan_key || 'starter',
-                    stripe_customer_id: subscription.customer as string,
                     updated_at: new Date().toISOString()
                 });
 
@@ -182,9 +182,10 @@ serve(async (req) => {
                     subscription.customer as string
                 );
 
-                await updateCompanySubscription(subscription.id, {
+                // ✅ FIX: Pasar customer ID, no subscription ID + fallback seguro
+                await updateCompanySubscription(subscription.customer as string, {
                     subscription_status: subscription.status,
-                    subscription_tier: subscription.metadata.plan_key || company.slug,
+                    subscription_tier: subscription.metadata.plan_key || 'starter',
                     updated_at: new Date().toISOString()
                 });
 
@@ -207,10 +208,11 @@ serve(async (req) => {
                     subscription.customer as string
                 );
 
-                await updateCompanySubscription(subscription.id, {
+                // ✅ FIX: Pasar customer ID, no subscription ID
+                await updateCompanySubscription(subscription.customer as string, {
                     subscription_status: 'canceled',
                     stripe_subscription_id: null,
-                    subscription_tier: 'demo', // Revert to demo
+                    subscription_tier: 'demo',
                     updated_at: new Date().toISOString()
                 });
 
@@ -230,7 +232,8 @@ serve(async (req) => {
                     customer_id: subscription.customer
                 });
 
-                await updateCompanySubscription(subscription.id, {
+                // ✅ FIX: Pasar customer ID, no subscription ID
+                await updateCompanySubscription(subscription.customer as string, {
                     subscription_status: 'past_due',
                     updated_at: new Date().toISOString()
                 });
@@ -246,7 +249,8 @@ serve(async (req) => {
                     customer_id: subscription.customer
                 });
 
-                await updateCompanySubscription(subscription.id, {
+                // ✅ FIX: Pasar customer ID, no subscription ID
+                await updateCompanySubscription(subscription.customer as string, {
                     subscription_status: 'active',
                     updated_at: new Date().toISOString()
                 });
@@ -277,7 +281,8 @@ serve(async (req) => {
                         subscription.customer as string
                     );
 
-                    await updateCompanySubscription(subscription.id, {
+                    // ✅ FIX: Pasar customer ID, no subscription ID
+                    await updateCompanySubscription(subscription.customer as string, {
                         subscription_status: 'active',
                         last_payment_date: new Date().toISOString(),
                         updated_at: new Date().toISOString()
@@ -310,11 +315,11 @@ serve(async (req) => {
                         subscription.customer as string
                     );
 
-                    // Calculate grace period (7 days from now)
                     const gracePeriodEnds = new Date();
                     gracePeriodEnds.setDate(gracePeriodEnds.getDate() + 7);
 
-                    await updateCompanySubscription(subscription.id, {
+                    // ✅ FIX: Pasar customer ID, no subscription ID
+                    await updateCompanySubscription(subscription.customer as string, {
                         subscription_status: 'past_due',
                         grace_period_ends_at: gracePeriodEnds.toISOString(),
                         updated_at: new Date().toISOString()
@@ -353,7 +358,6 @@ serve(async (req) => {
                     email: customer.email
                 });
 
-                // Update company email if changed
                 await supabase
                     .from('companies')
                     .update({
