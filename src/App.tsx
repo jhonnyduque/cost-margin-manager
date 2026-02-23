@@ -19,6 +19,11 @@ import PlatformAdmin from './pages/PlatformAdmin';
 import { EnvironmentsPage } from './pages/platform/EnvironmentsPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 
+// Pages - Billing ✅ NUEVOS
+import Billing from '@/pages/platform/Billing';
+import BillingCheckout from '@/pages/platform/BillingCheckout';
+import BillingSuccess from '@/pages/platform/BillingSuccess';
+
 // Context & Hooks
 import { useStore } from '@/store';
 import { useAuth } from '@/hooks/useAuth';
@@ -111,7 +116,13 @@ const AppContent: React.FC = () => {
                 <Route path="/materias-primas" element={<RawMaterials />} />
                 <Route path="/equipo" element={<Team />} />
                 <Route path="/platform/users" element={<Team />} />
-                <Route path="/platform/billing" element={<PlaceholderPage />} />
+
+                {/* ✅ Billing & Subscription - ACTUALIZADO */}
+                <Route path="/platform/billing" element={<Billing />} />
+                <Route path="/platform/billing/checkout" element={<BillingCheckout />} />
+                <Route path="/platform/billing/success" element={<BillingSuccess />} />
+                <Route path="/platform/billing/portal" element={<BillingSuccess />} />
+
                 <Route path="/ai" element={<PlaceholderPage />} />
                 <Route path="/analytics" element={<PlaceholderPage />} />
                 <Route path="/settings" element={<Settings />} />
