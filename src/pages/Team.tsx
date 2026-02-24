@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
-import { UserPlus, Trash2, Shield, Mail, Building2 } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Mail, Building2, Search, Printer } from 'lucide-react';
 import { EntityList } from '../components/entity/EntityList';
 import { EntityModal } from '../components/entity/EntityModal';
 import { EntityDetail } from '../components/entity/EntityDetail';
@@ -26,8 +26,9 @@ export default function Team() {
     const [maxUsers, setMaxUsers] = useState(3);
     const [loading, setLoading] = useState(true);
 
-    // Filtro por empresa (solo SuperAdmin)
-    const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<string>('all');
+    // Search & selection state
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
     // Create form state
     const [newUserEmail, setNewUserEmail] = useState('');
@@ -54,23 +55,17 @@ export default function Team() {
     const percentageUsed = Math.min(100, (currentUsersCount / maxUsers) * 100);
     const upgradeRecommended = !isSuperAdmin && percentageUsed >= 80;
 
-    // Lista de empresas únicas para el dropdown (solo SuperAdmin)
-    const companyOptions = useMemo(() => {
-        if (!isSuperAdmin) return [];
-        const map = new Map<string, string>();
-        members.forEach(m => {
-            if (m.company_id) {
-                map.set(m.company_id, m.company_name || m.company_id);
-            }
-        });
-        return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
-    }, [members, isSuperAdmin]);
-
-    // Miembros filtrados según el dropdown
+    // Smart search: filters by company name, member name, or email
     const filteredMembers = useMemo(() => {
-        if (!isSuperAdmin || selectedCompanyFilter === 'all') return members;
-        return members.filter(m => m.company_id === selectedCompanyFilter);
-    }, [members, isSuperAdmin, selectedCompanyFilter]);
+        if (!searchQuery.trim()) return members;
+        const q = searchQuery.toLowerCase().trim();
+        return members.filter(m =>
+            (m.full_name && m.full_name.toLowerCase().includes(q)) ||
+            m.email.toLowerCase().includes(q) ||
+            (m.company_name && m.company_name.toLowerCase().includes(q)) ||
+            m.role.toLowerCase().includes(q)
+        );
+    }, [members, searchQuery]);
 
     useEffect(() => {
         if (!authLoading && user) {
@@ -361,58 +356,57 @@ export default function Team() {
                     </p>
                 </div>
 
-                {/* Actions row - compact on mobile, expanded on desktop */}
-                <div className="flex items-center gap-2 sm:gap-3">
-                    {/* Filter dropdown — solo SuperAdmin */}
-                    {isSuperAdmin && (
-                        <div className="hidden sm:flex items-center gap-2">
-                            <Building2 size={16} className="text-gray-400 flex-shrink-0" />
-                            <select
-                                value={selectedCompanyFilter}
-                                onChange={(e) => setSelectedCompanyFilter(e.target.value)}
-                                className="rounded-2xl border-none bg-white px-4 py-2.5 text-sm font-bold text-gray-700 shadow-sm ring-1 ring-gray-200 transition-all focus:ring-2 focus:ring-indigo-500"
-                            >
-                                <option value="all">Todas las empresas</option>
-                                {companyOptions.map(c => (
-                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
+                {/* Toolbar: Search + Actions — always one line */}
+                <div className="flex items-center gap-2">
+                    {/* Search input */}
+                    <div className="relative flex-1 min-w-0">
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                        <input
+                            type="text"
+                            placeholder="Buscar empresa, nombre, email..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full rounded-xl bg-white pl-9 pr-3 py-2.5 text-sm text-gray-700 ring-1 ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                        />
+                    </div>
 
-                    {/* Mobile: compact filter dropdown */}
-                    {isSuperAdmin && (
-                        <select
-                            value={selectedCompanyFilter}
-                            onChange={(e) => setSelectedCompanyFilter(e.target.value)}
-                            className="sm:hidden flex-1 min-w-0 rounded-xl bg-white px-3 py-2.5 text-sm font-medium text-gray-700 ring-1 ring-gray-200 focus:ring-2 focus:ring-indigo-500"
+                    {/* Print button */}
+                    <button
+                        onClick={() => window.print()}
+                        title="Imprimir listado"
+                        className="flex items-center justify-center h-10 w-10 rounded-xl bg-white text-gray-500 ring-1 ring-gray-200 hover:bg-gray-50 hover:text-gray-700 transition-all flex-shrink-0"
+                    >
+                        <Printer size={18} />
+                    </button>
+
+                    {/* Bulk delete button — visible when items selected */}
+                    {selectedIds.length > 0 && (
+                        <button
+                            onClick={() => handleBulkAction('Eliminar', selectedIds)}
+                            title={`Eliminar ${selectedIds.length} seleccionados`}
+                            className="flex items-center justify-center h-10 w-10 rounded-xl bg-red-50 text-red-500 ring-1 ring-red-200 hover:bg-red-100 hover:text-red-700 transition-all flex-shrink-0"
                         >
-                            <option value="all">Todas las empresas</option>
-                            {companyOptions.map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
-                            ))}
-                        </select>
+                            <Trash2 size={18} />
+                        </button>
                     )}
 
-                    {/* Spacer to push button right on mobile when no filter */}
-                    {!isSuperAdmin && <div className="flex-1" />}
-
-                    {/* Create button - compact on mobile, full on desktop */}
-                    <div className="group relative">
+                    {/* Create button */}
+                    <div className="group relative flex-shrink-0">
                         <button
                             onClick={() => setShowCreateModal(true)}
                             disabled={isAtLimit}
+                            title="Crear miembro"
                             className={`
                                 flex items-center justify-center gap-2 font-bold transition-all active:scale-95
                                 rounded-xl sm:rounded-2xl
-                                h-10 w-10 sm:h-auto sm:w-auto sm:px-5 sm:py-3
+                                h-10 w-10 sm:h-10 sm:w-auto sm:px-4
                                 ${isAtLimit
                                     ? 'cursor-not-allowed bg-gray-100 text-gray-400'
                                     : 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700'}
                             `}
                         >
-                            <UserPlus size={20} />
-                            <span className="hidden sm:inline">Crear Miembro</span>
+                            <UserPlus size={18} />
+                            <span className="hidden sm:inline text-sm">Crear</span>
                         </button>
                         {isAtLimit && (
                             <div className="animate-in fade-in slide-in-from-bottom-2 absolute bottom-full right-0 z-50 mb-3 hidden w-64 rounded-2xl bg-gray-900 p-4 text-xs text-white shadow-2xl group-hover:block">
