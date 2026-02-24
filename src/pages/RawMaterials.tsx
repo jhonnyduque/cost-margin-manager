@@ -411,7 +411,7 @@ const RawMaterials: React.FC = () => {
               {editingId ? 'Editar' : 'Nueva'} Materia Prima
             </h3>
 
-            <form onSubmit={handleMasterSubmit} className="space-y-5 sm:space-y-6">
+            <form onSubmit={handleMasterSubmit} className="space-y-4 sm:space-y-5">
               <Input
                 label="Nombre"
                 value={formData.name}
@@ -420,7 +420,7 @@ const RawMaterials: React.FC = () => {
                 required
               />
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <Select
                   label="Tipo / Categoría"
                   value={formData.type}
@@ -447,7 +447,8 @@ const RawMaterials: React.FC = () => {
                 placeholder="Detalles de la materia prima..."
               />
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Unidad + Costo en una línea */}
+              <div className="grid grid-cols-2 gap-3">
                 <Select
                   label="Unidad de Medida"
                   value={formData.unit}
@@ -462,7 +463,7 @@ const RawMaterials: React.FC = () => {
                   <option value="litro">Litro (L)</option>
                 </Select>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-500">Costo por {formData.unit}</label>
+                  <label className="mb-1 block text-xs font-medium text-gray-500">Costo/{formData.unit}</label>
                   <Input
                     type="number"
                     step="0.01"
@@ -474,23 +475,24 @@ const RawMaterials: React.FC = () => {
                 </div>
               </div>
 
-              {formData.unit === 'metro' && (
-                <div className="animate-in fade-in zoom-in-95">
-                  <label className="mb-1 ml-1 block text-xs font-bold uppercase tracking-widest text-emerald-500">Ancho útil (cm)</label>
-                  <Input
-                    type="number"
-                    step="1"
-                    value={formData.width || ''}
-                    onChange={e => setFormData({ ...formData, width: parseInt(e.target.value) })}
-                    placeholder="140"
-                    className="!bg-emerald-50/10 !text-emerald-700 !ring-emerald-500"
-                  />
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-4">
+              {/* Ancho + Cantidad + Estado toggle en una línea */}
+              <div className="grid grid-cols-3 gap-3 items-end">
+                {formData.unit === 'metro' ? (
+                  <div>
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-emerald-500">Ancho (cm)</label>
+                    <Input
+                      type="number"
+                      step="1"
+                      value={formData.width || ''}
+                      onChange={e => setFormData({ ...formData, width: parseInt(e.target.value) })}
+                      placeholder="140"
+                    />
+                  </div>
+                ) : (
+                  <div />
+                )}
                 <div>
-                  <label className="mb-1 ml-1 block text-xs font-medium text-gray-500">Cantidad Inventario</label>
+                  <label className="mb-1 block text-xs font-medium text-gray-500">Cantidad</label>
                   <Input
                     type="number"
                     step="0.01"
@@ -498,20 +500,28 @@ const RawMaterials: React.FC = () => {
                     onChange={e => setFormData({ ...formData, initialQty: parseFloat(e.target.value) })}
                     placeholder="0"
                     disabled={!!editingId}
-                    className="text-center"
                   />
                 </div>
-                <Select
-                  label="Estado"
-                  value={formData.status}
-                  onChange={e => setFormData({ ...formData, status: e.target.value as Status })}
-                >
-                  <option value="activa">Activa</option>
-                  <option value="inactiva">Inactiva</option>
-                </Select>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-500">Estado</label>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, status: formData.status === 'activa' ? 'inactiva' : 'activa' })}
+                    className={`
+                      w-full flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold transition-all active:scale-95
+                      ${formData.status === 'activa'
+                        ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                        : 'bg-gray-100 text-gray-400 ring-1 ring-gray-200'
+                      }
+                    `}
+                  >
+                    <div className={`size-2.5 rounded-full transition-colors ${formData.status === 'activa' ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                    {formData.status === 'activa' ? 'Activa' : 'Inactiva'}
+                  </button>
+                </div>
               </div>
 
-              <div className="flex gap-4 pt-4">
+              <div className="flex gap-3 pt-2">
                 <Button variant="ghost" className="flex-1" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
                 <Button type="submit" className="flex-1" variant="primary">Guardar Material</Button>
               </div>
