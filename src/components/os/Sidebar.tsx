@@ -41,7 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
     return (
         <aside
             className={`
-                fixed left-0 top-0 z-40 h-screen bg-slate-900 text-slate-100 transition-all duration-300
+                fixed left-0 top-0 z-50 h-screen bg-slate-900 text-slate-100 transition-all duration-300
                 ${collapsed ? 'w-16' : 'w-64'}
             `}
             aria-label="Menú lateral de navegación"
