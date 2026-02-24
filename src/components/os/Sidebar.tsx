@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Hexagon } from 'lucide-react';
 import { MODULES } from '../../platform/modules.registry';
@@ -14,19 +14,44 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
     const { user } = useAuth();
     const { enabledModules } = useSubscription();
 
+    // ✅ Atajo de teclado: Ctrl/Cmd + B (con protección de inputs)
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const target = e.target as HTMLElement;
+
+            // ❗ No interferir si el usuario está escribiendo
+            if (
+                target.tagName === 'INPUT' ||
+                target.tagName === 'TEXTAREA' ||
+                target.isContentEditable
+            ) {
+                return;
+            }
+
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') {
+                e.preventDefault();
+                onToggle();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onToggle]);
+
     return (
         <aside
             className={`
                 fixed left-0 top-0 z-40 h-screen bg-slate-900 text-slate-100 transition-all duration-300
                 ${collapsed ? 'w-16' : 'w-64'}
             `}
+            aria-label="Menú lateral de navegación"
         >
             {/* Header / Brand */}
             <div className="flex h-16 items-center justify-between px-4 border-b border-slate-800">
                 {!collapsed && (
                     <div className="flex items-center gap-2 font-bold text-lg tracking-tight">
-                        <Hexagon className="h-6 w-6 text-indigo-500 fill-indigo-500/20" />
-                        <span>BETO OS</span>
+                        <Hexagon className="h-6 w-6 text-indigo-500 fill-indigo-500/20 flex-shrink-0" />
+                        <span className="truncate">BETO OS</span>
                     </div>
                 )}
                 {collapsed && (
@@ -34,16 +59,38 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
                         <Hexagon className="h-6 w-6 text-indigo-500 fill-indigo-500/20" />
                     </div>
                 )}
+
+                {/* ✅ Botón de toggle MEJORADO: más visible + accesible */}
                 <button
                     onClick={onToggle}
-                    className="ml-auto rounded p-1 hover:bg-slate-800 text-slate-400"
+                    className={`
+                        flex items-center justify-center
+                        p-1.5 rounded-lg
+                        bg-slate-800/60 hover:bg-slate-700
+                        border border-slate-700/60 hover:border-slate-600
+                        text-slate-400 hover:text-white
+                        transition-all duration-200
+                        ${collapsed ? 'mx-auto' : 'ml-auto'}
+                        focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-900
+                    `}
+                    title={`${collapsed ? 'Expandir' : 'Ocultar'} menú (Ctrl + B)`}
+                    aria-label={`${collapsed ? 'Expandir' : 'Ocultar'} menú lateral`}
+                    aria-expanded={!collapsed}
+                    aria-controls="sidebar-navigation"
                 >
-                    {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+                    {collapsed ? (
+                        <ChevronRight className="w-4 h-4" />
+                    ) : (
+                        <ChevronLeft className="w-4 h-4" />
+                    )}
                 </button>
             </div>
 
             {/* Navigation */}
-            <nav className="p-2 space-y-1 mt-4">
+            <nav
+                id="sidebar-navigation"
+                className="p-2 space-y-1 mt-4"
+            >
                 {Object.values(MODULES).map((module) => {
                     const visible = user?.is_super_admin || (
                         enabledModules.includes('*') || enabledModules.includes(module.id)
@@ -63,10 +110,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
                                 ${isActive ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}
                                 ${collapsed ? 'justify-center' : ''}
                             `}
-                            title={collapsed ? module.name : ''}
+                            title={collapsed ? module.name : undefined}
                         >
-                            <Icon size={20} />
-                            {!collapsed && <span className="text-sm font-medium">{module.name}</span>}
+                            <Icon size={20} className="flex-shrink-0" />
+                            {!collapsed && <span className="text-sm font-medium truncate">{module.name}</span>}
                         </NavLink>
                     );
                 })}

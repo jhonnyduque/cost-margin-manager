@@ -18,7 +18,7 @@ export function EntityTable<T>({ config, items, selectionProps }: EntityTablePro
                 <thead className="sticky top-0 z-10 bg-gray-50/80 text-xs font-bold uppercase text-gray-500 backdrop-blur-sm">
                     <tr>
                         {selectionProps && (
-                            <th className="w-10 px-6 py-4">
+                            <th className="w-10 px-3 py-3">
                                 <input
                                     type="checkbox"
                                     checked={selectionProps.selectedIds.length === items.length && items.length > 0}
@@ -28,11 +28,11 @@ export function EntityTable<T>({ config, items, selectionProps }: EntityTablePro
                             </th>
                         )}
                         {config.fields.filter(f => !f.hidden).map((field, idx) => (
-                            <th key={idx} className="px-6 py-4">
+                            <th key={idx} className="px-4 py-3">
                                 {field.label}
                             </th>
                         ))}
-                        <th className="px-6 py-4 text-right">Acciones</th>
+                        <th className="px-4 py-3 text-right">Acciones</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -46,7 +46,7 @@ export function EntityTable<T>({ config, items, selectionProps }: EntityTablePro
                                 className={`group transition-all hover:bg-gray-50/80 ${isSelected ? 'bg-indigo-50/40' : ''}`}
                             >
                                 {selectionProps && (
-                                    <td className="px-6 py-4">
+                                    <td className="px-3 py-3">
                                         <input
                                             type="checkbox"
                                             checked={isSelected}
@@ -56,11 +56,11 @@ export function EntityTable<T>({ config, items, selectionProps }: EntityTablePro
                                     </td>
                                 )}
                                 {config.fields.filter(f => !f.hidden).map((field, idx) => (
-                                    <td key={idx} className="px-6 py-4">
+                                    <td key={idx} className="px-4 py-3">
                                         {field.render ? field.render(item) : (item as any)[field.key]}
                                     </td>
                                 ))}
-                                <td className="px-6 py-4 text-right">
+                                <td className="px-4 py-3 text-right">
                                     <div className="flex justify-end gap-2 opacity-60 transition-opacity group-hover:opacity-100">
                                         {config.actions.map(action => (
                                             (!action.isVisible || action.isVisible(item)) && (

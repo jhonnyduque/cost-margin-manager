@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // ✅ Agregamos useEffect
 import { Sidebar } from '../components/os/Sidebar';
 import { MobileBottomNav } from '../components/os/MobileBottomNav';
 import { Topbar } from '../components/os/Topbar';
@@ -11,7 +11,25 @@ interface OSLayoutProps {
 
 export const OSLayout: React.FC<OSLayoutProps> = ({ children }) => {
     const { isLoading: authLoading, user } = useAuth();
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+    // ✅ Persistencia: inicializar desde localStorage (SSR-safe)
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('sidebarCollapsed');
+            return saved === 'true';
+        }
+        return false;
+    });
+
+    // ✅ Guardar en localStorage cada vez que cambie el estado
+    useEffect(() => {
+        localStorage.setItem('sidebarCollapsed', String(sidebarCollapsed));
+    }, [sidebarCollapsed]);
+
+    // ✅ Función toggle centralizada (más limpia que inline)
+    const toggleSidebar = () => {
+        setSidebarCollapsed(prev => !prev);
+    };
 
     // BOOT SAFETY GUARD
     if (authLoading) {
@@ -31,7 +49,10 @@ export const OSLayout: React.FC<OSLayoutProps> = ({ children }) => {
         <div className="min-h-screen bg-slate-50">
             {/* Desktop Sidebar - hidden on mobile */}
             <div className="hidden lg:block">
-                <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+                <Sidebar
+                    collapsed={sidebarCollapsed}
+                    onToggle={toggleSidebar} // ✅ Usamos la función centralizada
+                />
             </div>
 
             {/* Topbar - full width on mobile, offset on desktop */}
