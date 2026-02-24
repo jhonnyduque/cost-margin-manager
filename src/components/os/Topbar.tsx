@@ -53,7 +53,7 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
     return (
         <header
             className={`
-                fixed top-0 right-0 z-30 flex h-14 lg:h-16 w-full items-center justify-between
+                fixed top-0 right-0 z-50 flex h-14 lg:h-16 w-full items-center justify-between
                 border-b border-slate-200 bg-white
                 px-4 sm:px-6
                 transition-all duration-300

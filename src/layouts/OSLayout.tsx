@@ -40,7 +40,8 @@ export const OSLayout: React.FC<OSLayoutProps> = ({ children }) => {
             {/* Main Content Area */}
             <main
                 className={`
-                    pt-16 px-4 pb-24
+                    relative z-0
+                    pt-[3.75rem] px-4 pb-24
                     sm:px-6
                     lg:pt-20 lg:px-6 lg:pb-12
                     transition-all duration-300
