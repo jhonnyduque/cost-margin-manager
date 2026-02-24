@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, ChevronDown, User, Settings, LogOut, Layout, Hexagon } from 'lucide-react';
+import { Bell, ChevronDown, ChevronRight, Settings, LogOut, Layout, Hexagon } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useStore } from '@/store';
 import { supabase } from '@/services/supabase';
@@ -9,6 +9,23 @@ interface TopbarProps {
     sidebarCollapsed?: boolean;
 }
 
+/** Map platform routes to human-readable section names */
+const PLATFORM_SECTIONS: Record<string, string> = {
+    '/control-center': 'Control Center',
+    '/platform/environments': 'Environments',
+    '/platform/users': 'Equipo',
+    '/platform/billing': 'Facturación',
+    '/settings': 'Settings',
+    '/more': 'Más',
+};
+
+const getSectionName = (pathname: string): string | null => {
+    for (const [route, name] of Object.entries(PLATFORM_SECTIONS)) {
+        if (pathname === route || pathname.startsWith(route + '/')) return name;
+    }
+    return null;
+};
+
 export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
     const { user, currentCompany, mode, exitImpersonation, setIsSigningOut, resetState } = useAuth();
     const logout = useStore(state => state.logout);
@@ -17,40 +34,30 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
-    // Close menu on route change
-    useEffect(() => {
-        setMenuOpen(false);
-    }, [location.pathname]);
+    const sectionName = getSectionName(location.pathname);
 
-    // Close on click outside
+    useEffect(() => { setMenuOpen(false); }, [location.pathname]);
+
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-                setMenuOpen(false);
-            }
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) setMenuOpen(false);
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // Close on Escape key
     useEffect(() => {
         if (!menuOpen) return;
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') setMenuOpen(false);
-        };
+        const handleKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false); };
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [menuOpen]);
 
     const handleLogout = async () => {
-        console.log('[Topbar] Logout requested');
         setIsSigningOut(true);
-
         try {
             await supabase.auth.signOut();
             logout();
-            console.log('[Topbar] Forcing resetState after signOut');
             resetState();
         } catch (error) {
             console.error('Logout error:', error);
@@ -78,33 +85,54 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
             `}
         >
             {/* Left side */}
-            <div className="flex items-center gap-3 min-w-0">
-                {/* Mobile: Show brand icon */}
+            <div className="flex items-center gap-2 min-w-0">
+                {/* Mobile: Brand */}
                 <div className="lg:hidden flex items-center gap-2">
                     <Hexagon className="h-5 w-5 text-indigo-500 fill-indigo-500/20 flex-shrink-0" />
                     <span className="font-bold text-sm tracking-tight text-slate-800">BETO OS</span>
                 </div>
 
-                {/* Desktop: Show page title */}
-                <h1 className="hidden lg:block text-lg font-semibold text-slate-800 truncate">
-                    {mode === 'platform' ? 'Platform Control' : currentCompany?.name || 'Loading...'}
-                </h1>
-                {mode === 'company' && (
-                    <span className="hidden sm:inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-500 border border-slate-200">
-                        {currentCompany?.subscription_status || 'Unknown'}
-                    </span>
-                )}
+                {/* Desktop: Branding + Breadcrumb */}
+                <div className="hidden lg:flex items-center gap-2 min-w-0">
+                    <Hexagon className="h-5 w-5 text-indigo-500 fill-indigo-500/20 flex-shrink-0" />
+                    <span className="font-bold text-sm tracking-tight text-slate-800">BETO OS</span>
+
+                    {mode === 'platform' && (
+                        <>
+                            <ChevronRight size={14} className="text-slate-300 flex-shrink-0" />
+                            <span className="text-sm text-slate-500 font-medium">Platform Control</span>
+                            {sectionName && sectionName !== 'Control Center' && (
+                                <>
+                                    <ChevronRight size={14} className="text-slate-300 flex-shrink-0" />
+                                    <span className="text-sm font-semibold text-slate-800 truncate">{sectionName}</span>
+                                </>
+                            )}
+                        </>
+                    )}
+
+                    {mode === 'company' && (
+                        <>
+                            <ChevronRight size={14} className="text-slate-300 flex-shrink-0" />
+                            <span className="text-sm font-semibold text-slate-800 truncate">
+                                {currentCompany?.name || 'Loading...'}
+                            </span>
+                            {currentCompany?.subscription_status && (
+                                <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 border border-slate-200">
+                                    {currentCompany.subscription_status}
+                                </span>
+                            )}
+                        </>
+                    )}
+                </div>
             </div>
 
             {/* Right side */}
             <div className="flex items-center gap-2 sm:gap-4">
-                {/* Notification bell */}
                 <button className="relative rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center">
                     <Bell size={20} />
                     <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
                 </button>
 
-                {/* Avatar / User Menu (Command Center on mobile per v2.3) */}
                 <div className="relative" ref={menuRef}>
                     <button
                         onClick={() => setMenuOpen(!menuOpen)}
@@ -130,7 +158,6 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
                                 </p>
                             </div>
 
-                            {/* Mobile: Show page context */}
                             <div className="lg:hidden px-4 py-2 border-b border-slate-50">
                                 <p className="text-xs text-slate-400">
                                     {mode === 'platform' ? 'Platform Control' : currentCompany?.name || ''}
@@ -140,23 +167,16 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
                             <div className="py-1">
                                 {user?.is_super_admin && mode === 'company' && (
                                     <button
-                                        onClick={() => {
-                                            handleSwitchToPlatform();
-                                            setMenuOpen(false);
-                                        }}
+                                        onClick={() => { handleSwitchToPlatform(); setMenuOpen(false); }}
                                         className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-amber-600 hover:bg-amber-50"
                                     >
                                         <Layout size={16} />
                                         Back to Platform
                                     </button>
                                 )}
-
                                 <button
                                     className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
-                                    onClick={() => {
-                                        navigate('/settings');
-                                        setMenuOpen(false);
-                                    }}
+                                    onClick={() => { navigate('/settings'); setMenuOpen(false); }}
                                 >
                                     <Settings size={16} />
                                     Settings
