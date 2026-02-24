@@ -361,16 +361,16 @@ export default function Team() {
                     </p>
                 </div>
 
-                {/* Actions row - stacks on mobile */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                    {/* Dropdown filtro empresa — solo SuperAdmin */}
+                {/* Actions row - compact on mobile, expanded on desktop */}
+                <div className="flex items-center gap-2 sm:gap-3">
+                    {/* Filter dropdown — solo SuperAdmin */}
                     {isSuperAdmin && (
-                        <div className="flex items-center gap-2 min-w-0">
+                        <div className="hidden sm:flex items-center gap-2">
                             <Building2 size={16} className="text-gray-400 flex-shrink-0" />
                             <select
                                 value={selectedCompanyFilter}
                                 onChange={(e) => setSelectedCompanyFilter(e.target.value)}
-                                className="w-full sm:w-auto rounded-2xl border-none bg-white px-4 py-2.5 text-sm font-bold text-gray-700 shadow-sm ring-1 ring-gray-200 transition-all focus:ring-2 focus:ring-indigo-500"
+                                className="rounded-2xl border-none bg-white px-4 py-2.5 text-sm font-bold text-gray-700 shadow-sm ring-1 ring-gray-200 transition-all focus:ring-2 focus:ring-indigo-500"
                             >
                                 <option value="all">Todas las empresas</option>
                                 {companyOptions.map(c => (
@@ -380,19 +380,39 @@ export default function Team() {
                         </div>
                     )}
 
+                    {/* Mobile: compact filter dropdown */}
+                    {isSuperAdmin && (
+                        <select
+                            value={selectedCompanyFilter}
+                            onChange={(e) => setSelectedCompanyFilter(e.target.value)}
+                            className="sm:hidden flex-1 min-w-0 rounded-xl bg-white px-3 py-2.5 text-sm font-medium text-gray-700 ring-1 ring-gray-200 focus:ring-2 focus:ring-indigo-500"
+                        >
+                            <option value="all">Todas las empresas</option>
+                            {companyOptions.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                        </select>
+                    )}
+
+                    {/* Spacer to push button right on mobile when no filter */}
+                    {!isSuperAdmin && <div className="flex-1" />}
+
+                    {/* Create button - compact on mobile, full on desktop */}
                     <div className="group relative">
                         <button
                             onClick={() => setShowCreateModal(true)}
                             disabled={isAtLimit}
                             className={`
-                                flex items-center justify-center gap-2 rounded-2xl px-5 py-3 font-bold shadow-lg transition-all w-full sm:w-auto
+                                flex items-center justify-center gap-2 font-bold transition-all active:scale-95
+                                rounded-xl sm:rounded-2xl
+                                h-10 w-10 sm:h-auto sm:w-auto sm:px-5 sm:py-3
                                 ${isAtLimit
-                                    ? 'cursor-not-allowed bg-gray-100 text-gray-400 shadow-none'
-                                    : 'bg-indigo-600 text-white shadow-indigo-100 hover:bg-indigo-700 active:scale-95'}
+                                    ? 'cursor-not-allowed bg-gray-100 text-gray-400'
+                                    : 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700'}
                             `}
                         >
                             <UserPlus size={20} />
-                            <span>Crear Miembro</span>
+                            <span className="hidden sm:inline">Crear Miembro</span>
                         </button>
                         {isAtLimit && (
                             <div className="animate-in fade-in slide-in-from-bottom-2 absolute bottom-full right-0 z-50 mb-3 hidden w-64 rounded-2xl bg-gray-900 p-4 text-xs text-white shadow-2xl group-hover:block">
