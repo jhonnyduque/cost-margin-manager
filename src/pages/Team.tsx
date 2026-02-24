@@ -72,7 +72,6 @@ export default function Team() {
         return members.filter(m => m.company_id === selectedCompanyFilter);
     }, [members, isSuperAdmin, selectedCompanyFilter]);
 
-    // 🔧 FIX: Disparar cuando hay user, sin requerir currentCompany (SuperAdmin no lo tiene)
     useEffect(() => {
         if (!authLoading && user) {
             fetchMembers();
@@ -106,7 +105,6 @@ export default function Team() {
             setLoading(true);
 
             if (isSuperAdmin) {
-                // SuperAdmin: traer todos los miembros con nombre de empresa
                 const { data, error } = await supabase
                     .from('team_members_view')
                     .select('*, companies(name)')
@@ -120,7 +118,6 @@ export default function Team() {
                 }));
                 setMembers(mapped);
             } else {
-                // Usuario normal: solo su empresa
                 const { data, error } = await supabase
                     .from('team_members_view')
                     .select('*')
@@ -278,14 +275,13 @@ export default function Team() {
                         <div className="flex size-8 items-center justify-center rounded-lg bg-indigo-50 text-xs font-bold text-indigo-600">
                             {m.email?.substring(0, 2).toUpperCase()}
                         </div>
-                        <div>
-                            <div className="font-bold text-gray-900">{m.full_name || 'Sin nombre'}</div>
-                            <div className="text-xs text-gray-500">{m.email}</div>
+                        <div className="min-w-0">
+                            <div className="font-bold text-gray-900 truncate">{m.full_name || 'Sin nombre'}</div>
+                            <div className="text-xs text-gray-500 truncate">{m.email}</div>
                         </div>
                     </div>
                 )
             },
-            // Columna Empresa — solo visible para SuperAdmin
             ...(isSuperAdmin ? [{
                 key: 'company_name' as keyof TeamMember,
                 label: 'Empresa',
@@ -352,26 +348,29 @@ export default function Team() {
     };
 
     return (
-        <div className="animate-in fade-in space-y-8 duration-700">
-            <header className="flex items-end justify-between">
+        <div className="animate-in fade-in space-y-6 lg:space-y-8 duration-700">
+            {/* ✅ RESPONSIVE HEADER */}
+            <header className="space-y-4">
+                {/* Title row */}
                 <div>
-                    <h1 className="text-3xl font-black tracking-tight text-gray-900">Equipo</h1>
-                    <p className="mt-1 font-medium text-gray-500">
+                    <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-gray-900">Equipo</h1>
+                    <p className="mt-1 text-sm lg:text-base font-medium text-gray-500">
                         {isSuperAdmin
                             ? `Todos los usuarios de la plataforma · ${filteredMembers.length} miembros`
                             : `Gestión de acceso para ${currentCompany?.name}`}
                     </p>
                 </div>
 
-                <div className="flex items-center gap-3">
+                {/* Actions row - stacks on mobile */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                     {/* Dropdown filtro empresa — solo SuperAdmin */}
                     {isSuperAdmin && (
-                        <div className="flex items-center gap-2">
-                            <Building2 size={16} className="text-gray-400" />
+                        <div className="flex items-center gap-2 min-w-0">
+                            <Building2 size={16} className="text-gray-400 flex-shrink-0" />
                             <select
                                 value={selectedCompanyFilter}
                                 onChange={(e) => setSelectedCompanyFilter(e.target.value)}
-                                className="rounded-2xl border-none bg-white px-4 py-2.5 text-sm font-bold text-gray-700 shadow-sm ring-1 ring-gray-200 transition-all focus:ring-2 focus:ring-indigo-500"
+                                className="w-full sm:w-auto rounded-2xl border-none bg-white px-4 py-2.5 text-sm font-bold text-gray-700 shadow-sm ring-1 ring-gray-200 transition-all focus:ring-2 focus:ring-indigo-500"
                             >
                                 <option value="all">Todas las empresas</option>
                                 {companyOptions.map(c => (
@@ -386,7 +385,7 @@ export default function Team() {
                             onClick={() => setShowCreateModal(true)}
                             disabled={isAtLimit}
                             className={`
-                                flex items-center gap-2 rounded-2xl px-6 py-3 font-bold shadow-lg transition-all
+                                flex items-center justify-center gap-2 rounded-2xl px-5 py-3 font-bold shadow-lg transition-all w-full sm:w-auto
                                 ${isAtLimit
                                     ? 'cursor-not-allowed bg-gray-100 text-gray-400 shadow-none'
                                     : 'bg-indigo-600 text-white shadow-indigo-100 hover:bg-indigo-700 active:scale-95'}
@@ -404,11 +403,11 @@ export default function Team() {
                 </div>
             </header>
 
-            <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-6 lg:gap-8 lg:grid-cols-4">
                 <div className="space-y-6 lg:col-span-3">
                     {statusMessage && (
                         <div className={`animate-in slide-in-from-top-4 flex items-center gap-4 rounded-2xl border p-4 duration-500 ${statusMessage.type === 'success' ? 'border-emerald-100 bg-emerald-50 text-emerald-700' : 'border-red-100 bg-red-50 text-red-700'}`}>
-                            <div className={`flex size-10 items-center justify-center rounded-full font-bold ${statusMessage.type === 'success' ? 'bg-emerald-100' : 'bg-red-100'}`}>
+                            <div className={`flex size-10 items-center justify-center rounded-full font-bold flex-shrink-0 ${statusMessage.type === 'success' ? 'bg-emerald-100' : 'bg-red-100'}`}>
                                 {statusMessage.type === 'success' ? '✓' : '!'}
                             </div>
                             <p className="text-sm font-bold tracking-tight">{statusMessage.text}</p>
@@ -423,7 +422,8 @@ export default function Team() {
                     />
                 </div>
 
-                <aside className="space-y-8">
+                {/* Sidebar - hidden on mobile, visible on desktop */}
+                <aside className="hidden lg:block space-y-8">
                     {upgradeRecommended && (
                         <div className="group relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 p-8 text-white shadow-2xl">
                             <div className="absolute right-0 top-0 -mr-4 -mt-4 size-24 rounded-full bg-white/10 blur-2xl transition-transform duration-700 group-hover:scale-150" />
