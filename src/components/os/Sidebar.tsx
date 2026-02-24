@@ -41,16 +41,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
     return (
         <aside
             className={`
-                fixed left-0 top-0 z-50 h-screen bg-slate-900 text-slate-100 transition-all duration-300
+                fixed left-0 top-0 z-40 h-screen bg-slate-900 text-slate-100 transition-all duration-300
                 ${collapsed ? 'w-16' : 'w-64'}
             `}
             aria-label="Menú lateral de navegación"
         >
             {/* Header / Brand */}
-            <div className={`
-                flex border-b border-slate-800 px-2
-                ${collapsed ? 'flex-col items-center justify-center h-auto py-3 gap-2' : 'h-16 items-center justify-between px-4'}
-            `}>
+            <div className="flex h-16 items-center justify-between px-4 border-b border-slate-800">
                 {!collapsed && (
                     <div className="flex items-center gap-2 font-bold text-lg tracking-tight">
                         <Hexagon className="h-6 w-6 text-indigo-500 fill-indigo-500/20 flex-shrink-0" />
@@ -58,7 +55,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
                     </div>
                 )}
                 {collapsed && (
-                    <Hexagon className="h-6 w-6 text-indigo-500 fill-indigo-500/20" />
+                    <div className="mx-auto">
+                        <Hexagon className="h-6 w-6 text-indigo-500 fill-indigo-500/20" />
+                    </div>
                 )}
 
                 {/* ✅ Botón de toggle MEJORADO: más visible + accesible */}
@@ -71,6 +70,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
                         border border-slate-700/60 hover:border-slate-600
                         text-slate-400 hover:text-white
                         transition-all duration-200
+                        ${collapsed ? 'mx-auto' : 'ml-auto'}
                         focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-900
                     `}
                     title={`${collapsed ? 'Expandir' : 'Ocultar'} menú (Ctrl + B)`}
