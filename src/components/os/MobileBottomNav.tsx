@@ -1,27 +1,19 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Layers, Users, CreditCard, Settings } from 'lucide-react';
+import { LayoutDashboard, Layers, Users, CreditCard, Settings, Menu } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 /**
- * MobileBottomNav — v2.3 Control Center Edition
+ * MobileBottomNav — v2.4 with 5th "More" tab
  * 
- * 4 fixed tabs matching the proposal:
- * Home | Entornos | Equipo | Billing
- * 
- * Follows iOS/Android bottom nav patterns:
- * - Fixed bottom
- * - 44px+ touch targets
- * - Active state with brand color
- * - Safe area padding for notched devices
+ * SuperAdmin: Home | Entornos | Equipo | Billing | Más
+ * Tenant:     Home | Productos | Equipo | Settings | Más
  */
 
 interface NavItem {
     label: string;
     path: string;
     icon: React.FC<{ size?: number; className?: string }>;
-    /** Only show for super admin */
-    superAdminOnly?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -45,9 +37,13 @@ const NAV_ITEMS: NavItem[] = [
         path: '/platform/billing',
         icon: CreditCard,
     },
+    {
+        label: 'Más',
+        path: '/more',
+        icon: Menu,
+    },
 ];
 
-// For non-super-admin (tenant) users, different nav
 const TENANT_NAV_ITEMS: NavItem[] = [
     {
         label: 'Home',
@@ -69,6 +65,11 @@ const TENANT_NAV_ITEMS: NavItem[] = [
         path: '/settings',
         icon: Settings,
     },
+    {
+        label: 'Más',
+        path: '/more',
+        icon: Menu,
+    },
 ];
 
 export const MobileBottomNav: React.FC = () => {
@@ -82,14 +83,13 @@ export const MobileBottomNav: React.FC = () => {
             className="
                 fixed bottom-0 left-0 right-0 z-50
                 bg-white border-t border-slate-200
-                safe-area-bottom
+                safe-area-bottom lg:hidden
             "
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         >
             <div className="flex items-stretch justify-around h-16">
                 {items.map((item) => {
                     const Icon = item.icon;
-                    // Check if current path starts with the nav item path
                     const isActive = location.pathname === item.path ||
                         (item.path !== '/' && location.pathname.startsWith(item.path));
 
@@ -122,7 +122,6 @@ export const MobileBottomNav: React.FC = () => {
                             >
                                 {item.label}
                             </span>
-                            {/* Active indicator dot */}
                             {isActive && (
                                 <div className="w-1 h-1 rounded-full bg-indigo-600 mt-0.5" />
                             )}

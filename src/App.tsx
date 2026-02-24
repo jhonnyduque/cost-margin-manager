@@ -13,6 +13,7 @@ import Team from '@/pages/Team';
 import Login from '@/pages/Login';
 import NotProvisioned from '@/pages/NotProvisioned';
 import Settings from '@/pages/Settings';
+import MorePage from '@/pages/MorePage'; // ✅ Import agregado
 
 // Pages (New in Src)
 import PlatformAdmin from './pages/PlatformAdmin';
@@ -122,6 +123,9 @@ const AppContent: React.FC = () => {
                 <Route path="/platform/billing/checkout" element={<BillingCheckout />} />
                 <Route path="/platform/billing/success" element={<BillingSuccess />} />
                 <Route path="/platform/billing/portal" element={<BillingSuccess />} />
+
+                {/* ✅ Nueva ruta: MorePage */}
+                <Route path="/more" element={<MorePage />} />
 
                 <Route path="/ai" element={<PlaceholderPage />} />
                 <Route path="/analytics" element={<PlaceholderPage />} />
