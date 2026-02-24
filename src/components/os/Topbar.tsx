@@ -138,17 +138,6 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
                             </div>
 
                             <div className="py-1">
-                                <button
-                                    className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
-                                    onClick={() => {
-                                        navigate('/settings');
-                                        setMenuOpen(false);
-                                    }}
-                                >
-                                    <User size={16} />
-                                    Profile
-                                </button>
-
                                 {user?.is_super_admin && mode === 'company' && (
                                     <button
                                         onClick={() => {
