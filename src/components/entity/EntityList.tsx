@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { EntityConfig } from './types';
 import { EntityTable } from './EntityTable';
 import { EntityCard } from './EntityCard';
@@ -10,6 +10,8 @@ interface EntityListProps<T> {
     loadingMessage?: string;
     emptyMessage?: string;
     onBulkAction?: (actionId: string, ids: string[]) => void;
+    /** Callback to sync selected IDs with parent */
+    onSelectionChange?: (ids: string[]) => void;
 }
 
 export function EntityList<T>({
@@ -18,9 +20,20 @@ export function EntityList<T>({
     loading,
     loadingMessage = 'Cargando datos...',
     emptyMessage = `No hay ${config.pluralName.toLowerCase()} en este momento.`,
-    onBulkAction
+    onBulkAction,
+    onSelectionChange
 }: EntityListProps<T>) {
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+    // Sync selection with parent when it changes
+    useEffect(() => {
+        onSelectionChange?.(selectedIds);
+    }, [selectedIds, onSelectionChange]);
+
+    // Clear selection when items change (e.g. after delete/filter)
+    useEffect(() => {
+        setSelectedIds([]);
+    }, [items.length]);
 
     const toggleSelect = (id: string) => {
         setSelectedIds(prev =>
@@ -59,9 +72,16 @@ export function EntityList<T>({
 
     return (
         <div className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-            {/* BULK ACTION BAR - STANDARD (Fase UI Governance) */}
+            {/* BULK ACTION BAR - Fixed above bottom nav on mobile, inline on desktop */}
             {selectedIds.length > 0 && (
-                <div className="animate-in slide-in-from-bottom-6 md:slide-in-from-top-2 fixed inset-x-6 bottom-6 z-[60] flex items-center justify-between gap-4 rounded-2xl border-b border-indigo-100 bg-indigo-600 p-4 text-white shadow-2xl md:absolute md:inset-x-0 md:bottom-auto md:top-0 md:justify-start md:rounded-none md:bg-indigo-50 md:p-3 md:text-indigo-700 md:shadow-none">
+                <div className="
+                    animate-in slide-in-from-bottom-6 md:slide-in-from-top-2
+                    fixed inset-x-4 bottom-[5.5rem] z-[60]
+                    flex items-center justify-between gap-4
+                    rounded-2xl bg-indigo-600 p-4 text-white shadow-2xl
+                    md:absolute md:inset-x-0 md:bottom-auto md:top-0
+                    md:justify-start md:rounded-none md:bg-indigo-50 md:p-3 md:text-indigo-700 md:shadow-none
+                ">
                     <div className="flex items-center gap-2">
                         <span className="text-sm font-bold">
                             {selectedIds.length} <span className="hidden sm:inline">seleccionados</span>
@@ -75,6 +95,7 @@ export function EntityList<T>({
                                 onClick={() => {
                                     action.onClick(selectedIds);
                                     if (onBulkAction) onBulkAction(action.label, selectedIds);
+                                    setSelectedIds([]);
                                 }}
                                 className={`text-xs font-bold uppercase tracking-wider transition-opacity hover:opacity-80 ${action.variant === 'danger' ? 'text-red-200 md:text-red-600' : ''
                                     }`}
@@ -82,8 +103,14 @@ export function EntityList<T>({
                                 {action.label}
                             </button>
                         ))}
-                        {/* Default print action if needed or just handle via config */}
                     </div>
+                    {/* Deselect all button */}
+                    <button
+                        onClick={() => setSelectedIds([])}
+                        className="ml-2 rounded-lg bg-white/20 px-2 py-1 text-xs font-bold hover:bg-white/30 md:bg-indigo-100 md:text-indigo-600 md:hover:bg-indigo-200"
+                    >
+                        ✕
+                    </button>
                 </div>
             )}
 

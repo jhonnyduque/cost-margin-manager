@@ -30,6 +30,11 @@ export default function Team() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
+    // Callback to sync selection from EntityList
+    const handleSelectionChange = React.useCallback((ids: string[]) => {
+        setSelectedIds(ids);
+    }, []);
+
     // Create form state
     const [newUserEmail, setNewUserEmail] = useState('');
     const [newUserFullName, setNewUserFullName] = useState('');
@@ -433,6 +438,7 @@ export default function Team() {
                         config={teamConfig}
                         items={filteredMembers}
                         loading={loading}
+                        onSelectionChange={handleSelectionChange}
                     />
                 </div>
 

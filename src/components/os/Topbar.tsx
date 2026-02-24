@@ -3,7 +3,7 @@ import { Bell, ChevronDown, User, Settings, LogOut, Layout, Hexagon } from 'luci
 import { useAuth } from '@/hooks/useAuth';
 import { useStore } from '@/store';
 import { supabase } from '@/services/supabase';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface TopbarProps {
     sidebarCollapsed?: boolean;
@@ -13,9 +13,16 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
     const { user, currentCompany, mode, exitImpersonation, setIsSigningOut, resetState } = useAuth();
     const logout = useStore(state => state.logout);
     const navigate = useNavigate();
+    const location = useLocation();
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
+    // Close menu on route change
+    useEffect(() => {
+        setMenuOpen(false);
+    }, [location.pathname]);
+
+    // Close on click outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -25,6 +32,16 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    // Close on Escape key
+    useEffect(() => {
+        if (!menuOpen) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setMenuOpen(false);
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [menuOpen]);
 
     const handleLogout = async () => {
         console.log('[Topbar] Logout requested');
@@ -123,7 +140,10 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
                             <div className="py-1">
                                 <button
                                     className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
-                                    onClick={() => setMenuOpen(false)}
+                                    onClick={() => {
+                                        navigate('/settings');
+                                        setMenuOpen(false);
+                                    }}
                                 >
                                     <User size={16} />
                                     Profile

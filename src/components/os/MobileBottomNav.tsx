@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Layers, Users, CreditCard } from 'lucide-react';
+import { LayoutDashboard, Layers, Users, CreditCard, Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 /**
@@ -67,7 +67,7 @@ const TENANT_NAV_ITEMS: NavItem[] = [
     {
         label: 'Settings',
         path: '/settings',
-        icon: CreditCard,
+        icon: Settings,
     },
 ];
 
