@@ -1,8 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Trash2, Edit2, Search, X, History, ShoppingCart, ArrowDownToLine, Printer, Pencil, AlertCircle, Maximize2, Scissors, RotateCcw } from 'lucide-react';
+import { Plus, Trash2, Edit2, Search, X, History, ShoppingCart, ArrowDownToLine, Printer, Pencil, AlertCircle, Maximize2, Scissors, RotateCcw, Package } from 'lucide-react';
 import { useStore } from '../store';
 import { RawMaterial, Status, Unit, MaterialBatch } from '@/types';
-import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -137,8 +136,8 @@ const RawMaterials: React.FC = () => {
       finalUnitCost = batchFormData.unit_cost || 0;
     } else {
       area = ((batchFormData.length || 0) * (batchFormData.width || 0)) / 10000;
-      finalQty = (batchFormData.length || 0) / 100; // Largo en metros para FIFO
-      finalUnitCost = (batchFormData.unit_cost || 0) / finalQty; // Costo por metro para FIFO
+      finalQty = (batchFormData.length || 0) / 100;
+      finalUnitCost = (batchFormData.unit_cost || 0) / finalQty;
     }
 
     const data = {
@@ -228,24 +227,12 @@ const RawMaterials: React.FC = () => {
   const activeMaterial = rawMaterials.find(m => m.id === activeMaterialId);
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Materias Primas"
-        description="Inventario Maestro y Gestión FIFO"
-        actions={
-          <Button
-            variant="primary"
-            onClick={() => {
-              setEditingId(null);
-              setFormData({ name: '', description: '', type: 'Tela', unit: 'metro', provider: '', status: 'activa', initial_qty: 0, unit_cost: 0, width: 140 });
-              setIsModalOpen(true);
-            }}
-            icon={<Plus size={18} />}
-          >
-            Nuevo Material
-          </Button>
-        }
-      />
+    <div className="space-y-5 lg:space-y-6">
+      {/* Responsive Header */}
+      <div>
+        <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-slate-900">Materias Primas</h1>
+        <p className="mt-1 text-sm lg:text-base text-slate-500">Inventario Maestro y Gestión FIFO</p>
+      </div>
 
       <style>{`
         @media print {
@@ -256,89 +243,175 @@ const RawMaterials: React.FC = () => {
         }
       `}</style>
 
-      <div className="relative">
-        <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-          <Search size={18} />
+      {/* Toolbar: Search + Create */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 min-w-0">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Buscar material o proveedor..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full rounded-xl bg-white pl-9 pr-3 py-2.5 text-sm text-slate-700 ring-1 ring-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+          />
         </div>
-        <Input
-          placeholder="Buscar material o proveedor..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
-          fullWidth
-        />
+        <button
+          onClick={() => {
+            setEditingId(null);
+            setFormData({ name: '', description: '', type: 'Tela', unit: 'metro', provider: '', status: 'activa', initial_qty: 0, unit_cost: 0, width: 140 });
+            setIsModalOpen(true);
+          }}
+          className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 text-white font-medium shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all h-10 w-10 sm:w-auto sm:px-4 flex-shrink-0"
+        >
+          <Plus size={18} />
+          <span className="hidden sm:inline text-sm">Nuevo Material</span>
+        </button>
       </div>
 
-      <TableContainer>
-
-        <TableHeader>
-          <TableRow>
-            <TableHead>Materia Prima</TableHead>
-            <TableHead>Categoría</TableHead>
-            <TableHead className="text-right">Stock Actual</TableHead>
-            <TableHead className="text-right">Costo Promedio</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filteredMaterials.map((m) => {
+      {/* ========== MOBILE: Cards ========== */}
+      <div className="space-y-3 md:hidden">
+        {filteredMaterials.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-12 text-center">
+            <Package size={48} className="mx-auto mb-3 text-slate-300" />
+            <p className="font-medium text-slate-500">No hay materias primas registradas.</p>
+          </div>
+        ) : (
+          filteredMaterials.map((m) => {
             const { totalRemainingQty, weightedAvgCost } = getBatchStats(m.id);
             return (
-              <TableRow key={m.id}>
-                <TableCell>
-                  <div className="flex flex-col">
-                    <span className="font-bold">{m.name}</span>
-                    <span className="text-xs text-gray-400">{m.provider || 'Varios'}</span>
+              <div key={m.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                {/* Top: Name + badge */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-slate-900 truncate">{m.name}</h3>
+                    <p className="text-xs text-slate-400">{m.provider || 'Varios'}</p>
                   </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="secondary">{m.type}</Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <span className={`font-bold ${totalRemainingQty <= 0 ? 'text-red-500' : ''}`}>
-                    {totalRemainingQty.toFixed(2)}
-                  </span>
-                  <span className="ml-1 text-xs text-gray-400">{m.unit}s</span>
-                </TableCell>
-                <TableCell className="text-right font-medium text-gray-700">
-                  {formatCurrency(weightedAvgCost)}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => { setActiveMaterialId(m.id); setIsBatchModalOpen(true); }} title="Ver Lotes">
-                      <History size={16} className="text-indigo-400" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => {
+                  <Badge variant="secondary" className="flex-shrink-0">{m.type}</Badge>
+                </div>
+
+                {/* Stats row */}
+                <div className="flex items-center gap-4 mt-3">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase text-slate-400">Stock</p>
+                    <p className={`text-sm font-bold ${totalRemainingQty <= 0 ? 'text-red-500' : 'text-slate-900'}`}>
+                      {totalRemainingQty.toFixed(2)} <span className="text-xs font-normal text-slate-400">{m.unit}s</span>
+                    </p>
+                  </div>
+                  <div className="h-6 w-px bg-slate-100" />
+                  <div>
+                    <p className="text-[10px] font-bold uppercase text-slate-400">Costo Prom.</p>
+                    <p className="text-sm font-bold text-slate-700">{formatCurrency(weightedAvgCost)}</p>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100">
+                  <button
+                    onClick={() => { setActiveMaterialId(m.id); setIsBatchModalOpen(true); }}
+                    className="flex items-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-600 hover:bg-indigo-100 active:scale-95 transition-all"
+                  >
+                    <History size={13} />
+                    Lotes
+                  </button>
+                  <button
+                    onClick={() => {
                       const stats = getBatchStats(m.id);
                       setEditingId(m.id);
                       setFormData({ ...m, initial_qty: stats.totalRemainingQty, unit_cost: stats.weightedAvgCost });
                       setIsModalOpen(true);
-                    }}>
-                      <Edit2 size={16} />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => deleteRawMaterial(m.id)}>
-                      <Trash2 size={16} className="text-red-400" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
+                    }}
+                    className="flex items-center justify-center rounded-lg bg-slate-50 p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 active:scale-95 transition-all"
+                  >
+                    <Edit2 size={15} />
+                  </button>
+                  <button
+                    onClick={() => deleteRawMaterial(m.id)}
+                    className="flex items-center justify-center rounded-lg bg-slate-50 p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600 active:scale-95 transition-all"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </div>
             );
-          })}
-        </TableBody>
+          })
+        )}
+      </div>
 
-      </TableContainer>
+      {/* ========== DESKTOP: Table ========== */}
+      <div className="hidden md:block">
+        <TableContainer>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Materia Prima</TableHead>
+              <TableHead>Categoría</TableHead>
+              <TableHead className="text-right">Stock Actual</TableHead>
+              <TableHead className="text-right">Costo Promedio</TableHead>
+              <TableHead className="text-right">Acciones</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredMaterials.map((m) => {
+              const { totalRemainingQty, weightedAvgCost } = getBatchStats(m.id);
+              return (
+                <TableRow key={m.id}>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="font-bold">{m.name}</span>
+                      <span className="text-xs text-gray-400">{m.provider || 'Varios'}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{m.type}</Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <span className={`font-bold ${totalRemainingQty <= 0 ? 'text-red-500' : ''}`}>
+                      {totalRemainingQty.toFixed(2)}
+                    </span>
+                    <span className="ml-1 text-xs text-gray-400">{m.unit}s</span>
+                  </TableCell>
+                  <TableCell className="text-right font-medium text-gray-700">
+                    {formatCurrency(weightedAvgCost)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => { setActiveMaterialId(m.id); setIsBatchModalOpen(true); }} title="Ver Lotes">
+                        <History size={16} className="text-indigo-400" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => {
+                        const stats = getBatchStats(m.id);
+                        setEditingId(m.id);
+                        setFormData({ ...m, initial_qty: stats.totalRemainingQty, unit_cost: stats.weightedAvgCost });
+                        setIsModalOpen(true);
+                      }}>
+                        <Edit2 size={16} />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => deleteRawMaterial(m.id)}>
+                        <Trash2 size={16} className="text-red-400" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </TableContainer>
+      </div>
+
+      {/* ============================================ */}
+      {/* MODALS — unchanged logic, kept as-is         */}
+      {/* ============================================ */}
 
       {isModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-6"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
           style={{ backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)' }}
         >
-          <Card className="my-8 w-full max-w-xl p-8">
-            <h3 className="mb-8 text-2xl font-bold">
+          <Card className="my-4 w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 sm:p-8">
+            <h3 className="mb-6 sm:mb-8 text-xl sm:text-2xl font-bold">
               {editingId ? 'Editar' : 'Nueva'} Materia Prima
             </h3>
 
-            <form onSubmit={handleMasterSubmit} className="space-y-6">
+            <form onSubmit={handleMasterSubmit} className="space-y-5 sm:space-y-6">
               <Input
                 label="Nombre"
                 value={formData.name}
@@ -347,7 +420,7 @@ const RawMaterials: React.FC = () => {
                 required
               />
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Select
                   label="Tipo / Categoría"
                   value={formData.type}
@@ -374,7 +447,7 @@ const RawMaterials: React.FC = () => {
                 placeholder="Detalles de la materia prima..."
               />
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Select
                   label="Unidad de Medida"
                   value={formData.unit}
@@ -449,13 +522,13 @@ const RawMaterials: React.FC = () => {
 
       {isBatchModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-6"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
           style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
         >
           <Card className="flex max-h-[90vh] w-full max-w-[90vw] flex-col overflow-hidden !p-0">
-            <div className="flex items-center justify-between border-b px-10 py-6" style={{ backgroundColor: tokens.colors.bg, borderColor: tokens.colors.border }}>
+            <div className="flex items-center justify-between border-b px-6 py-4 sm:px-10 sm:py-6" style={{ backgroundColor: tokens.colors.bg, borderColor: tokens.colors.border }}>
               <div>
-                <h3 className="text-xl font-bold">Histórico de Compras y Lotes</h3>
+                <h3 className="text-lg sm:text-xl font-bold">Histórico de Compras y Lotes</h3>
                 <p className="text-sm font-medium text-gray-400">{activeMaterial?.name} ({activeMaterial?.type})</p>
               </div>
               <div className="no-print flex items-center gap-2">
@@ -464,11 +537,11 @@ const RawMaterials: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex-1 space-y-10 overflow-y-auto p-10" id="print-area">
-              <div className="no-print rounded-3xl border border-indigo-100 bg-indigo-50/50 p-8">
-                <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-center">
+            <div className="flex-1 space-y-8 sm:space-y-10 overflow-y-auto p-6 sm:p-10" id="print-area">
+              <div className="no-print rounded-2xl sm:rounded-3xl border border-indigo-100 bg-indigo-50/50 p-5 sm:p-8">
+                <div className="mb-4 sm:mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-center">
                   <h4 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-indigo-400">
-                    <ShoppingCart size={14} /> Registrar Nueva Entrada de Stock
+                    <ShoppingCart size={14} /> Registrar Nueva Entrada
                   </h4>
                   <div className="flex gap-1 rounded-xl border border-indigo-100 bg-white p-1">
                     <button
@@ -488,8 +561,8 @@ const RawMaterials: React.FC = () => {
                   </div>
                 </div>
 
-                <form onSubmit={handleBatchSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 items-end gap-4 md:grid-cols-4 lg:grid-cols-6">
+                <form onSubmit={handleBatchSubmit} className="space-y-4 sm:space-y-6">
+                  <div className="grid grid-cols-2 items-end gap-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-6">
                     <Input
                       type="date"
                       label="Fecha"
@@ -497,7 +570,7 @@ const RawMaterials: React.FC = () => {
                       onChange={e => setBatchFormData({ ...batchFormData, date: e.target.value })}
                       required
                     />
-                    <div className="lg:col-span-2">
+                    <div className="col-span-2 lg:col-span-2">
                       <Input
                         label="Proveedor / Ref."
                         value={batchFormData.provider}
@@ -545,18 +618,18 @@ const RawMaterials: React.FC = () => {
                     />
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-indigo-100 bg-white/60 p-4 shadow-sm">
+                  <div className="flex flex-wrap items-center gap-4 rounded-xl sm:rounded-2xl border border-indigo-100 bg-white/60 p-3 sm:p-4 shadow-sm">
                     <div className="flex flex-col">
                       <span className="text-[10px] font-bold uppercase text-gray-400">Área Calculada</span>
-                      <span className="text-lg font-black text-indigo-900">{calculatedArea.toFixed(2)} m²</span>
+                      <span className="text-base sm:text-lg font-black text-indigo-900">{calculatedArea.toFixed(2)} m²</span>
                     </div>
                     <div className="mx-2 hidden h-8 w-px bg-indigo-100 sm:block"></div>
                     <div className="flex flex-col">
                       <span className="text-[10px] font-bold uppercase text-gray-400">Costo Real / m²</span>
-                      <span className="text-lg font-black text-emerald-600">{formatCurrency(calculatedCostPerM2)}/m²</span>
+                      <span className="text-base sm:text-lg font-black text-emerald-600">{formatCurrency(calculatedCostPerM2)}/m²</span>
                     </div>
-                    <div className="ml-auto">
-                      <Button type="submit" variant="primary" icon={<Plus size={18} />}>Confirmar Entrada</Button>
+                    <div className="ml-auto w-full sm:w-auto">
+                      <Button type="submit" variant="primary" icon={<Plus size={18} />} className="w-full sm:w-auto">Confirmar Entrada</Button>
                     </div>
                   </div>
                 </form>
@@ -564,83 +637,83 @@ const RawMaterials: React.FC = () => {
 
               <div className="space-y-4">
                 <h4 className="no-print ml-1 text-xs font-bold uppercase tracking-widest text-gray-400">Lotes Activos y Movimientos</h4>
-                <TableContainer>
-
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-10"></TableHead>
-                      <TableHead>FECHA ENTRADA</TableHead>
-                      <TableHead>MODO</TableHead>
-                      <TableHead>PROVEEDOR / REF.</TableHead>
-                      <TableHead className="text-right">DIMENSIONES</TableHead>
-                      <TableHead className="text-right text-emerald-600">ÁREA (m²)</TableHead>
-                      <TableHead className="text-right">COSTO COMPRA</TableHead>
-                      <TableHead className="text-right text-indigo-500">COSTO m²</TableHead>
-                      <TableHead className="text-right">RESTANTE</TableHead>
-                      <TableHead className="no-print text-center">ACCIÓN</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {batches.filter(b => b.material_id === activeMaterialId).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((batch) => {
-                      const currentTotalPurchaseCost = batch.entry_mode === 'pieza' ? (batch.unit_cost * batch.initial_quantity) : (batch.unit_cost * batch.initial_quantity);
-                      const currentCostPerM2 = batch.area && batch.area > 0 ? currentTotalPurchaseCost / batch.area : 0;
-
-                      return (
-                        <TableRow key={batch.id}>
-                          <TableCell className="text-center"><ArrowDownToLine size={16} className="mx-auto text-emerald-500" /></TableCell>
-                          <TableCell className="font-mono text-xs font-bold text-gray-600">{batch.date}</TableCell>
-                          <TableCell>
-                            <Badge variant={batch.entry_mode === 'pieza' ? 'warning' : 'default'} className="flex w-fit items-center gap-1">
-                              {batch.entry_mode === 'pieza' ? <Scissors size={10} /> : <RotateCcw size={10} />}
-                              {batch.entry_mode || 'Rollo'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="font-bold">{batch.provider}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex flex-col items-end">
-                              <span className="text-xs font-bold text-gray-900">
-                                {batch.entry_mode === 'pieza' ? `${batch.length} × ${batch.width} cm` : `${batch.initial_quantity.toFixed(2)} m lineales`}
-                              </span>
-                              <span className="text-[10px] font-bold uppercase text-gray-400">{batch.width} cm ancho</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right font-mono text-xs font-bold text-emerald-600">{batch.area ? `${batch.area.toFixed(2)} m²` : '---'}</TableCell>
-                          <TableCell className="text-right font-mono text-xs font-bold">{formatCurrency(currentTotalPurchaseCost)}</TableCell>
-                          <TableCell className="text-right font-mono text-xs font-bold text-indigo-600">{currentCostPerM2 > 0 ? formatCurrency(currentCostPerM2) : '---'}</TableCell>
-                          <TableCell className="text-right">
-                            <Badge variant={batch.remaining_quantity > 0 ? 'success' : 'default'}>
-                              {batch.remaining_quantity.toFixed(2)} m
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="no-print text-center">
-                            <div className="flex justify-center gap-1">
-                              <Button variant="ghost" size="sm" onClick={() => setEditingBatchData(batch)} icon={<Pencil size={16} />} />
-                              <Button variant="ghost" size="sm" onClick={() => deleteBatch(batch.id)} icon={<Trash2 size={16} className="text-red-400" />} />
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-
-                    {activeMaterialId && (
-                      <TableRow className="border-t-2 border-gray-200 bg-gray-50 font-bold">
-                        <TableCell></TableCell>
-                        <TableCell colSpan={3} className="uppercase text-gray-900">TOTALES</TableCell>
-                        <TableCell className="text-right font-mono text-xs text-gray-400">{getBatchStats(activeMaterialId).totalOriginalQty.toFixed(2)} m</TableCell>
-                        <TableCell className="text-right font-mono text-xs text-emerald-600">{getBatchStats(activeMaterialId).totalArea.toFixed(2)} m²</TableCell>
-                        <TableCell className="text-right font-mono text-xs text-gray-400">{formatCurrency(getBatchStats(activeMaterialId).totalValue)}</TableCell>
-                        <TableCell className="text-right font-mono text-xs text-indigo-600">{formatCurrency(getBatchStats(activeMaterialId).avgCostPerM2)}</TableCell>
-                        <TableCell className="text-right font-mono text-xs text-emerald-600">{getBatchStats(activeMaterialId).totalRemainingQty.toFixed(2)} m</TableCell>
-                        <TableCell></TableCell>
+                <div className="overflow-x-auto">
+                  <TableContainer>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-10"></TableHead>
+                        <TableHead>FECHA</TableHead>
+                        <TableHead>MODO</TableHead>
+                        <TableHead>PROVEEDOR</TableHead>
+                        <TableHead className="text-right">DIMENSIONES</TableHead>
+                        <TableHead className="text-right text-emerald-600">ÁREA</TableHead>
+                        <TableHead className="text-right">COSTO</TableHead>
+                        <TableHead className="text-right text-indigo-500">€/m²</TableHead>
+                        <TableHead className="text-right">RESTANTE</TableHead>
+                        <TableHead className="no-print text-center">ACCIÓN</TableHead>
                       </TableRow>
-                    )}
-                  </TableBody>
+                    </TableHeader>
+                    <TableBody>
+                      {batches.filter(b => b.material_id === activeMaterialId).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((batch) => {
+                        const currentTotalPurchaseCost = batch.entry_mode === 'pieza' ? (batch.unit_cost * batch.initial_quantity) : (batch.unit_cost * batch.initial_quantity);
+                        const currentCostPerM2 = batch.area && batch.area > 0 ? currentTotalPurchaseCost / batch.area : 0;
 
-                </TableContainer>
+                        return (
+                          <TableRow key={batch.id}>
+                            <TableCell className="text-center"><ArrowDownToLine size={16} className="mx-auto text-emerald-500" /></TableCell>
+                            <TableCell className="font-mono text-xs font-bold text-gray-600">{batch.date}</TableCell>
+                            <TableCell>
+                              <Badge variant={batch.entry_mode === 'pieza' ? 'warning' : 'default'} className="flex w-fit items-center gap-1">
+                                {batch.entry_mode === 'pieza' ? <Scissors size={10} /> : <RotateCcw size={10} />}
+                                {batch.entry_mode || 'Rollo'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-bold">{batch.provider}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex flex-col items-end">
+                                <span className="text-xs font-bold text-gray-900">
+                                  {batch.entry_mode === 'pieza' ? `${batch.length} × ${batch.width} cm` : `${batch.initial_quantity.toFixed(2)} m lineales`}
+                                </span>
+                                <span className="text-[10px] font-bold uppercase text-gray-400">{batch.width} cm ancho</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-xs font-bold text-emerald-600">{batch.area ? `${batch.area.toFixed(2)} m²` : '---'}</TableCell>
+                            <TableCell className="text-right font-mono text-xs font-bold">{formatCurrency(currentTotalPurchaseCost)}</TableCell>
+                            <TableCell className="text-right font-mono text-xs font-bold text-indigo-600">{currentCostPerM2 > 0 ? formatCurrency(currentCostPerM2) : '---'}</TableCell>
+                            <TableCell className="text-right">
+                              <Badge variant={batch.remaining_quantity > 0 ? 'success' : 'default'}>
+                                {batch.remaining_quantity.toFixed(2)} m
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="no-print text-center">
+                              <div className="flex justify-center gap-1">
+                                <Button variant="ghost" size="sm" onClick={() => setEditingBatchData(batch)} icon={<Pencil size={16} />} />
+                                <Button variant="ghost" size="sm" onClick={() => deleteBatch(batch.id)} icon={<Trash2 size={16} className="text-red-400" />} />
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+
+                      {activeMaterialId && (
+                        <TableRow className="border-t-2 border-gray-200 bg-gray-50 font-bold">
+                          <TableCell></TableCell>
+                          <TableCell colSpan={3} className="uppercase text-gray-900">TOTALES</TableCell>
+                          <TableCell className="text-right font-mono text-xs text-gray-400">{getBatchStats(activeMaterialId).totalOriginalQty.toFixed(2)} m</TableCell>
+                          <TableCell className="text-right font-mono text-xs text-emerald-600">{getBatchStats(activeMaterialId).totalArea.toFixed(2)} m²</TableCell>
+                          <TableCell className="text-right font-mono text-xs text-gray-400">{formatCurrency(getBatchStats(activeMaterialId).totalValue)}</TableCell>
+                          <TableCell className="text-right font-mono text-xs text-indigo-600">{formatCurrency(getBatchStats(activeMaterialId).avgCostPerM2)}</TableCell>
+                          <TableCell className="text-right font-mono text-xs text-emerald-600">{getBatchStats(activeMaterialId).totalRemainingQty.toFixed(2)} m</TableCell>
+                          <TableCell></TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </TableContainer>
+                </div>
               </div>
             </div>
 
-            <div className="no-print flex justify-end border-t bg-gray-50 px-10 py-6" style={{ borderColor: tokens.colors.border }}>
+            <div className="no-print flex justify-end border-t bg-gray-50 px-6 py-4 sm:px-10 sm:py-6" style={{ borderColor: tokens.colors.border }}>
               <Button variant="secondary" onClick={() => setIsBatchModalOpen(false)}>Cerrar Visor</Button>
             </div>
           </Card>
@@ -649,10 +722,10 @@ const RawMaterials: React.FC = () => {
 
       {editingBatchData && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center p-6"
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6"
           style={{ backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}
         >
-          <Card className="w-full max-w-md p-8">
+          <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto p-6 sm:p-8">
             <h4 className="mb-6 flex items-center gap-2 text-lg font-bold">
               <Pencil size={18} className="text-indigo-500" /> Editar Registro
             </h4>
