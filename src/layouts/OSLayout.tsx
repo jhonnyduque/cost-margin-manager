@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Sidebar } from '../components/os/Sidebar';
+import { MobileBottomNav } from '../components/os/MobileBottomNav';
 import { Topbar } from '../components/os/Topbar';
 import { useAuth } from '@/hooks/useAuth';
-import { useSubscription } from '../platform/useSubscription';
 import { Loader2 } from 'lucide-react';
 
 interface OSLayoutProps {
@@ -11,9 +11,7 @@ interface OSLayoutProps {
 
 export const OSLayout: React.FC<OSLayoutProps> = ({ children }) => {
     const { isLoading: authLoading, user } = useAuth();
-    // useSubscription hook handles its own logic, but we might want to know if it's "ready" if it was doing async work. 
-    // Currently it's sync derived state from auth context data.
-    // So authLoading is the main gate.
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
     // BOOT SAFETY GUARD
     if (authLoading) {
@@ -26,28 +24,37 @@ export const OSLayout: React.FC<OSLayoutProps> = ({ children }) => {
     }
 
     if (!user) {
-        // Should be handled by protected route wrapper, but safe fallback
         return null;
     }
 
     return (
         <div className="min-h-screen bg-slate-50">
-            <Sidebar />
-            <Topbar />
+            {/* Desktop Sidebar - hidden on mobile */}
+            <div className="hidden lg:block">
+                <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+            </div>
+
+            {/* Topbar - full width on mobile, offset on desktop */}
+            <Topbar sidebarCollapsed={sidebarCollapsed} />
 
             {/* Main Content Area */}
-            {/* 
-                Sidebar width is w-64 (16rem) when expanded, w-16 (4rem) collapsed.
-                The Topbar has padding-left to compensate.
-                The Main Content also needs margin-left.
-                For simplicity we assume expanded layout for margin or use layout shift logic.
-                Sidebar component has fixed position.
-                To handle dynamic margin, we might need shared state for sidebar collapse.
-                For now, let's use md:ml-64 as default assumption for Desktop OS.
-            */}
-            <main className="pt-20 px-6 pb-12 transition-all duration-300 lg:ml-64 min-h-[calc(100vh-4rem)]">
+            <main
+                className={`
+                    pt-16 px-4 pb-24
+                    sm:px-6
+                    lg:pt-20 lg:px-6 lg:pb-12
+                    transition-all duration-300
+                    ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'}
+                    min-h-[calc(100vh-4rem)]
+                `}
+            >
                 {children}
             </main>
+
+            {/* Mobile Bottom Navigation - visible only on mobile */}
+            <div className="lg:hidden">
+                <MobileBottomNav />
+            </div>
         </div>
     );
 };

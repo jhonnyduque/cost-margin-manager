@@ -1,42 +1,18 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Hexagon } from 'lucide-react';
 import { MODULES } from '../../platform/modules.registry';
-import { useCapabilities } from '../../platform/useCapabilities';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '../../platform/useSubscription';
 
-export const Sidebar: React.FC = () => {
-    const [collapsed, setCollapsed] = useState(false);
-    const { can } = useCapabilities();
+interface SidebarProps {
+    collapsed: boolean;
+    onToggle: () => void;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
     const { user } = useAuth();
     const { enabledModules } = useSubscription();
-
-    // Helper to check visibility
-    const isModuleVisible = (moduleKey: keyof typeof MODULES) => {
-        const module = MODULES[moduleKey];
-
-        // Super Admin sees everything (or check capability)
-        if (user?.is_super_admin) return true;
-
-        // Check if module is enabled in subscription (for company mode)
-        // Note: 'enabledModules' from useSubscription tells us which IDs are allowed.
-        // We match MODULES[key].id against enabledModules
-        if (enabledModules.includes('*')) return true;
-
-        // Some core modules might not be in subscription config explicit list but base?
-        // Let's assume subscription config maps to these IDs.
-        // If not found in enabledModules, hide.
-        if (!enabledModules.includes(module.id)) return false;
-
-        // Check Capability
-        if (module.requiredCapability) {
-            // This check might be redundant if enabledModules is authoritative, but good for safety
-            // return can(module.requiredCapability);
-        }
-
-        return true;
-    };
 
     return (
         <aside
@@ -59,7 +35,7 @@ export const Sidebar: React.FC = () => {
                     </div>
                 )}
                 <button
-                    onClick={() => setCollapsed(!collapsed)}
+                    onClick={onToggle}
                     className="ml-auto rounded p-1 hover:bg-slate-800 text-slate-400"
                 >
                     {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
@@ -69,14 +45,11 @@ export const Sidebar: React.FC = () => {
             {/* Navigation */}
             <nav className="p-2 space-y-1 mt-4">
                 {Object.values(MODULES).map((module) => {
-                    // Primitive visibility check: if super admin OR enabled
                     const visible = user?.is_super_admin || (
                         enabledModules.includes('*') || enabledModules.includes(module.id)
                     );
 
-                    // If not visible, don't render
                     if (!visible && module.id !== 'control_center') return null;
-                    // Control Center usually restricted to Super Admin via capability, verify:
                     if (module.id === 'control_center' && !user?.is_super_admin) return null;
 
                     const Icon = module.icon;
@@ -99,7 +72,7 @@ export const Sidebar: React.FC = () => {
                 })}
             </nav>
 
-            {/* Footer / Version if expanded */}
+            {/* Footer / Version */}
             {!collapsed && (
                 <div className="absolute bottom-4 left-0 w-full px-4 text-center">
                     <span className="text-xs text-slate-600 font-mono">v11.0.0</span>
