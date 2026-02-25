@@ -182,12 +182,21 @@ export default function Team() {
         if (!editingMember) return;
         try {
             setLoading(true);
+
+            // ✅ CAMBIO #2: Obtener sesión para enviar el token
+            const { data: { session } } = await supabase.auth.getSession();
+
             const isSelfUpdate = editingMember.user_id === user?.id;
             const isRoleChanged = canEdit && editRole !== editingMember.role;
 
             const { error } = await (isSelfUpdate
                 ? supabase.functions.invoke('beto-update-profile', {
-                    body: { full_name: editName, password: editPassword || undefined }
+                    body: { full_name: editName, password: editPassword || undefined },
+                    // ✅ CAMBIO #2: Agregar headers con token de autorización
+                    headers: {
+                        'Authorization': `Bearer ${session?.access_token}`,
+                        'Content-Type': 'application/json'
+                    }
                 })
                 : supabase.functions.invoke('beto-manage-team', {
                     body: {
