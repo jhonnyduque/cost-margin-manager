@@ -1,157 +1,86 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { EntityConfig } from './types';
-import { EntityTable } from './EntityTable';
-import { EntityCard } from './EntityCard';
 
-interface EntityListProps<T> {
+interface EntityTableProps<T> {
     config: EntityConfig<T>;
     items: T[];
-    loading?: boolean;
-    loadingMessage?: string;
-    emptyMessage?: string;
-    onBulkAction?: (actionId: string, ids: string[]) => void;
-    /** Callback to sync selected IDs with parent */
-    onSelectionChange?: (ids: string[]) => void;
+    selectionProps?: {
+        selectedIds: string[];
+        onSelect: (id: string) => void;
+        onSelectAll: () => void;
+    };
 }
 
-export function EntityList<T>({
-    config,
-    items,
-    loading,
-    loadingMessage = 'Cargando datos...',
-    emptyMessage = `No hay ${config.pluralName.toLowerCase()} en este momento.`,
-    onBulkAction,
-    onSelectionChange
-}: EntityListProps<T>) {
-    const [selectedIds, setSelectedIds] = useState<string[]>([]);
-
-    // Sync selection with parent when it changes
-    useEffect(() => {
-        onSelectionChange?.(selectedIds);
-    }, [selectedIds, onSelectionChange]);
-
-    // Clear selection when items change (e.g. after delete/filter)
-    useEffect(() => {
-        setSelectedIds([]);
-    }, [items.length]);
-
-    const toggleSelect = (id: string) => {
-        setSelectedIds(prev =>
-            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-        );
-    };
-
-    const toggleSelectAll = () => {
-        if (selectedIds.length === items.length) {
-            setSelectedIds([]);
-        } else {
-            setSelectedIds(items.map(m => String(m[config.rowIdKey])));
-        }
-    };
-
-    if (loading) {
-        return (
-            <div className="animate-pulse rounded-2xl border border-gray-100 bg-white p-12 text-center font-medium text-gray-400">
-                <div className="mb-4 flex justify-center">
-                    <div className="size-10 animate-spin rounded-full border-4 border-indigo-500/20 border-t-indigo-500" />
-                </div>
-                {loadingMessage}
-            </div>
-        );
-    }
-
-    if (items.length === 0) {
-        return (
-            <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-16 text-center text-gray-400">
-                <div className="mb-4 text-4xl opacity-20">📭</div>
-                <h3 className="mb-1 font-bold text-gray-900">Vacio</h3>
-                <p className="text-sm">{emptyMessage}</p>
-            </div>
-        );
-    }
-
+export function EntityTable<T>({ config, items, selectionProps }: EntityTableProps<T>) {
     return (
-        <div className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-            {/* BULK ACTION BAR - Fixed above bottom nav on mobile, inline on desktop */}
-            {selectedIds.length > 0 && (
-                <div className="
-                    animate-in slide-in-from-bottom-6 md:slide-in-from-top-2
-                    fixed inset-x-4 bottom-[5.5rem] z-[60]
-                    flex items-center justify-between gap-4
-                    rounded-2xl bg-indigo-600 p-4 text-white shadow-2xl
-                    md:absolute md:inset-x-0 md:bottom-auto md:top-0
-                    md:justify-start md:rounded-none md:bg-indigo-50 md:p-3 md:text-indigo-700 md:shadow-none
-                ">
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold">
-                            {selectedIds.length} <span className="hidden sm:inline">seleccionados</span>
-                        </span>
-                    </div>
-                    <div className="mx-2 hidden h-4 w-px bg-indigo-200 md:block" />
-                    <div className="ml-auto flex items-center gap-4 md:ml-0">
-                        {config.bulkActions?.map((action, idx) => (
-                            <button
-                                key={idx}
-                                onClick={() => {
-                                    action.onClick(selectedIds);
-                                    if (onBulkAction) onBulkAction(action.label, selectedIds);
-                                    setSelectedIds([]);
-                                }}
-                                className={`text-xs font-bold uppercase tracking-wider transition-opacity hover:opacity-80 ${action.variant === 'danger' ? 'text-red-200 md:text-red-600' : ''
-                                    }`}
-                            >
-                                {action.label}
-                            </button>
+        <div className="hidden md:block overflow-x-auto">
+            <table className="min-w-full w-full border-collapse text-left table-fixed">
+                <thead className="sticky top-0 z-10 bg-gray-50/80 text-xs font-bold uppercase text-gray-500 backdrop-blur-sm">
+                    <tr>
+                        {selectionProps && (
+                            <th className="w-10 px-3 py-3">
+                                <input
+                                    type="checkbox"
+                                    checked={selectionProps.selectedIds.length === items.length && items.length > 0}
+                                    onChange={selectionProps.onSelectAll}
+                                    className="size-4 cursor-pointer rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                />
+                            </th>
+                        )}
+                        {config.fields.filter(f => !f.hidden).map((field, idx) => (
+                            <th key={idx} className="px-4 py-3">
+                                {field.label}
+                            </th>
                         ))}
-                    </div>
-                    {/* Deselect all button */}
-                    <button
-                        onClick={() => setSelectedIds([])}
-                        className="ml-2 rounded-lg bg-white/20 px-2 py-1 text-xs font-bold hover:bg-white/30 md:bg-indigo-100 md:text-indigo-600 md:hover:bg-indigo-200"
-                    >
-                        ✕
-                    </button>
-                </div>
-            )}
+                        <th className="w-28 px-4 py-3 text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                    {items.map((item) => {
+                        const id = String(item[config.rowIdKey]);
+                        const isSelected = selectionProps?.selectedIds.includes(id) || false;
 
-            {/* MOBILE CARDS VIEW */}
-            <div className="block divide-y divide-gray-100 md:hidden">
-                {items.map((item) => {
-                    const id = String(item[config.rowIdKey]);
-                    const isSelected = selectedIds.includes(id);
-                    return (
-                        <EntityCard<T>
-                            key={id}
-                            config={config}
-                            item={item}
-                            isSelected={isSelected}
-                            onToggle={() => toggleSelect(id)}
-                            actions={config.actions.map(action => (
-                                (!action.isVisible || action.isVisible(item)) && (
-                                    <button
-                                        key={action.id}
-                                        onClick={() => action.onClick(item)}
-                                        className={`rounded-xl border border-gray-200 bg-white p-2 shadow-sm transition-transform active:scale-95 ${action.color || 'text-gray-400'}`}
-                                    >
-                                        {action.icon}
-                                    </button>
-                                )
-                            ))}
-                        />
-                    );
-                })}
-            </div>
-
-            {/* DESKTOP TABLE VIEW */}
-            <EntityTable<T>
-                config={config}
-                items={items}
-                selectionProps={{
-                    selectedIds,
-                    onSelect: toggleSelect,
-                    onSelectAll: toggleSelectAll
-                }}
-            />
+                        return (
+                            <tr
+                                key={id}
+                                className={`group transition-all hover:bg-gray-50/80 ${isSelected ? 'bg-indigo-50/40' : ''}`}
+                            >
+                                {selectionProps && (
+                                    <td className="px-3 py-3">
+                                        <input
+                                            type="checkbox"
+                                            checked={isSelected}
+                                            onChange={() => selectionProps.onSelect(id)}
+                                            className="size-4 cursor-pointer rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                        />
+                                    </td>
+                                )}
+                                {config.fields.filter(f => !f.hidden).map((field, idx) => (
+                                    <td key={idx} className="px-4 py-3">
+                                        {field.render ? field.render(item) : (item as any)[field.key]}
+                                    </td>
+                                ))}
+                                <td className="w-28 px-4 py-3 text-right">
+                                    <div className="flex justify-end gap-1.5 opacity-60 transition-opacity group-hover:opacity-100">
+                                        {config.actions.map(action => (
+                                            (!action.isVisible || action.isVisible(item)) && (
+                                                <button
+                                                    key={action.id}
+                                                    onClick={() => action.onClick(item)}
+                                                    className={`rounded-lg p-1.5 transition-colors ${action.color || 'border border-transparent bg-gray-50 text-gray-400 hover:border-gray-200 hover:bg-white hover:text-gray-600'}`}
+                                                    title={action.label}
+                                                >
+                                                    {action.icon}
+                                                </button>
+                                            )
+                                        ))}
+                                    </div>
+                                </td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
         </div>
     );
 }

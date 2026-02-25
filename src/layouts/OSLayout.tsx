@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'; // ✅ Agregamos useEffect
+import React, { useState, useEffect } from 'react';
 import { Sidebar } from '../components/os/Sidebar';
 import { MobileBottomNav } from '../components/os/MobileBottomNav';
 import { Topbar } from '../components/os/Topbar';
@@ -12,21 +12,19 @@ interface OSLayoutProps {
 export const OSLayout: React.FC<OSLayoutProps> = ({ children }) => {
     const { isLoading: authLoading, user } = useAuth();
 
-    // ✅ Persistencia: inicializar desde localStorage (SSR-safe)
+    // Persistencia: default colapsado en primera visita
     const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem('sidebarCollapsed');
-            return saved === 'true';
+            return saved !== null ? saved === 'true' : true;
         }
-        return false;
+        return true;
     });
 
-    // ✅ Guardar en localStorage cada vez que cambie el estado
     useEffect(() => {
         localStorage.setItem('sidebarCollapsed', String(sidebarCollapsed));
     }, [sidebarCollapsed]);
 
-    // ✅ Función toggle centralizada (más limpia que inline)
     const toggleSidebar = () => {
         setSidebarCollapsed(prev => !prev);
     };
@@ -51,7 +49,7 @@ export const OSLayout: React.FC<OSLayoutProps> = ({ children }) => {
             <div className="hidden lg:block">
                 <Sidebar
                     collapsed={sidebarCollapsed}
-                    onToggle={toggleSidebar} // ✅ Usamos la función centralizada
+                    onToggle={toggleSidebar}
                 />
             </div>
 
