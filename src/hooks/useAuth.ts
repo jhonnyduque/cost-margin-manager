@@ -5,6 +5,8 @@ export function useAuth() {
 
     return {
         user: context.user,
+        // ✅ AGREGADO: session para acceder al access_token
+        session: context.session,
         currentCompany: context.currentCompany,
         userCompanies: context.userCompanies,
         userRole: context.userRole,
