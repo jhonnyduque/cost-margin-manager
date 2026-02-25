@@ -11,15 +11,15 @@ interface EntityTableProps<T> {
     };
 }
 
-export function EntityTable<T>({
+const EntityTable = <T,>({
     config,
     items,
     selectionProps,
-}: EntityTableProps<T>) {
+}: EntityTableProps<T>) => {
     return (
-        // ✅ SIN SCROLL HORIZONTAL
-        <div className="hidden md:block w-full overflow-hidden">
-            <table className="w-full border-collapse text-left table-fixed">
+        // ✅ CONTENEDOR ORIGINAL BONITO
+        <div className="hidden md:block w-full overflow-x-auto">
+            <table className="min-w-full border-collapse text-left">
 
                 {/* HEADER */}
                 <thead className="sticky top-0 z-10 bg-gray-50/80 text-xs font-bold uppercase text-gray-500 backdrop-blur-sm">
@@ -39,12 +39,9 @@ export function EntityTable<T>({
                         )}
 
                         {config.fields
-                            .filter((f) => !f.hidden)
+                            .filter(f => !f.hidden)
                             .map((field, idx) => (
-                                <th
-                                    key={idx}
-                                    className="px-4 py-3 truncate"
-                                >
+                                <th key={idx} className="px-4 py-3 whitespace-nowrap">
                                     {field.label}
                                 </th>
                             ))}
@@ -57,7 +54,7 @@ export function EntityTable<T>({
 
                 {/* BODY */}
                 <tbody className="divide-y divide-gray-100">
-                    {items.map((item) => {
+                    {items.map(item => {
                         const id = String(item[config.rowIdKey]);
                         const isSelected =
                             selectionProps?.selectedIds.includes(id) || false;
@@ -73,47 +70,40 @@ export function EntityTable<T>({
                                         <input
                                             type="checkbox"
                                             checked={isSelected}
-                                            onChange={() =>
-                                                selectionProps.onSelect(id)
-                                            }
+                                            onChange={() => selectionProps.onSelect(id)}
                                             className="size-4 cursor-pointer rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                                         />
                                     </td>
                                 )}
 
                                 {config.fields
-                                    .filter((f) => !f.hidden)
+                                    .filter(f => !f.hidden)
                                     .map((field, idx) => (
-                                        <td
-                                            key={idx}
-                                            className="px-4 py-3 truncate"
-                                        >
+                                        <td key={idx} className="px-4 py-3">
                                             {field.render
                                                 ? field.render(item)
                                                 : (item as any)[field.key]}
                                         </td>
                                     ))}
 
-                                {/* ACTIONS */}
                                 <td className="w-28 px-4 py-3 text-right">
-                                    <div className="flex justify-end gap-1.5 opacity-60 transition-opacity group-hover:opacity-100">
-                                        {config.actions.map(
-                                            (action) =>
-                                                (!action.isVisible ||
-                                                    action.isVisible(item)) && (
-                                                    <button
-                                                        key={action.id}
-                                                        onClick={() =>
-                                                            action.onClick(item)
-                                                        }
-                                                        className={`rounded-lg p-1.5 transition-colors ${action.color ||
-                                                            'border border-transparent bg-gray-50 text-gray-400 hover:border-gray-200 hover:bg-white hover:text-gray-600'
-                                                            }`}
-                                                        title={action.label}
-                                                    >
-                                                        {action.icon}
-                                                    </button>
-                                                )
+                                    <div className="flex justify-end gap-2 opacity-60 transition-opacity group-hover:opacity-100">
+                                        {config.actions.map(action =>
+                                            (!action.isVisible ||
+                                                action.isVisible(item)) && (
+                                                <button
+                                                    key={action.id}
+                                                    onClick={() =>
+                                                        action.onClick(item)
+                                                    }
+                                                    className={`rounded-lg p-1.5 transition-colors ${action.color ||
+                                                        'border border-transparent bg-gray-50 text-gray-400 hover:border-gray-200 hover:bg-white hover:text-gray-600'
+                                                        }`}
+                                                    title={action.label}
+                                                >
+                                                    {action.icon}
+                                                </button>
+                                            )
                                         )}
                                     </div>
                                 </td>
@@ -124,10 +114,7 @@ export function EntityTable<T>({
             </table>
         </div>
     );
-}
+};
 
-/**
- * ✅ EXPORT DOBLE (MUY IMPORTANTE)
- * Evita errores Rollup / Vercel build
- */
+export { EntityTable };
 export default EntityTable;
