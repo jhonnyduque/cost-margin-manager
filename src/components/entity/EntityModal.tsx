@@ -48,12 +48,12 @@ export function EntityModal<T>({
 
     return (
         <div
-            className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 backdrop-blur-sm md:items-center md:p-4"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
             onClick={(e) => {
                 if (e.target === e.currentTarget) onClose();
             }}
         >
-            <div className="animate-in slide-in-from-bottom md:zoom-in-95 w-full max-w-md overflow-hidden rounded-t-2xl bg-white shadow-2xl duration-300 md:rounded-2xl max-h-[92vh] flex flex-col">
+            <div className="animate-in zoom-in-95 w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl duration-300 max-h-[85vh] flex flex-col">
                 {/* Header - compact */}
                 <div className="flex items-center gap-3 px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-100 flex-shrink-0">
                     <div className="flex size-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 flex-shrink-0">
