@@ -320,7 +320,7 @@ export default function Team() {
             {
                 id: 'detail',
                 label: 'Detalles',
-                icon: <Building2 size={18} />, // ✅ Cambiado de Mail a Building2
+                icon: <Building2 size={18} />,
                 onClick: (m) => setSelectedMember(m)
             },
             {
@@ -446,10 +446,14 @@ export default function Team() {
                 onSubmit={handleCreateUser}
                 loading={loading}
             >
-                <div className="grid grid-cols-1 gap-5">
+                <div className="grid grid-cols-2 gap-5">
                     <div className="space-y-1.5">
                         <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Nombre Completo</label>
                         <input name="full_name" type="text" placeholder="Ej: Juan Pérez" className="w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500" value={newUserFullName} onChange={(e) => setNewUserFullName(e.target.value)} required />
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Correo Electrónico</label>
+                        <input name="email" type="email" placeholder="usuario@empresa.com" className="w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} required />
                     </div>
                     <div className="space-y-1.5">
                         <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Rol</label>
@@ -460,17 +464,13 @@ export default function Team() {
                         </select>
                     </div>
                     <div className="space-y-1.5">
-                        <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Email</label>
-                        <input name="email" type="email" placeholder="colaborador@empresa.com" className="w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} required />
-                    </div>
-                    <div className="space-y-1.5">
                         <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Contraseña</label>
                         <input name="password" type="password" placeholder="••••••••" className="w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500" value={newUserPassword} onChange={(e) => setNewUserPassword(e.target.value)} required />
                     </div>
                 </div>
             </EntityModal>
 
-            {/* EDIT MODAL */}
+            {/* EDIT MODAL - 2 COLUMNAS */}
             <EntityModal
                 config={teamConfig}
                 item={editingMember}
@@ -479,7 +479,7 @@ export default function Team() {
                 onSubmit={handleUpdateMember}
                 loading={loading}
             >
-                <div className="grid grid-cols-1 gap-5">
+                <div className="grid grid-cols-2 gap-5">
                     <div className="space-y-1.5">
                         <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Nombre Completo</label>
                         <input
@@ -491,6 +491,16 @@ export default function Team() {
                             required
                         />
                         {!canEdit && <p className="ml-1 text-[10px] font-bold text-orange-600">Solo Managers pueden editar nombres.</p>}
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Correo Electrónico</label>
+                        <input
+                            type="email"
+                            disabled
+                            className="w-full rounded-2xl border-none bg-gray-100 px-5 py-3 cursor-not-allowed"
+                            value={editingMember?.email || ''}
+                        />
+                        <p className="ml-1 text-[10px] font-bold text-gray-500">No editable</p>
                     </div>
                     <div className="space-y-1.5">
                         <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Rol</label>
@@ -508,7 +518,7 @@ export default function Team() {
                     </div>
                     <div className="space-y-1.5">
                         <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Nueva Contraseña (Opcional)</label>
-                        <input type="password" placeholder="Dejar en blanco para no cambiar" className="w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500" value={editPassword} onChange={(e) => setEditPassword(e.target.value)} />
+                        <input type="password" placeholder="••••••••" className="w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500" value={editPassword} onChange={(e) => setEditPassword(e.target.value)} />
                     </div>
                 </div>
             </EntityModal>
