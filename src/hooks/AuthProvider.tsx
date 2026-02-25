@@ -3,6 +3,8 @@ import { supabase } from '../services/supabase';
 import { useStore } from '../store';
 import { User, Company, UserRole } from '@/types';
 import { getSuspensionLevel, SuspensionLevel } from '../utils/subscription';
+// ✅ CAMBIO #1: Importar tipo Session
+import { Session } from '@supabase/supabase-js';
 
 // 🔧 Logging helper - solo muestra logs informativos en desarrollo
 // Errores y warnings SIEMPRE se muestran (en cualquier entorno)
@@ -15,6 +17,8 @@ const log = {
 
 interface AuthContextType {
     user: User | null;
+    // ✅ CAMBIO #2: Agregar session al tipo del contexto
+    session: Session | null;
     currentCompany: Company | null;
     userCompanies: Company[];
     userRole: UserRole | null;
@@ -37,6 +41,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
+    // ✅ CAMBIO #3: Estado para la sesión
+    const [session, setSession] = useState<Session | null>(null);
     const [currentCompany, setCurrentCompany] = useState<Company | null>(null);
     const [userCompanies, setUserCompanies] = useState<Company[]>([]);
     const [userRole, setUserRole] = useState<UserRole | null>(null);
@@ -79,6 +85,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const resetState = useCallback(() => {
         log.info('resetState called');
         setUser(null);
+        // ✅ CAMBIO #4: Limpiar sesión también
+        setSession(null);
         setCurrentCompany(null);
         setUserCompanies([]);
         setUserRole(null);
@@ -215,9 +223,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const refreshAuth = useCallback(async () => {
         log.info('refreshAuth called manually');
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-            await loadUserData(session.user.id, true);
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (currentSession?.user) {
+            // ✅ CAMBIO #5: Actualizar estado de sesión
+            setSession(currentSession);
+            await loadUserData(currentSession.user.id, true);
         } else {
             resetState();
         }
@@ -237,9 +247,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 return;
             }
 
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session?.user) {
-                await loadUserData(session.user.id, true);
+            const { data: { session: initialSession } } = await supabase.auth.getSession();
+            if (initialSession?.user) {
+                // ✅ CAMBIO #6: Guardar sesión inicial
+                setSession(initialSession);
+                await loadUserData(initialSession.user.id, true);
             } else {
                 resetState();
             }
@@ -247,8 +259,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         init();
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            log.debug('Auth Event:', event, 'Session user ID:', session?.user?.id || 'none');
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+            log.debug('Auth Event:', event, 'Session user ID:', currentSession?.user?.id || 'none');
+
+            // ✅ CAMBIO #7: Mantener sesión sincronizada en cada evento de auth
+            setSession(currentSession);
 
             if (isSigningOutRef.current && event !== 'SIGNED_OUT') {
                 log.debug('Ignored event during signout:', event);
@@ -266,8 +281,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 return;
             }
 
-            if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
-                const incomingUserId = session.user.id;
+            if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && currentSession?.user) {
+                const incomingUserId = currentSession.user.id;
 
                 // 🔧 FIX #5: Guard más robusto usando ref + isLoading
                 if (isLoading || (userIdRef.current && userIdRef.current === incomingUserId)) {
@@ -385,6 +400,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return (
         <AuthContext.Provider value={{
             user,
+            // ✅ CAMBIO #8: Exponer session en el contexto
+            session,
             currentCompany,
             userCompanies,
             userRole,

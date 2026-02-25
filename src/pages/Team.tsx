@@ -21,7 +21,8 @@ interface TeamMember {
 }
 
 export default function Team() {
-    const { user, currentCompany, userRole, isLoading: authLoading } = useAuth();
+    // ✅ CAMBIO #1: Agregar 'session' al destructuring de useAuth()
+    const { user, session, currentCompany, userRole, isLoading: authLoading } = useAuth();
     const [members, setMembers] = useState<TeamMember[]>([]);
     const [maxUsers, setMaxUsers] = useState(3);
     const [loading, setLoading] = useState(true);
@@ -183,16 +184,14 @@ export default function Team() {
         try {
             setLoading(true);
 
-            // ✅ CAMBIO #2: Obtener sesión para enviar el token
-            const { data: { session } } = await supabase.auth.getSession();
-
+            // ✅ CAMBIO #2: Eliminar llamada manual a getSession() - usamos 'session' del hook
             const isSelfUpdate = editingMember.user_id === user?.id;
             const isRoleChanged = canEdit && editRole !== editingMember.role;
 
             const { error } = await (isSelfUpdate
                 ? supabase.functions.invoke('beto-update-profile', {
                     body: { full_name: editName, password: editPassword || undefined },
-                    // ✅ CAMBIO #2: Agregar headers con token de autorización
+                    // ✅ El header usa 'session' del hook (ya disponible por el Cambio #1)
                     headers: {
                         'Authorization': `Bearer ${session?.access_token}`,
                         'Content-Type': 'application/json'
