@@ -270,7 +270,6 @@ export default function Team() {
                 key: 'full_name',
                 label: 'Usuario',
                 type: 'text',
-                className: 'min-w-[180px] flex-1',
                 render: (m) => (
                     <div className="flex items-center gap-3 min-w-0">
                         <div className="flex size-8 items-center justify-center rounded-lg bg-indigo-50 text-xs font-bold text-indigo-600 flex-shrink-0">
@@ -287,7 +286,6 @@ export default function Team() {
                 key: 'company_name' as keyof TeamMember,
                 label: 'Empresa',
                 type: 'text' as const,
-                className: 'w-40 hidden md:table-cell',
                 render: (m: TeamMember) => (
                     <span className="inline-flex items-center gap-1 rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-600 truncate">
                         <Building2 size={11} />
@@ -299,7 +297,6 @@ export default function Team() {
                 key: 'role',
                 label: 'Rol',
                 type: 'badge',
-                className: 'w-32',
                 render: (m) => (
                     <span className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-bold truncate ${m.is_active ? 'border-gray-100 bg-gray-50 text-gray-700' : 'border-orange-100 bg-orange-50 text-orange-700'}`}>
                         {m.role.toUpperCase()} {!m.is_active && '(ARCHIVADO)'}
@@ -310,14 +307,12 @@ export default function Team() {
                 key: 'joined_at',
                 label: 'Unido',
                 type: 'date',
-                className: 'w-28 hidden md:table-cell',
                 render: (m) => <span className="text-xs font-medium text-gray-500 truncate">{new Date(m.joined_at).toLocaleDateString()}</span>
             },
             {
                 key: 'last_sign_in_at',
                 label: 'Último Acceso',
                 type: 'date',
-                className: 'w-32 hidden lg:table-cell',
                 render: (m) => <span className="text-xs text-gray-400 truncate">{m.last_sign_in_at ? new Date(m.last_sign_in_at).toLocaleDateString() : 'Nunca'}</span>
             }
         ],
@@ -354,9 +349,8 @@ export default function Team() {
 
     return (
         <div className="animate-in fade-in space-y-6 lg:space-y-8 duration-700">
-            {/* ✅ RESPONSIVE HEADER */}
+            {/* ✅ HEADER - Igual a Billing */}
             <header className="space-y-4">
-                {/* Title row */}
                 <div>
                     <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-gray-900">Equipo</h1>
                     <p className="mt-1 text-sm lg:text-base font-medium text-gray-500">
@@ -366,9 +360,8 @@ export default function Team() {
                     </p>
                 </div>
 
-                {/* Toolbar: Search + Actions — always one line */}
+                {/* Toolbar: Search + Actions */}
                 <div className="flex items-center gap-2">
-                    {/* Search input */}
                     <div className="relative flex-1 min-w-0">
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                         <input
@@ -380,7 +373,6 @@ export default function Team() {
                         />
                     </div>
 
-                    {/* Print button */}
                     <button
                         onClick={() => window.print()}
                         title="Imprimir listado"
@@ -389,7 +381,6 @@ export default function Team() {
                         <Printer size={18} />
                     </button>
 
-                    {/* Bulk delete button — visible when items selected */}
                     {selectedIds.length > 0 && (
                         <button
                             onClick={() => handleBulkAction('Eliminar', selectedIds)}
@@ -400,7 +391,6 @@ export default function Team() {
                         </button>
                     )}
 
-                    {/* Create button */}
                     <div className="group relative flex-shrink-0">
                         <button
                             onClick={() => setShowCreateModal(true)}
@@ -427,41 +417,25 @@ export default function Team() {
                 </div>
             </header>
 
-            <div className="grid grid-cols-1 gap-6 lg:gap-8 lg:grid-cols-4">
-                <div className="space-y-6 lg:col-span-3">
-                    {statusMessage && (
-                        <div className={`animate-in slide-in-from-top-4 flex items-center gap-4 rounded-2xl border p-4 duration-500 ${statusMessage.type === 'success' ? 'border-emerald-100 bg-emerald-50 text-emerald-700' : 'border-red-100 bg-red-50 text-red-700'}`}>
-                            <div className={`flex size-10 items-center justify-center rounded-full font-bold flex-shrink-0 ${statusMessage.type === 'success' ? 'bg-emerald-100' : 'bg-red-100'}`}>
-                                {statusMessage.type === 'success' ? '✓' : '!'}
-                            </div>
-                            <p className="text-sm font-bold tracking-tight">{statusMessage.text}</p>
-                            <button onClick={() => setStatusMessage(null)} className="ml-auto p-2 opacity-50 hover:opacity-100">✕</button>
+            {/* ✅ LAYOUT FULL-WIDTH - Igual a Billing (sin grid/sidebar) */}
+            <div className="space-y-6">
+                {statusMessage && (
+                    <div className={`animate-in slide-in-from-top-4 flex items-center gap-4 rounded-2xl border p-4 duration-500 ${statusMessage.type === 'success' ? 'border-emerald-100 bg-emerald-50 text-emerald-700' : 'border-red-100 bg-red-50 text-red-700'}`}>
+                        <div className={`flex size-10 items-center justify-center rounded-full font-bold flex-shrink-0 ${statusMessage.type === 'success' ? 'bg-emerald-100' : 'bg-red-100'}`}>
+                            {statusMessage.type === 'success' ? '✓' : '!'}
                         </div>
-                    )}
+                        <p className="text-sm font-bold tracking-tight">{statusMessage.text}</p>
+                        <button onClick={() => setStatusMessage(null)} className="ml-auto p-2 opacity-50 hover:opacity-100">✕</button>
+                    </div>
+                )}
 
-                    <EntityList
-                        config={teamConfig}
-                        items={filteredMembers}
-                        loading={loading}
-                        onSelectionChange={handleSelectionChange}
-                    />
-                </div>
-
-                {/* Sidebar - hidden on mobile, visible on desktop */}
-                <aside className="hidden lg:block space-y-8">
-                    {upgradeRecommended && (
-                        <div className="group relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 p-8 text-white shadow-2xl">
-                            <div className="absolute right-0 top-0 -mr-4 -mt-4 size-24 rounded-full bg-white/10 blur-2xl transition-transform duration-700 group-hover:scale-150" />
-                            <h3 className="relative z-10 mb-3 text-xl font-black">Upgrade to Pro</h3>
-                            <p className="relative z-10 mb-6 text-sm font-medium leading-relaxed text-indigo-100">
-                                Desbloquea usuarios ilimitados y análisis avanzado de márgenes.
-                            </p>
-                            <button className="relative z-10 w-full rounded-2xl bg-white py-4 font-bold text-indigo-700 shadow-xl transition-all hover:bg-indigo-50 active:scale-95">
-                                Ver Planes
-                            </button>
-                        </div>
-                    )}
-                </aside>
+                {/* ✅ EntityList ocupa 100% del ancho */}
+                <EntityList
+                    config={teamConfig}
+                    items={filteredMembers}
+                    loading={loading}
+                    onSelectionChange={handleSelectionChange}
+                />
             </div>
 
             {/* CREATE MODAL */}
@@ -549,4 +523,3 @@ export default function Team() {
         </div>
     );
 }
-// ✅ Comprobbación de que todo está bien
