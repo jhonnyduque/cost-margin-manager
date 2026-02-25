@@ -21,7 +21,6 @@ interface TeamMember {
 }
 
 export default function Team() {
-    // ✅ CAMBIO #1: Agregar 'session' al destructuring de useAuth()
     const { user, session, currentCompany, userRole, isLoading: authLoading } = useAuth();
     const [members, setMembers] = useState<TeamMember[]>([]);
     const [maxUsers, setMaxUsers] = useState(3);
@@ -55,7 +54,6 @@ export default function Team() {
 
     const isSuperAdmin = user != null && !currentCompany;
     const isManager = userRole === 'manager' || userRole === 'owner';
-    // ✅ CORRECCIÓN #5: SuperAdmin y Owner/Manager pueden editar TODO
     const canEdit = isSuperAdmin || isManager;
     const currentUsersCount = members.length;
     const isAtLimit = !isSuperAdmin && currentUsersCount >= maxUsers;
@@ -184,16 +182,32 @@ export default function Team() {
         try {
             setLoading(true);
 
-            // ✅ CAMBIO #2: Eliminar llamada manual a getSession() - usamos 'session' del hook
+            // ✅ CAMBIO: Obtener sesión con fallback si session del hook es null
+            const { data: { session: currentSession } } = await supabase.auth.getSession();
+            const tokenToUse = session?.access_token || currentSession?.access_token;
+
+            // ✅ DEBUG: Log para ver qué token estamos usando
+            console.log('[Team] Update Profile Debug:', {
+                sessionFromHook: !!session,
+                sessionFromGetSession: !!currentSession,
+                hasToken: !!tokenToUse,
+                tokenLength: tokenToUse?.length || 0,
+                userId: user?.id,
+                editingMemberId: editingMember.user_id
+            });
+
+            if (!tokenToUse) {
+                throw new Error('No hay sesión activa. Por favor, inicia sesión nuevamente.');
+            }
+
             const isSelfUpdate = editingMember.user_id === user?.id;
             const isRoleChanged = canEdit && editRole !== editingMember.role;
 
             const { error } = await (isSelfUpdate
                 ? supabase.functions.invoke('beto-update-profile', {
                     body: { full_name: editName, password: editPassword || undefined },
-                    // ✅ El header usa 'session' del hook (ya disponible por el Cambio #1)
                     headers: {
-                        'Authorization': `Bearer ${session?.access_token}`,
+                        'Authorization': `Bearer ${tokenToUse}`,
                         'Content-Type': 'application/json'
                     }
                 })
@@ -221,6 +235,7 @@ export default function Team() {
             fetchMembers();
             setStatusMessage({ type: 'success', text: 'Miembro actualizado con éxito.' });
         } catch (error: any) {
+            console.error('[Team] Update Error:', error);
             setStatusMessage({ type: 'error', text: error.message || 'Error al actualizar' });
         } finally {
             setLoading(false);
