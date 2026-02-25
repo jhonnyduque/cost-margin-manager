@@ -270,9 +270,10 @@ export default function Team() {
                 key: 'full_name',
                 label: 'Usuario',
                 type: 'text',
+                className: 'min-w-[180px] flex-1',
                 render: (m) => (
-                    <div className="flex items-center gap-3">
-                        <div className="flex size-8 items-center justify-center rounded-lg bg-indigo-50 text-xs font-bold text-indigo-600">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex size-8 items-center justify-center rounded-lg bg-indigo-50 text-xs font-bold text-indigo-600 flex-shrink-0">
                             {m.email?.substring(0, 2).toUpperCase()}
                         </div>
                         <div className="min-w-0">
@@ -286,8 +287,9 @@ export default function Team() {
                 key: 'company_name' as keyof TeamMember,
                 label: 'Empresa',
                 type: 'text' as const,
+                className: 'w-40 hidden md:table-cell',
                 render: (m: TeamMember) => (
-                    <span className="inline-flex items-center gap-1 rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-600">
+                    <span className="inline-flex items-center gap-1 rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-600 truncate">
                         <Building2 size={11} />
                         {m.company_name || m.company_id}
                     </span>
@@ -297,8 +299,9 @@ export default function Team() {
                 key: 'role',
                 label: 'Rol',
                 type: 'badge',
+                className: 'w-32',
                 render: (m) => (
-                    <span className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-bold ${m.is_active ? 'border-gray-100 bg-gray-50 text-gray-700' : 'border-orange-100 bg-orange-50 text-orange-700'}`}>
+                    <span className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-bold truncate ${m.is_active ? 'border-gray-100 bg-gray-50 text-gray-700' : 'border-orange-100 bg-orange-50 text-orange-700'}`}>
                         {m.role.toUpperCase()} {!m.is_active && '(ARCHIVADO)'}
                     </span>
                 )
@@ -307,13 +310,15 @@ export default function Team() {
                 key: 'joined_at',
                 label: 'Unido',
                 type: 'date',
-                render: (m) => <span className="text-xs font-medium text-gray-500">{new Date(m.joined_at).toLocaleDateString()}</span>
+                className: 'w-28 hidden md:table-cell',
+                render: (m) => <span className="text-xs font-medium text-gray-500 truncate">{new Date(m.joined_at).toLocaleDateString()}</span>
             },
             {
                 key: 'last_sign_in_at',
                 label: 'Último Acceso',
                 type: 'date',
-                render: (m) => <span className="text-xs text-gray-400">{m.last_sign_in_at ? new Date(m.last_sign_in_at).toLocaleDateString() : 'Nunca'}</span>
+                className: 'w-32 hidden lg:table-cell',
+                render: (m) => <span className="text-xs text-gray-400 truncate">{m.last_sign_in_at ? new Date(m.last_sign_in_at).toLocaleDateString() : 'Nunca'}</span>
             }
         ],
         actions: [
