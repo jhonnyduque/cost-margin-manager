@@ -168,7 +168,7 @@ export default function Team() {
             setNewUserEmail('');
             setNewUserFullName('');
             setNewUserPassword('');
-            setShowCreateModal(false);
+            setShowCreateModal(false); // ✅ Cerrar modal
             fetchMembers();
         } catch (error: any) {
             setStatusMessage({ type: 'error', text: error.message || 'Error al crear el usuario.' });
@@ -207,12 +207,13 @@ export default function Team() {
                 throw error;
             }
 
+            // ✅ Cerrar modal después de éxito
             setEditingMember(null);
             setEditPassword('');
             fetchMembers();
             setStatusMessage({ type: 'success', text: 'Miembro actualizado con éxito.' });
         } catch (error: any) {
-            setStatusMessage({ type: 'error', text: error.message });
+            setStatusMessage({ type: 'error', text: error.message || 'Error al actualizar' });
         } finally {
             setLoading(false);
         }
@@ -320,7 +321,7 @@ export default function Team() {
             {
                 id: 'detail',
                 label: 'Detalles',
-                icon: <Building2 size={18} />,
+                icon: <Building2 size={18} />, // ✅ Icono de empresa (no sobre)
                 onClick: (m) => setSelectedMember(m)
             },
             {
@@ -438,7 +439,7 @@ export default function Team() {
                 />
             </div>
 
-            {/* CREATE MODAL */}
+            {/* CREATE MODAL - 2 COLUMNAS */}
             <EntityModal
                 config={teamConfig}
                 isOpen={showCreateModal}
