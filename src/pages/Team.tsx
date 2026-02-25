@@ -168,7 +168,7 @@ export default function Team() {
             setNewUserEmail('');
             setNewUserFullName('');
             setNewUserPassword('');
-            setShowCreateModal(false); // ✅ Cerrar modal
+            setShowCreateModal(false);
             fetchMembers();
         } catch (error: any) {
             setStatusMessage({ type: 'error', text: error.message || 'Error al crear el usuario.' });
@@ -207,7 +207,6 @@ export default function Team() {
                 throw error;
             }
 
-            // ✅ Cerrar modal después de éxito
             setEditingMember(null);
             setEditPassword('');
             fetchMembers();
@@ -321,7 +320,7 @@ export default function Team() {
             {
                 id: 'detail',
                 label: 'Detalles',
-                icon: <Building2 size={18} />, // ✅ Icono de empresa (no sobre)
+                icon: <Building2 size={18} />,
                 onClick: (m) => setSelectedMember(m)
             },
             {
@@ -350,7 +349,7 @@ export default function Team() {
 
     return (
         <div className="animate-in fade-in space-y-6 lg:space-y-8 duration-700">
-            {/* ✅ HEADER - Igual a Billing */}
+            {/* ✅ HEADER */}
             <header className="space-y-4">
                 <div>
                     <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-gray-900">Equipo</h1>
@@ -361,7 +360,7 @@ export default function Team() {
                     </p>
                 </div>
 
-                {/* Toolbar: Search + Actions */}
+                {/* Toolbar */}
                 <div className="flex items-center gap-2">
                     <div className="relative flex-1 min-w-0">
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
@@ -418,7 +417,7 @@ export default function Team() {
                 </div>
             </header>
 
-            {/* ✅ LAYOUT FULL-WIDTH - Igual a Billing (sin grid/sidebar) */}
+            {/* ✅ LAYOUT FULL-WIDTH */}
             <div className="space-y-6">
                 {statusMessage && (
                     <div className={`animate-in slide-in-from-top-4 flex items-center gap-4 rounded-2xl border p-4 duration-500 ${statusMessage.type === 'success' ? 'border-emerald-100 bg-emerald-50 text-emerald-700' : 'border-red-100 bg-red-50 text-red-700'}`}>
@@ -430,7 +429,6 @@ export default function Team() {
                     </div>
                 )}
 
-                {/* ✅ EntityList ocupa 100% del ancho */}
                 <EntityList
                     config={teamConfig}
                     items={filteredMembers}
@@ -471,7 +469,7 @@ export default function Team() {
                 </div>
             </EntityModal>
 
-            {/* EDIT MODAL - 2 COLUMNAS */}
+            {/* ✅ EDIT MODAL - 2 COLUMNAS CON MEJOR PREVISUALIZACIÓN */}
             <EntityModal
                 config={teamConfig}
                 item={editingMember}
@@ -480,19 +478,42 @@ export default function Team() {
                 onSubmit={handleUpdateMember}
                 loading={loading}
             >
+                {/* Preview del miembro */}
+                {editingMember && (
+                    <div className="mb-5 p-4 rounded-xl bg-indigo-50/50 border border-indigo-100">
+                        <div className="flex items-center gap-3">
+                            <div className="flex size-10 items-center justify-center rounded-lg bg-indigo-100 text-sm font-bold text-indigo-700">
+                                {editingMember.email?.substring(0, 2).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                                <div className="font-bold text-gray-900 truncate">{editingMember.full_name || 'Sin nombre'}</div>
+                                <div className="text-xs text-gray-500 truncate">{editingMember.email}</div>
+                            </div>
+                            <span className={`ml-auto inline-flex items-center rounded-lg border px-2.5 py-1 text-xs font-bold ${editingMember.is_active ? 'border-gray-100 bg-gray-50 text-gray-700' : 'border-orange-100 bg-orange-50 text-orange-700'}`}>
+                                {editingMember.role.toUpperCase()}
+                            </span>
+                        </div>
+                    </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-5">
                     <div className="space-y-1.5">
                         <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Nombre Completo</label>
                         <input
                             type="text"
+                            placeholder="Ej: Juan Pérez"
                             className={`w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500 ${!canEdit ? 'cursor-not-allowed opacity-50' : ''}`}
-                            value={editName}
+                            value={editName || editingMember?.full_name || ''}
                             onChange={(e) => setEditName(e.target.value)}
                             disabled={!canEdit}
-                            required
                         />
-                        {!canEdit && <p className="ml-1 text-[10px] font-bold text-orange-600">Solo Managers pueden editar nombres.</p>}
+                        {!canEdit && (
+                            <p className="ml-1 text-[10px] font-bold text-orange-600">
+                                Solo Managers pueden editar nombres.
+                            </p>
+                        )}
                     </div>
+
                     <div className="space-y-1.5">
                         <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Correo Electrónico</label>
                         <input
@@ -500,14 +521,18 @@ export default function Team() {
                             disabled
                             className="w-full rounded-2xl border-none bg-gray-100 px-5 py-3 cursor-not-allowed"
                             value={editingMember?.email || ''}
+                            readOnly
                         />
-                        <p className="ml-1 text-[10px] font-bold text-gray-500">No editable</p>
+                        <p className="ml-1 text-[10px] font-bold text-gray-500">
+                            No editable
+                        </p>
                     </div>
+
                     <div className="space-y-1.5">
                         <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Rol</label>
                         <select
                             className={`w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500 ${!canEdit ? 'cursor-not-allowed opacity-50' : ''}`}
-                            value={editRole}
+                            value={editRole || editingMember?.role || ''}
                             onChange={(e) => setEditRole(e.target.value)}
                             disabled={!canEdit}
                         >
@@ -515,11 +540,22 @@ export default function Team() {
                             <option value="operator">Operador</option>
                             <option value="viewer">Lector</option>
                         </select>
-                        {!canEdit && <p className="ml-1 text-[10px] font-bold text-orange-600">Solo Managers pueden cambiar roles.</p>}
+                        {!canEdit && (
+                            <p className="ml-1 text-[10px] font-bold text-orange-600">
+                                Solo Managers pueden cambiar roles.
+                            </p>
+                        )}
                     </div>
+
                     <div className="space-y-1.5">
                         <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Nueva Contraseña (Opcional)</label>
-                        <input type="password" placeholder="••••••••" className="w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500" value={editPassword} onChange={(e) => setEditPassword(e.target.value)} />
+                        <input
+                            type="password"
+                            placeholder="••••••••"
+                            className="w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500"
+                            value={editPassword}
+                            onChange={(e) => setEditPassword(e.target.value)}
+                        />
                     </div>
                 </div>
             </EntityModal>

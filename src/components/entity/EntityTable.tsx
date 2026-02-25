@@ -15,7 +15,7 @@ interface EntityTableProps<T> {
 export function EntityTable<T>({ config, items, selectionProps }: EntityTableProps<T>) {
     return (
         <>
-            {/* ✅ VERSIÓN MÓVIL - Exactamente como la captura */}
+            {/* ✅ MÓVIL - Layout Opción B */}
             <div className="md:hidden space-y-3">
                 {items.map((item) => {
                     const id = String(item[config.rowIdKey]);
@@ -27,7 +27,7 @@ export function EntityTable<T>({ config, items, selectionProps }: EntityTablePro
                             className={`rounded-xl border p-4 transition-all ${isSelected ? 'border-indigo-300 bg-indigo-50/30' : 'border-gray-200 bg-white'}`}
                         >
                             {/* Header: Checkbox + Acciones */}
-                            <div className="mb-3 flex items-center justify-between">
+                            <div className="flex items-center justify-between mb-3">
                                 {selectionProps && (
                                     <input
                                         type="checkbox"
@@ -38,8 +38,9 @@ export function EntityTable<T>({ config, items, selectionProps }: EntityTablePro
                                 )}
                                 <div className="flex gap-1.5">
                                     {config.actions.slice(0, 3).map((action, idx) => {
-                                        // Reemplazar el primer icono (Mail) por Building2
-                                        const iconToRender = idx === 0 ? <Building2 size={16} /> : action.icon;
+                                        const iconToRender = (idx === 0 && action.label === 'Detalles')
+                                            ? <Building2 size={16} />
+                                            : action.icon;
 
                                         return (
                                             (!action.isVisible || action.isVisible(item)) && (
@@ -57,50 +58,57 @@ export function EntityTable<T>({ config, items, selectionProps }: EntityTablePro
                             </div>
 
                             {/* Contenido principal */}
-                            <div className="space-y-2">
-                                {/* Línea 1: Avatar + Nombre + Email */}
-                                <div className="flex items-start gap-3">
-                                    {config.fields[0]?.render && (
-                                        <div className="flex-shrink-0">
-                                            {config.fields[0].render(item)}
-                                        </div>
-                                    )}
+                            <div className="space-y-3">
+                                {/* Línea 1: Avatar/Icono + Nombre + Badge */}
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                                        {config.fields[0]?.render && (
+                                            <div className="flex-shrink-0">
+                                                {config.fields[0].render(item)}
+                                            </div>
+                                        )}
+                                    </div>
 
-                                    {/* Rol a la derecha */}
-                                    {config.fields.find(f => f.label === 'Rol')?.render && (
-                                        <div className="ml-auto">
-                                            {config.fields.find(f => f.label === 'Rol')?.render(item)}
+                                    {config.fields.find(f => f.type === 'badge')?.render && (
+                                        <div className="flex-shrink-0">
+                                            {config.fields.find(f => f.type === 'badge')?.render(item)}
                                         </div>
                                     )}
                                 </div>
 
-                                {/* Línea 2: Empresa */}
-                                {config.fields.find(f => f.label === 'Empresa')?.render && (
-                                    <div className="pt-1">
-                                        {config.fields.find(f => f.label === 'Empresa')?.render(item)}
+                                {/* Línea 2: Campos adicionales */}
+                                {config.fields.filter(f =>
+                                    f.key !== config.fields[0]?.key &&
+                                    f.type !== 'badge' &&
+                                    f.type !== 'date'
+                                ).map((field, idx) => (
+                                    <div key={idx}>
+                                        {field.render ? field.render(item) : (item as any)[field.key]}
+                                    </div>
+                                ))}
+
+                                {/* Línea 3: Fechas */}
+                                {config.fields.filter(f => f.type === 'date').length > 0 && (
+                                    <div className="flex flex-wrap gap-x-4 gap-y-1 pt-2 border-t border-gray-100">
+                                        {config.fields.filter(f => f.type === 'date').map((dateField, idx) => (
+                                            <div key={idx} className="flex flex-col">
+                                                <span className="text-[10px] font-semibold uppercase text-gray-400">
+                                                    {dateField.label}
+                                                </span>
+                                                <span className="text-xs font-medium text-gray-700">
+                                                    {dateField.render ? dateField.render(item) : (item as any)[dateField.key]}
+                                                </span>
+                                            </div>
+                                        ))}
                                     </div>
                                 )}
-
-                                {/* Línea 3: Fechas compactas */}
-                                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 pt-2 border-t border-gray-100">
-                                    {config.fields.filter(f => f.type === 'date').map((field, idx) => (
-                                        <div key={idx} className="flex flex-col">
-                                            <span className="text-[10px] font-semibold uppercase text-gray-400">
-                                                {field.label}
-                                            </span>
-                                            <span className="font-medium text-gray-700">
-                                                {field.render ? field.render(item) : (item as any)[field.key]}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
                             </div>
                         </div>
                     );
                 })}
             </div>
 
-            {/* ✅ VERSIÓN ESCRITORIO - Tabla normal */}
+            {/* ✅ ESCRITORIO - Tabla normal */}
             <div className="hidden md:block overflow-x-auto">
                 <table className="w-full border-collapse text-left table-fixed">
                     <thead className="sticky top-0 z-10 border-b border-gray-200 bg-white text-xs font-semibold uppercase tracking-wider text-gray-400 backdrop-blur-sm">
