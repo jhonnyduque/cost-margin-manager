@@ -14,7 +14,7 @@ interface EntityTableProps<T> {
 export function EntityTable<T>({ config, items, selectionProps }: EntityTableProps<T>) {
     return (
         <div className="hidden md:block overflow-x-auto">
-            <table className="min-w-full w-full border-collapse text-left">
+            <table className="min-w-full w-full border-collapse text-left table-fixed">
                 <thead className="sticky top-0 z-10 bg-gray-50/80 text-xs font-bold uppercase text-gray-500 backdrop-blur-sm">
                     <tr>
                         {selectionProps && (
