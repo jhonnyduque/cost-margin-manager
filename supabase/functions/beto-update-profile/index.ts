@@ -8,14 +8,11 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-    // 1. Handle CORS Preflight
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders, status: 200 })
     }
 
     try {
-        // 2. Initialize Supabase Client with Service Role
-        // Service Role is required to update auth.users (password/metadata) and bypass RLS if necessary
         const supabaseClient = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -27,7 +24,6 @@ serve(async (req) => {
             }
         )
 
-        // 3. Authenticate Requester
         const authHeader = req.headers.get('Authorization')
         if (!authHeader) {
             return new Response(
@@ -46,15 +42,11 @@ serve(async (req) => {
             )
         }
 
-        // 4. Parse Payload
         const payload = await req.json()
         const { full_name, password } = payload
 
         console.log(`[PROFILE] Update requested for user: ${user.id}`)
 
-        // 5. Atomic Updates
-
-        // A. Update public.users (Profile Table)
         if (full_name) {
             const { error: profileErr } = await supabaseClient
                 .from('users')
@@ -64,7 +56,6 @@ serve(async (req) => {
             if (profileErr) throw profileErr
         }
 
-        // B. Update auth.users (Auth Metadata & Password)
         const authUpdates: any = {}
         if (full_name) authUpdates.user_metadata = { full_name }
         if (password) authUpdates.password = password
