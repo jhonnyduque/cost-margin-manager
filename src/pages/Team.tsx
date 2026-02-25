@@ -54,7 +54,8 @@ export default function Team() {
 
     const isSuperAdmin = user != null && !currentCompany;
     const isManager = userRole === 'manager' || userRole === 'owner';
-    const canEdit = isManager || isSuperAdmin;
+    // ✅ CORRECCIÓN #5: SuperAdmin y Owner/Manager pueden editar TODO
+    const canEdit = isSuperAdmin || isManager;
     const currentUsersCount = members.length;
     const isAtLimit = !isSuperAdmin && currentUsersCount >= maxUsers;
     const percentageUsed = Math.min(100, (currentUsersCount / maxUsers) * 100);
@@ -469,7 +470,7 @@ export default function Team() {
                 </div>
             </EntityModal>
 
-            {/* ✅ EDIT MODAL - 2 COLUMNAS CON MEJOR PREVISUALIZACIÓN */}
+            {/* ✅ EDIT MODAL - CORREGIDO (sin preview, etiquetas cortas, botones visibles) */}
             <EntityModal
                 config={teamConfig}
                 item={editingMember}
@@ -478,24 +479,6 @@ export default function Team() {
                 onSubmit={handleUpdateMember}
                 loading={loading}
             >
-                {/* Preview del miembro */}
-                {editingMember && (
-                    <div className="mb-5 p-4 rounded-xl bg-indigo-50/50 border border-indigo-100">
-                        <div className="flex items-center gap-3">
-                            <div className="flex size-10 items-center justify-center rounded-lg bg-indigo-100 text-sm font-bold text-indigo-700">
-                                {editingMember.email?.substring(0, 2).toUpperCase()}
-                            </div>
-                            <div className="min-w-0">
-                                <div className="font-bold text-gray-900 truncate">{editingMember.full_name || 'Sin nombre'}</div>
-                                <div className="text-xs text-gray-500 truncate">{editingMember.email}</div>
-                            </div>
-                            <span className={`ml-auto inline-flex items-center rounded-lg border px-2.5 py-1 text-xs font-bold ${editingMember.is_active ? 'border-gray-100 bg-gray-50 text-gray-700' : 'border-orange-100 bg-orange-50 text-orange-700'}`}>
-                                {editingMember.role.toUpperCase()}
-                            </span>
-                        </div>
-                    </div>
-                )}
-
                 <div className="grid grid-cols-2 gap-5">
                     <div className="space-y-1.5">
                         <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Nombre Completo</label>
@@ -507,11 +490,6 @@ export default function Team() {
                             onChange={(e) => setEditName(e.target.value)}
                             disabled={!canEdit}
                         />
-                        {!canEdit && (
-                            <p className="ml-1 text-[10px] font-bold text-orange-600">
-                                Solo Managers pueden editar nombres.
-                            </p>
-                        )}
                     </div>
 
                     <div className="space-y-1.5">
@@ -523,9 +501,6 @@ export default function Team() {
                             value={editingMember?.email || ''}
                             readOnly
                         />
-                        <p className="ml-1 text-[10px] font-bold text-gray-500">
-                            No editable
-                        </p>
                     </div>
 
                     <div className="space-y-1.5">
@@ -540,18 +515,14 @@ export default function Team() {
                             <option value="operator">Operador</option>
                             <option value="viewer">Lector</option>
                         </select>
-                        {!canEdit && (
-                            <p className="ml-1 text-[10px] font-bold text-orange-600">
-                                Solo Managers pueden cambiar roles.
-                            </p>
-                        )}
                     </div>
 
+                    {/* ✅ CORRECCIÓN #3: Etiqueta más corta */}
                     <div className="space-y-1.5">
-                        <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Nueva Contraseña (Opcional)</label>
+                        <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Contraseña</label>
                         <input
                             type="password"
-                            placeholder="••••••••"
+                            placeholder="Opcional"
                             className="w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500"
                             value={editPassword}
                             onChange={(e) => setEditPassword(e.target.value)}
