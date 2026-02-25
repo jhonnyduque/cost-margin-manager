@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
-import { UserPlus, Trash2, Shield, Mail, Building2, Search, Printer } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Building2, Search, Printer } from 'lucide-react';
 import { EntityList } from '../components/entity/EntityList';
 import { EntityModal } from '../components/entity/EntityModal';
 import { EntityDetail } from '../components/entity/EntityDetail';
@@ -320,7 +320,7 @@ export default function Team() {
             {
                 id: 'detail',
                 label: 'Detalles',
-                icon: <Mail size={18} />,
+                icon: <Building2 size={18} />, // ✅ Cambiado de Mail a Building2
                 onClick: (m) => setSelectedMember(m)
             },
             {
