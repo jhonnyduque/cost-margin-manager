@@ -34,11 +34,11 @@ serve(async (req) => {
 
         if (authError || !requester) throw new Error('Invalid token')
 
-        // 2. Parse Payload + AUTO-DETECT company_id (FIX principal)
+        // 2. Parse Payload + AUTO-DETECT company_id
         const payload = await req.json()
         const { action = 'create', company_id: payloadCompanyId } = payload
 
-        // 🔧 AUTO-FIX: Si el frontend no manda company_id (como ahora), lo sacamos del usuario logueado
+        // 🔧 AUTO-FIX: Si el frontend no manda company_id, lo sacamos del usuario logueado
         let company_id = payloadCompanyId
         if (!company_id) {
             const { data: membership, error: membError } = await supabaseClient
@@ -59,7 +59,7 @@ serve(async (req) => {
             console.log(`[TEAM] company_id received from payload: ${company_id}`)
         }
 
-        // 3. Authorization Check: Requester must be admin/owner of the target company
+        // 3. Authorization Check
         const { data: membership, error: membError } = await supabaseClient
             .from('company_members')
             .select('role')
@@ -110,39 +110,125 @@ serve(async (req) => {
 
             console.log(`[TEAM] Creating user ${email} for company ${company_id}`)
 
-            const { data: userData, error: userError } = await supabaseClient.auth.admin.createUser({
-                email,
-                password,
-                email_confirm: true,
-                user_metadata: { full_name: full_name || email.split('@')[0] }
-            })
+            // ✅ FIX 1: Verificar si el email ya existe en la tabla users
+            const { data: existingUser } = await supabaseClient
+                .from('users')
+                .select('id, email')
+                .eq('email', email)
+                .single()
 
-            if (userError) throw userError
+            let newUserId: string
+            let userJustCreated = false
 
-            const { error: insertError } = await supabaseClient
-                .from('company_members')
-                .insert({
-                    company_id,
-                    user_id: userData.user.id,
-                    role: role,
-                    is_active: true
+            if (existingUser) {
+                console.log(`[TEAM] User with email ${email} already exists in users table, reusing ID: ${existingUser.id}`)
+                newUserId = existingUser.id
+
+                // Actualizar el nombre si es necesario
+                if (full_name && existingUser.full_name !== full_name) {
+                    const { error: updateError } = await supabaseClient
+                        .from('users')
+                        .update({ full_name })
+                        .eq('id', newUserId)
+
+                    if (updateError) {
+                        console.warn('[TEAM] Could not update existing user name:', updateError)
+                    }
+                }
+            } else {
+                // Crear usuario nuevo en auth
+                const { data: userData, error: userError } = await supabaseClient.auth.admin.createUser({
+                    email,
+                    password,
+                    email_confirm: true,
+                    user_metadata: { full_name: full_name || email.split('@')[0] }
                 })
 
-            if (insertError) {
-                await supabaseClient.auth.admin.deleteUser(userData.user.id)
-                throw insertError
+                if (userError) throw userError
+
+                newUserId = userData.user.id
+                userJustCreated = true
+
+                // ✅ FIX 2: Insertar en la tabla users SOLO si no existe
+                const { error: usersInsertError } = await supabaseClient
+                    .from('users')
+                    .insert({
+                        id: newUserId,
+                        email: email,
+                        full_name: full_name || email.split('@')[0]
+                    })
+
+                if (usersInsertError) {
+                    console.error('[TEAM] Error inserting into users table:', usersInsertError)
+                    // Si falla pero el usuario ya existe, intentamos obtener su ID
+                    const { data: retryUser } = await supabaseClient
+                        .from('users')
+                        .select('id')
+                        .eq('email', email)
+                        .single()
+
+                    if (retryUser) {
+                        newUserId = retryUser.id
+                        console.log(`[TEAM] Recovered existing user ID: ${newUserId}`)
+                    }
+                }
             }
+
+            // ✅ FIX 3: Verificar si ya existe la membership antes de insertar
+            const { data: existingMembership } = await supabaseClient
+                .from('company_members')
+                .select('id')
+                .eq('user_id', newUserId)
+                .eq('company_id', company_id)
+                .single()
+
+            if (existingMembership) {
+                console.log(`[TEAM] Membership already exists for user ${newUserId} in company ${company_id}`)
+
+                // Actualizar el role si es diferente
+                if (role && existingMembership.role !== role) {
+                    const { error: updateError } = await supabaseClient
+                        .from('company_members')
+                        .update({ role, is_active: true })
+                        .eq('user_id', newUserId)
+                        .eq('company_id', company_id)
+
+                    if (updateError) {
+                        console.warn('[TEAM] Could not update existing membership:', updateError)
+                    }
+                }
+            } else {
+                // Insertar en company_members
+                const { error: insertError } = await supabaseClient
+                    .from('company_members')
+                    .insert({
+                        company_id,
+                        user_id: newUserId,
+                        role: role,
+                        is_active: true
+                    })
+
+                if (insertError) {
+                    // Solo eliminar el usuario auth si lo acabamos de crear
+                    if (userJustCreated) {
+                        await supabaseClient.auth.admin.deleteUser(newUserId)
+                    }
+                    throw insertError
+                }
+            }
+
+            console.log(`[TEAM] User ${email} processed successfully with name: ${full_name || email.split('@')[0]}`)
 
             return new Response(JSON.stringify({ success: true, status: 'created' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
         }
 
+        // ... (el resto de las acciones delete, update, bulk se mantienen igual)
         if (action === 'delete') {
             const { target_user_id } = payload
             if (!target_user_id) throw new Error('Missing target_user_id for deletion')
 
             console.log(`[TEAM] Deleting user ${target_user_id} from company ${company_id}`)
 
-            // Remove membership
             const { error: delMemb } = await supabaseClient
                 .from('company_members')
                 .delete()
