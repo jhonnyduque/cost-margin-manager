@@ -472,15 +472,36 @@ export default function Team() {
                 <div className="grid grid-cols-2 gap-5">
                     <div className="space-y-1.5">
                         <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Nombre Completo</label>
-                        <input name="full_name" type="text" placeholder="Ej: Juan Pérez" className="w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500" value={newUserFullName} onChange={(e) => setNewUserFullName(e.target.value)} required />
+                        <input
+                            name="full_name"
+                            type="text"
+                            placeholder="Ej: Juan Pérez"
+                            className="w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500"
+                            value={newUserFullName}
+                            onChange={(e) => setNewUserFullName(e.target.value)}
+                            required
+                        />
                     </div>
                     <div className="space-y-1.5">
                         <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Correo Electrónico</label>
-                        <input name="email" type="email" placeholder="usuario@empresa.com" className="w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} required />
+                        <input
+                            name="email"
+                            type="email"
+                            placeholder="usuario@empresa.com"
+                            className="w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500"
+                            value={newUserEmail}
+                            onChange={(e) => setNewUserEmail(e.target.value)}
+                            required
+                        />
                     </div>
                     <div className="space-y-1.5">
                         <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Rol</label>
-                        <select name="role" className="w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500" value={newUserRole} onChange={(e: any) => setNewUserRole(e.target.value)}>
+                        <select
+                            name="role"
+                            className="w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500"
+                            value={newUserRole}
+                            onChange={(e: any) => setNewUserRole(e.target.value)}
+                        >
                             <option value="manager">Manager</option>
                             <option value="operator">Operador</option>
                             <option value="viewer">Lector</option>
@@ -488,7 +509,15 @@ export default function Team() {
                     </div>
                     <div className="space-y-1.5">
                         <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Contraseña</label>
-                        <input name="password" type="password" placeholder="••••••••" className="w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500" value={newUserPassword} onChange={(e) => setNewUserPassword(e.target.value)} required />
+                        <input
+                            name="password"
+                            type="password"
+                            placeholder="••••••••"
+                            className="w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500"
+                            value={newUserPassword}
+                            onChange={(e) => setNewUserPassword(e.target.value)}
+                            required
+                        />
                     </div>
                 </div>
             </EntityModal>
