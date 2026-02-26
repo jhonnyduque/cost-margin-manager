@@ -34,11 +34,11 @@ serve(async (req) => {
 
         if (authError || !requester) throw new Error('Invalid token')
 
-        // 2. Parse Payload + AUTO-DETECT company_id (FIX principal)
+        // 2. Parse Payload + AUTO-DETECT company_id
         const payload = await req.json()
         const { action = 'create', company_id: payloadCompanyId } = payload
 
-        // 🔧 AUTO-FIX: Si el frontend no manda company_id (como ahora), lo sacamos del usuario logueado
+        // 🔧 AUTO-FIX: Si el frontend no manda company_id, lo sacamos del usuario logueado
         let company_id = payloadCompanyId
         if (!company_id) {
             const { data: membership, error: membError } = await supabaseClient
@@ -59,7 +59,7 @@ serve(async (req) => {
             console.log(`[TEAM] company_id received from payload: ${company_id}`)
         }
 
-        // 3. Authorization Check: Requester must be admin/owner of the target company
+        // 3. Authorization Check
         const { data: membership, error: membError } = await supabaseClient
             .from('company_members')
             .select('role')
@@ -110,6 +110,7 @@ serve(async (req) => {
 
             console.log(`[TEAM] Creating user ${email} for company ${company_id}`)
 
+            // Crear usuario en auth
             const { data: userData, error: userError } = await supabaseClient.auth.admin.createUser({
                 email,
                 password,
@@ -119,19 +120,38 @@ serve(async (req) => {
 
             if (userError) throw userError
 
+            const newUserId = userData.user.id
+
+            // ✅ FIX: Insertar en la tabla users con el full_name
+            const { error: usersInsertError } = await supabaseClient
+                .from('users')
+                .insert({
+                    id: newUserId,
+                    email: email,
+                    full_name: full_name || email.split('@')[0]
+                })
+
+            if (usersInsertError) {
+                console.error('[TEAM] Error inserting into users table:', usersInsertError)
+                // No fallamos aquí porque el usuario ya fue creado en auth
+            }
+
+            // Insertar en company_members
             const { error: insertError } = await supabaseClient
                 .from('company_members')
                 .insert({
                     company_id,
-                    user_id: userData.user.id,
+                    user_id: newUserId,
                     role: role,
                     is_active: true
                 })
 
             if (insertError) {
-                await supabaseClient.auth.admin.deleteUser(userData.user.id)
+                await supabaseClient.auth.admin.deleteUser(newUserId)
                 throw insertError
             }
+
+            console.log(`[TEAM] User ${email} created successfully with name: ${full_name || email.split('@')[0]}`)
 
             return new Response(JSON.stringify({ success: true, status: 'created' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
         }
