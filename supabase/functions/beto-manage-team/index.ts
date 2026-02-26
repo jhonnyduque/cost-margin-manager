@@ -34,12 +34,29 @@ serve(async (req) => {
 
         if (authError || !requester) throw new Error('Invalid token')
 
-        // 2. Parse Payload
+        // 2. Parse Payload + AUTO-DETECT company_id (FIX principal)
         const payload = await req.json()
-        const { action = 'create', company_id } = payload
+        const { action = 'create', company_id: payloadCompanyId } = payload
 
+        // 🔧 AUTO-FIX: Si el frontend no manda company_id (como ahora), lo sacamos del usuario logueado
+        let company_id = payloadCompanyId
         if (!company_id) {
-            throw new Error('Missing company_id')
+            const { data: membership, error: membError } = await supabaseClient
+                .from('company_members')
+                .select('company_id')
+                .eq('user_id', requester.id)
+                .eq('is_active', true)
+                .limit(1)
+                .single()
+
+            if (membError || !membership) {
+                throw new Error('User has no active company')
+            }
+
+            company_id = membership.company_id
+            console.log(`[TEAM] company_id auto-detected from user: ${company_id}`)
+        } else {
+            console.log(`[TEAM] company_id received from payload: ${company_id}`)
         }
 
         // 3. Authorization Check: Requester must be admin/owner of the target company
@@ -79,7 +96,7 @@ serve(async (req) => {
                 throw new Error('Missing required fields para creación.')
             }
 
-            // 🔧 FIX: Usar SEAT_LIMIT dinámico en lugar de hardcodear 3
+            // 🔧 FIX: Usar SEAT_LIMIT dinámico
             const { count, error: countError } = await supabaseClient
                 .from('company_members')
                 .select('*', { count: 'exact', head: true })
@@ -143,9 +160,8 @@ serve(async (req) => {
 
             console.log(`[TEAM] Updating user ${target_user_id} in company ${company_id}`)
 
-            // 1. Update Membership Role (only if provided and different)
+            // 1. Update Membership Role
             if (role) {
-                // Fetch current role to avoid redundant updates that trigger RLS/Triggers
                 const { data: currentMemb } = await supabaseClient
                     .from('company_members')
                     .select('role')
@@ -164,7 +180,7 @@ serve(async (req) => {
                 }
             }
 
-            // 2. Update Public Profile (public.users)
+            // 2. Update Public Profile
             if (full_name) {
                 const { error: publicErr } = await supabaseClient
                     .from('users')
