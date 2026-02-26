@@ -8,40 +8,40 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-
     if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders })
+        return new Response('ok', { headers: corsHeaders, status: 200 })
     }
 
     try {
-
-        const supabase = createClient(
-            Deno.env.get('SUPABASE_URL')!,
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+        const supabaseClient = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
             {
-                auth: { autoRefreshToken: false, persistSession: false }
+                auth: {
+                    autoRefreshToken: false,
+                    persistSession: false,
+                },
             }
         )
 
-        // 🔐 1. Validar token del requester
+        // 1. Get Requester Info
         const authHeader = req.headers.get('Authorization')
         if (!authHeader) throw new Error('Missing Authorization header')
 
-        const token = authHeader.replace('Bearer ', '')
-        const { data: { user: requester }, error: authError } =
-            await supabase.auth.getUser(token)
+        const { data: { user: requester }, error: authError } = await supabaseClient.auth.getUser(
+            authHeader.replace('Bearer ', '')
+        )
 
         if (authError || !requester) throw new Error('Invalid token')
 
-        // 📦 2. Parse payload
+        // 2. Parse Payload + AUTO-DETECT company_id (FIX principal)
         const payload = await req.json()
         const { action = 'create', company_id: payloadCompanyId } = payload
 
-        // 🏢 3. Auto-detect company_id si no viene del frontend
+        // 🔧 AUTO-FIX: Si el frontend no manda company_id (como ahora), lo sacamos del usuario logueado
         let company_id = payloadCompanyId
-
         if (!company_id) {
-            const { data: membership } = await supabase
+            const { data: membership, error: membError } = await supabaseClient
                 .from('company_members')
                 .select('company_id')
                 .eq('user_id', requester.id)
@@ -49,12 +49,18 @@ serve(async (req) => {
                 .limit(1)
                 .single()
 
-            if (!membership) throw new Error('User has no active company')
+            if (membError || !membership) {
+                throw new Error('User has no active company')
+            }
+
             company_id = membership.company_id
+            console.log(`[TEAM] company_id auto-detected from user: ${company_id}`)
+        } else {
+            console.log(`[TEAM] company_id received from payload: ${company_id}`)
         }
 
-        // 🔎 4. Verificar permisos
-        const { data: membership } = await supabase
+        // 3. Authorization Check: Requester must be admin/owner of the target company
+        const { data: membership, error: membError } = await supabaseClient
             .from('company_members')
             .select('role')
             .eq('company_id', company_id)
@@ -65,162 +71,181 @@ serve(async (req) => {
         const isCompanyAdmin = ['admin', 'owner'].includes(membership?.role)
 
         if (!isPlatformAdmin && !isCompanyAdmin) {
-            throw new Error('Access Denied')
+            throw new Error('Access Denied: Insufficient permissions.')
         }
 
-        // 🔢 5. Obtener seat limit
-        const { data: companyData } = await supabase
+        // 🔧 FIX: Obtener el seat_limit desde la tabla companies
+        const { data: companyData, error: companyError } = await supabaseClient
             .from('companies')
             .select('seat_limit')
             .eq('id', company_id)
             .single()
 
+        if (companyError) {
+            console.warn('[TEAM] Could not fetch seat_limit, using default 3')
+        }
+
         const SEAT_LIMIT = companyData?.seat_limit ?? 3
+        console.log(`[TEAM] Seat limit for company ${company_id}: ${SEAT_LIMIT}`)
 
-        // ====================================================
-        // ================== CREATE USER =====================
-        // ====================================================
+        // 4. Action Routing
         if (action === 'create') {
-
             const { email, role, password, full_name } = payload
+
             if (!email || !role || !password) {
-                throw new Error('Missing required fields')
+                throw new Error('Missing required fields para creación.')
             }
 
-            // 🔢 Validar límite de usuarios
-            const { count } = await supabase
+            // 🔧 FIX: Usar SEAT_LIMIT dinámico
+            const { count, error: countError } = await supabaseClient
                 .from('company_members')
                 .select('*', { count: 'exact', head: true })
                 .eq('company_id', company_id)
                 .eq('is_active', true)
 
+            if (countError) throw countError
             if (count && count >= SEAT_LIMIT) {
-                throw new Error(`Seat limit reached (${SEAT_LIMIT})`)
+                throw new Error(`User limit reached: Max ${SEAT_LIMIT} users per company allowed.`)
             }
 
-            // 1️⃣ Crear usuario en auth
-            const { data: userData, error: userError } =
-                await supabase.auth.admin.createUser({
-                    email,
-                    password,
-                    email_confirm: true,
-                    user_metadata: {
-                        full_name: full_name || email.split('@')[0]
-                    }
-                })
+            console.log(`[TEAM] Creating user ${email} for company ${company_id}`)
+
+            const { data: userData, error: userError } = await supabaseClient.auth.admin.createUser({
+                email,
+                password,
+                email_confirm: true,
+                user_metadata: { full_name: full_name || email.split('@')[0] }
+            })
 
             if (userError) throw userError
 
-            const userId = userData.user.id
-
-            // 2️⃣ Crear perfil público
-            const { error: profileError } = await supabase
-                .from('users')
-                .insert({
-                    id: userId,
-                    email,
-                    full_name: full_name || email.split('@')[0]
-                })
-
-            if (profileError) {
-                await supabase.auth.admin.deleteUser(userId)
-                throw profileError
-            }
-
-            // 3️⃣ Insertar membership
-            const { error: memberError } = await supabase
+            const { error: insertError } = await supabaseClient
                 .from('company_members')
                 .insert({
                     company_id,
-                    user_id: userId,
-                    role,
+                    user_id: userData.user.id,
+                    role: role,
                     is_active: true
                 })
 
-            if (memberError) {
-                await supabase.from('users').delete().eq('id', userId)
-                await supabase.auth.admin.deleteUser(userId)
-                throw memberError
+            if (insertError) {
+                await supabaseClient.auth.admin.deleteUser(userData.user.id)
+                throw insertError
             }
 
-            return new Response(
-                JSON.stringify({ success: true }),
-                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            )
+            return new Response(JSON.stringify({ success: true, status: 'created' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
         }
 
-        // ====================================================
-        // ================== UPDATE USER =====================
-        // ====================================================
-        if (action === 'update') {
-
-            const { target_user_id, role, full_name, password } = payload
-            if (!target_user_id) throw new Error('Missing target_user_id')
-
-            // 🔁 Update role
-            if (role) {
-                await supabase
-                    .from('company_members')
-                    .update({ role })
-                    .eq('user_id', target_user_id)
-                    .eq('company_id', company_id)
-            }
-
-            // 🔁 Update profile
-            if (full_name) {
-                await supabase
-                    .from('users')
-                    .update({ full_name })
-                    .eq('id', target_user_id)
-            }
-
-            // 🔁 Update auth
-            const authUpdates: any = {}
-            if (full_name) authUpdates.user_metadata = { full_name }
-            if (password) authUpdates.password = password
-
-            if (Object.keys(authUpdates).length > 0) {
-                await supabase.auth.admin.updateUserById(
-                    target_user_id,
-                    authUpdates
-                )
-            }
-
-            return new Response(
-                JSON.stringify({ success: true }),
-                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            )
-        }
-
-        // ====================================================
-        // ================== DELETE USER =====================
-        // ====================================================
         if (action === 'delete') {
-
             const { target_user_id } = payload
-            if (!target_user_id) throw new Error('Missing target_user_id')
+            if (!target_user_id) throw new Error('Missing target_user_id for deletion')
 
-            await supabase
+            console.log(`[TEAM] Deleting user ${target_user_id} from company ${company_id}`)
+
+            // Remove membership
+            const { error: delMemb } = await supabaseClient
                 .from('company_members')
                 .delete()
                 .eq('user_id', target_user_id)
                 .eq('company_id', company_id)
 
-            return new Response(
-                JSON.stringify({ success: true }),
-                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            )
+            if (delMemb) throw delMemb
+
+            return new Response(JSON.stringify({ success: true, status: 'deleted' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        }
+
+        if (action === 'update') {
+            const { target_user_id, role, full_name, password } = payload
+            if (!target_user_id) throw new Error('Missing target_user_id for update')
+
+            console.log(`[TEAM] Updating user ${target_user_id} in company ${company_id}`)
+
+            // 1. Update Membership Role
+            if (role) {
+                const { data: currentMemb } = await supabaseClient
+                    .from('company_members')
+                    .select('role')
+                    .eq('user_id', target_user_id)
+                    .eq('company_id', company_id)
+                    .single()
+
+                if (currentMemb && currentMemb.role !== role) {
+                    console.log(`[TEAM] Changing role from ${currentMemb.role} to ${role}`)
+                    const { error: roleErr } = await supabaseClient
+                        .from('company_members')
+                        .update({ role })
+                        .eq('user_id', target_user_id)
+                        .eq('company_id', company_id)
+                    if (roleErr) throw roleErr
+                }
+            }
+
+            // 2. Update Public Profile
+            if (full_name) {
+                const { error: publicErr } = await supabaseClient
+                    .from('users')
+                    .update({ full_name })
+                    .eq('id', target_user_id)
+                if (publicErr) throw publicErr
+            }
+
+            // 3. Update Auth Metadata / Password
+            const authUpdates: any = {}
+            if (full_name) authUpdates.user_metadata = { full_name }
+            if (password) authUpdates.password = password
+
+            if (Object.keys(authUpdates).length > 0) {
+                const { error: authErr } = await supabaseClient.auth.admin.updateUserById(
+                    target_user_id,
+                    authUpdates
+                )
+                if (authErr) throw authErr
+            }
+
+            return new Response(JSON.stringify({ success: true, status: 'updated' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        }
+
+        if (action === 'bulk_archive') {
+            const { user_ids } = payload
+            if (!user_ids || !Array.isArray(user_ids)) throw new Error('Missing user_ids array')
+
+            console.log(`[TEAM] Archiving users: ${user_ids.join(', ')}`)
+
+            const { error: archError } = await supabaseClient
+                .from('company_members')
+                .update({ is_active: false })
+                .in('user_id', user_ids)
+                .eq('company_id', company_id)
+
+            if (archError) throw archError
+            return new Response(JSON.stringify({ success: true, status: 'archived' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        }
+
+        if (action === 'bulk_delete') {
+            const { user_ids } = payload
+            if (!user_ids || !Array.isArray(user_ids)) throw new Error('Missing user_ids array')
+
+            console.log(`[TEAM] Deleting multiple users: ${user_ids.join(', ')}`)
+
+            const { error: delError } = await supabaseClient
+                .from('company_members')
+                .delete()
+                .in('user_id', user_ids)
+                .eq('company_id', company_id)
+
+            if (delError) throw delError
+            return new Response(JSON.stringify({ success: true, status: 'deleted_bulk' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
         }
 
         throw new Error(`Unsupported action: ${action}`)
 
     } catch (error: any) {
-
+        console.error(`[TEAM ERROR] ${error.message}`)
         return new Response(
             JSON.stringify({ error: error.message }),
             {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 400
+                status: 400,
             }
         )
     }
