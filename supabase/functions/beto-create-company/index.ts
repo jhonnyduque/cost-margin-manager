@@ -83,12 +83,12 @@ serve(async (req) => {
         let userId: string;
         let isExistingUser = false;
 
-        // 4.1. Buscar si el email ya existe en auth.users
-        const { data: existingUsers, error: listError } = await supabaseClient.auth.admin.listUsers()
-
-        const existingUser = !listError
-            ? existingUsers?.users?.find((u: any) => u.email === admin_email)
-            : null;
+        // 4.1. Buscar si el email ya existe en public.users
+        const { data: existingUser } = await supabaseClient
+            .from('users')
+            .select('id')
+            .eq('email', admin_email)
+            .maybeSingle();
 
         if (existingUser) {
             // Usuario ya existe → reusar su ID (multi-tenant)
