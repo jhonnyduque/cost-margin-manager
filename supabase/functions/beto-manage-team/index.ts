@@ -160,28 +160,25 @@ serve(async (req) => {
                 newUserId = userData.user.id
                 userJustCreated = true
 
-                // ✅ FIX 2: Insertar en la tabla users SOLO si no existe
-                const { error: usersInsertError } = await supabaseClient
+                // ✅ FIX 2: Upsert en la tabla users (el trigger handle_new_auth_user
+                // puede crear el row antes, pero SIN full_name — el upsert lo corrige)
+                const nameToSave = full_name || email.split('@')[0]
+                const { error: usersUpsertError } = await supabaseClient
                     .from('users')
-                    .insert({
+                    .upsert({
                         id: newUserId,
                         email: email,
-                        full_name: full_name || email.split('@')[0]
-                    })
+                        full_name: nameToSave
+                    }, { onConflict: 'id' })
 
-                if (usersInsertError) {
-                    console.error('[TEAM] Error inserting into users table:', usersInsertError)
-                    // Si falla pero el usuario ya existe, intentamos obtener su ID
-                    const { data: retryUser } = await supabaseClient
+                if (usersUpsertError) {
+                    console.error('[TEAM] Error upserting into users table:', usersUpsertError)
+                    // Fallback: intentar actualizar solo el nombre
+                    await supabaseClient
                         .from('users')
-                        .select('id')
-                        .eq('email', email)
-                        .single()
-
-                    if (retryUser) {
-                        newUserId = retryUser.id
-                        console.log(`[TEAM] Recovered existing user ID: ${newUserId}`)
-                    }
+                        .update({ full_name: nameToSave })
+                        .eq('id', newUserId)
+                    console.log(`[TEAM] Fallback: updated full_name for user ${newUserId}`)
                 }
             }
 
