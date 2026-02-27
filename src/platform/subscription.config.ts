@@ -24,13 +24,13 @@ export const subscriptionConfig = {
         demo: {
             label: 'Demo',
             seat_limit: 3,
-            enabledModules: ['cost-manager'],
+            enabledModules: ['dashboard'],
             allowedCapabilities: ['view_costs'] as Capability[]
         },
         starter: {
             label: 'Starter',
             seat_limit: 4,
-            enabledModules: ['cost-manager', 'products', 'inventory', 'team', 'settings'],
+            enabledModules: ['dashboard', 'products', 'raw_materials', 'team', 'settings'],
             allowedCapabilities: [
                 'view_costs', 'edit_costs',
                 'view_products', 'edit_products',

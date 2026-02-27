@@ -92,28 +92,36 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
                 className="p-2 space-y-1 mt-4"
             >
                 {Object.values(MODULES).map((module) => {
-                    const visible = user?.is_super_admin || (
-                        enabledModules.includes('*') || enabledModules.includes(module.id)
-                    );
+                    const mod = module as any;
 
-                    if (!visible && module.id !== 'control_center') return null;
-                    if (module.id === 'control_center' && !user?.is_super_admin) return null;
+                    // Super Admin: mostrar solo módulos de plataforma (superAdminOnly)
+                    if (user?.is_super_admin) {
+                        if (mod.tenantOnly) return null;
+                        if (!mod.superAdminOnly) return null;
+                    }
 
-                    const Icon = module.icon;
+                    // Tenant: mostrar solo módulos habilitados por su plan
+                    if (!user?.is_super_admin) {
+                        if (mod.superAdminOnly) return null;
+                        const isEnabled = enabledModules.includes('*') || enabledModules.includes(mod.id);
+                        if (!isEnabled) return null;
+                    }
+
+                    const Icon = mod.icon;
 
                     return (
                         <NavLink
-                            key={module.id}
-                            to={module.path}
+                            key={mod.id}
+                            to={mod.path}
                             className={({ isActive }) => `
                                 flex items-center gap-3 px-3 py-2 rounded-md transition-colors
                                 ${isActive ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}
                                 ${collapsed ? 'justify-center' : ''}
                             `}
-                            title={collapsed ? module.name : undefined}
+                            title={collapsed ? mod.name : undefined}
                         >
                             <Icon size={20} className="flex-shrink-0" />
-                            {!collapsed && <span className="text-sm font-medium truncate">{module.name}</span>}
+                            {!collapsed && <span className="text-sm font-medium truncate">{mod.name}</span>}
                         </NavLink>
                     );
                 })}
