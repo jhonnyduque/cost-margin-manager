@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Loader2, Save } from 'lucide-react';
 import { supabase } from '@/services/supabase';
+import { CURRENCIES, CurrencyCode } from '@/hooks/useCurrency';
 
 interface CreateTenantModalProps {
     isOpen: boolean;
@@ -27,7 +28,8 @@ export const CreateTenantModal: React.FC<CreateTenantModalProps> = ({ isOpen, on
         slug: '',
         admin_email: '',
         seat_limit: PLAN_SEAT_LIMITS['starter'],
-        initial_plan: 'starter'
+        initial_plan: 'starter',
+        currency: 'USD' as CurrencyCode
     });
 
     // ✅ useEffect ELIMINADO - handleChange es la única fuente de verdad
@@ -83,7 +85,8 @@ export const CreateTenantModal: React.FC<CreateTenantModalProps> = ({ isOpen, on
                     company_slug: formData.slug,
                     admin_email: formData.admin_email,
                     seat_limit: formData.seat_limit,
-                    initial_plan: formData.initial_plan
+                    initial_plan: formData.initial_plan,
+                    currency: formData.currency
                 }
             });
 
@@ -172,6 +175,20 @@ export const CreateTenantModal: React.FC<CreateTenantModalProps> = ({ isOpen, on
                                 <option value="growth">Growth (10 users)</option>
                                 <option value="scale">Scale (25 users)</option>
                                 <option value="enterprise">Enterprise (999 users)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700">Moneda</label>
+                            <select
+                                name="currency"
+                                value={formData.currency}
+                                onChange={handleChange}
+                                className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            >
+                                {CURRENCIES.map(c => (
+                                    <option key={c.code} value={c.code}>{c.label}</option>
+                                ))}
                             </select>
                         </div>
 

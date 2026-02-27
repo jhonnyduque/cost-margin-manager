@@ -46,7 +46,7 @@ serve(async (req) => {
         }
 
         // 3. Procesar Payload
-        const { company_name, company_slug, admin_email, seat_limit, initial_plan } = await req.json()
+        const { company_name, company_slug, admin_email, seat_limit, initial_plan, currency } = await req.json()
 
         if (!company_name || !company_slug || !admin_email) {
             throw new Error('Missing required fields: company_name, company_slug, admin_email')
@@ -150,7 +150,8 @@ serve(async (req) => {
 
             const updates: any = {
                 subscription_tier: planApplied,
-                seat_limit: seatLimitApplied
+                seat_limit: seatLimitApplied,
+                currency: currency || 'USD'
             };
 
             if (stripeCustomerId) updates.stripe_customer_id = stripeCustomerId;

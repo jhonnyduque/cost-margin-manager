@@ -17,18 +17,11 @@ import {
   TableRow,
 } from '@/components/ui/Table';
 import { tokens } from '@/design/design-tokens';
-
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-};
+import { useCurrency } from '@/hooks/useCurrency';
 
 const RawMaterials: React.FC = () => {
   const { currentCompanyId, rawMaterials, batches, addRawMaterial, deleteRawMaterial, updateRawMaterial, addBatch, deleteBatch, updateBatch } = useStore();
+  const { formatCurrency, currencySymbol } = useCurrency();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
@@ -619,7 +612,7 @@ const RawMaterials: React.FC = () => {
                     />
 
                     <Input
-                      label={entry_mode === 'rollo' ? 'Costo/Metro (€)' : 'Costo Total (€)'}
+                      label={entry_mode === 'rollo' ? `Costo/Metro (${currencySymbol})` : `Costo Total (${currencySymbol})`}
                       type="number"
                       step="0.01"
                       value={batchFormData.unit_cost || ''}
@@ -658,7 +651,7 @@ const RawMaterials: React.FC = () => {
                         <TableHead className="text-right">DIMENSIONES</TableHead>
                         <TableHead className="text-right text-emerald-600">ÁREA</TableHead>
                         <TableHead className="text-right">COSTO</TableHead>
-                        <TableHead className="text-right text-indigo-500">€/m²</TableHead>
+                        <TableHead className="text-right text-indigo-500">{currencySymbol}/m²</TableHead>
                         <TableHead className="text-right">RESTANTE</TableHead>
                         <TableHead className="no-print text-center">ACCIÓN</TableHead>
                       </TableRow>

@@ -18,15 +18,7 @@ import {
   TableRow,
 } from '@/components/ui/Table';
 import { tokens } from '@/design/design-tokens';
-
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-};
+import { useCurrency } from '@/hooks/useCurrency';
 
 const getCommercialPrice = (price: number) => {
   if (price <= 0) return 0;
@@ -45,6 +37,7 @@ interface ProductMaterialUI extends ProductMaterial {
 
 const Products: React.FC = () => {
   const { currentCompanyId, products, rawMaterials, batches, addProduct, deleteProduct, updateProduct, consumeStock } = useStore();
+  const { formatCurrency, currencySymbol } = useCurrency();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -473,7 +466,7 @@ const Products: React.FC = () => {
                     <div className="space-y-3">
                       <label className="text-xs font-bold uppercase tracking-widest text-gray-400">Precio Final</label>
                       <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-emerald-500">€</span>
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-emerald-500">{currencySymbol}</span>
                         <input
                           required
                           type="number"
