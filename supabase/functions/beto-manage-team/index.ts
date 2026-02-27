@@ -74,19 +74,30 @@ serve(async (req) => {
             throw new Error('Access Denied: Insufficient permissions.')
         }
 
-        // 🔧 FIX: Obtener el seat_limit desde la tabla companies
+        // 🔧 FIX: Obtener max_users desde subscription_plans (dinámico por plan)
         const { data: companyData, error: companyError } = await supabaseClient
             .from('companies')
-            .select('seat_limit')
+            .select('subscription_tier')
             .eq('id', company_id)
             .single()
 
-        if (companyError) {
-            console.warn('[TEAM] Could not fetch seat_limit, using default 3')
-        }
+        let SEAT_LIMIT = 3 // fallback seguro
+        if (companyError || !companyData?.subscription_tier) {
+            console.warn('[TEAM] Could not fetch subscription_tier, using default 3')
+        } else {
+            const { data: planData, error: planError } = await supabaseClient
+                .from('subscription_plans')
+                .select('max_users')
+                .eq('slug', companyData.subscription_tier)
+                .single()
 
-        const SEAT_LIMIT = companyData?.seat_limit ?? 3
-        console.log(`[TEAM] Seat limit for company ${company_id}: ${SEAT_LIMIT}`)
+            if (planError || !planData) {
+                console.warn(`[TEAM] Could not fetch plan limits for tier ${companyData.subscription_tier}, using default 3`)
+            } else {
+                SEAT_LIMIT = planData.max_users
+            }
+        }
+        console.log(`[TEAM] Seat limit for company ${company_id}: ${SEAT_LIMIT} (tier: ${companyData?.subscription_tier})`)
 
         // 4. Action Routing
         if (action === 'create') {
