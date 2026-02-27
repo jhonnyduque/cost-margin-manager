@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LimitIndicator } from '../components/LimitIndicator';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../services/supabase';
@@ -15,11 +15,20 @@ export default function Settings() {
     const isOwnerOrManager = userRole === 'owner' || userRole === 'manager';
 
     // Profile form state
-    const [fullName, setFullName] = useState(user?.user_metadata?.full_name || '');
+    const [fullName, setFullName] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [profileSaving, setProfileSaving] = useState(false);
     const [profileMessage, setProfileMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+    // Cargar nombre real desde public.users (no de user_metadata)
+    useEffect(() => {
+        if (!user?.id) return;
+        supabase.from('users').select('full_name').eq('id', user.id).single()
+            .then(({ data }) => {
+                if (data?.full_name) setFullName(data.full_name);
+            });
+    }, [user?.id]);
 
     const handleSaveProfile = async () => {
         setProfileSaving(true);
