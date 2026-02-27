@@ -5,12 +5,13 @@ import Stripe from 'https://esm.sh/stripe@14.14.0'
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
 serve(async (req) => {
     // 1. Manejar CORS (Preflight)
     if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders })
+        return new Response('ok', { headers: corsHeaders, status: 200 })
     }
 
     try {
@@ -78,7 +79,7 @@ serve(async (req) => {
             console.warn('[BETO] STRIPE_SECRET_KEY not set. Skipping Stripe Customer creation.');
         }
 
-        // 4. Invitar Usuario por Email (envía link para crear contraseña)
+        // 4. Invitar Usuario por Email (envía link para crear contraseña) - OPCIÓN C
         const { data: userData, error: userError } = await supabaseClient.auth.admin.inviteUserByEmail(
             admin_email,
             {
@@ -160,8 +161,8 @@ serve(async (req) => {
                 company_id: companyId,
                 stripe_customer_id: stripeCustomerId,
                 admin_email: admin_email,
-                seat_limit_applied: seatLimitApplied,  // ✅ Variable segura
-                plan_applied: planApplied,              // ✅ Variable segura
+                seat_limit_applied: seatLimitApplied,
+                plan_applied: planApplied,
                 status: 'provisioned'
             }),
             {
