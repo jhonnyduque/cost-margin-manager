@@ -78,17 +78,14 @@ serve(async (req) => {
             console.warn('[BETO] STRIPE_SECRET_KEY not set. Skipping Stripe Customer creation.');
         }
 
-        // 4. Crear Usuario en auth.users (Admin API)
-        const tempPassword = Math.random().toString(36).slice(-12) + 'A1!'
-
-        const { data: userData, error: userError } = await supabaseClient.auth.admin.createUser({
-            email: admin_email,
-            password: tempPassword,
-            email_confirm: true,
-            user_metadata: { full_name: `Admin ${company_name}` }
-        })
-
-        const userId = userData?.user?.id || 'error';
+        // 4. Invitar Usuario por Email (envía link para crear contraseña)
+        const { data: userData, error: userError } = await supabaseClient.auth.admin.inviteUserByEmail(
+            admin_email,
+            {
+                data: { full_name: `Admin ${company_name}` },
+                redirectTo: `${Deno.env.get('APP_URL') || 'http://localhost:3000'}/login`
+            }
+        )
 
         if (userError) {
             if (userError.message.includes('already registered')) {
@@ -96,6 +93,13 @@ serve(async (req) => {
             }
             throw userError
         }
+
+        const userId = userData?.user?.id;
+        if (!userId) {
+            throw new Error('Failed to create user: no user ID returned')
+        }
+
+        console.log(`[BETO] Invitation sent to ${admin_email}, userId: ${userId}`)
 
         // 5. Ejecutar Provisión en DB (RPC)
         const { data: rpcData, error: rpcError } = await supabaseClient.rpc('beto_provision_tenant', {

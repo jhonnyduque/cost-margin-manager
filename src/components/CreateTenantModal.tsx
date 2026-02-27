@@ -160,22 +160,6 @@ export const CreateTenantModal: React.FC<CreateTenantModalProps> = ({ isOpen, on
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-700">Seat Limit</label>
-                            <input
-                                type="number"
-                                name="seat_limit"
-                                required
-                                min="1"
-                                value={formData.seat_limit}
-                                readOnly
-                                className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-slate-50 text-slate-600 cursor-not-allowed"
-                            />
-                            <p className="text-xs text-slate-500 mt-1">
-                                Auto-ajustado según el plan
-                            </p>
-                        </div>
-
-                        <div>
                             <label className="block text-sm font-medium text-slate-700">Initial Plan</label>
                             <select
                                 name="initial_plan"
@@ -189,6 +173,22 @@ export const CreateTenantModal: React.FC<CreateTenantModalProps> = ({ isOpen, on
                                 <option value="scale">Scale (25 users)</option>
                                 <option value="enterprise">Enterprise (999 users)</option>
                             </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700">Seat Limit</label>
+                            <input
+                                type="number"
+                                name="seat_limit"
+                                required
+                                min="1"
+                                value={formData.seat_limit}
+                                readOnly
+                                className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-slate-50 text-slate-600 cursor-not-allowed"
+                            />
+                            <p className="text-xs text-slate-500 mt-1">
+                                Auto-ajustado según el plan
+                            </p>
                         </div>
                     </div>
 
