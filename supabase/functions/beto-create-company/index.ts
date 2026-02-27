@@ -79,28 +79,41 @@ serve(async (req) => {
             console.warn('[BETO] STRIPE_SECRET_KEY not set. Skipping Stripe Customer creation.');
         }
 
-        // 4. Invitar Usuario por Email (envía link para crear contraseña) - OPCIÓN C
-        const { data: userData, error: userError } = await supabaseClient.auth.admin.inviteUserByEmail(
-            admin_email,
-            {
-                data: { full_name: `Admin ${company_name}` },
-                redirectTo: `${Deno.env.get('APP_URL') || 'http://localhost:3000'}/login`
+        // 4. Multi-Tenant: Buscar usuario existente o invitar nuevo
+        let userId: string;
+        let isExistingUser = false;
+
+        // 4.1. Buscar si el email ya existe en auth.users
+        const { data: existingUsers, error: listError } = await supabaseClient.auth.admin.listUsers()
+
+        const existingUser = !listError
+            ? existingUsers?.users?.find((u: any) => u.email === admin_email)
+            : null;
+
+        if (existingUser) {
+            // Usuario ya existe → reusar su ID (multi-tenant)
+            userId = existingUser.id;
+            isExistingUser = true;
+            console.log(`[BETO] Existing user found: ${admin_email}, userId: ${userId} → Adding to new company`)
+        } else {
+            // Usuario nuevo → invitar por email
+            const { data: userData, error: userError } = await supabaseClient.auth.admin.inviteUserByEmail(
+                admin_email,
+                {
+                    data: { full_name: `Admin ${company_name}` },
+                    redirectTo: `${Deno.env.get('APP_URL') || 'http://localhost:3000'}/login`
+                }
+            )
+
+            if (userError) throw userError
+
+            userId = userData?.user?.id ?? '';
+            if (!userId) {
+                throw new Error('Failed to create user: no user ID returned')
             }
-        )
 
-        if (userError) {
-            if (userError.message.includes('already registered')) {
-                throw new Error(`El email ${admin_email} ya está registrado en el sistema.`)
-            }
-            throw userError
+            console.log(`[BETO] Invitation sent to ${admin_email}, userId: ${userId}`)
         }
-
-        const userId = userData?.user?.id;
-        if (!userId) {
-            throw new Error('Failed to create user: no user ID returned')
-        }
-
-        console.log(`[BETO] Invitation sent to ${admin_email}, userId: ${userId}`)
 
         // 5. Ejecutar Provisión en DB (RPC)
         const { data: rpcData, error: rpcError } = await supabaseClient.rpc('beto_provision_tenant', {
@@ -163,6 +176,8 @@ serve(async (req) => {
                 admin_email: admin_email,
                 seat_limit_applied: seatLimitApplied,
                 plan_applied: planApplied,
+                is_existing_user: isExistingUser,
+                user_status: isExistingUser ? 'added_to_company' : 'invited',
                 status: 'provisioned'
             }),
             {
