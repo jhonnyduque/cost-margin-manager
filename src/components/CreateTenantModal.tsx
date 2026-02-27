@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X, Loader2, Save } from 'lucide-react';
 import { supabase } from '@/services/supabase';
 
@@ -8,7 +8,7 @@ interface CreateTenantModalProps {
     onSuccess: () => void;
 }
 
-// 🔧 NUEVO: Catálogo canónico de planes con sus límites
+// 🔧 Catálogo canónico de planes con sus límites
 const PLAN_SEAT_LIMITS: Record<string, number> = {
     demo: 3,
     starter: 4,
@@ -21,43 +21,50 @@ export const CreateTenantModal: React.FC<CreateTenantModalProps> = ({ isOpen, on
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // 🔧 MODIFICADO: seat_limit inicial basado en el plan por defecto
+    // 🔧 seat_limit inicial basado en el plan por defecto
     const [formData, setFormData] = useState({
         name: '',
         slug: '',
         admin_email: '',
-        seat_limit: PLAN_SEAT_LIMITS['starter'], // ← Auto-calculado desde el plan
+        seat_limit: PLAN_SEAT_LIMITS['starter'],
         initial_plan: 'starter'
     });
 
-    // 🔧 NUEVO: Auto-actualizar seat_limit cuando cambia el plan
-    useEffect(() => {
-        setFormData(prev => ({
-            ...prev,
-            seat_limit: PLAN_SEAT_LIMITS[prev.initial_plan] || 5
-        }));
-    }, [formData.initial_plan]);
+    // ✅ useEffect ELIMINADO - handleChange es la única fuente de verdad
 
     if (!isOpen) return null;
 
+    // 🔧 CORREGIDO: Auto-generación inteligente del slug + auto-sync de seat_limit
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
 
         setFormData(prev => {
             const updates = { ...prev, [name]: value };
 
-            // 🔧 Si cambia el plan, actualizar seat_limit automáticamente
-            if (name === 'initial_plan') {
-                updates.seat_limit = PLAN_SEAT_LIMITS[value] || 5;
-            }
-
-            // Auto-generate slug from name if slug is empty
-            if (name === 'name' && !prev.slug) {
-                const slug = value.toLowerCase()
+            // Auto-generar slug SOLO si:
+            // 1. El campo cambiado es 'name'
+            // 2. Y el slug está vacío O el slug actual coincide con el name anterior (fue auto-generado)
+            if (name === 'name') {
+                const newSlug = value.toLowerCase()
                     .replace(/[^a-z0-9]/g, '-')
                     .replace(/-+/g, '-')
                     .replace(/^-|-$/g, '');
-                updates.slug = slug;
+
+                // Verificar si el slug actual fue auto-generado (coincide con el name anterior)
+                const oldSlug = prev.name.toLowerCase()
+                    .replace(/[^a-z0-9]/g, '-')
+                    .replace(/-+/g, '-')
+                    .replace(/^-|-$/g, '');
+
+                // Actualizar slug si está vacío O si fue auto-generado previamente
+                if (!prev.slug || prev.slug === oldSlug) {
+                    updates.slug = newSlug;
+                }
+            }
+
+            // 🔧 Auto-sync seat_limit cuando cambia el plan (ÚNICA FUENTE)
+            if (name === 'initial_plan') {
+                updates.seat_limit = PLAN_SEAT_LIMITS[value] || 5;
             }
 
             return updates;
@@ -152,7 +159,6 @@ export const CreateTenantModal: React.FC<CreateTenantModalProps> = ({ isOpen, on
                             />
                         </div>
 
-                        {/* 🔧 MODIFICADO: Seat Limit readonly con hint del plan */}
                         <div>
                             <label className="block text-sm font-medium text-slate-700">Seat Limit</label>
                             <input
@@ -161,7 +167,7 @@ export const CreateTenantModal: React.FC<CreateTenantModalProps> = ({ isOpen, on
                                 required
                                 min="1"
                                 value={formData.seat_limit}
-                                readOnly  // ← Readonly porque se auto-calcula
+                                readOnly
                                 className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-slate-50 text-slate-600 cursor-not-allowed"
                             />
                             <p className="text-xs text-slate-500 mt-1">
@@ -169,7 +175,6 @@ export const CreateTenantModal: React.FC<CreateTenantModalProps> = ({ isOpen, on
                             </p>
                         </div>
 
-                        {/* 🔧 MODIFICADO: Dropdown con planes canónicos (sin "professional") */}
                         <div>
                             <label className="block text-sm font-medium text-slate-700">Initial Plan</label>
                             <select
@@ -187,7 +192,7 @@ export const CreateTenantModal: React.FC<CreateTenantModalProps> = ({ isOpen, on
                         </div>
                     </div>
 
-                    {/* 🔧 Hint visual del plan seleccionado */}
+                    {/* Hint visual del plan seleccionado */}
                     <div className="rounded-lg bg-indigo-50 px-4 py-3 text-sm text-indigo-700 border border-indigo-100">
                         <strong>Plan seleccionado:</strong> {formData.initial_plan.charAt(0).toUpperCase() + formData.initial_plan.slice(1)}
                         {' '}• <strong>Límite:</strong> {formData.seat_limit} usuarios

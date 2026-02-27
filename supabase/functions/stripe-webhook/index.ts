@@ -132,6 +132,16 @@ serve(async (req) => {
             return data;
         };
 
+        // 🔧 Helper to get seat_limit from subscription_plans
+        const getPlanSeatLimit = async (planSlug: string): Promise<number> => {
+            const { data } = await supabase
+                .from('subscription_plans')
+                .select('max_users')
+                .eq('slug', planSlug)
+                .single();
+            return data?.max_users || 5;
+        };
+
         // 🔔 Event Handlers
         switch (eventType) {
 
@@ -154,10 +164,12 @@ serve(async (req) => {
                 );
 
                 // ✅ FIX: Pasar customer ID, no subscription ID
+                const planKey = subscription.metadata.plan_key || 'starter';
                 await updateCompanySubscription(subscription.customer as string, {
                     stripe_subscription_id: subscription.id,
                     subscription_status: subscription.status,
-                    subscription_tier: subscription.metadata.plan_key || 'starter',
+                    subscription_tier: planKey,
+                    seat_limit: await getPlanSeatLimit(planKey),
                     updated_at: new Date().toISOString()
                 });
 
@@ -183,9 +195,11 @@ serve(async (req) => {
                 );
 
                 // ✅ FIX: Pasar customer ID, no subscription ID + fallback seguro
+                const planKeyUpdated = subscription.metadata.plan_key || 'starter';
                 await updateCompanySubscription(subscription.customer as string, {
                     subscription_status: subscription.status,
-                    subscription_tier: subscription.metadata.plan_key || 'starter',
+                    subscription_tier: planKeyUpdated,
+                    seat_limit: await getPlanSeatLimit(planKeyUpdated),
                     updated_at: new Date().toISOString()
                 });
 

@@ -110,11 +110,12 @@ serve(async (req) => {
         const companyId = rpcData.company_id;
 
         // 🔧 5.1. Update Company with Stripe ID AND Initial details (Seat Limit from Plan)
-        if (companyId) {
-            const updates: any = {};
-            if (stripeCustomerId) updates.stripe_customer_id = stripeCustomerId;
+        // 🔧 FIX: Declarar variables FUERA del if para evitar scope error
+        let seatLimitApplied = seat_limit || 5;
+        let planApplied = initial_plan || 'starter';
 
-            // 🔧 NUEVO: Obtener seat_limit desde subscription_plans (prioridad al plan)
+        if (companyId) {
+            // Obtener seat_limit desde subscription_plans
             const { data: planData, error: planError } = await supabaseClient
                 .from('subscription_plans')
                 .select('max_users')
@@ -126,8 +127,15 @@ serve(async (req) => {
             }
 
             // 🔧 Fallback chain: plan max_users → frontend seat_limit → default 5
-            updates.seat_limit = planData?.max_users || seat_limit || 5;
-            updates.subscription_tier = initial_plan || 'starter';
+            seatLimitApplied = planData?.max_users || seat_limit || 5;
+            planApplied = initial_plan || 'starter';
+
+            const updates: any = {
+                subscription_tier: planApplied,
+                seat_limit: seatLimitApplied
+            };
+
+            if (stripeCustomerId) updates.stripe_customer_id = stripeCustomerId;
 
             const { error: updateError } = await supabaseClient
                 .from('companies')
@@ -137,19 +145,19 @@ serve(async (req) => {
             if (updateError) {
                 console.error('[BETO] Failed to update Company details:', updateError);
             } else {
-                console.log(`[BETO] Company ${companyId} updated: seat_limit=${updates.seat_limit}, tier=${updates.subscription_tier}`);
+                console.log(`[BETO] Company ${companyId} updated: seat_limit=${seatLimitApplied}, tier=${planApplied}`);
             }
         }
 
-        // 6. Retornar Resultado (Sin credenciales)
+        // 🔧 6. Retornar Resultado con variables seguras (fuera del if)
         return new Response(
             JSON.stringify({
                 success: true,
                 company_id: companyId,
                 stripe_customer_id: stripeCustomerId,
                 admin_email: admin_email,
-                seat_limit_applied: updates?.seat_limit,
-                plan_applied: updates?.subscription_tier,
+                seat_limit_applied: seatLimitApplied,  // ✅ Variable segura
+                plan_applied: planApplied,              // ✅ Variable segura
                 status: 'provisioned'
             }),
             {
