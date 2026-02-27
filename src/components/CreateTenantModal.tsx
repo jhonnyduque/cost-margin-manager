@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Loader2, Save } from 'lucide-react';
 import { supabase } from '@/services/supabase';
 
@@ -8,32 +8,60 @@ interface CreateTenantModalProps {
     onSuccess: () => void;
 }
 
+// 🔧 NUEVO: Catálogo canónico de planes con sus límites
+const PLAN_SEAT_LIMITS: Record<string, number> = {
+    demo: 3,
+    starter: 4,
+    growth: 10,
+    scale: 25,
+    enterprise: 999
+};
+
 export const CreateTenantModal: React.FC<CreateTenantModalProps> = ({ isOpen, onClose, onSuccess }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // 🔧 MODIFICADO: seat_limit inicial basado en el plan por defecto
     const [formData, setFormData] = useState({
         name: '',
         slug: '',
         admin_email: '',
-        seat_limit: 5,
+        seat_limit: PLAN_SEAT_LIMITS['starter'], // ← Auto-calculado desde el plan
         initial_plan: 'starter'
     });
+
+    // 🔧 NUEVO: Auto-actualizar seat_limit cuando cambia el plan
+    useEffect(() => {
+        setFormData(prev => ({
+            ...prev,
+            seat_limit: PLAN_SEAT_LIMITS[prev.initial_plan] || 5
+        }));
+    }, [formData.initial_plan]);
 
     if (!isOpen) return null;
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: name === 'seat_limit' ? parseInt(value) || 1 : value
-        }));
 
-        // Auto-generate slug from name if slug is empty or user hasn't manually edited it much
-        if (name === 'name' && !formData.slug) {
-            const slug = value.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-            setFormData(prev => ({ ...prev, slug }));
-        }
+        setFormData(prev => {
+            const updates = { ...prev, [name]: value };
+
+            // 🔧 Si cambia el plan, actualizar seat_limit automáticamente
+            if (name === 'initial_plan') {
+                updates.seat_limit = PLAN_SEAT_LIMITS[value] || 5;
+            }
+
+            // Auto-generate slug from name if slug is empty
+            if (name === 'name' && !prev.slug) {
+                const slug = value.toLowerCase()
+                    .replace(/[^a-z0-9]/g, '-')
+                    .replace(/-+/g, '-')
+                    .replace(/^-|-$/g, '');
+                updates.slug = slug;
+            }
+
+            return updates;
+        });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -53,7 +81,6 @@ export const CreateTenantModal: React.FC<CreateTenantModalProps> = ({ isOpen, on
             });
 
             if (error) throw error;
-            // The function might return error in body 
             if (data && data.error) throw new Error(data.error);
 
             onSuccess();
@@ -125,6 +152,7 @@ export const CreateTenantModal: React.FC<CreateTenantModalProps> = ({ isOpen, on
                             />
                         </div>
 
+                        {/* 🔧 MODIFICADO: Seat Limit readonly con hint del plan */}
                         <div>
                             <label className="block text-sm font-medium text-slate-700">Seat Limit</label>
                             <input
@@ -133,11 +161,15 @@ export const CreateTenantModal: React.FC<CreateTenantModalProps> = ({ isOpen, on
                                 required
                                 min="1"
                                 value={formData.seat_limit}
-                                onChange={handleChange}
-                                className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                readOnly  // ← Readonly porque se auto-calcula
+                                className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-slate-50 text-slate-600 cursor-not-allowed"
                             />
+                            <p className="text-xs text-slate-500 mt-1">
+                                Auto-ajustado según el plan
+                            </p>
                         </div>
 
+                        {/* 🔧 MODIFICADO: Dropdown con planes canónicos (sin "professional") */}
                         <div>
                             <label className="block text-sm font-medium text-slate-700">Initial Plan</label>
                             <select
@@ -146,13 +178,19 @@ export const CreateTenantModal: React.FC<CreateTenantModalProps> = ({ isOpen, on
                                 onChange={handleChange}
                                 className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                             >
-                                <option value="demo">Demo</option>
-                                <option value="starter">Starter</option>
-                                <option value="growth">Growth</option>
-                                <option value="professional">Professional</option>
-                                <option value="enterprise">Enterprise</option>
+                                <option value="demo">Demo (3 users)</option>
+                                <option value="starter">Starter (4 users)</option>
+                                <option value="growth">Growth (10 users)</option>
+                                <option value="scale">Scale (25 users)</option>
+                                <option value="enterprise">Enterprise (999 users)</option>
                             </select>
                         </div>
+                    </div>
+
+                    {/* 🔧 Hint visual del plan seleccionado */}
+                    <div className="rounded-lg bg-indigo-50 px-4 py-3 text-sm text-indigo-700 border border-indigo-100">
+                        <strong>Plan seleccionado:</strong> {formData.initial_plan.charAt(0).toUpperCase() + formData.initial_plan.slice(1)}
+                        {' '}• <strong>Límite:</strong> {formData.seat_limit} usuarios
                     </div>
 
                     <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-slate-50">

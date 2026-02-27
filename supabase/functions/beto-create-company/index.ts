@@ -59,7 +59,7 @@ serve(async (req) => {
 
         if (stripeKey) {
             try {
-                const stripe = new Stripe(stripeKey, { apiVersion: '2023-10-16' }); // Use appropriate version
+                const stripe = new Stripe(stripeKey, { apiVersion: '2023-10-16' });
                 const customer = await stripe.customers.create({
                     email: admin_email,
                     name: company_name,
@@ -73,8 +73,6 @@ serve(async (req) => {
                 console.log(`[BETO] Created Stripe Customer: ${stripeCustomerId}`);
             } catch (stripeError) {
                 console.error('[BETO] Stripe Creation Error:', stripeError);
-                // We proceed but log error. Ideally we might want to fail here depending on strictness.
-                // For now, we allow proceeding to allow manual repair if Stripe is down.
             }
         } else {
             console.warn('[BETO] STRIPE_SECRET_KEY not set. Skipping Stripe Customer creation.');
@@ -90,9 +88,7 @@ serve(async (req) => {
             user_metadata: { full_name: `Admin ${company_name}` }
         })
 
-        // ... (User creation error handling) ...
-
-        const userId = userData?.user?.id || 'error'; // Safety check though logic above throws
+        const userId = userData?.user?.id || 'error';
 
         if (userError) {
             if (userError.message.includes('already registered')) {
@@ -113,12 +109,25 @@ serve(async (req) => {
 
         const companyId = rpcData.company_id;
 
-        // 5.1. Update Company with Stripe ID AND Initial details (Seat Limit, Plan)
+        // 🔧 5.1. Update Company with Stripe ID AND Initial details (Seat Limit from Plan)
         if (companyId) {
             const updates: any = {};
             if (stripeCustomerId) updates.stripe_customer_id = stripeCustomerId;
-            if (seat_limit) updates.seat_limit = seat_limit;
-            if (initial_plan) updates.subscription_tier = initial_plan; // Legacy tier setting for initial state
+
+            // 🔧 NUEVO: Obtener seat_limit desde subscription_plans (prioridad al plan)
+            const { data: planData, error: planError } = await supabaseClient
+                .from('subscription_plans')
+                .select('max_users')
+                .eq('slug', initial_plan || 'starter')
+                .single();
+
+            if (planError) {
+                console.warn(`[BETO] Could not fetch plan "${initial_plan}":`, planError);
+            }
+
+            // 🔧 Fallback chain: plan max_users → frontend seat_limit → default 5
+            updates.seat_limit = planData?.max_users || seat_limit || 5;
+            updates.subscription_tier = initial_plan || 'starter';
 
             const { error: updateError } = await supabaseClient
                 .from('companies')
@@ -127,6 +136,8 @@ serve(async (req) => {
 
             if (updateError) {
                 console.error('[BETO] Failed to update Company details:', updateError);
+            } else {
+                console.log(`[BETO] Company ${companyId} updated: seat_limit=${updates.seat_limit}, tier=${updates.subscription_tier}`);
             }
         }
 
@@ -137,6 +148,8 @@ serve(async (req) => {
                 company_id: companyId,
                 stripe_customer_id: stripeCustomerId,
                 admin_email: admin_email,
+                seat_limit_applied: updates?.seat_limit,
+                plan_applied: updates?.subscription_tier,
                 status: 'provisioned'
             }),
             {
