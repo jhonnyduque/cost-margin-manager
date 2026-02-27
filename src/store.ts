@@ -29,7 +29,7 @@ interface AppState {
   loadMovementsFromSupabase: () => Promise<void>;
   logout: () => void;
 
-  addRawMaterial: (material: RawMaterial) => void;
+  addRawMaterial: (material: RawMaterial) => Promise<void>;
   updateRawMaterial: (material: RawMaterial) => void;
   deleteRawMaterial: (id: string) => void;
 
@@ -280,13 +280,13 @@ export const useStore = create<AppState>()(
           .eq('company_id', get().currentCompanyId);
       },
 
-      addRawMaterial: (material) => {
+      addRawMaterial: async (material) => {
         const companyId = get().currentCompanyId;
         if (!companyId) return;
 
         set((state) => ({ rawMaterials: [...state.rawMaterials, material] }));
 
-        supabase.from('raw_materials').insert({
+        const { error } = await supabase.from('raw_materials').insert({
           id: material.id,
           company_id: companyId,
           name: material.name,
@@ -296,9 +296,12 @@ export const useStore = create<AppState>()(
           provider: material.provider,
           status: material.status,
           created_at: new Date().toISOString()
-        }).then(({ error }) => {
-          if (error) console.error('[Supabase] addRawMaterial Error:', error.message);
         });
+
+        if (error) {
+          console.error('[Supabase] addRawMaterial Error:', error.message);
+          throw error;
+        }
       },
 
       updateRawMaterial: (material) => {

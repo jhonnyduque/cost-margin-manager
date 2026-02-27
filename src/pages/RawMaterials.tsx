@@ -28,6 +28,7 @@ const RawMaterials: React.FC = () => {
   const [activeMaterialId, setActiveMaterialId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [entry_mode, set_entry_mode] = useState<'rollo' | 'pieza'>('rollo');
+  const [isSaving, setIsSaving] = useState(false);
 
   const [editingBatchData, setEditingBatchData] = useState<MaterialBatch | null>(null);
 
@@ -66,8 +67,9 @@ const RawMaterials: React.FC = () => {
     return { totalOriginalQty, totalRemainingQty, totalValue, weightedAvgCost, totalArea, avgCostPerM2 };
   };
 
-  const handleMasterSubmit = (e: React.FormEvent) => {
+  const handleMasterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSaving(true);
     const materialId = editingId || crypto.randomUUID();
 
     const materialData: RawMaterial = {
@@ -84,35 +86,42 @@ const RawMaterials: React.FC = () => {
       deleted_at: null
     };
 
-    if (editingId) {
-      updateRawMaterial(materialData);
-    } else {
-      addRawMaterial(materialData);
-      if (formData.initialQty > 0) {
-        const area = formData.unit === 'metro' ? formData.initialQty * ((formData.width || 0) / 100) : 0;
-        const batch: MaterialBatch = {
-          id: crypto.randomUUID(),
-          material_id: materialId,
-          date: new Date().toISOString().split('T')[0],
-          provider: formData.provider || 'Carga Inicial',
-          initial_quantity: formData.initialQty,
-          remaining_quantity: formData.initialQty,
-          unit_cost: formData.unitCost,
-          reference: 'Carga Inicial',
-          width: formData.width,
-          length: 0,
-          area: area,
-          entry_mode: 'rollo',
-          company_id: currentCompanyId || '',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          deleted_at: null
-        };
-        addBatch(batch);
+    try {
+      if (editingId) {
+        updateRawMaterial(materialData);
+      } else {
+        await addRawMaterial(materialData);
+        if (formData.initialQty > 0) {
+          const area = formData.unit === 'metro' ? formData.initialQty * ((formData.width || 0) / 100) : 0;
+          const batch: MaterialBatch = {
+            id: crypto.randomUUID(),
+            material_id: materialId,
+            date: new Date().toISOString().split('T')[0],
+            provider: formData.provider || 'Carga Inicial',
+            initial_quantity: formData.initialQty,
+            remaining_quantity: formData.initialQty,
+            unit_cost: formData.unitCost,
+            reference: 'Carga Inicial',
+            width: formData.width,
+            length: 0,
+            area: area,
+            entry_mode: 'rollo',
+            company_id: currentCompanyId || '',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            deleted_at: null
+          };
+          addBatch(batch);
+        }
       }
+      setIsModalOpen(false);
+      setEditingId(null);
+    } catch (error) {
+      console.error("Error saving material:", error);
+      alert("Hubo un error al guardar. Por favor intenta de nuevo.");
+    } finally {
+      setIsSaving(false);
     }
-    setIsModalOpen(false);
-    setEditingId(null);
   };
 
   const handleBatchSubmit = (e: React.FormEvent) => {
@@ -515,8 +524,10 @@ const RawMaterials: React.FC = () => {
               </div>
 
               <div className="flex gap-3 pt-2">
-                <Button variant="ghost" className="flex-1" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-                <Button type="submit" className="flex-1" variant="primary">Guardar Material</Button>
+                <Button variant="ghost" className="flex-1" onClick={() => setIsModalOpen(false)} disabled={isSaving}>Cancelar</Button>
+                <Button type="submit" className="flex-1" variant="primary" disabled={isSaving}>
+                  {isSaving ? 'Guardando...' : 'Guardar Material'}
+                </Button>
               </div>
             </form>
           </Card>
