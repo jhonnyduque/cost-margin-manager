@@ -260,7 +260,7 @@ const RawMaterials: React.FC = () => {
         <button
           onClick={() => {
             setEditingId(null);
-            setFormData({ name: '', description: '', type: 'Tela', unit: 'metro', provider: '', status: 'activa', initial_qty: 0, unit_cost: 0, width: 140 });
+            setFormData({ name: '', description: '', type: 'Tela', unit: 'metro', provider: '', status: 'activa', initialQty: 0, unitCost: 0, width: 140 });
             setIsModalOpen(true);
           }}
           className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 text-white font-medium shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all h-10 w-10 sm:w-auto sm:px-4 flex-shrink-0"
@@ -319,7 +319,7 @@ const RawMaterials: React.FC = () => {
                     onClick={() => {
                       const stats = getBatchStats(m.id);
                       setEditingId(m.id);
-                      setFormData({ ...m, initial_qty: stats.totalRemainingQty, unit_cost: stats.weightedAvgCost });
+                      setFormData({ ...m, initialQty: stats.totalRemainingQty, unitCost: stats.weightedAvgCost });
                       setIsModalOpen(true);
                     }}
                     className="flex items-center justify-center rounded-lg bg-slate-50 p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 active:scale-95 transition-all"
@@ -382,7 +382,7 @@ const RawMaterials: React.FC = () => {
                       <Button variant="ghost" size="sm" onClick={() => {
                         const stats = getBatchStats(m.id);
                         setEditingId(m.id);
-                        setFormData({ ...m, initial_qty: stats.totalRemainingQty, unit_cost: stats.weightedAvgCost });
+                        setFormData({ ...m, initialQty: stats.totalRemainingQty, unitCost: stats.weightedAvgCost });
                         setIsModalOpen(true);
                       }}>
                         <Edit2 size={16} />
@@ -469,8 +469,8 @@ const RawMaterials: React.FC = () => {
                   <Input
                     type="number"
                     step="0.01"
-                    value={formData.unit_cost || ''}
-                    onChange={e => setFormData({ ...formData, unit_cost: parseFloat(e.target.value) })}
+                    value={formData.unitCost || ''}
+                    onChange={e => setFormData({ ...formData, unitCost: parseFloat(e.target.value) })}
                     placeholder="0"
                     disabled={!!editingId}
                   />

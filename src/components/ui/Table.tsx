@@ -35,16 +35,16 @@ export const TableBody: React.FC<{ children: React.ReactNode }> = ({ children })
     </tbody>
 );
 
-export const TableRow: React.FC<{ children: React.ReactNode; onClick?: () => void }> = ({ children, onClick }) => (
+export const TableRow: React.FC<{ children: React.ReactNode; onClick?: () => void; className?: string }> = ({ children, onClick, className = '' }) => (
     <tr
         onClick={onClick}
-        className={onClick ? "cursor-pointer transition-colors hover:bg-gray-50" : ""}
+        className={`${onClick ? "cursor-pointer transition-colors hover:bg-gray-50 " : ""}${className}`}
     >
         {children}
     </tr>
 );
 
-export const TableHead: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+export const TableHead: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
     <th
         style={{
             padding: tokens.spacing.md,
@@ -55,12 +55,13 @@ export const TableHead: React.FC<{ children: React.ReactNode }> = ({ children })
             letterSpacing: '0.05em',
             borderBottom: `1px solid ${tokens.colors.border}`,
         }}
+        className={className}
     >
         {children}
     </th>
 );
 
-export const TableCell: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
+export const TableCell: React.FC<{ children: React.ReactNode; className?: string; colSpan?: number }> = ({ children, className = '', colSpan }) => (
     <td
         style={{
             padding: tokens.spacing.md,
@@ -68,6 +69,7 @@ export const TableCell: React.FC<{ children: React.ReactNode; className?: string
             color: tokens.colors.text.primary,
         }}
         className={className}
+        colSpan={colSpan}
     >
         {children}
     </td>
