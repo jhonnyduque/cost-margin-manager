@@ -108,22 +108,14 @@ export default function Team() {
 
             if (isSuperAdmin) {
                 const { data, error } = await supabase
-                    .from('team_members_view')
-                    .select('*, companies(name)')
+                    .rpc('get_team_members')
                     .order('joined_at', { ascending: true });
 
                 if (error) throw error;
-
-                const mapped = (data || []).map((m: any) => ({
-                    ...m,
-                    company_name: m.companies?.name || null,
-                }));
-                setMembers(mapped);
+                setMembers(data || []);
             } else {
                 const { data, error } = await supabase
-                    .from('team_members_view')
-                    .select('*')
-                    .eq('company_id', currentCompany?.id)
+                    .rpc('get_team_members', { p_company_id: currentCompany?.id })
                     .order('joined_at', { ascending: true });
 
                 if (error) throw error;
