@@ -1,36 +1,26 @@
 import React from 'react';
-import { tokens } from '../../design/design-tokens';
 
 interface BaseTableProps {
     children: React.ReactNode;
-    className?: string; // For layout (margin, width)
+    className?: string;
 }
 
-// Compositional approach for flexibility
 export const TableContainer: React.FC<BaseTableProps> = ({ children, className = '' }) => (
-    <div
-        className={`w-full overflow-x-auto ${className}`}
-        style={{
-            borderRadius: tokens.radius.lg,
-            border: `1px solid ${tokens.colors.border}`,
-            backgroundColor: tokens.colors.surface,
-            boxShadow: tokens.shadow.subtle,
-        }}
-    >
-        <table className="w-full border-collapse text-left">
+    <div className={`w-full overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm ${className}`}>
+        <table className="w-full border-collapse text-left table-fixed min-w-[800px]">
             {children}
         </table>
     </div>
 );
 
 export const TableHeader: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <thead style={{ backgroundColor: tokens.colors.bg }}>
+    <thead className="sticky top-0 z-10 border-b border-gray-200 bg-white text-xs font-semibold uppercase tracking-wider text-gray-400 backdrop-blur-sm">
         <tr>{children}</tr>
     </thead>
 );
 
 export const TableBody: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <tbody className="divide-y divide-gray-200">
+    <tbody className="divide-y divide-gray-50">
         {children}
     </tbody>
 );
@@ -38,37 +28,21 @@ export const TableBody: React.FC<{ children: React.ReactNode }> = ({ children })
 export const TableRow: React.FC<{ children: React.ReactNode; onClick?: () => void; className?: string }> = ({ children, onClick, className = '' }) => (
     <tr
         onClick={onClick}
-        className={`${onClick ? "cursor-pointer transition-colors hover:bg-gray-50 " : ""}${className}`}
+        className={`group bg-white transition-all hover:bg-amber-50/30 ${onClick ? "cursor-pointer " : ""}${className}`}
     >
         {children}
     </tr>
 );
 
 export const TableHead: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-    <th
-        style={{
-            padding: tokens.spacing.md,
-            fontSize: tokens.typography.caption.fontSize,
-            fontWeight: 600,
-            color: tokens.colors.text.secondary,
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            borderBottom: `1px solid ${tokens.colors.border}`,
-        }}
-        className={className}
-    >
+    <th className={`px-4 py-3 truncate ${className}`}>
         {children}
     </th>
 );
 
 export const TableCell: React.FC<{ children: React.ReactNode; className?: string; colSpan?: number }> = ({ children, className = '', colSpan }) => (
     <td
-        style={{
-            padding: tokens.spacing.md,
-            fontSize: tokens.typography.body.fontSize,
-            color: tokens.colors.text.primary,
-        }}
-        className={className}
+        className={`px-4 py-3 truncate ${className}`}
         colSpan={colSpan}
     >
         {children}

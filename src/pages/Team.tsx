@@ -53,8 +53,10 @@ export default function Team() {
     const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
     const isSuperAdmin = user != null && !currentCompany;
-    const isManager = userRole === 'manager' || userRole === 'owner';
-    const canEdit = isSuperAdmin || isManager;
+    const allowedRoles = ['super_admin', 'admin', 'owner', 'manager'];
+    const canCreate = allowedRoles.includes(userRole || '') || isSuperAdmin;
+    const canEdit = allowedRoles.includes(userRole || '') || isSuperAdmin;
+    const canDelete = allowedRoles.includes(userRole || '') || isSuperAdmin;
     const currentUsersCount = members.length;
     const isAtLimit = !isSuperAdmin && currentUsersCount >= maxUsers;
     const percentageUsed = Math.min(100, (currentUsersCount / maxUsers) * 100);
@@ -264,6 +266,9 @@ export default function Team() {
     };
 
     const handleBulkAction = async (action: string, ids: string[]) => {
+        if (action === 'Archivar' && !canEdit) return;
+        if (action === 'Eliminar' && !canDelete) return;
+
         if (action === 'Archivar') await executeBulk('bulk_archive', ids);
         else if (action === 'Eliminar') await executeBulk('bulk_delete', ids);
     };
@@ -347,27 +352,27 @@ export default function Team() {
                 icon: <Building2 size={18} />,
                 onClick: (m) => setSelectedMember(m)
             },
-            {
+            ...(canEdit ? [{
                 id: 'edit',
                 label: 'Editar',
                 icon: <Shield size={18} />,
-                onClick: (m) => {
+                onClick: (m: TeamMember) => {
                     setEditingMember(m);
                     setEditName(m.full_name || '');
                     setEditRole(m.role);
                 }
-            },
-            {
+            }] : []),
+            ...(canDelete ? [{
                 id: 'delete',
                 label: 'Eliminar',
                 icon: <Trash2 size={18} />,
                 color: 'text-red-500 hover:bg-red-50 hover:border-red-100',
-                onClick: (m) => handleDeleteUser(m.user_id)
-            }
+                onClick: (m: TeamMember) => handleDeleteUser(m.user_id)
+            }] : [])
         ],
         bulkActions: [
-            { label: 'Archivar', onClick: (ids) => handleBulkAction('Archivar', ids) },
-            { label: 'Eliminar', onClick: (ids) => handleBulkAction('Eliminar', ids), variant: 'danger' }
+            ...(canEdit ? [{ label: 'Archivar', onClick: (ids: string[]) => handleBulkAction('Archivar', ids) }] : []),
+            ...(canDelete ? [{ label: 'Eliminar', onClick: (ids: string[]) => handleBulkAction('Eliminar', ids), variant: 'danger' as const }] : [])
         ]
     };
 
@@ -405,7 +410,7 @@ export default function Team() {
                         <Printer size={18} />
                     </button>
 
-                    {selectedIds.length > 0 && (
+                    {selectedIds.length > 0 && canDelete && (
                         <button
                             onClick={() => handleBulkAction('Eliminar', selectedIds)}
                             title={`Eliminar ${selectedIds.length} seleccionados`}
@@ -415,29 +420,31 @@ export default function Team() {
                         </button>
                     )}
 
-                    <div className="group relative flex-shrink-0">
-                        <button
-                            onClick={() => setShowCreateModal(true)}
-                            disabled={isAtLimit}
-                            title="Crear miembro"
-                            className={`
-                                flex items-center justify-center gap-2 font-bold transition-all active:scale-95
-                                rounded-xl sm:rounded-2xl
-                                h-10 w-10 sm:h-10 sm:w-auto sm:px-4
-                                ${isAtLimit
-                                    ? 'cursor-not-allowed bg-gray-100 text-gray-400'
-                                    : 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700'}
-                            `}
-                        >
-                            <UserPlus size={18} />
-                            <span className="hidden sm:inline text-sm">Crear</span>
-                        </button>
-                        {isAtLimit && (
-                            <div className="animate-in fade-in slide-in-from-bottom-2 absolute bottom-full right-0 z-50 mb-3 hidden w-64 rounded-2xl bg-gray-900 p-4 text-xs text-white shadow-2xl group-hover:block">
-                                Límite alcanzado. Actualiza tu plan para invitar más personas.
-                            </div>
-                        )}
-                    </div>
+                    {canCreate && (
+                        <div className="group relative flex-shrink-0">
+                            <button
+                                onClick={() => setShowCreateModal(true)}
+                                disabled={isAtLimit}
+                                title="Crear miembro"
+                                className={`
+                                    flex items-center justify-center gap-2 font-bold transition-all active:scale-95
+                                    rounded-xl sm:rounded-2xl
+                                    h-10 w-10 sm:h-10 sm:w-auto sm:px-4
+                                    ${isAtLimit
+                                        ? 'cursor-not-allowed bg-gray-100 text-gray-400'
+                                        : 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700'}
+                                `}
+                            >
+                                <UserPlus size={18} />
+                                <span className="hidden sm:inline text-sm">Crear</span>
+                            </button>
+                            {isAtLimit && (
+                                <div className="animate-in fade-in slide-in-from-bottom-2 absolute bottom-full right-0 z-50 mb-3 hidden w-64 rounded-2xl bg-gray-900 p-4 text-xs text-white shadow-2xl group-hover:block">
+                                    Límite alcanzado. Actualiza tu plan para invitar más personas.
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </header>
 

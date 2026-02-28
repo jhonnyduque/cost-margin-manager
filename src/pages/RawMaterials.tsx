@@ -383,7 +383,7 @@ const RawMaterials: React.FC = () => {
               <TableHead>Categoría</TableHead>
               <TableHead className="text-right">Stock Actual</TableHead>
               <TableHead className="text-right">Costo Promedio</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
+              <TableHead className="w-40 text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -409,7 +409,7 @@ const RawMaterials: React.FC = () => {
                   <TableCell className="text-right font-medium text-gray-700">
                     {formatCurrency(weightedAvgCost)}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="w-40 text-right">
                     <div className="flex justify-end gap-1">
                       <Button variant="ghost" size="sm" onClick={() => { setActiveMaterialId(m.id); setIsBatchModalOpen(true); }} title="Ver Lotes">
                         <History size={16} className="text-indigo-400" />
@@ -712,7 +712,7 @@ const RawMaterials: React.FC = () => {
                         <TableHead className="text-right">COSTO</TableHead>
                         <TableHead className="text-right text-indigo-500">{currencySymbol}/m²</TableHead>
                         <TableHead className="text-right">RESTANTE</TableHead>
-                        <TableHead className="no-print text-center">ACCIÓN</TableHead>
+                        <TableHead className="w-32 no-print text-center">ACCIÓN</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -747,7 +747,7 @@ const RawMaterials: React.FC = () => {
                                 {batch.remaining_quantity.toFixed(2)} m
                               </Badge>
                             </TableCell>
-                            <TableCell className="no-print text-center">
+                            <TableCell className="w-32 no-print text-center">
                               <div className="flex justify-center gap-1">
                                 {canEdit && (
                                   <Button variant="ghost" size="sm" onClick={() => setEditingBatchData(batch)} icon={<Pencil size={16} />} />

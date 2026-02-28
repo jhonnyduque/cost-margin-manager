@@ -231,7 +231,7 @@ const Products: React.FC = () => {
             <TableHead className="text-right">Costo (FIFO)</TableHead>
             <TableHead className="text-right">Precio Venta</TableHead>
             <TableHead className="text-center">Margen</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
+            <TableHead className="w-40 text-right">Acciones</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -249,7 +249,7 @@ const Products: React.FC = () => {
                     {margin.toFixed(1)}%
                   </Badge>
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="w-40 text-right">
                   <div className="flex justify-end gap-1">
                     <Button variant="ghost" size="sm" onClick={() => { if (window.confirm('¿Registrar consumo de stock?')) consumeStock(p.id); }} title="Producir">
                       <PlayCircle size={16} className="text-emerald-500" />
