@@ -38,7 +38,7 @@ const Products: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedMaterial, setExpandedMaterial] = useState<number | null>(null);
-  const [missingStockModal, setMissingStockModal] = useState<{ isOpen: boolean; productId: string; missingItems: any[]; quantity: number; targetPrice: number }>({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0 });
+  const [missingStockModal, setMissingStockModal] = useState<{ isOpen: boolean; productId: string; missingItems: any[]; quantity: number; targetPrice: number; maxCoveredProduction: number }>({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0, maxCoveredProduction: 0 });
   const [successModal, setSuccessModal] = useState<{ isOpen: boolean; productName: string; cost: number; quantity: number } | null>(null);
 
   const [formData, setFormData] = useState<any>({
@@ -54,15 +54,24 @@ const Products: React.FC = () => {
 
     const missingItems: any[] = [];
     let totalCostForBatch = 0;
+    let maxCoveredProduction = quantity;
 
     product.materials?.forEach(pm => {
-      let effectiveQty = pm.quantity * quantity;
+      let qtyPerUnit = pm.quantity;
       if (pm.mode === 'pieces' && pm.pieces) {
         const latestBatch = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
         const width = latestBatch?.width || 140;
         const totalAreaCm2 = pm.pieces.reduce((acc: number, p: any) => acc + (p.length * p.width), 0);
-        effectiveQty = ((totalAreaCm2 / width) / 100) * quantity;
+        qtyPerUnit = (totalAreaCm2 / width) / 100;
       }
+
+      const availableMaterialStock = batches.filter(b => b.material_id === pm.material_id).reduce((acc, b) => acc + b.remaining_quantity, 0);
+      let possibleUnits = qtyPerUnit > 0 ? Math.floor(availableMaterialStock / qtyPerUnit) : quantity;
+      if (possibleUnits < maxCoveredProduction) {
+        maxCoveredProduction = Math.max(0, possibleUnits);
+      }
+
+      let effectiveQty = qtyPerUnit * quantity;
 
       const breakdown = getFifoBreakdown(pm.material_id, effectiveQty, pm.consumption_unit, batches, rawMaterials);
       const totalMissing = breakdown.filter(b => b.is_missing).reduce((acc, b) => acc + b.quantity_used_in_target_unit, 0);
@@ -84,7 +93,7 @@ const Products: React.FC = () => {
     });
 
     if (missingItems.length > 0) {
-      setMissingStockModal({ isOpen: true, productId, missingItems, quantity, targetPrice });
+      setMissingStockModal({ isOpen: true, productId, missingItems, quantity, targetPrice, maxCoveredProduction });
       setProductionModal({ ...productionModal, isOpen: false });
     } else {
       consumeStockBatch(productId, quantity, targetPrice).then(() => {
@@ -698,6 +707,21 @@ const Products: React.FC = () => {
             </p>
 
             <div className="bg-red-50/50 rounded-xl p-5 border border-red-100 space-y-4">
+              <div className="grid grid-cols-3 gap-4 mb-2 pb-4 border-b border-red-200/50">
+                <div className="text-center">
+                  <p className="text-[10px] font-black uppercase text-red-800/60 mb-1">Prod. Solicitada</p>
+                  <p className="text-xl font-bold text-gray-800">{missingStockModal.quantity}</p>
+                </div>
+                <div className="text-center border-l border-red-200/50">
+                  <p className="text-[10px] font-black uppercase text-emerald-800/60 mb-1">Cubierta por Stock</p>
+                  <p className="text-xl font-bold text-emerald-600">{missingStockModal.maxCoveredProduction}</p>
+                </div>
+                <div className="text-center border-l border-red-200/50">
+                  <p className="text-[10px] font-black uppercase text-red-800/60 mb-1">Generará Deuda</p>
+                  <p className="text-xl font-bold text-red-600">{missingStockModal.quantity - missingStockModal.maxCoveredProduction}</p>
+                </div>
+              </div>
+
               <h4 className="text-[10px] font-black uppercase tracking-widest text-red-800 flex items-center gap-2 mb-2">
                 <Package size={12} /> Desglose de Faltantes y Costo Asumido
               </h4>
@@ -735,7 +759,7 @@ const Products: React.FC = () => {
             </div>
 
             <div className="flex gap-4 pt-4">
-              <Button variant="ghost" className="flex-1" onClick={() => setMissingStockModal({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0 })}>
+              <Button variant="ghost" className="flex-1" onClick={() => setMissingStockModal({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0, maxCoveredProduction: 0 })}>
                 Cancelar Operación
               </Button>
               <Button
@@ -746,7 +770,7 @@ const Products: React.FC = () => {
 
                   consumeStockBatch(missingStockModal.productId, missingStockModal.quantity, missingStockModal.targetPrice).then(() => {
                     const baseCost = calculateProductCost(product, batches, rawMaterials);
-                    setMissingStockModal({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0 });
+                    setMissingStockModal({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0, maxCoveredProduction: 0 });
                     setSuccessModal({ isOpen: true, productName: product?.name || '', cost: baseCost * missingStockModal.quantity, quantity: missingStockModal.quantity });
                   }).catch(err => {
                     alert('Error forzando producción: ' + err.message);
