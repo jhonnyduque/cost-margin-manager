@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { PackageSearch, Search, Info, Plus, FileDown, Printer, History, ArrowUpRight, AlertTriangle } from 'lucide-react';
+import { PackageSearch, Search, Info, Plus, FileDown, Printer, History, ArrowUpRight, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useStore } from '../store';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
@@ -10,11 +10,12 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { useNavigate } from 'react-router-dom';
 
 const FinishedGoods: React.FC = () => {
-    const { products, productMovements } = useStore();
+    const { products, productMovements, movements, rawMaterials } = useStore();
     const { formatCurrency } = useCurrency();
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
     const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
+    const [expandedMovementId, setExpandedMovementId] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
 
     const [outputModal, setOutputModal] = useState<{
@@ -222,32 +223,100 @@ const FinishedGoods: React.FC = () => {
                                                                             </thead>
                                                                             <tbody className="divide-y divide-gray-100">
                                                                                 {pMovements.map(m => (
-                                                                                    <tr key={m.id} className="hover:bg-slate-50/50">
-                                                                                        <td className="px-4 py-3 font-mono text-gray-500 text-xs">
-                                                                                            {new Date(m.created_at).toLocaleString()}
-                                                                                        </td>
-                                                                                        <td className="px-4 py-3">
-                                                                                            <div className="flex flex-col gap-1 items-start">
-                                                                                                <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase ${m.type === 'ingreso_produccion' ? 'bg-emerald-100 text-emerald-700' : m.type === 'merma' ? 'bg-red-100 text-red-700' : m.type === 'ajuste' ? 'bg-slate-100 text-slate-700' : 'bg-orange-100 text-orange-700'}`}>
-                                                                                                    {m.type.replace('_', ' ')}
-                                                                                                </span>
-                                                                                                {m.produced_with_debt && (
-                                                                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-50 text-red-600 text-[9px] font-black uppercase tracking-wider border border-red-100/50" title="Este lote se produjo asumiendo faltantes de insumos (Deuda de Inventario)">
-                                                                                                        ⚠️ Con Deuda
+                                                                                    <React.Fragment key={m.id}>
+                                                                                        <tr className="hover:bg-slate-50/50">
+                                                                                            <td className="px-4 py-3 font-mono text-gray-500 text-xs">
+                                                                                                {new Date(m.created_at).toLocaleString()}
+                                                                                            </td>
+                                                                                            <td className="px-4 py-3">
+                                                                                                <div className="flex flex-col gap-1 items-start">
+                                                                                                    <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase ${m.type === 'ingreso_produccion' ? 'bg-emerald-100 text-emerald-700' : m.type === 'merma' ? 'bg-red-100 text-red-700' : m.type === 'ajuste' ? 'bg-slate-100 text-slate-700' : 'bg-orange-100 text-orange-700'}`}>
+                                                                                                        {m.type.replace('_', ' ')}
                                                                                                     </span>
-                                                                                                )}
-                                                                                            </div>
-                                                                                        </td>
-                                                                                        <td className={`px-4 py-3 text-right font-mono font-bold ${m.type === 'ingreso_produccion' ? 'text-emerald-600' : m.type === 'ajuste' ? 'text-slate-600' : 'text-red-500'}`}>
-                                                                                            {m.type === 'ingreso_produccion' ? '+' : '-'}{m.quantity}
-                                                                                        </td>
-                                                                                        <td className="px-4 py-3 text-right font-mono text-gray-500">
-                                                                                            {formatCurrency(m.unit_cost)}
-                                                                                        </td>
-                                                                                        <td className="px-4 py-3 text-gray-600 truncate max-w-[200px]" title={m.reference || ''}>
-                                                                                            {m.reference || '-'}
-                                                                                        </td>
-                                                                                    </tr>
+                                                                                                    {m.produced_with_debt && (
+                                                                                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-50 text-red-600 text-[9px] font-black uppercase tracking-wider border border-red-100/50" title="Este lote se produjo asumiendo faltantes de insumos (Deuda de Inventario)">
+                                                                                                            ⚠️ Con Deuda
+                                                                                                        </span>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                            </td>
+                                                                                            <td className={`px-4 py-3 text-right font-mono font-bold ${m.type === 'ingreso_produccion' ? 'text-emerald-600' : m.type === 'ajuste' ? 'text-slate-600' : 'text-red-500'}`}>
+                                                                                                {m.type === 'ingreso_produccion' ? '+' : '-'}{m.quantity}
+                                                                                            </td>
+                                                                                            <td className="px-4 py-3 text-right font-mono text-gray-500">
+                                                                                                {formatCurrency(m.unit_cost)}
+                                                                                            </td>
+                                                                                            <td className="px-4 py-3 text-gray-600">
+                                                                                                <div className="flex items-center justify-between">
+                                                                                                    <span className="truncate max-w-[150px]" title={m.reference || ''}>{m.reference || '-'}</span>
+                                                                                                    {m.type === 'ingreso_produccion' && (
+                                                                                                        <Button
+                                                                                                            variant="ghost"
+                                                                                                            size="sm"
+                                                                                                            onClick={() => setExpandedMovementId(expandedMovementId === m.id ? null : m.id)}
+                                                                                                            className={`ml-2 h-7 px-2 text-[10px] ${expandedMovementId === m.id ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50/50'}`}
+                                                                                                        >
+                                                                                                            {expandedMovementId === m.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />} Detalle
+                                                                                                        </Button>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                            </td>
+                                                                                        </tr>
+                                                                                        {expandedMovementId === m.id && m.type === 'ingreso_produccion' && (
+                                                                                            <tr className="bg-slate-50/50">
+                                                                                                <td colSpan={5} className="p-0 border-b border-slate-100">
+                                                                                                    <div className="px-8 py-4 bg-white shadow-inner">
+                                                                                                        <h5 className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 mb-3">
+                                                                                                            <PackageSearch size={12} /> Desglose de Consumo (Lote Producción)
+                                                                                                        </h5>
+                                                                                                        <div className="overflow-x-auto rounded border border-slate-100">
+                                                                                                            <table className="w-full text-xs text-left">
+                                                                                                                <thead className="bg-slate-50 text-slate-500 uppercase">
+                                                                                                                    <tr>
+                                                                                                                        <th className="px-3 py-2 font-bold">Insumo Consumido</th>
+                                                                                                                        <th className="px-3 py-2 text-right font-bold">Cantidad</th>
+                                                                                                                        <th className="px-3 py-2 font-bold text-center">Estado de Cobertura</th>
+                                                                                                                        <th className="px-3 py-2 text-right font-bold">Costo Asumido</th>
+                                                                                                                    </tr>
+                                                                                                                </thead>
+                                                                                                                <tbody className="divide-y divide-slate-50">
+                                                                                                                    {movements.filter(sm => sm.date === m.created_at && ['egreso', 'egreso_asumido'].includes(sm.type)).map((sm) => {
+                                                                                                                        const material = rawMaterials.find(rm => rm.id === sm.material_id);
+                                                                                                                        return (
+                                                                                                                            <tr key={sm.id} className="hover:bg-slate-50/50">
+                                                                                                                                <td className="px-3 py-2 font-semibold text-slate-700">
+                                                                                                                                    {material?.name || 'Insumo Eliminado'}
+                                                                                                                                </td>
+                                                                                                                                <td className="px-3 py-2 text-right font-mono text-slate-600">
+                                                                                                                                    {sm.quantity.toFixed(2)} {material?.unit || ''}
+                                                                                                                                </td>
+                                                                                                                                <td className="px-3 py-2">
+                                                                                                                                    <div className="flex justify-center w-full">
+                                                                                                                                        {sm.type === 'egreso_asumido' ? (
+                                                                                                                                            <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 border border-red-200">
+                                                                                                                                                ⚠️ DEUDA TÉCNICA
+                                                                                                                                            </span>
+                                                                                                                                        ) : (
+                                                                                                                                            <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">
+                                                                                                                                                CUBIERTO
+                                                                                                                                            </span>
+                                                                                                                                        )}
+                                                                                                                                    </div>
+                                                                                                                                </td>
+                                                                                                                                <td className={`px-3 py-2 text-right font-mono font-semibold ${sm.type === 'egreso_asumido' ? 'text-red-600' : 'text-slate-600'}`}>
+                                                                                                                                    {formatCurrency(sm.quantity * sm.unit_cost)}
+                                                                                                                                </td>
+                                                                                                                            </tr>
+                                                                                                                        );
+                                                                                                                    })}
+                                                                                                                </tbody>
+                                                                                                            </table>
+                                                                                                        </div>
+                                                                                                    </div>
+                                                                                                </td>
+                                                                                            </tr>
+                                                                                        )}
+                                                                                    </React.Fragment>
                                                                                 ))}
                                                                             </tbody>
                                                                         </table>
@@ -260,7 +329,8 @@ const FinishedGoods: React.FC = () => {
                                                             </div>
                                                         </td>
                                                     </tr>
-                                                )}
+                                                )
+                                                }
                                             </React.Fragment>
                                         );
                                     })}
@@ -269,99 +339,102 @@ const FinishedGoods: React.FC = () => {
                         </div>
                     )}
                 </div>
-            )}
+            )
+            }
 
-            {outputModal.isOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                            <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800">
-                                <ArrowUpRight className="text-orange-500" />
-                                Registrar Salida
-                            </h2>
-                            <button onClick={() => setOutputModal(prev => ({ ...prev, isOpen: false }))} className="text-slate-400 hover:text-slate-600 transition-colors">
-                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                        </div>
-
-                        <div className="p-6 space-y-5 bg-slate-50/50">
-                            <div>
-                                <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-1">Producto a retirar</p>
-                                <p className="text-lg font-bold text-slate-800">{outputModal.productName}</p>
-                                <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 rounded-md">
-                                    <span className="text-xs text-slate-500 font-medium">Stock Físico Actual:</span>
-                                    <span className={`text-sm font-bold ${outputModal.currentStock > 0 ? 'text-emerald-600' : 'text-red-500'}`}>{outputModal.currentStock} und.</span>
-                                </div>
+            {
+                outputModal.isOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+                        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                                <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800">
+                                    <ArrowUpRight className="text-orange-500" />
+                                    Registrar Salida
+                                </h2>
+                                <button onClick={() => setOutputModal(prev => ({ ...prev, isOpen: false }))} className="text-slate-400 hover:text-slate-600 transition-colors">
+                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="col-span-1">
-                                    <label className="block text-xs font-bold text-slate-500 mb-1">CANTIDAD</label>
+                            <div className="p-6 space-y-5 bg-slate-50/50">
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-1">Producto a retirar</p>
+                                    <p className="text-lg font-bold text-slate-800">{outputModal.productName}</p>
+                                    <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 rounded-md">
+                                        <span className="text-xs text-slate-500 font-medium">Stock Físico Actual:</span>
+                                        <span className={`text-sm font-bold ${outputModal.currentStock > 0 ? 'text-emerald-600' : 'text-red-500'}`}>{outputModal.currentStock} und.</span>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="col-span-1">
+                                        <label className="block text-xs font-bold text-slate-500 mb-1">CANTIDAD</label>
+                                        <Input
+                                            type="number"
+                                            min="1"
+                                            step="1"
+                                            value={outputModal.quantity || ''}
+                                            onChange={(e) => setOutputModal(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
+                                            className="text-lg font-bold text-slate-800"
+                                            fullWidth
+                                        />
+                                    </div>
+                                    <div className="col-span-1">
+                                        <label className="block text-xs font-bold text-slate-500 mb-1">TIPO DE SALIDA</label>
+                                        <select
+                                            value={outputModal.type}
+                                            onChange={(e) => setOutputModal(prev => ({ ...prev, type: e.target.value }))}
+                                            className="w-full text-sm rounded-lg border-slate-200 bg-white px-3 py-2.5 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-medium text-slate-700"
+                                        >
+                                            <option value="salida_venta">Venta (Normal)</option>
+                                            <option value="merma">Merma / Pérdida</option>
+                                            <option value="salida_manual">Salida Manual</option>
+                                            <option value="ajuste">Ajuste de Stock</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 mb-1">REFERENCIA / NOTA (OPCIONAL)</label>
                                     <Input
-                                        type="number"
-                                        min="1"
-                                        step="1"
-                                        value={outputModal.quantity || ''}
-                                        onChange={(e) => setOutputModal(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
-                                        className="text-lg font-bold text-slate-800"
+                                        placeholder="Ej: Factura #0012, Dañado en almacén..."
+                                        value={outputModal.reference}
+                                        onChange={(e) => setOutputModal(prev => ({ ...prev, reference: e.target.value }))}
                                         fullWidth
                                     />
                                 </div>
-                                <div className="col-span-1">
-                                    <label className="block text-xs font-bold text-slate-500 mb-1">TIPO DE SALIDA</label>
-                                    <select
-                                        value={outputModal.type}
-                                        onChange={(e) => setOutputModal(prev => ({ ...prev, type: e.target.value }))}
-                                        className="w-full text-sm rounded-lg border-slate-200 bg-white px-3 py-2.5 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-medium text-slate-700"
-                                    >
-                                        <option value="salida_venta">Venta (Normal)</option>
-                                        <option value="merma">Merma / Pérdida</option>
-                                        <option value="salida_manual">Salida Manual</option>
-                                        <option value="ajuste">Ajuste de Stock</option>
-                                    </select>
-                                </div>
-                            </div>
 
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 mb-1">REFERENCIA / NOTA (OPCIONAL)</label>
-                                <Input
-                                    placeholder="Ej: Factura #0012, Dañado en almacén..."
-                                    value={outputModal.reference}
-                                    onChange={(e) => setOutputModal(prev => ({ ...prev, reference: e.target.value }))}
-                                    fullWidth
-                                />
-                            </div>
-
-                            {/* Backorder / Debt Alert */}
-                            {outputModal.quantity > outputModal.currentStock && (
-                                <div className="p-3 mt-4 rounded-xl bg-orange-50 border border-orange-200 flex items-start gap-3">
-                                    <AlertTriangle className="text-orange-500 flex-shrink-0 mt-0.5" size={18} />
-                                    <div>
-                                        <h4 className="text-sm font-bold text-orange-800">Deuda de Stock Detectada</h4>
-                                        <p className="text-xs text-orange-600 mt-1 leading-snug">
-                                            Estás retirando más unidades de las que posees físicamente en el almacén. Esta acción dejará tu stock en <span className="font-bold font-mono">{(outputModal.currentStock - outputModal.quantity).toString()}</span> generando una <span className="font-bold">Deuda de Producto Terminado</span>.
-                                        </p>
+                                {/* Backorder / Debt Alert */}
+                                {outputModal.quantity > outputModal.currentStock && (
+                                    <div className="p-3 mt-4 rounded-xl bg-orange-50 border border-orange-200 flex items-start gap-3">
+                                        <AlertTriangle className="text-orange-500 flex-shrink-0 mt-0.5" size={18} />
+                                        <div>
+                                            <h4 className="text-sm font-bold text-orange-800">Deuda de Stock Detectada</h4>
+                                            <p className="text-xs text-orange-600 mt-1 leading-snug">
+                                                Estás retirando más unidades de las que posees físicamente en el almacén. Esta acción dejará tu stock en <span className="font-bold font-mono">{(outputModal.currentStock - outputModal.quantity).toString()}</span> generando una <span className="font-bold">Deuda de Producto Terminado</span>.
+                                            </p>
+                                        </div>
                                     </div>
-                                </div>
-                            )}
-                        </div>
+                                )}
+                            </div>
 
-                        <div className="p-6 border-t border-slate-100 bg-white flex justify-end gap-3">
-                            <Button variant="ghost" className="text-slate-500 hover:text-slate-700" onClick={() => setOutputModal(prev => ({ ...prev, isOpen: false }))}>
-                                Cancelar
-                            </Button>
-                            <Button
-                                variant={outputModal.quantity > outputModal.currentStock ? "warning" : "primary"}
-                                onClick={handleConfirmOutput}
-                                isLoading={isSaving}
-                            >
-                                {outputModal.quantity > outputModal.currentStock ? `Aceptar y Generar Deuda` : `Confirmar Salida`}
-                            </Button>
+                            <div className="p-6 border-t border-slate-100 bg-white flex justify-end gap-3">
+                                <Button variant="ghost" className="text-slate-500 hover:text-slate-700" onClick={() => setOutputModal(prev => ({ ...prev, isOpen: false }))}>
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    variant={outputModal.quantity > outputModal.currentStock ? "warning" : "primary"}
+                                    onClick={handleConfirmOutput}
+                                    isLoading={isSaving}
+                                >
+                                    {outputModal.quantity > outputModal.currentStock ? `Aceptar y Generar Deuda` : `Confirmar Salida`}
+                                </Button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 

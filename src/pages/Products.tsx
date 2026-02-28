@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Trash2, Edit2, Search, PlayCircle, Info, Layers, TrendingUp, CheckCircle2, X, ChevronRight, AlertTriangle, Scissors, RotateCcw, Ruler, History, Copy, Package } from 'lucide-react';
+import { Plus, Trash2, Edit2, Search, PlayCircle, Info, Layers, TrendingUp, CheckCircle2, X, ChevronRight, AlertTriangle, Scissors, RotateCcw, Ruler, History, Copy, Package, PackageSearch } from 'lucide-react';
 import { useStore, calculateProductCost, calculateMargin, calculateFifoCost, getFifoBreakdown, hasProductGeneratedActiveDebt } from '../store';
 import { Product, ProductMaterial, Status, Unit, RawMaterial, MaterialBatch } from '@/types';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -38,7 +38,7 @@ const Products: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedMaterial, setExpandedMaterial] = useState<number | null>(null);
-  const [missingStockModal, setMissingStockModal] = useState<{ isOpen: boolean; productId: string; missingItems: any[]; quantity: number; targetPrice: number; maxCoveredProduction: number }>({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0, maxCoveredProduction: 0 });
+  const [missingStockModal, setMissingStockModal] = useState<{ isOpen: boolean; productId: string; missingItems: any[]; quantity: number; targetPrice: number; maxCoveredProduction: number; fullBreakdown: any[]; showFullBreakdown: boolean }>({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0, maxCoveredProduction: 0, fullBreakdown: [], showFullBreakdown: false });
   const [successModal, setSuccessModal] = useState<{ isOpen: boolean; productName: string; cost: number; quantity: number } | null>(null);
 
   const [formData, setFormData] = useState<any>({
@@ -53,6 +53,7 @@ const Products: React.FC = () => {
     if (!product || quantity <= 0) return;
 
     const missingItems: any[] = [];
+    const fullBreakdown: any[] = [];
     let totalCostForBatch = 0;
     let maxCoveredProduction = quantity;
 
@@ -90,10 +91,23 @@ const Products: React.FC = () => {
           totalDebt: lastBatchCost * totalMissing
         });
       }
+
+      const material = rawMaterials.find(m => m.id === pm.material_id);
+      const coveredQty = effectiveQty - totalMissing;
+      const lastBatchCost = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]?.unit_cost || 0;
+
+      fullBreakdown.push({
+        materialName: material?.name || 'Insumo desconocido',
+        requiredQuantity: effectiveQty,
+        coveredQuantity: coveredQty,
+        missingQuantity: totalMissing,
+        unit: pm.consumption_unit,
+        unitCost: lastBatchCost
+      });
     });
 
     if (missingItems.length > 0) {
-      setMissingStockModal({ isOpen: true, productId, missingItems, quantity, targetPrice, maxCoveredProduction });
+      setMissingStockModal({ isOpen: true, productId, missingItems, quantity, targetPrice, maxCoveredProduction, fullBreakdown, showFullBreakdown: false });
       setProductionModal({ ...productionModal, isOpen: false });
     } else {
       consumeStockBatch(productId, quantity, targetPrice).then(() => {
@@ -690,14 +704,25 @@ const Products: React.FC = () => {
 
       {missingStockModal.isOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-6" style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}>
-          <Card className="w-full max-w-lg p-8 shadow-2xl space-y-6 border-red-200">
+          <Card className={`w-full ${missingStockModal.showFullBreakdown ? 'max-w-2xl' : 'max-w-xl'} p-8 shadow-2xl space-y-6 border-red-200 transition-all duration-300`}>
             <div className="flex items-center gap-4 text-red-600">
-              <div className="px-4 py-3 bg-red-50 rounded-2xl border border-red-100">
+              <div className="px-4 py-3 bg-red-50 rounded-2xl border border-red-100 flex-shrink-0">
                 <AlertTriangle size={28} />
               </div>
-              <div>
-                <h3 className="text-xl font-black">Faltante de Inventario</h3>
-                <p className="text-red-500 text-sm font-semibold">Se generará Deuda de Inventario</p>
+              <div className="flex-1 flex justify-between items-center">
+                <div>
+                  <h3 className="text-xl font-black">Faltante de Inventario</h3>
+                  <p className="text-red-500 text-sm font-semibold">Se generará Deuda de Inventario</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={`border-red-200 text-red-600 hover:bg-red-50 transition-colors ${missingStockModal.showFullBreakdown ? 'bg-red-50' : ''}`}
+                  onClick={() => setMissingStockModal(m => ({ ...m, showFullBreakdown: !m.showFullBreakdown }))}
+                >
+                  <PackageSearch size={16} className="mr-2" />
+                  {missingStockModal.showFullBreakdown ? 'Ocultar detalle de consumo' : 'Ver detalle de consumo'}
+                </Button>
               </div>
             </div>
 
@@ -759,7 +784,7 @@ const Products: React.FC = () => {
             </div>
 
             <div className="flex gap-4 pt-4">
-              <Button variant="ghost" className="flex-1" onClick={() => setMissingStockModal({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0, maxCoveredProduction: 0 })}>
+              <Button variant="ghost" className="flex-1" onClick={() => setMissingStockModal({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0, maxCoveredProduction: 0, fullBreakdown: [], showFullBreakdown: false })}>
                 Cancelar Operación
               </Button>
               <Button
@@ -770,7 +795,7 @@ const Products: React.FC = () => {
 
                   consumeStockBatch(missingStockModal.productId, missingStockModal.quantity, missingStockModal.targetPrice).then(() => {
                     const baseCost = calculateProductCost(product, batches, rawMaterials);
-                    setMissingStockModal({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0, maxCoveredProduction: 0 });
+                    setMissingStockModal({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0, maxCoveredProduction: 0, fullBreakdown: [], showFullBreakdown: false });
                     setSuccessModal({ isOpen: true, productName: product?.name || '', cost: baseCost * missingStockModal.quantity, quantity: missingStockModal.quantity });
                   }).catch(err => {
                     alert('Error forzando producción: ' + err.message);
