@@ -361,118 +361,8 @@ const RawMaterials: React.FC = () => {
         )}
       </div>
 
-      {/* ========== DESKTOP: Tabla Original ========== */}
-      <div className="hidden md:block">
-        <h2 className="text-lg font-bold text-slate-800 mb-3">Tabla Original</h2>
-        <TableContainer>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[35%]">Materia Prima</TableHead>
-              <TableHead className="w-[15%]">Categoría</TableHead>
-              <TableHead className="w-[20%] text-right">Stock Actual</TableHead>
-              <TableHead className="w-[20%] text-right">Costo Promedio</TableHead>
-              <TableHead className="w-[10%] text-center">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredMaterials.map((m) => {
-              const { totalRemainingQty, weightedAvgCost } = getBatchStats(m.id);
-              return (
-                <TableRow key={m.id}>
-                  <TableCell>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="font-semibold text-gray-900">{m.name}</span>
-                      <span className="text-xs text-gray-400">{m.provider || 'Varios'}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="font-medium">
-                      {m.type}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <span className={`font-semibold ${totalRemainingQty <= 0
-                        ? 'text-red-600'
-                        : totalRemainingQty <= 5
-                          ? 'text-amber-600'
-                          : 'text-gray-900'
-                        }`}>
-                        {totalRemainingQty.toFixed(2)}
-                      </span>
-                      <span className="text-xs text-gray-400">{m.unit}s</span>
-                      {totalRemainingQty <= 5 && totalRemainingQty > 0 && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">
-                          Bajo
-                        </span>
-                      )}
-                      {totalRemainingQty === 0 && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold">
-                          Sin Stock
-                        </span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <span className="font-semibold text-gray-900">
-                      {formatCurrency(weightedAvgCost)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => { setActiveMaterialId(m.id); setIsBatchModalOpen(true); }}
-                        title="Ver Lotes"
-                        className="h-8 w-8 hover:bg-indigo-50"
-                      >
-                        <History size={16} className="text-indigo-600" />
-                      </Button>
-                      {canEdit && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            const stats = getBatchStats(m.id);
-                            setEditingId(m.id);
-                            setFormData({ ...m, initialQty: stats.totalRemainingQty, unitCost: stats.weightedAvgCost });
-                            setIsModalOpen(true);
-                          }}
-                          className="h-8 w-8 hover:bg-blue-50"
-                        >
-                          <Edit2 size={16} className="text-blue-600" />
-                        </Button>
-                      )}
-                      {canDelete && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={async () => {
-                            try {
-                              await deleteRawMaterial(m.id);
-                            } catch (err: any) {
-                              console.error("Error deleting material:", err);
-                              alert(`No se pudo eliminar: ${translateError(err)}`);
-                            }
-                          }}
-                          className="h-8 w-8 hover:bg-red-50"
-                        >
-                          <Trash2 size={16} className="text-red-600" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </TableContainer>
-      </div>
-
-      {/* ========== DESKTOP: Nueva Tabla (Prototipo basado en EntityTable de Team) ========== */}
-      <div className="hidden md:block overflow-x-auto mt-10">
-        <h2 className="text-lg font-bold text-slate-800 mb-3 border-t pt-8">Nueva Tabla (Estructura Team/Billing)</h2>
+      {/* ========== DESKTOP: Table ========== */}
+      <div className="hidden md:block overflow-x-auto">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <table className="w-full border-collapse text-left table-fixed">
             <thead className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50/50 text-xs font-semibold uppercase tracking-wider text-gray-500 backdrop-blur-sm">
@@ -488,20 +378,20 @@ const RawMaterials: React.FC = () => {
               {filteredMaterials.map((m) => {
                 const { totalRemainingQty, weightedAvgCost } = getBatchStats(m.id);
                 return (
-                  <tr key={`nt-${m.id}`} className="group bg-white transition-all hover:bg-slate-50">
+                  <tr key={m.id} className="group bg-white transition-all hover:bg-slate-50">
                     <td className="px-4 py-4 truncate">
-                      <div className="flex flex-col gap-0.5">
-                        <span className="font-semibold text-gray-900">{m.name}</span>
-                        <span className="text-xs text-gray-500">{m.provider || 'Varios'}</span>
+                      <div className="flex flex-col gap-0.5" title={`${m.name} - ${m.provider || 'Varios'}`}>
+                        <span className="font-semibold text-gray-900 truncate" title={m.name}>{m.name}</span>
+                        <span className="text-xs text-gray-500 truncate" title={m.provider || 'Varios'}>{m.provider || 'Varios'}</span>
                       </div>
                     </td>
                     <td className="px-4 py-4 truncate">
-                      <Badge variant="secondary" className="font-medium bg-gray-100 text-gray-700">
+                      <Badge variant="secondary" className="font-medium bg-gray-100 text-gray-700" title={m.type}>
                         {m.type}
                       </Badge>
                     </td>
                     <td className="px-4 py-4 truncate text-right">
-                      <div className="flex justify-end items-center gap-1.5">
+                      <div className="flex justify-end items-center gap-1.5" title={`Stock Actual: ${totalRemainingQty.toFixed(2)} ${m.unit}s`}>
                         <span className={`font-semibold ${totalRemainingQty <= 0 ? 'text-red-600' : totalRemainingQty <= 5 ? 'text-amber-600' : 'text-gray-900'}`}>
                           {totalRemainingQty.toFixed(2)}
                         </span>
@@ -509,14 +399,16 @@ const RawMaterials: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-4 py-4 truncate text-right">
-                      <span className="font-semibold text-gray-900">{formatCurrency(weightedAvgCost)}</span>
+                      <span className="font-semibold text-gray-900" title={`Costo Promedio: ${formatCurrency(weightedAvgCost)}`}>
+                        {formatCurrency(weightedAvgCost)}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-1.5 opacity-70 transition-opacity group-hover:opacity-100">
                         <button
                           onClick={() => { setActiveMaterialId(m.id); setIsBatchModalOpen(true); }}
                           className="rounded-lg p-1.5 transition-colors border border-transparent bg-gray-50 text-indigo-600 hover:border-gray-200 hover:bg-white hover:text-indigo-700"
-                          title="Ver Lotes"
+                          title="Ver Lotes (Histórico)"
                         >
                           <History size={16} />
                         </button>
@@ -529,7 +421,7 @@ const RawMaterials: React.FC = () => {
                               setIsModalOpen(true);
                             }}
                             className="rounded-lg p-1.5 transition-colors border border-transparent bg-gray-50 text-gray-400 hover:border-gray-200 hover:bg-white hover:text-gray-600"
-                            title="Editar"
+                            title="Editar Materia Prima"
                           >
                             <Edit2 size={16} />
                           </button>
@@ -545,7 +437,7 @@ const RawMaterials: React.FC = () => {
                               }
                             }}
                             className="rounded-lg p-1.5 transition-colors border border-transparent bg-gray-50 text-gray-400 hover:border-gray-200 hover:bg-white hover:text-red-600"
-                            title="Eliminar"
+                            title="Eliminar Materia Prima"
                           >
                             <Trash2 size={16} />
                           </button>
@@ -801,86 +693,90 @@ const RawMaterials: React.FC = () => {
               <div className="space-y-4">
                 <h4 className="no-print ml-1 text-xs font-bold uppercase tracking-widest text-gray-400">Lotes Activos y Movimientos</h4>
                 <div className="overflow-x-auto">
-                  <TableContainer>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-10"></TableHead>
-                        <TableHead>FECHA</TableHead>
-                        <TableHead>MODO</TableHead>
-                        <TableHead>PROVEEDOR</TableHead>
-                        <TableHead className="text-right">DIMENSIONES</TableHead>
-                        <TableHead className="text-right text-emerald-600">ÁREA</TableHead>
-                        <TableHead className="text-right">COSTO</TableHead>
-                        <TableHead className="text-right text-indigo-500">{currencySymbol}/m²</TableHead>
-                        <TableHead className="text-right">RESTANTE</TableHead>
-                        <TableHead className="w-32 no-print text-center">ACCIÓN</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                  <table className="w-full border-collapse text-left table-fixed min-w-[700px]">
+                    <thead className="border-b border-gray-200 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                      <tr>
+                        <th className="w-[5%] px-2 py-3 text-center"></th>
+                        <th className="w-[12%] px-2 py-3 truncate">FECHA</th>
+                        <th className="w-[10%] px-2 py-3 truncate">MODO</th>
+                        <th className="w-[18%] px-2 py-3 truncate">PROVEEDOR</th>
+                        <th className="w-[15%] px-2 py-3 text-right truncate">DIMENSIONES</th>
+                        <th className="w-[10%] px-2 py-3 text-right text-emerald-600 truncate">ÁREA</th>
+                        <th className="w-[10%] px-2 py-3 text-right truncate">COSTO</th>
+                        <th className="w-[10%] px-2 py-3 text-right text-indigo-500 truncate">{currencySymbol}/m²</th>
+                        <th className="w-[10%] px-2 py-3 text-right truncate">RESTANTE</th>
+                        <th className="w-[10%] px-2 py-3 no-print text-center">ACCIÓN</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
                       {batches.filter(b => b.material_id === activeMaterialId).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((batch) => {
                         const currentTotalPurchaseCost = batch.entry_mode === 'pieza' ? (batch.unit_cost * batch.initial_quantity) : (batch.unit_cost * batch.initial_quantity);
                         const currentCostPerM2 = batch.area && batch.area > 0 ? currentTotalPurchaseCost / batch.area : 0;
                         return (
-                          <TableRow key={batch.id}>
-                            <TableCell className="text-center"><ArrowDownToLine size={16} className="mx-auto text-emerald-500" /></TableCell>
-                            <TableCell className="font-mono text-xs font-bold text-gray-600">{batch.date}</TableCell>
-                            <TableCell>
-                              <Badge variant={batch.entry_mode === 'pieza' ? 'warning' : 'default'} className="flex w-fit items-center gap-1">
+                          <tr key={batch.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-2 py-3 text-center"><ArrowDownToLine size={14} className="mx-auto text-emerald-500" /></td>
+                            <td className="px-2 py-3 font-mono text-[11px] font-bold text-gray-600 truncate">{batch.date}</td>
+                            <td className="px-2 py-3">
+                              <Badge variant={batch.entry_mode === 'pieza' ? 'warning' : 'default'} className="flex w-fit items-center gap-1 text-[10px]">
                                 {batch.entry_mode === 'pieza' ? <Scissors size={10} /> : <RotateCcw size={10} />}
                                 {batch.entry_mode || 'Rollo'}
                               </Badge>
-                            </TableCell>
-                            <TableCell className="font-bold">{batch.provider}</TableCell>
-                            <TableCell className="text-right">
+                            </td>
+                            <td className="px-2 py-3 font-bold text-xs truncate" title={batch.provider}>{batch.provider}</td>
+                            <td className="px-2 py-3 text-right">
                               <div className="flex flex-col items-end">
-                                <span className="text-xs font-bold text-gray-900">
-                                  {batch.entry_mode === 'pieza' ? `${batch.length} × ${batch.width} cm` : `${batch.initial_quantity.toFixed(2)} m lineales`}
+                                <span className="text-xs font-bold text-gray-900 truncate">
+                                  {batch.entry_mode === 'pieza' ? `${batch.length} × ${batch.width} cm` : `${batch.initial_quantity.toFixed(2)} m`}
                                 </span>
-                                <span className="text-[10px] font-bold uppercase text-gray-400">{batch.width} cm ancho</span>
+                                <span className="text-[9px] font-bold uppercase text-gray-400 truncate">{batch.width} cm ancho</span>
                               </div>
-                            </TableCell>
-                            <TableCell className="text-right font-mono text-xs font-bold text-emerald-600">{batch.area ? `${batch.area.toFixed(2)} m²` : '---'}</TableCell>
-                            <TableCell className="text-right font-mono text-xs font-bold">{formatCurrency(currentTotalPurchaseCost)}</TableCell>
-                            <TableCell className="text-right font-mono text-xs font-bold text-indigo-600">{currentCostPerM2 > 0 ? formatCurrency(currentCostPerM2) : '---'}</TableCell>
-                            <TableCell className="text-right">
-                              <Badge variant={batch.remaining_quantity > 0 ? 'success' : 'default'}>
+                            </td>
+                            <td className="px-2 py-3 text-right font-mono text-[11px] font-bold text-emerald-600 truncate">{batch.area ? `${batch.area.toFixed(2)} m²` : '---'}</td>
+                            <td className="px-2 py-3 text-right font-mono text-[11px] font-bold truncate">{formatCurrency(currentTotalPurchaseCost)}</td>
+                            <td className="px-2 py-3 text-right font-mono text-[11px] font-bold text-indigo-600 truncate">{currentCostPerM2 > 0 ? formatCurrency(currentCostPerM2) : '---'}</td>
+                            <td className="px-2 py-3 text-right">
+                              <Badge variant={batch.remaining_quantity > 0 ? 'success' : 'default'} className="text-[10px]">
                                 {batch.remaining_quantity.toFixed(2)} m
                               </Badge>
-                            </TableCell>
-                            <TableCell className="w-32 no-print text-center">
-                              <div className="flex justify-center gap-1">
+                            </td>
+                            <td className="px-2 py-3 no-print text-center">
+                              <div className="flex justify-center gap-1 opacity-70 hover:opacity-100">
                                 {canEdit && (
-                                  <Button variant="ghost" size="sm" onClick={() => setEditingBatchData(batch)} icon={<Pencil size={16} />} />
+                                  <button onClick={() => setEditingBatchData(batch)} className="p-1 rounded bg-gray-50 text-gray-400 hover:text-indigo-600 hover:bg-white border border-transparent hover:border-gray-200 transition-colors" title="Editar Lote">
+                                    <Pencil size={14} />
+                                  </button>
                                 )}
                                 {canDelete && (
-                                  <Button variant="ghost" size="sm" onClick={async () => {
+                                  <button onClick={async () => {
                                     try {
                                       await deleteBatch(batch.id);
                                     } catch (err: any) {
                                       console.error("Error deleting batch:", err);
                                       alert(`No se pudo eliminar el lote: ${translateError(err)}`);
                                     }
-                                  }} icon={<Trash2 size={16} className="text-red-400" />} />
+                                  }} className="p-1 rounded bg-gray-50 text-gray-400 hover:text-red-600 hover:bg-white border border-transparent hover:border-gray-200 transition-colors" title="Eliminar Lote">
+                                    <Trash2 size={14} />
+                                  </button>
                                 )}
                               </div>
-                            </TableCell>
-                          </TableRow>
+                            </td>
+                          </tr>
                         );
                       })}
                       {activeMaterialId && (
-                        <TableRow className="border-t-2 border-gray-200 bg-gray-50 font-bold">
-                          <TableCell></TableCell>
-                          <TableCell colSpan={3} className="uppercase text-gray-900">TOTALES</TableCell>
-                          <TableCell className="text-right font-mono text-xs text-gray-400">{getBatchStats(activeMaterialId).totalOriginalQty.toFixed(2)} m</TableCell>
-                          <TableCell className="text-right font-mono text-xs text-emerald-600">{getBatchStats(activeMaterialId).totalArea.toFixed(2)} m²</TableCell>
-                          <TableCell className="text-right font-mono text-xs text-gray-400">{formatCurrency(getBatchStats(activeMaterialId).totalValue)}</TableCell>
-                          <TableCell className="text-right font-mono text-xs text-indigo-600">{formatCurrency(getBatchStats(activeMaterialId).avgCostPerM2)}</TableCell>
-                          <TableCell className="text-right font-mono text-xs text-emerald-600">{getBatchStats(activeMaterialId).totalRemainingQty.toFixed(2)} m</TableCell>
-                          <TableCell></TableCell>
-                        </TableRow>
+                        <tr className="border-t-2 border-gray-200 bg-gray-50 font-bold">
+                          <td></td>
+                          <td colSpan={3} className="px-2 py-3 uppercase text-xs text-gray-900">TOTALES</td>
+                          <td className="px-2 py-3 text-right font-mono text-[11px] text-gray-400 truncate">{getBatchStats(activeMaterialId).totalOriginalQty.toFixed(2)} m</td>
+                          <td className="px-2 py-3 text-right font-mono text-[11px] text-emerald-600 truncate">{getBatchStats(activeMaterialId).totalArea.toFixed(2)} m²</td>
+                          <td className="px-2 py-3 text-right font-mono text-[11px] text-gray-400 truncate">{formatCurrency(getBatchStats(activeMaterialId).totalValue)}</td>
+                          <td className="px-2 py-3 text-right font-mono text-[11px] text-indigo-600 truncate">{formatCurrency(getBatchStats(activeMaterialId).avgCostPerM2)}</td>
+                          <td className="px-2 py-3 text-right font-mono text-[11px] text-emerald-600 truncate">{getBatchStats(activeMaterialId).totalRemainingQty.toFixed(2)} m</td>
+                          <td></td>
+                        </tr>
                       )}
-                    </TableBody>
-                  </TableContainer>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>

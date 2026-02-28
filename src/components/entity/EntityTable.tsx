@@ -110,73 +110,83 @@ export function EntityTable<T>({ config, items, selectionProps }: EntityTablePro
 
             {/* ✅ ESCRITORIO - Tabla normal */}
             <div className="hidden md:block overflow-x-auto">
-                <table className="w-full border-collapse text-left table-fixed">
-                    <thead className="sticky top-0 z-10 border-b border-gray-200 bg-white text-xs font-semibold uppercase tracking-wider text-gray-400 backdrop-blur-sm">
-                        <tr>
-                            {selectionProps && (
-                                <th className="w-10 px-4 py-3">
-                                    <input
-                                        type="checkbox"
-                                        checked={selectionProps.selectedIds.length === items.length && items.length > 0}
-                                        onChange={selectionProps.onSelectAll}
-                                        className="size-4 cursor-pointer rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                                    />
-                                </th>
-                            )}
-                            {config.fields.filter(f => !f.hidden).map((field, idx) => (
-                                <th key={idx} className="px-4 py-3 truncate">
-                                    {field.label}
-                                </th>
-                            ))}
-                            <th className="w-32 px-4 py-3 text-right">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                        {items.map((item) => {
-                            const id = String(item[config.rowIdKey]);
-                            const isSelected = selectionProps?.selectedIds.includes(id) || false;
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <table className="w-full border-collapse text-left table-fixed">
+                        <thead className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50/50 text-xs font-semibold uppercase tracking-wider text-gray-500 backdrop-blur-sm">
+                            <tr>
+                                {selectionProps && (
+                                    <th className="w-[5%] px-4 py-3">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectionProps.selectedIds.length === items.length && items.length > 0}
+                                            onChange={selectionProps.onSelectAll}
+                                            className="size-4 cursor-pointer rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                            title="Seleccionar Todos"
+                                        />
+                                    </th>
+                                )}
+                                {config.fields.filter(f => !f.hidden).map((field, idx) => (
+                                    <th key={idx} className="px-4 py-3 truncate" title={field.label}>
+                                        {field.label}
+                                    </th>
+                                ))}
+                                <th className="w-[10%] min-w-[120px] px-4 py-3 text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {items.map((item) => {
+                                const id = String(item[config.rowIdKey]);
+                                const isSelected = selectionProps?.selectedIds.includes(id) || false;
 
-                            return (
-                                <tr
-                                    key={id}
-                                    className={`group bg-white transition-all hover:bg-amber-50/30 ${isSelected ? 'bg-indigo-50/50' : ''}`}
-                                >
-                                    {selectionProps && (
-                                        <td className="px-4 py-3">
-                                            <input
-                                                type="checkbox"
-                                                checked={isSelected}
-                                                onChange={() => selectionProps.onSelect(id)}
-                                                className="size-4 cursor-pointer rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                                            />
+                                return (
+                                    <tr
+                                        key={id}
+                                        className={`group transition-all hover:bg-slate-50 ${isSelected ? 'bg-indigo-50/50' : 'bg-white'}`}
+                                    >
+                                        {selectionProps && (
+                                            <td className="px-4 py-3">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    onChange={() => selectionProps.onSelect(id)}
+                                                    className="size-4 cursor-pointer rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                                />
+                                            </td>
+                                        )}
+                                        {config.fields.filter(f => !f.hidden).map((field, idx) => {
+                                            const rawValue = (item as any)[field.key];
+                                            const displayValue = field.render ? field.render(item) : rawValue;
+                                            // Extraer texto plano si es posible para el title tooltip
+                                            const titleText = typeof rawValue === 'string' || typeof rawValue === 'number' ? String(rawValue) : undefined;
+
+                                            return (
+                                                <td key={idx} className="px-4 py-4 truncate" title={titleText}>
+                                                    {displayValue}
+                                                </td>
+                                            );
+                                        })}
+                                        <td className="w-[10%] min-w-[120px] px-4 py-3 text-right">
+                                            <div className="flex justify-end gap-1.5 opacity-70 transition-opacity group-hover:opacity-100">
+                                                {config.actions.map(action => (
+                                                    (!action.isVisible || action.isVisible(item)) && (
+                                                        <button
+                                                            key={action.id}
+                                                            onClick={() => action.onClick(item)}
+                                                            className={`rounded-lg p-1.5 transition-colors ${action.color || 'border border-transparent bg-gray-50 text-gray-400 hover:border-gray-200 hover:bg-white hover:text-gray-600'}`}
+                                                            title={action.label}
+                                                        >
+                                                            {action.icon}
+                                                        </button>
+                                                    )
+                                                ))}
+                                            </div>
                                         </td>
-                                    )}
-                                    {config.fields.filter(f => !f.hidden).map((field, idx) => (
-                                        <td key={idx} className="px-4 py-3 truncate">
-                                            {field.render ? field.render(item) : (item as any)[field.key]}
-                                        </td>
-                                    ))}
-                                    <td className="w-32 px-4 py-3 text-right">
-                                        <div className="flex justify-end gap-1.5 opacity-70 transition-opacity group-hover:opacity-100">
-                                            {config.actions.map(action => (
-                                                (!action.isVisible || action.isVisible(item)) && (
-                                                    <button
-                                                        key={action.id}
-                                                        onClick={() => action.onClick(item)}
-                                                        className={`rounded-lg p-1.5 transition-colors ${action.color || 'border border-transparent bg-gray-50 text-gray-400 hover:border-gray-200 hover:bg-white hover:text-gray-600'}`}
-                                                        title={action.label}
-                                                    >
-                                                        {action.icon}
-                                                    </button>
-                                                )
-                                            ))}
-                                        </div>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </>
     );
