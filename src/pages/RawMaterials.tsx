@@ -131,16 +131,24 @@ const RawMaterials: React.FC = () => {
     setIsSaving(true);
     try {
       const material = rawMaterials.find(m => m.id === expandedMaterialId);
+      const isDimensional = material?.unit === 'metro' || material?.unit === 'cm';
       let area = 0;
       let finalQty = batchFormData.initial_quantity || 0;
       let finalUnitCost = batchFormData.unit_cost || 0;
-      if (entry_mode === 'rollo') {
+
+      if (!isDimensional) {
+        area = 0;
+        finalQty = batchFormData.initial_quantity || 0;
+        // User inputs total cost for std, so we divide by qty
+        finalUnitCost = finalQty > 0 ? (batchFormData.unit_cost || 0) / finalQty : 0;
+      } else if (entry_mode === 'rollo') {
         area = (batchFormData.initial_quantity || 0) * ((batchFormData.width || 0) / 100);
-        finalUnitCost = batchFormData.unit_cost || 0;
+        finalUnitCost = batchFormData.unit_cost || 0; // Cost is per metro
       } else {
         area = ((batchFormData.length || 0) * (batchFormData.width || 0)) / 10000;
         finalQty = (batchFormData.length || 0) / 100;
-        finalUnitCost = (batchFormData.unit_cost || 0) / finalQty;
+        // User inputs total cost for piece
+        finalUnitCost = finalQty > 0 ? (batchFormData.unit_cost || 0) / finalQty : 0;
       }
       const data = {
         ...batchFormData,
@@ -406,6 +414,7 @@ const RawMaterials: React.FC = () => {
                 const { totalRemainingQty, weightedAvgCost } = getBatchStats(m.id);
                 const debtInfo = getMaterialDebt(m.id, movements);
                 const hasDebt = debtInfo.pendingQty > 0;
+                const isDimensional = m.unit === 'metro' || m.unit === 'cm';
 
                 // Real stock representation based on Single Ledger
                 const displayStock = totalRemainingQty;
@@ -500,14 +509,16 @@ const RawMaterials: React.FC = () => {
                                 <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-indigo-600">
                                   <ShoppingCart size={14} /> Registrar Nueva Entrada Física
                                 </h4>
-                                <div className="flex gap-1 rounded-xl border border-indigo-100 bg-slate-50 p-1">
-                                  <button type="button" onClick={() => set_entry_mode('rollo')} className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-[10px] font-bold uppercase transition-all ${entry_mode === 'rollo' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-100'}`}>
-                                    <RotateCcw size={12} /> Rollo
-                                  </button>
-                                  <button type="button" onClick={() => set_entry_mode('pieza')} className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-[10px] font-bold uppercase transition-all ${entry_mode === 'pieza' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-100'}`}>
-                                    <Scissors size={12} /> Pieza
-                                  </button>
-                                </div>
+                                {isDimensional && (
+                                  <div className="flex gap-1 rounded-xl border border-indigo-100 bg-slate-50 p-1">
+                                    <button type="button" onClick={() => set_entry_mode('rollo')} className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-[10px] font-bold uppercase transition-all ${entry_mode === 'rollo' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-100'}`}>
+                                      <RotateCcw size={12} /> Rollo
+                                    </button>
+                                    <button type="button" onClick={() => set_entry_mode('pieza')} className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-[10px] font-bold uppercase transition-all ${entry_mode === 'pieza' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-100'}`}>
+                                      <Scissors size={12} /> Pieza
+                                    </button>
+                                  </div>
+                                )}
                               </div>
 
                               {canCreate && (
@@ -516,13 +527,22 @@ const RawMaterials: React.FC = () => {
                                     <div className="w-32"><Input type="date" label="Fecha" value={batchFormData.date} onChange={e => setBatchFormData({ ...batchFormData, date: e.target.value })} required /></div>
                                     <div className="flex-1 min-w-[150px]"><Input label="Proveedor / Ref." value={batchFormData.provider} onChange={e => setBatchFormData({ ...batchFormData, provider: e.target.value })} /></div>
 
-                                    {entry_mode === 'rollo' ? (
-                                      <div className="w-24"><Input label={`M. Lineales`} type="number" step="0.01" value={batchFormData.initial_quantity || ''} onChange={e => setBatchFormData({ ...batchFormData, initial_quantity: parseFloat(e.target.value) })} required /></div>
+                                    {isDimensional ? (
+                                      <>
+                                        {entry_mode === 'rollo' ? (
+                                          <div className="w-24"><Input label={`M. Lineales`} type="number" step="0.01" value={batchFormData.initial_quantity || ''} onChange={e => setBatchFormData({ ...batchFormData, initial_quantity: parseFloat(e.target.value) })} required /></div>
+                                        ) : (
+                                          <div className="w-24"><Input label="Largo (cm)" type="number" step="0.01" value={batchFormData.length || ''} onChange={e => setBatchFormData({ ...batchFormData, length: parseFloat(e.target.value) })} required /></div>
+                                        )}
+                                        <div className="w-24"><Input label="Ancho (cm)" type="number" step="1" value={batchFormData.width || ''} onChange={e => setBatchFormData({ ...batchFormData, width: parseInt(e.target.value) })} required className="text-emerald-700" /></div>
+                                        <div className="w-32"><Input label={entry_mode === 'rollo' ? `Costo / Metro` : `Costo Total`} type="number" step="0.01" value={batchFormData.unit_cost || ''} onChange={e => setBatchFormData({ ...batchFormData, unit_cost: parseFloat(e.target.value) })} required /></div>
+                                      </>
                                     ) : (
-                                      <div className="w-24"><Input label="Largo (cm)" type="number" step="0.01" value={batchFormData.length || ''} onChange={e => setBatchFormData({ ...batchFormData, length: parseFloat(e.target.value) })} required /></div>
+                                      <>
+                                        <div className="w-32"><Input label={`Cantidad (${m.unit})`} type="number" step="0.01" value={batchFormData.initial_quantity || ''} onChange={e => setBatchFormData({ ...batchFormData, initial_quantity: parseFloat(e.target.value) })} required /></div>
+                                        <div className="w-32"><Input label={`Costo Total (€)`} type="number" step="0.01" value={batchFormData.unit_cost || ''} onChange={e => setBatchFormData({ ...batchFormData, unit_cost: parseFloat(e.target.value) })} required /></div>
+                                      </>
                                     )}
-                                    <div className="w-24"><Input label="Ancho (cm)" type="number" step="1" value={batchFormData.width || ''} onChange={e => setBatchFormData({ ...batchFormData, width: parseInt(e.target.value) })} required className="text-emerald-700" /></div>
-                                    <div className="w-32"><Input label={entry_mode === 'rollo' ? `Costo / Metro` : `Costo Total`} type="number" step="0.01" value={batchFormData.unit_cost || ''} onChange={e => setBatchFormData({ ...batchFormData, unit_cost: parseFloat(e.target.value) })} required /></div>
 
                                     <Button type="submit" variant="primary" icon={<Plus size={16} />} className="mb-0.5 h-10 w-full sm:w-auto shadow-md">Añadir Lote</Button>
                                   </div>
@@ -553,27 +573,37 @@ const RawMaterials: React.FC = () => {
                                   </thead>
                                   <tbody className="divide-y divide-slate-100 text-slate-600">
                                     {batches.filter(b => b.material_id === m.id).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map(batch => {
-                                      const currentTotalPurchaseCost = batch.entry_mode === 'pieza' ? batch.unit_cost : (batch.unit_cost * batch.initial_quantity);
-                                      const currentCostPerM2 = batch.area && batch.area > 0 ? currentTotalPurchaseCost / batch.area : 0;
+                                      const currentTotalPurchaseCost = isDimensional ? (batch.entry_mode === 'pieza' ? batch.unit_cost : (batch.unit_cost * batch.initial_quantity)) : (batch.unit_cost * batch.initial_quantity);
+                                      const currentCostPerM2 = isDimensional && batch.area && batch.area > 0 ? currentTotalPurchaseCost / batch.area : 0;
                                       return (
                                         <tr key={batch.id} className="hover:bg-slate-50 transition-colors">
                                           <td className="px-4 py-2.5 font-mono text-[10px] font-bold">{batch.date}</td>
                                           <td className="px-4 py-2.5">
-                                            <Badge variant={batch.entry_mode === 'pieza' ? 'warning' : 'default'} className="flex w-fit items-center gap-1 text-[9px] px-1.5 py-0">
-                                              {batch.entry_mode === 'pieza' ? <Scissors size={8} /> : <RotateCcw size={8} />}
-                                              {batch.entry_mode || 'Rollo'}
-                                            </Badge>
+                                            {isDimensional ? (
+                                              <Badge variant={batch.entry_mode === 'pieza' ? 'warning' : 'default'} className="flex w-fit items-center gap-1 text-[9px] px-1.5 py-0">
+                                                {batch.entry_mode === 'pieza' ? <Scissors size={8} /> : <RotateCcw size={8} />}
+                                                {batch.entry_mode || 'Rollo'}
+                                              </Badge>
+                                            ) : (
+                                              <Badge variant="default" className="text-[9px] bg-slate-100 text-slate-500">Estándar</Badge>
+                                            )}
                                           </td>
                                           <td className="px-4 py-2.5 font-bold text-xs truncate" title={batch.provider}>{batch.provider}</td>
                                           <td className="px-4 py-2.5 text-right flex flex-col items-end">
-                                            <span className="text-xs font-bold text-gray-900 leading-tight">
-                                              {batch.entry_mode === 'pieza' ? `${batch.length} × ${batch.width} cm` : `${batch.initial_quantity.toFixed(2)} m`}
-                                            </span>
-                                            <span className="text-[9px] font-bold uppercase text-gray-400 leading-tight">{batch.width} cm ancho</span>
+                                            {isDimensional ? (
+                                              <>
+                                                <span className="text-xs font-bold text-gray-900 leading-tight">
+                                                  {batch.entry_mode === 'pieza' ? `${batch.length} × ${batch.width} cm` : `${batch.initial_quantity.toFixed(2)} m`}
+                                                </span>
+                                                <span className="text-[9px] font-bold uppercase text-gray-400 leading-tight">{batch.width} cm ancho</span>
+                                              </>
+                                            ) : (
+                                              <span className="text-slate-400 font-bold">---</span>
+                                            )}
                                           </td>
-                                          <td className="px-4 py-2.5 text-right font-mono text-[10px] font-bold text-emerald-600">{batch.area ? `${batch.area.toFixed(2)} m²` : '---'}</td>
+                                          <td className="px-4 py-2.5 text-right font-mono text-[10px] font-bold text-emerald-600">{isDimensional && batch.area ? `${batch.area.toFixed(2)} m²` : '---'}</td>
                                           <td className="px-4 py-2.5 text-right font-mono text-[11px] font-bold">{formatCurrency(currentTotalPurchaseCost)}</td>
-                                          <td className="px-4 py-2.5 text-right font-mono text-[11px] font-bold text-indigo-600">{currentCostPerM2 > 0 ? formatCurrency(currentCostPerM2) : '---'}</td>
+                                          <td className="px-4 py-2.5 text-right font-mono text-[11px] font-bold text-indigo-600">{isDimensional && currentCostPerM2 > 0 ? formatCurrency(currentCostPerM2) : '---'}</td>
                                           <td className="px-4 py-2.5 text-right">
                                             <Badge variant={batch.remaining_quantity > 0 ? 'success' : 'secondary'} className="text-[10px] font-mono font-bold">
                                               {batch.remaining_quantity.toFixed(2)}
@@ -601,10 +631,10 @@ const RawMaterials: React.FC = () => {
                                     {/* Totals Row */}
                                     <tr className="bg-slate-50 font-bold border-t-2 border-slate-200">
                                       <td colSpan={3} className="px-4 py-3 uppercase text-[10px] text-slate-800 text-right">Totales Acumulados</td>
-                                      <td className="px-4 py-3 text-right font-mono text-[10px] text-slate-500">{totalRemainingQty.toFixed(2)} m</td>
-                                      <td className="px-4 py-3 text-right font-mono text-[10px] text-emerald-600">{getBatchStats(m.id).totalArea.toFixed(2)} m²</td>
+                                      <td className="px-4 py-3 text-right font-mono text-[10px] text-slate-500">{isDimensional ? `${totalRemainingQty.toFixed(2)} m` : '---'}</td>
+                                      <td className="px-4 py-3 text-right font-mono text-[10px] text-emerald-600">{isDimensional ? `${getBatchStats(m.id).totalArea.toFixed(2)} m²` : '---'}</td>
                                       <td className="px-4 py-3 text-right font-mono text-[11px] text-slate-700">{formatCurrency(getBatchStats(m.id).totalValue)}</td>
-                                      <td className="px-4 py-3 text-right font-mono text-[11px] text-indigo-600">{formatCurrency(getBatchStats(m.id).avgCostPerM2)}</td>
+                                      <td className="px-4 py-3 text-right font-mono text-[11px] text-indigo-600">{isDimensional ? formatCurrency(getBatchStats(m.id).avgCostPerM2) : '---'}</td>
                                       <td className="px-4 py-3 text-right font-mono text-[10px] text-emerald-600">{totalRemainingQty.toFixed(2)}</td>
                                       <td></td>
                                     </tr>
