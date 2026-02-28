@@ -227,9 +227,16 @@ const FinishedGoods: React.FC = () => {
                                                                                             {new Date(m.created_at).toLocaleString()}
                                                                                         </td>
                                                                                         <td className="px-4 py-3">
-                                                                                            <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase ${m.type === 'ingreso_produccion' ? 'bg-emerald-100 text-emerald-700' : m.type === 'merma' ? 'bg-red-100 text-red-700' : m.type === 'ajuste' ? 'bg-slate-100 text-slate-700' : 'bg-orange-100 text-orange-700'}`}>
-                                                                                                {m.type.replace('_', ' ')}
-                                                                                            </span>
+                                                                                            <div className="flex flex-col gap-1 items-start">
+                                                                                                <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase ${m.type === 'ingreso_produccion' ? 'bg-emerald-100 text-emerald-700' : m.type === 'merma' ? 'bg-red-100 text-red-700' : m.type === 'ajuste' ? 'bg-slate-100 text-slate-700' : 'bg-orange-100 text-orange-700'}`}>
+                                                                                                    {m.type.replace('_', ' ')}
+                                                                                                </span>
+                                                                                                {m.produced_with_debt && (
+                                                                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-50 text-red-600 text-[9px] font-black uppercase tracking-wider border border-red-100/50" title="Este lote se produjo asumiendo faltantes de insumos (Deuda de Inventario)">
+                                                                                                        ⚠️ Con Deuda
+                                                                                                    </span>
+                                                                                                )}
+                                                                                            </div>
                                                                                         </td>
                                                                                         <td className={`px-4 py-3 text-right font-mono font-bold ${m.type === 'ingreso_produccion' ? 'text-emerald-600' : m.type === 'ajuste' ? 'text-slate-600' : 'text-red-500'}`}>
                                                                                             {m.type === 'ingreso_produccion' ? '+' : '-'}{m.quantity}

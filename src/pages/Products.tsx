@@ -71,10 +71,14 @@ const Products: React.FC = () => {
 
       if (totalMissing > 0) {
         const material = rawMaterials.find(m => m.id === pm.material_id);
+        const lastBatchCost = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]?.unit_cost || 0;
+
         missingItems.push({
           materialName: material?.name || 'Insumo desconocido',
           missingQuantity: totalMissing,
-          unit: pm.consumption_unit
+          unit: pm.consumption_unit,
+          unitCost: lastBatchCost,
+          totalDebt: lastBatchCost * totalMissing
         });
       }
     });
@@ -684,7 +688,7 @@ const Products: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-xl font-black">Faltante de Inventario</h3>
-                <p className="text-red-500 text-sm font-semibold">Producción en riesgo</p>
+                <p className="text-red-500 text-sm font-semibold">Se generará Deuda de Inventario</p>
               </div>
             </div>
 
@@ -694,17 +698,40 @@ const Products: React.FC = () => {
             </p>
 
             <div className="bg-red-50/50 rounded-xl p-5 border border-red-100 space-y-4">
-              <h4 className="text-[10px] font-black uppercase tracking-widest text-red-800 flex items-center gap-2">
-                <Package size={12} /> Materiales Incompletos
+              <h4 className="text-[10px] font-black uppercase tracking-widest text-red-800 flex items-center gap-2 mb-2">
+                <Package size={12} /> Desglose de Faltantes y Costo Asumido
               </h4>
-              <ul className="space-y-3">
-                {missingStockModal.missingItems.map((item, idx) => (
-                  <li key={idx} className="flex justify-between items-center text-sm font-bold text-red-900 border-b border-red-100/50 pb-2 last:border-0 last:pb-0">
-                    <span>{item.materialName}</span>
-                    <span className="font-mono bg-white px-3 py-1 rounded-lg text-red-600 shadow-sm border border-red-50">faltan {item.missingQuantity.toFixed(2)} {item.unit}</span>
-                  </li>
-                ))}
-              </ul>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="text-xs uppercase text-red-700/70 border-b border-red-200">
+                    <tr>
+                      <th className="pb-2 font-bold">Material</th>
+                      <th className="pb-2 text-right font-bold">Faltante</th>
+                      <th className="pb-2 text-right font-bold">Costo Aplicado</th>
+                      <th className="pb-2 text-right font-bold">Deuda Generada</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-red-100/50">
+                    {missingStockModal.missingItems.map((item, idx) => (
+                      <tr key={idx} className="text-red-900">
+                        <td className="py-2.5 font-bold">{item.materialName}</td>
+                        <td className="py-2.5 text-right font-mono bg-white rounded my-1 px-2 border border-red-100 text-red-600 shadow-sm">faltan {item.missingQuantity.toFixed(2)} {item.unit}</td>
+                        <td className="py-2.5 text-right font-mono text-red-700/80">{formatCurrency(item.unitCost)}</td>
+                        <td className="py-2.5 text-right font-mono font-black">{formatCurrency(item.totalDebt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colSpan={3} className="pt-3 text-right text-xs font-bold uppercase text-red-800">Costo Faltante Total Asumido:</td>
+                      <td className="pt-3 text-right font-mono font-black text-red-600 text-base">
+                        {formatCurrency(missingStockModal.missingItems.reduce((acc, item) => acc + item.totalDebt, 0))}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
             </div>
 
             <div className="flex gap-4 pt-4">
@@ -726,7 +753,7 @@ const Products: React.FC = () => {
                   });
                 }}
               >
-                Forzar Producción
+                Aceptar y Generar Deuda
               </Button>
             </div>
           </Card>

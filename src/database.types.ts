@@ -411,6 +411,7 @@ export type Database = {
           unit_cost: number
           reference: string | null
           created_at: string
+          produced_with_debt?: boolean | null
         }
         Insert: {
           id?: string
@@ -421,6 +422,7 @@ export type Database = {
           unit_cost?: number
           reference?: string | null
           created_at?: string
+          produced_with_debt?: boolean | null
         }
         Update: {
           id?: string
@@ -431,6 +433,7 @@ export type Database = {
           unit_cost?: number
           reference?: string | null
           created_at?: string
+          produced_with_debt?: boolean | null
         }
         Relationships: [
           {

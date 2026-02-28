@@ -628,6 +628,8 @@ export const useStore = create<AppState>()(
         let totalCostForBatch = 0;
 
         // 1. Calculate & prepare stock deduction
+        let hasMissingMaterials = false;
+
         product.materials?.forEach(pm => {
           let reqQty = pm.quantity * quantity;
           if (pm.mode === 'pieces' && pm.pieces) {
@@ -668,12 +670,12 @@ export const useStore = create<AppState>()(
               reference: item.is_missing ? `Faltante Lote (Prod_ID: ${product.id})` : `Prod Lote: ${product.name}`,
               created_at: now
             });
+            if (item.is_missing) hasMissingMaterials = true;
           });
         });
 
         const perUnitCost = totalCostForBatch / quantity;
 
-        // 2. Prepare Ledger insertion
         const productMovement: ProductMovement = {
           id: crypto.randomUUID(),
           company_id: companyId,
@@ -682,7 +684,8 @@ export const useStore = create<AppState>()(
           quantity: quantity,
           unit_cost: perUnitCost,
           reference: `Lote Producción: ${quantity} uds`,
-          created_at: now
+          created_at: now,
+          produced_with_debt: hasMissingMaterials
         };
 
         // 3. Simulated Atomicity
