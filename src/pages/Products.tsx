@@ -38,7 +38,10 @@ interface ProductMaterialUI extends ProductMaterial {
 
 const Products: React.FC = () => {
   const { currentCompanyId, currentUserRole, products, rawMaterials, batches, addProduct, deleteProduct, updateProduct, consumeStock } = useStore();
-  const canEdit = ['admin', 'manager', 'owner'].includes(currentUserRole || '');
+  const allowedRoles = ['super_admin', 'admin', 'owner', 'manager'];
+  const canCreate = allowedRoles.includes(currentUserRole || '');
+  const canEdit = allowedRoles.includes(currentUserRole || '');
+  const canDelete = allowedRoles.includes(currentUserRole || '');
   const { formatCurrency, currencySymbol } = useCurrency();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -191,7 +194,7 @@ const Products: React.FC = () => {
         title="Catálogo de Productos"
         description="Gestión de Escandallos (Costos FIFO)"
         actions={
-          canEdit ? (
+          canCreate ? (
             <Button
               variant="primary"
               onClick={() => {
@@ -251,27 +254,29 @@ const Products: React.FC = () => {
                     <Button variant="ghost" size="sm" onClick={() => { if (window.confirm('¿Registrar consumo de stock?')) consumeStock(p.id); }} title="Producir">
                       <PlayCircle size={16} className="text-emerald-500" />
                     </Button>
+                    {canCreate && (
+                      <Button variant="ghost" size="sm" onClick={() => handleDuplicate(p)} title="Duplicar">
+                        <Copy size={16} className="text-indigo-400" />
+                      </Button>
+                    )}
                     {canEdit && (
-                      <>
-                        <Button variant="ghost" size="sm" onClick={() => handleDuplicate(p)} title="Duplicar">
-                          <Copy size={16} className="text-indigo-400" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => { setEditingId(p.id); setFormData(p); setIsModalOpen(true); }} title="Editar">
-                          <Edit2 size={16} />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={async () => {
-                          if (window.confirm("¿Seguro que deseas eliminar este producto?")) {
-                            try {
-                              await deleteProduct(p.id);
-                            } catch (err: any) {
-                              console.error("Error deleting product:", err);
-                              alert(`No se pudo eliminar el producto: ${translateError(err)}`);
-                            }
+                      <Button variant="ghost" size="sm" onClick={() => { setEditingId(p.id); setFormData(p); setIsModalOpen(true); }} title="Editar">
+                        <Edit2 size={16} />
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button variant="ghost" size="sm" onClick={async () => {
+                        if (window.confirm("¿Seguro que deseas eliminar este producto?")) {
+                          try {
+                            await deleteProduct(p.id);
+                          } catch (err: any) {
+                            console.error("Error deleting product:", err);
+                            alert(`No se pudo eliminar el producto: ${translateError(err)}`);
                           }
-                        }} title="Eliminar">
-                          <Trash2 size={16} className="text-red-400" />
-                        </Button>
-                      </>
+                        }
+                      }} title="Eliminar">
+                        <Trash2 size={16} className="text-red-400" />
+                      </Button>
                     )}
                   </div>
                 </TableCell>

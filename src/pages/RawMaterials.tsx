@@ -23,7 +23,10 @@ import { translateError } from '@/utils/errorHandler';
 const RawMaterials: React.FC = () => {
   const { currentCompanyId, currentUserRole, rawMaterials, batches, addRawMaterial, deleteRawMaterial, updateRawMaterial, addBatch, deleteBatch, updateBatch } = useStore();
   const { formatCurrency, currencySymbol } = useCurrency();
-  const canEdit = ['admin', 'owner', 'manager'].includes(currentUserRole || '');
+  const allowedRoles = ['super_admin', 'admin', 'owner', 'manager'];
+  const canCreate = allowedRoles.includes(currentUserRole || '');
+  const canEdit = allowedRoles.includes(currentUserRole || '');
+  const canDelete = allowedRoles.includes(currentUserRole || '');
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
@@ -276,7 +279,7 @@ const RawMaterials: React.FC = () => {
             className="w-full rounded-xl bg-white pl-9 pr-3 py-2.5 text-sm text-slate-700 ring-1 ring-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
           />
         </div>
-        {canEdit && (
+        {canCreate && (
           <button
             onClick={() => {
               setEditingId(null);
@@ -337,32 +340,32 @@ const RawMaterials: React.FC = () => {
                     Lotes
                   </button>
                   {canEdit && (
-                    <>
-                      <button
-                        onClick={() => {
-                          const stats = getBatchStats(m.id);
-                          setEditingId(m.id);
-                          setFormData({ ...m, initialQty: stats.totalRemainingQty, unitCost: stats.weightedAvgCost });
-                          setIsModalOpen(true);
-                        }}
-                        className="flex items-center justify-center rounded-lg bg-slate-50 p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 active:scale-95 transition-all"
-                      >
-                        <Edit2 size={15} />
-                      </button>
-                      <button
-                        onClick={async () => {
-                          try {
-                            await deleteRawMaterial(m.id);
-                          } catch (err: any) {
-                            console.error("Error deleting material:", err);
-                            alert(`No se pudo eliminar el material: ${translateError(err)}`);
-                          }
-                        }}
-                        className="flex items-center justify-center rounded-lg bg-slate-50 p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600 active:scale-95 transition-all"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </>
+                    <button
+                      onClick={() => {
+                        const stats = getBatchStats(m.id);
+                        setEditingId(m.id);
+                        setFormData({ ...m, initialQty: stats.totalRemainingQty, unitCost: stats.weightedAvgCost });
+                        setIsModalOpen(true);
+                      }}
+                      className="flex items-center justify-center rounded-lg bg-slate-50 p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 active:scale-95 transition-all"
+                    >
+                      <Edit2 size={15} />
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          await deleteRawMaterial(m.id);
+                        } catch (err: any) {
+                          console.error("Error deleting material:", err);
+                          alert(`No se pudo eliminar el material: ${translateError(err)}`);
+                        }
+                      }}
+                      className="flex items-center justify-center rounded-lg bg-slate-50 p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600 active:scale-95 transition-all"
+                    >
+                      <Trash2 size={15} />
+                    </button>
                   )}
                 </div>
               </div>
@@ -412,26 +415,26 @@ const RawMaterials: React.FC = () => {
                         <History size={16} className="text-indigo-400" />
                       </Button>
                       {canEdit && (
-                        <>
-                          <Button variant="ghost" size="sm" onClick={() => {
-                            const stats = getBatchStats(m.id);
-                            setEditingId(m.id);
-                            setFormData({ ...m, initialQty: stats.totalRemainingQty, unitCost: stats.weightedAvgCost });
-                            setIsModalOpen(true);
-                          }}>
-                            <Edit2 size={16} />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={async () => {
-                            try {
-                              await deleteRawMaterial(m.id);
-                            } catch (err: any) {
-                              console.error("Error deleting material:", err);
-                              alert(`No se pudo eliminar el material: ${translateError(err)}`);
-                            }
-                          }}>
-                            <Trash2 size={16} className="text-red-400" />
-                          </Button>
-                        </>
+                        <Button variant="ghost" size="sm" onClick={() => {
+                          const stats = getBatchStats(m.id);
+                          setEditingId(m.id);
+                          setFormData({ ...m, initialQty: stats.totalRemainingQty, unitCost: stats.weightedAvgCost });
+                          setIsModalOpen(true);
+                        }}>
+                          <Edit2 size={16} />
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button variant="ghost" size="sm" onClick={async () => {
+                          try {
+                            await deleteRawMaterial(m.id);
+                          } catch (err: any) {
+                            console.error("Error deleting material:", err);
+                            alert(`No se pudo eliminar el material: ${translateError(err)}`);
+                          }
+                        }}>
+                          <Trash2 size={16} className="text-red-400" />
+                        </Button>
                       )}
                     </div>
                   </TableCell>
@@ -618,7 +621,7 @@ const RawMaterials: React.FC = () => {
                   </div>
                 </div>
 
-                {canEdit && (
+                {canCreate && (
                   <form onSubmit={handleBatchSubmit} className="space-y-4 sm:space-y-6">
                     <div className="grid grid-cols-2 items-end gap-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-6">
                       <Input
@@ -747,17 +750,17 @@ const RawMaterials: React.FC = () => {
                             <TableCell className="no-print text-center">
                               <div className="flex justify-center gap-1">
                                 {canEdit && (
-                                  <>
-                                    <Button variant="ghost" size="sm" onClick={() => setEditingBatchData(batch)} icon={<Pencil size={16} />} />
-                                    <Button variant="ghost" size="sm" onClick={async () => {
-                                      try {
-                                        await deleteBatch(batch.id);
-                                      } catch (err: any) {
-                                        console.error("Error deleting batch:", err);
-                                        alert(`No se pudo eliminar el lote: ${translateError(err)}`);
-                                      }
-                                    }} icon={<Trash2 size={16} className="text-red-400" />} />
-                                  </>
+                                  <Button variant="ghost" size="sm" onClick={() => setEditingBatchData(batch)} icon={<Pencil size={16} />} />
+                                )}
+                                {canDelete && (
+                                  <Button variant="ghost" size="sm" onClick={async () => {
+                                    try {
+                                      await deleteBatch(batch.id);
+                                    } catch (err: any) {
+                                      console.error("Error deleting batch:", err);
+                                      alert(`No se pudo eliminar el lote: ${translateError(err)}`);
+                                    }
+                                  }} icon={<Trash2 size={16} className="text-red-400" />} />
                                 )}
                               </div>
                             </TableCell>

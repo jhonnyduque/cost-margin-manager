@@ -1,0 +1,111 @@
+CREATE POLICY "Allow insert from trigger" ON "public"."users" FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Enable read access for authenticated users belonging to company" ON "public"."companies" FOR SELECT USING ((("auth"."uid"() IN ( SELECT "company_members"."user_id"
+   FROM "public"."company_members"
+  WHERE ("company_members"."company_id" = "companies"."id"))) OR "public"."is_super_admin"()));
+
+CREATE POLICY "Enable update for company admins" ON "public"."companies" FOR UPDATE USING ((("auth"."uid"() IN ( SELECT "company_members"."user_id"
+   FROM "public"."company_members"
+  WHERE (("company_members"."company_id" = "companies"."id") AND ("company_members"."role" = 'admin'::"text")))) OR "public"."is_super_admin"()));
+
+CREATE POLICY "Users can select themselves" ON "public"."users" FOR SELECT USING (("id" = "auth"."uid"()));
+
+CREATE POLICY "Users can update themselves" ON "public"."users" FOR UPDATE USING (("id" = "auth"."uid"())) WITH CHECK (("id" = "auth"."uid"()));
+
+CREATE POLICY "audit_logs_insert" ON "public"."audit_logs" FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "audit_logs_limited_delete" ON "public"."audit_logs" FOR DELETE USING (("public"."is_super_admin"() AND ("created_at" < ("now"() - '90 days'::interval))));
+
+CREATE POLICY "audit_logs_no_update" ON "public"."audit_logs" FOR UPDATE USING (false);
+
+CREATE POLICY "audit_logs_select" ON "public"."audit_logs" FOR SELECT USING (("public"."is_super_admin"() OR (EXISTS ( SELECT 1
+   FROM "public"."company_members" "cm"
+  WHERE (("cm"."company_id" = "audit_logs"."company_id") AND ("cm"."user_id" = "public"."user_id"()) AND ("cm"."is_active" = true))))));
+
+CREATE POLICY "batches_delete" ON "public"."material_batches" FOR DELETE USING (("public"."is_super_admin"() OR (("company_id" IN ( SELECT "public"."user_companies"() AS "user_companies")) AND "public"."has_role_level"("company_id", 'manager'::"text"))));
+
+CREATE POLICY "batches_insert" ON "public"."material_batches" FOR INSERT WITH CHECK (("public"."is_super_admin"() OR (("company_id" IN ( SELECT "public"."user_companies"() AS "user_companies")) AND "public"."has_role_level"("company_id", 'operator'::"text"))));
+
+CREATE POLICY "batches_select" ON "public"."material_batches" FOR SELECT USING (("public"."is_super_admin"() OR (("company_id" IN ( SELECT "public"."user_companies"() AS "user_companies")) AND ("deleted_at" IS NULL))));
+
+CREATE POLICY "batches_update" ON "public"."material_batches" FOR UPDATE USING (("public"."is_super_admin"() OR (("company_id" IN ( SELECT "public"."user_companies"() AS "user_companies")) AND "public"."has_role_level"("company_id", 'operator'::"text")))) WITH CHECK (("public"."is_super_admin"() OR (("company_id" IN ( SELECT "public"."user_companies"() AS "user_companies")) AND "public"."has_role_level"("company_id", 'operator'::"text"))));
+
+CREATE POLICY "billing_accounts_all" ON "public"."billing_accounts" USING ("public"."is_super_admin"());
+
+CREATE POLICY "billing_logs_select" ON "public"."billing_logs" FOR SELECT USING (("public"."is_super_admin"() OR ("company_id" IN ( SELECT "public"."user_companies"() AS "user_companies"))));
+
+CREATE POLICY "companies_delete" ON "public"."companies" FOR DELETE USING (("public"."is_super_admin"() OR "public"."has_role_level"("id", 'owner'::"text")));
+
+CREATE POLICY "companies_insert" ON "public"."companies" FOR INSERT WITH CHECK ("public"."is_super_admin"());
+
+CREATE POLICY "companies_onboarding_insert" ON "public"."companies" FOR INSERT WITH CHECK ((("auth"."uid"() IS NOT NULL) AND (NOT (EXISTS ( SELECT 1
+   FROM "public"."company_members"
+  WHERE ("company_members"."user_id" = "auth"."uid"()))))));
+
+CREATE POLICY "companies_select" ON "public"."companies" FOR SELECT USING (("public"."is_super_admin"() OR (EXISTS ( SELECT 1
+   FROM "public"."company_members" "cm"
+  WHERE (("cm"."company_id" = "companies"."id") AND ("cm"."user_id" = "public"."user_id"()) AND ("cm"."is_active" = true))))));
+
+CREATE POLICY "companies_update" ON "public"."companies" FOR UPDATE USING (("public"."is_super_admin"() OR "public"."has_role_level"("id", 'owner'::"text")));
+
+CREATE POLICY "company_members_select" ON "public"."company_members" FOR SELECT USING ("public"."is_company_member"("company_id"));
+
+CREATE POLICY "internal_actions_all" ON "public"."internal_actions_log" USING ("public"."is_super_admin"());
+
+CREATE POLICY "membership_onboarding_insert" ON "public"."company_members" FOR INSERT WITH CHECK ((("user_id" = "auth"."uid"()) AND ("role" = 'owner'::"text") AND (NOT (EXISTS ( SELECT 1
+   FROM "public"."company_members" "company_members_1"
+  WHERE ("company_members_1"."user_id" = "auth"."uid"()))))));
+
+CREATE POLICY "movements_delete" ON "public"."stock_movements" FOR DELETE USING (("public"."is_super_admin"() OR (("company_id" IN ( SELECT "public"."user_companies"() AS "user_companies")) AND "public"."has_role_level"("company_id", 'manager'::"text"))));
+
+CREATE POLICY "movements_insert" ON "public"."stock_movements" FOR INSERT WITH CHECK (("public"."is_super_admin"() OR (("company_id" IN ( SELECT "public"."user_companies"() AS "user_companies")) AND "public"."has_role_level"("company_id", 'operator'::"text"))));
+
+CREATE POLICY "movements_select" ON "public"."stock_movements" FOR SELECT USING (("public"."is_super_admin"() OR (("company_id" IN ( SELECT "public"."user_companies"() AS "user_companies")) AND ("deleted_at" IS NULL))));
+
+CREATE POLICY "movements_update" ON "public"."stock_movements" FOR UPDATE USING (("public"."is_super_admin"() OR (("company_id" IN ( SELECT "public"."user_companies"() AS "user_companies")) AND "public"."has_role_level"("company_id", 'manager'::"text")))) WITH CHECK (("public"."is_super_admin"() OR (("company_id" IN ( SELECT "public"."user_companies"() AS "user_companies")) AND "public"."has_role_level"("company_id", 'manager'::"text"))));
+
+CREATE POLICY "products_delete" ON "public"."products" FOR DELETE USING (("public"."is_super_admin"() OR (("company_id" IN ( SELECT "public"."user_companies"() AS "user_companies")) AND "public"."has_role_level"("company_id", 'manager'::"text"))));
+
+CREATE POLICY "products_insert" ON "public"."products" FOR INSERT WITH CHECK (("public"."is_super_admin"() OR (("company_id" IN ( SELECT "public"."user_companies"() AS "user_companies")) AND "public"."has_role_level"("company_id", 'operator'::"text"))));
+
+CREATE POLICY "products_select" ON "public"."products" FOR SELECT USING (("public"."is_super_admin"() OR (("company_id" IN ( SELECT "public"."user_companies"() AS "user_companies")) AND ("deleted_at" IS NULL))));
+
+CREATE POLICY "products_select_policy" ON "public"."products" FOR SELECT USING (("company_id" IN ( SELECT "company_members"."company_id"
+   FROM "public"."company_members"
+  WHERE (("company_members"."user_id" = "auth"."uid"()) AND ("company_members"."is_active" = true)))));
+
+CREATE POLICY "products_update" ON "public"."products" FOR UPDATE USING (("public"."is_super_admin"() OR (("company_id" IN ( SELECT "public"."user_companies"() AS "user_companies")) AND "public"."has_role_level"("company_id", 'operator'::"text")))) WITH CHECK (("public"."is_super_admin"() OR (("company_id" IN ( SELECT "public"."user_companies"() AS "user_companies")) AND "public"."has_role_level"("company_id", 'operator'::"text"))));
+
+CREATE POLICY "raw_materials_delete" ON "public"."raw_materials" FOR DELETE USING (("public"."is_super_admin"() OR (("company_id" IN ( SELECT "public"."user_companies"() AS "user_companies")) AND "public"."has_role_level"("company_id", 'manager'::"text"))));
+
+CREATE POLICY "raw_materials_insert" ON "public"."raw_materials" FOR INSERT WITH CHECK (("public"."is_super_admin"() OR (("company_id" IN ( SELECT "public"."user_companies"() AS "user_companies")) AND "public"."has_role_level"("company_id", 'operator'::"text"))));
+
+CREATE POLICY "raw_materials_select" ON "public"."raw_materials" FOR SELECT USING (("public"."is_super_admin"() OR (("company_id" IN ( SELECT "public"."user_companies"() AS "user_companies")) AND ("deleted_at" IS NULL))));
+
+CREATE POLICY "raw_materials_update" ON "public"."raw_materials" FOR UPDATE USING (("public"."is_super_admin"() OR (("company_id" IN ( SELECT "public"."user_companies"() AS "user_companies")) AND "public"."has_role_level"("company_id", 'operator'::"text")))) WITH CHECK (("public"."is_super_admin"() OR (("company_id" IN ( SELECT "public"."user_companies"() AS "user_companies")) AND "public"."has_role_level"("company_id", 'operator'::"text"))));
+
+CREATE POLICY "subscription_events_deny_update" ON "public"."subscription_events" FOR UPDATE USING (false);
+
+CREATE POLICY "subscription_events_deny_write" ON "public"."subscription_events" FOR INSERT WITH CHECK (false);
+
+CREATE POLICY "subscription_events_select" ON "public"."subscription_events" FOR SELECT USING (("public"."is_super_admin"() OR (EXISTS ( SELECT 1
+   FROM "public"."company_members" "cm"
+  WHERE (("cm"."company_id" = "subscription_events"."company_id") AND ("cm"."user_id" = "public"."user_id"()))))));
+
+CREATE POLICY "subscription_plans_modify" ON "public"."subscription_plans" USING ("public"."is_super_admin"());
+
+CREATE POLICY "subscription_plans_select" ON "public"."subscription_plans" FOR SELECT USING (true);
+
+CREATE POLICY "usage_metrics_select" ON "public"."company_usage_metrics" FOR SELECT USING (("public"."is_super_admin"() OR (EXISTS ( SELECT 1
+   FROM "public"."company_members" "cm"
+  WHERE (("cm"."company_id" = "company_usage_metrics"."company_id") AND ("cm"."user_id" = "public"."user_id"()))))));
+
+CREATE POLICY "users_insert" ON "public"."users" FOR INSERT WITH CHECK (("id" = "public"."user_id"()));
+
+CREATE POLICY "users_select" ON "public"."users" FOR SELECT USING (("public"."is_super_admin"() OR ("id" = "public"."user_id"()) OR (EXISTS ( SELECT 1
+   FROM "public"."company_members" "cm"
+  WHERE (("cm"."user_id" = "users"."id") AND ("cm"."company_id" IN ( SELECT "company_members"."company_id"
+           FROM "public"."company_members"
+          WHERE (("company_members"."user_id" = "public"."user_id"()) AND ("company_members"."is_active" = true)))))))));
+
+CREATE POLICY "users_update" ON "public"."users" FOR UPDATE USING (("public"."is_super_admin"() OR ("id" = "public"."user_id"())));
