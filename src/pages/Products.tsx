@@ -226,12 +226,12 @@ const Products: React.FC = () => {
       <TableContainer>
         <TableHeader>
           <TableRow>
-            <TableHead>Producto</TableHead>
-            <TableHead>Referencia / SKU</TableHead>
-            <TableHead className="text-right">Costo (FIFO)</TableHead>
-            <TableHead className="text-right">Precio Venta</TableHead>
-            <TableHead className="text-center">Margen</TableHead>
-            <TableHead className="w-40 text-right">Acciones</TableHead>
+            <TableHead className="w-[30%] px-6">Producto</TableHead>
+            <TableHead className="w-[15%] px-6">Referencia / SKU</TableHead>
+            <TableHead className="w-[15%] px-6 text-right">Costo (FIFO)</TableHead>
+            <TableHead className="w-[15%] px-6 text-right">Precio Venta</TableHead>
+            <TableHead className="w-[10%] px-6 text-center">Margen</TableHead>
+            <TableHead className="w-[15%] px-6 text-center">Acciones</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -240,32 +240,32 @@ const Products: React.FC = () => {
             const margin = calculateMargin(p.price, cost);
             return (
               <TableRow key={p.id}>
-                <TableCell className="font-bold">{p.name}</TableCell>
-                <TableCell className="font-mono text-xs text-gray-500">{p.reference || '---'}</TableCell>
-                <TableCell className="text-right font-mono font-medium">{formatCurrency(cost)}</TableCell>
-                <TableCell className="text-right font-mono font-black" style={{ color: tokens.colors.brand }}>{formatCurrency(p.price)}</TableCell>
-                <TableCell className="text-center">
+                <TableCell className="px-6 font-semibold text-gray-900">{p.name}</TableCell>
+                <TableCell className="px-6 font-mono text-xs text-gray-500">{p.reference || '---'}</TableCell>
+                <TableCell className="px-6 text-right font-mono font-medium text-gray-700">{formatCurrency(cost)}</TableCell>
+                <TableCell className="px-6 text-right font-mono font-black" style={{ color: tokens.colors.brand }}>{formatCurrency(p.price)}</TableCell>
+                <TableCell className="px-6 text-center">
                   <Badge variant={margin >= 30 ? 'success' : 'warning'}>
                     {margin.toFixed(1)}%
                   </Badge>
                 </TableCell>
-                <TableCell className="w-40 text-right">
-                  <div className="flex justify-end gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => { if (window.confirm('¿Registrar consumo de stock?')) consumeStock(p.id); }} title="Producir">
+                <TableCell className="px-6">
+                  <div className="flex justify-center gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-emerald-50" onClick={() => { if (window.confirm('¿Registrar consumo de stock?')) consumeStock(p.id); }} title="Producir">
                       <PlayCircle size={16} className="text-emerald-500" />
                     </Button>
                     {canCreate && (
-                      <Button variant="ghost" size="sm" onClick={() => handleDuplicate(p)} title="Duplicar">
-                        <Copy size={16} className="text-indigo-400" />
+                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-50" onClick={() => handleDuplicate(p)} title="Duplicar">
+                        <Copy size={16} className="text-slate-500" />
                       </Button>
                     )}
                     {canEdit && (
-                      <Button variant="ghost" size="sm" onClick={() => { setEditingId(p.id); setFormData(p); setIsModalOpen(true); }} title="Editar">
-                        <Edit2 size={16} />
+                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-blue-50" onClick={() => { setEditingId(p.id); setFormData(p); setIsModalOpen(true); }} title="Editar">
+                        <Edit2 size={16} className="text-blue-600" />
                       </Button>
                     )}
                     {canDelete && (
-                      <Button variant="ghost" size="sm" onClick={async () => {
+                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-red-50" onClick={async () => {
                         if (window.confirm("¿Seguro que deseas eliminar este producto?")) {
                           try {
                             await deleteProduct(p.id);
@@ -275,7 +275,7 @@ const Products: React.FC = () => {
                           }
                         }
                       }} title="Eliminar">
-                        <Trash2 size={16} className="text-red-400" />
+                        <Trash2 size={16} className="text-red-500" />
                       </Button>
                     )}
                   </div>
