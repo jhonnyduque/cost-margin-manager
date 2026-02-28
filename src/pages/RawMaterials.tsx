@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/Table';
 import { tokens } from '@/design/design-tokens';
 import { useCurrency } from '@/hooks/useCurrency';
+import { translateError } from '@/utils/errorHandler';
 
 const RawMaterials: React.FC = () => {
   const { currentCompanyId, rawMaterials, batches, addRawMaterial, deleteRawMaterial, updateRawMaterial, addBatch, deleteBatch, updateBatch } = useStore();
@@ -118,7 +119,7 @@ const RawMaterials: React.FC = () => {
       setEditingId(null);
     } catch (error: any) {
       console.error("Error saving material:", error);
-      alert(`Hubo un error al guardar: ${error.message || 'Verifica tu conexión y permisos.'}`);
+      alert(`Hubo un error al guardar: ${translateError(error)}`);
     } finally {
       setIsSaving(false);
     }
@@ -171,7 +172,7 @@ const RawMaterials: React.FC = () => {
       });
     } catch (error: any) {
       console.error("Error saving batch:", error);
-      alert(`No se pudo agregar el ingreso físico: ${error.message}`);
+      alert(`No se pudo agregar el ingreso físico: ${translateError(error)}`);
     } finally {
       setIsSaving(false);
     }
@@ -214,7 +215,7 @@ const RawMaterials: React.FC = () => {
         setEditingBatchData(null);
       } catch (error: any) {
         console.error("Error editing batch:", error);
-        alert(`Fallo al actualizar el lote: ${error.message}`);
+        alert(`Fallo al actualizar el lote: ${translateError(error)}`);
       } finally {
         setIsSaving(false);
       }
@@ -349,7 +350,7 @@ const RawMaterials: React.FC = () => {
                         await deleteRawMaterial(m.id);
                       } catch (err: any) {
                         console.error("Error deleting material:", err);
-                        alert(`No se pudo eliminar el material: ${err.message}`);
+                        alert(`No se pudo eliminar el material: ${translateError(err)}`);
                       }
                     }}
                     className="flex items-center justify-center rounded-lg bg-slate-50 p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600 active:scale-95 transition-all"
@@ -416,7 +417,7 @@ const RawMaterials: React.FC = () => {
                           await deleteRawMaterial(m.id);
                         } catch (err: any) {
                           console.error("Error deleting material:", err);
-                          alert(`No se pudo eliminar el material: ${err.message}`);
+                          alert(`No se pudo eliminar el material: ${translateError(err)}`);
                         }
                       }}>
                         <Trash2 size={16} className="text-red-400" />
@@ -738,7 +739,7 @@ const RawMaterials: React.FC = () => {
                                     await deleteBatch(batch.id);
                                   } catch (err: any) {
                                     console.error("Error deleting batch:", err);
-                                    alert(`No se pudo eliminar el lote: ${err.message}`);
+                                    alert(`No se pudo eliminar el lote: ${translateError(err)}`);
                                   }
                                 }} icon={<Trash2 size={16} className="text-red-400" />} />
                               </div>

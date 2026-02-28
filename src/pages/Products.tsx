@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/Table';
 import { tokens } from '@/design/design-tokens';
 import { useCurrency } from '@/hooks/useCurrency';
+import { translateError } from '@/utils/errorHandler';
 
 const getCommercialPrice = (price: number) => {
   if (price <= 0) return 0;
@@ -176,7 +177,7 @@ const Products: React.FC = () => {
       setIsModalOpen(false);
     } catch (error: any) {
       console.error("Error saving product:", error);
-      alert(`No se pudo guardar el producto: ${error.message}`);
+      alert(`No se pudo guardar el producto: ${translateError(error)}`);
     }
   };
 
@@ -259,7 +260,7 @@ const Products: React.FC = () => {
                           await deleteProduct(p.id);
                         } catch (err: any) {
                           console.error("Error deleting product:", err);
-                          alert(`No se pudo eliminar el producto: ${err.message}`);
+                          alert(`No se pudo eliminar el producto: ${translateError(err)}`);
                         }
                       }
                     }} title="Eliminar">
