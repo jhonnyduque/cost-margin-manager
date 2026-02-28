@@ -731,57 +731,99 @@ const Products: React.FC = () => {
               Si decides forzar la producción, el sistema registrará un faltante temporal asumiendo el costo transaccional del último lote adquirido para no alterar tus márgenes.
             </p>
 
-            <div className="bg-red-50/50 rounded-xl p-5 border border-red-100 space-y-4">
-              <div className="grid grid-cols-3 gap-4 mb-2 pb-4 border-b border-red-200/50">
-                <div className="text-center">
-                  <p className="text-[10px] font-black uppercase text-red-800/60 mb-1">Prod. Solicitada</p>
-                  <p className="text-xl font-bold text-gray-800">{missingStockModal.quantity}</p>
-                </div>
-                <div className="text-center border-l border-red-200/50">
-                  <p className="text-[10px] font-black uppercase text-emerald-800/60 mb-1">Cubierta por Stock</p>
-                  <p className="text-xl font-bold text-emerald-600">{missingStockModal.maxCoveredProduction}</p>
-                </div>
-                <div className="text-center border-l border-red-200/50">
-                  <p className="text-[10px] font-black uppercase text-red-800/60 mb-1">Generará Deuda</p>
-                  <p className="text-xl font-bold text-red-600">{missingStockModal.quantity - missingStockModal.maxCoveredProduction}</p>
-                </div>
-              </div>
+            {missingStockModal.showFullBreakdown ? (
+              <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 space-y-4 animate-in fade-in duration-300">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2 mb-2">
+                  <PackageSearch size={12} /> Detalle de Consumo de Producción
+                </h4>
 
-              <h4 className="text-[10px] font-black uppercase tracking-widest text-red-800 flex items-center gap-2 mb-2">
-                <Package size={12} /> Desglose de Faltantes y Costo Asumido
-              </h4>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="text-xs uppercase text-red-700/70 border-b border-red-200">
-                    <tr>
-                      <th className="pb-2 font-bold">Material</th>
-                      <th className="pb-2 text-right font-bold">Faltante</th>
-                      <th className="pb-2 text-right font-bold">Costo Aplicado</th>
-                      <th className="pb-2 text-right font-bold">Deuda Generada</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-red-100/50">
-                    {missingStockModal.missingItems.map((item, idx) => (
-                      <tr key={idx} className="text-red-900">
-                        <td className="py-2.5 font-bold">{item.materialName}</td>
-                        <td className="py-2.5 text-right font-mono bg-white rounded my-1 px-2 border border-red-100 text-red-600 shadow-sm">faltan {item.missingQuantity.toFixed(2)} {item.unit}</td>
-                        <td className="py-2.5 text-right font-mono text-red-700/80">{formatCurrency(item.unitCost)}</td>
-                        <td className="py-2.5 text-right font-mono font-black">{formatCurrency(item.totalDebt)}</td>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-[10px] uppercase text-slate-500 border-b border-slate-200">
+                      <tr>
+                        <th className="pb-2 font-bold">Material</th>
+                        <th className="pb-2 text-right font-bold">Requerido</th>
+                        <th className="pb-2 text-center font-bold">Estado del Consumo</th>
                       </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr>
-                      <td colSpan={3} className="pt-3 text-right text-xs font-bold uppercase text-red-800">Costo Faltante Total Asumido:</td>
-                      <td className="pt-3 text-right font-mono font-black text-red-600 text-base">
-                        {formatCurrency(missingStockModal.missingItems.reduce((acc, item) => acc + item.totalDebt, 0))}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {missingStockModal.fullBreakdown.map((item, idx) => (
+                        <tr key={idx} className="text-slate-700">
+                          <td className="py-2.5 font-bold">{item.materialName}</td>
+                          <td className="py-2.5 text-right font-mono bg-white mx-1 px-2 border border-slate-100 shadow-sm rounded text-slate-600">{item.requiredQuantity.toFixed(2)} {item.unit}</td>
+                          <td className="py-2.5">
+                            <div className="flex flex-col gap-1 items-end justify-center w-full pl-4">
+                              {item.coveredQuantity > 0 && (
+                                <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 w-full justify-between">
+                                  <span>CUBIERTO:</span> <span>{item.coveredQuantity.toFixed(2)} {item.unit}</span>
+                                </span>
+                              )}
+                              {item.missingQuantity > 0 && (
+                                <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 w-full justify-between border border-red-200">
+                                  <span>DEUDA:</span> <span>{item.missingQuantity.toFixed(2)} {item.unit}</span>
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="bg-red-50/50 rounded-xl p-5 border border-red-100 space-y-4 animate-in fade-in duration-300">
+                <div className="grid grid-cols-3 gap-4 mb-2 pb-4 border-b border-red-200/50">
+                  <div className="text-center">
+                    <p className="text-[10px] font-black uppercase text-red-800/60 mb-1">Prod. Solicitada</p>
+                    <p className="text-xl font-bold text-gray-800">{missingStockModal.quantity}</p>
+                  </div>
+                  <div className="text-center border-l border-red-200/50">
+                    <p className="text-[10px] font-black uppercase text-emerald-800/60 mb-1">Cubierta por Stock</p>
+                    <p className="text-xl font-bold text-emerald-600">{missingStockModal.maxCoveredProduction}</p>
+                  </div>
+                  <div className="text-center border-l border-red-200/50">
+                    <p className="text-[10px] font-black uppercase text-red-800/60 mb-1">Generará Deuda</p>
+                    <p className="text-xl font-bold text-red-600">{missingStockModal.quantity - missingStockModal.maxCoveredProduction}</p>
+                  </div>
+                </div>
+
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-red-800 flex items-center gap-2 mb-2">
+                  <Package size={12} /> Desglose de Faltantes y Costo Asumido
+                </h4>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs uppercase text-red-700/70 border-b border-red-200">
+                      <tr>
+                        <th className="pb-2 font-bold">Material</th>
+                        <th className="pb-2 text-right font-bold">Faltante</th>
+                        <th className="pb-2 text-right font-bold">Costo Aplicado</th>
+                        <th className="pb-2 text-right font-bold">Deuda Generada</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-red-100/50">
+                      {missingStockModal.missingItems.map((item, idx) => (
+                        <tr key={idx} className="text-red-900">
+                          <td className="py-2.5 font-bold">{item.materialName}</td>
+                          <td className="py-2.5 text-right font-mono bg-white rounded my-1 px-2 border border-red-100 text-red-600 shadow-sm">faltan {item.missingQuantity.toFixed(2)} {item.unit}</td>
+                          <td className="py-2.5 text-right font-mono text-red-700/80">{formatCurrency(item.unitCost)}</td>
+                          <td className="py-2.5 text-right font-mono font-black">{formatCurrency(item.totalDebt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colSpan={3} className="pt-3 text-right text-xs font-bold uppercase text-red-800">Costo Faltante Total Asumido:</td>
+                        <td className="pt-3 text-right font-mono font-black text-red-600 text-base">
+                          {formatCurrency(missingStockModal.missingItems.reduce((acc, item) => acc + item.totalDebt, 0))}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-4 pt-4">
               <Button variant="ghost" className="flex-1" onClick={() => setMissingStockModal({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0, maxCoveredProduction: 0, fullBreakdown: [], showFullBreakdown: false })}>
