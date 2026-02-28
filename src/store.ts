@@ -130,6 +130,42 @@ export const calculateProductCost = (
   }, 0);
 };
 
+export const getMaterialDebt = (material_id: string, movements: StockMovement[]) => {
+  const assumed = movements.filter(m => m.material_id === material_id && m.type === 'egreso_asumido');
+  const compensated = movements.filter(m => m.material_id === material_id && m.type === 'egreso_compensatorio');
+
+  const totalAssumedQty = assumed.reduce((sum, m) => sum + m.quantity, 0);
+  const totalCompensatedQty = compensated.reduce((sum, m) => sum + m.quantity, 0);
+
+  const pendingQty = Math.max(0, totalAssumedQty - totalCompensatedQty);
+
+  const totalAssumedCost = assumed.reduce((sum, m) => sum + (m.quantity * m.unit_cost), 0);
+  const avgAssumedCost = totalAssumedQty > 0 ? totalAssumedCost / totalAssumedQty : 0;
+
+  return {
+    pendingQty,
+    financialDebt: pendingQty * avgAssumedCost
+  };
+};
+
+export const calculateTotalFinancialDebt = (movements: StockMovement[], materials: RawMaterial[]) => {
+  return materials.reduce((total, mat) => {
+    return total + getMaterialDebt(mat.id, movements).financialDebt;
+  }, 0);
+};
+
+export const hasProductGeneratedActiveDebt = (productId: string, movements: StockMovement[]) => {
+  const generatedDebts = movements.filter(m => m.type === 'egreso_asumido' && m.reference?.includes(`Prod_ID: ${productId}`));
+
+  for (const mov of generatedDebts) {
+    const debt = getMaterialDebt(mov.material_id, movements);
+    if (debt.pendingQty > 0) {
+      return true;
+    }
+  }
+  return false;
+};
+
 export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
@@ -331,6 +367,11 @@ export const useStore = create<AppState>()(
       },
 
       deleteRawMaterial: async (id) => {
+        const debt = getMaterialDebt(id, get().movements);
+        if (debt.pendingQty > 0) {
+          throw new Error('Integridad Contable: No se puede eliminar una materia prima con deuda activa.');
+        }
+
         const { error } = await supabase.from('raw_materials')
           .update({ deleted_at: new Date().toISOString() })
           .eq('id', id)
@@ -349,7 +390,34 @@ export const useStore = create<AppState>()(
         const companyId = get().currentCompanyId;
         if (!companyId) return;
 
-        const movement: StockMovement = {
+        const now = new Date().toISOString();
+        let finalRemaining = batch.initial_quantity;
+        const syncMovements: StockMovement[] = [];
+
+        // 1. Check for Active Debt (Auto-Clearing)
+        const debt = getMaterialDebt(batch.material_id, get().movements);
+        if (debt.pendingQty > 0) {
+          const qtyToCompensate = Math.min(debt.pendingQty, batch.initial_quantity);
+          finalRemaining = batch.initial_quantity - qtyToCompensate;
+
+          syncMovements.push({
+            id: crypto.randomUUID(),
+            company_id: companyId,
+            material_id: batch.material_id,
+            batch_id: batch.id,
+            date: now,
+            type: 'egreso_compensatorio',
+            quantity: qtyToCompensate,
+            unit_cost: batch.unit_cost,
+            reference: 'Compensación Automática (Auto-Clearing)',
+            created_at: now
+          });
+        }
+
+        batch.remaining_quantity = finalRemaining;
+
+        // 2. Main Entry Movement
+        const mainMovement: StockMovement = {
           id: crypto.randomUUID(),
           company_id: companyId,
           material_id: batch.material_id,
@@ -359,8 +427,9 @@ export const useStore = create<AppState>()(
           quantity: batch.initial_quantity,
           unit_cost: batch.unit_cost,
           reference: batch.provider,
-          created_at: new Date().toISOString()
+          created_at: now
         };
+        syncMovements.unshift(mainMovement);
 
         const { error: batchError } = await supabase.from('material_batches').insert({
           id: batch.id,
@@ -380,23 +449,13 @@ export const useStore = create<AppState>()(
 
         if (batchError) throw batchError;
 
-        const { error: movementError } = await supabase.from('stock_movements').insert({
-          id: movement.id,
-          company_id: companyId,
-          material_id: movement.material_id,
-          batch_id: movement.batch_id,
-          date: movement.date,
-          type: movement.type,
-          quantity: movement.quantity,
-          unit_cost: movement.unit_cost,
-          reference: movement.reference,
-        });
+        const { error: movementError } = await supabase.from('stock_movements').insert(syncMovements);
 
         if (movementError) console.error('[Supabase] Non-fatal addMovement Error:', movementError.message);
 
         set((state) => ({
           batches: [...state.batches, batch],
-          movements: [...state.movements, movement],
+          movements: [...state.movements, ...syncMovements],
         }));
       },
 
@@ -492,29 +551,29 @@ export const useStore = create<AppState>()(
             );
 
             breakdown.forEach(item => {
-              if (item.batch_id === 'faltante') return;
-
-              currentBatches = currentBatches.map(b => {
-                if (b.id === item.batch_id) {
-                  const newRemaining = Math.max(0, b.remaining_quantity - item.quantity_used);
-                  // Sync update batch remaining
-                  supabase.from('material_batches').update({ remaining_quantity: newRemaining }).eq('id', b.id).eq('company_id', companyId).then();
-                  return { ...b, remaining_quantity: newRemaining };
-                }
-                return b;
-              });
+              if (item.batch_id !== 'faltante') {
+                currentBatches = currentBatches.map(b => {
+                  if (b.id === item.batch_id) {
+                    const newRemaining = Math.max(0, b.remaining_quantity - item.quantity_used);
+                    // Sync update batch remaining
+                    supabase.from('material_batches').update({ remaining_quantity: newRemaining }).eq('id', b.id).eq('company_id', companyId).then();
+                    return { ...b, remaining_quantity: newRemaining };
+                  }
+                  return b;
+                });
+              }
 
               const movId = crypto.randomUUID();
               syncMovements.push({
                 id: movId,
                 company_id: companyId,
                 material_id: pm.material_id,
-                batch_id: item.batch_id,
+                batch_id: item.batch_id === 'faltante' ? null : item.batch_id,
                 date: now,
-                type: 'egreso',
+                type: item.is_missing ? 'egreso_asumido' : 'egreso',
                 quantity: item.quantity_used,
                 unit_cost: item.unit_cost,
-                reference: `Prod: ${product.name}`,
+                reference: item.is_missing ? `Faltante Asumido (Prod_ID: ${product.id}) - ${product.name}` : `Prod: ${product.name}`,
                 created_at: now
               });
             });

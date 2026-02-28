@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Trash2, Edit2, Search, PlayCircle, Info, Layers, TrendingUp, CheckCircle2, X, ChevronRight, AlertTriangle, Scissors, RotateCcw, Ruler, History, Copy } from 'lucide-react';
-import { useStore, calculateProductCost, calculateMargin, calculateFifoCost, getFifoBreakdown } from '../store';
+import { Plus, Trash2, Edit2, Search, PlayCircle, Info, Layers, TrendingUp, CheckCircle2, X, ChevronRight, AlertTriangle, Scissors, RotateCcw, Ruler, History, Copy, Package } from 'lucide-react';
+import { useStore, calculateProductCost, calculateMargin, calculateFifoCost, getFifoBreakdown, hasProductGeneratedActiveDebt } from '../store';
 import { Product, ProductMaterial, Status, Unit, RawMaterial, MaterialBatch } from '@/types';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
@@ -28,7 +28,7 @@ interface ProductMaterialUI extends ProductMaterial {
 }
 
 const Products: React.FC = () => {
-  const { currentCompanyId, currentUserRole, products, rawMaterials, batches, addProduct, deleteProduct, updateProduct, consumeStock } = useStore();
+  const { currentCompanyId, currentUserRole, products, rawMaterials, batches, movements, addProduct, deleteProduct, updateProduct, consumeStock } = useStore();
   const allowedRoles = ['super_admin', 'admin', 'owner', 'manager'];
   const canCreate = allowedRoles.includes(currentUserRole || '');
   const canEdit = allowedRoles.includes(currentUserRole || '');
@@ -38,10 +38,47 @@ const Products: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedMaterial, setExpandedMaterial] = useState<number | null>(null);
+  const [missingStockModal, setMissingStockModal] = useState<{ isOpen: boolean; productId: string; missingItems: any[] }>({ isOpen: false, productId: '', missingItems: [] });
 
   const [formData, setFormData] = useState<any>({
     name: '', reference: '', price: 0, target_margin: 30, materials: [], status: 'activa'
   });
+
+  const handleProduce = (productId: string) => {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+
+    const missingItems: any[] = [];
+    product.materials?.forEach(pm => {
+      // Calculate derived quantity if it's piece-based, just like we do in total calculation
+      let effectiveQty = pm.quantity;
+      if (pm.mode === 'pieces' && pm.pieces) {
+        const latestBatch = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+        const width = latestBatch?.width || 140;
+        const totalAreaCm2 = pm.pieces.reduce((acc: number, p: any) => acc + (p.length * p.width), 0);
+        effectiveQty = (totalAreaCm2 / width) / 100;
+      }
+
+      const breakdown = getFifoBreakdown(pm.material_id, effectiveQty, pm.consumption_unit, batches, rawMaterials);
+      const totalMissing = breakdown.filter(b => b.is_missing).reduce((acc, b) => acc + b.quantity_used_in_target_unit, 0);
+      if (totalMissing > 0) {
+        const material = rawMaterials.find(m => m.id === pm.material_id);
+        missingItems.push({
+          materialName: material?.name || 'Insumo desconocido',
+          missingQuantity: totalMissing,
+          unit: pm.consumption_unit
+        });
+      }
+    });
+
+    if (missingItems.length > 0) {
+      setMissingStockModal({ isOpen: true, productId, missingItems });
+    } else {
+      if (window.confirm('¿Registrar consumo de stock real? Esta acción descontará inventario.')) {
+        consumeStock(productId);
+      }
+    }
+  };
 
   const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -244,7 +281,7 @@ const Products: React.FC = () => {
                 </div>
 
                 <div className="flex justify-end gap-2 border-t border-gray-100 pt-3">
-                  <Button variant="ghost" size="sm" className="h-8 hover:bg-emerald-50 text-emerald-600" onClick={() => { if (window.confirm('¿Registrar consumo de stock?')) consumeStock(p.id); }}>
+                  <Button variant="ghost" size="sm" className="h-8 hover:bg-emerald-50 text-emerald-600" onClick={() => handleProduce(p.id)}>
                     <PlayCircle size={14} className="mr-1.5" /> Producir
                   </Button>
                   {canCreate && (
@@ -253,8 +290,20 @@ const Products: React.FC = () => {
                     </Button>
                   )}
                   {canEdit && (
-                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-blue-50" onClick={() => { setEditingId(p.id); setFormData(p); setIsModalOpen(true); }} title="Editar">
-                      <Edit2 size={16} className="text-blue-600" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={`h-8 w-8 ${hasProductGeneratedActiveDebt(p.id, movements) ? 'bg-gray-50' : 'hover:bg-blue-50'}`}
+                      onClick={() => {
+                        if (hasProductGeneratedActiveDebt(p.id, movements)) {
+                          alert('Integridad Contable: No se puede editar la receta de un producto que mantiene deuda activa de inventario.');
+                          return;
+                        }
+                        setEditingId(p.id); setFormData(p); setIsModalOpen(true);
+                      }}
+                      title={hasProductGeneratedActiveDebt(p.id, movements) ? "Receta bloqueada por deuda activa" : "Editar"}
+                    >
+                      <Edit2 size={16} className={hasProductGeneratedActiveDebt(p.id, movements) ? "text-gray-400" : "text-blue-600"} />
                     </Button>
                   )}
                   {canDelete && (
@@ -311,7 +360,7 @@ const Products: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 text-center">
                         <div className="flex justify-center gap-1.5 opacity-70 transition-opacity group-hover:opacity-100">
-                          <button className="rounded-lg p-1.5 transition-colors border border-transparent bg-emerald-50 text-emerald-600 hover:border-emerald-200 hover:bg-emerald-100" onClick={() => { if (window.confirm('¿Registrar consumo de stock?')) consumeStock(p.id); }} title="Producir">
+                          <button className="rounded-lg p-1.5 transition-colors border border-transparent bg-emerald-50 text-emerald-600 hover:border-emerald-200 hover:bg-emerald-100" onClick={() => handleProduce(p.id)} title="Producir">
                             <PlayCircle size={16} />
                           </button>
                           {canCreate && (
@@ -320,7 +369,17 @@ const Products: React.FC = () => {
                             </button>
                           )}
                           {canEdit && (
-                            <button className="rounded-lg p-1.5 transition-colors border border-transparent bg-blue-50 text-blue-600 hover:border-blue-200 hover:bg-blue-100" onClick={() => { setEditingId(p.id); setFormData(p); setIsModalOpen(true); }} title="Editar">
+                            <button
+                              className={`rounded-lg p-1.5 transition-colors border border-transparent ${hasProductGeneratedActiveDebt(p.id, movements) ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : 'bg-blue-50 text-blue-600 hover:border-blue-200 hover:bg-blue-100'}`}
+                              onClick={() => {
+                                if (hasProductGeneratedActiveDebt(p.id, movements)) {
+                                  alert('Integridad Contable: No se puede editar la receta de un producto que mantiene deuda activa de inventario.');
+                                  return;
+                                }
+                                setEditingId(p.id); setFormData(p); setIsModalOpen(true);
+                              }}
+                              title={hasProductGeneratedActiveDebt(p.id, movements) ? "Receta bloqueada por deuda activa" : "Editar"}
+                            >
                               <Edit2 size={16} />
                             </button>
                           )}
@@ -603,6 +662,57 @@ const Products: React.FC = () => {
           </div>
         )
       }
+
+      {missingStockModal.isOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6" style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}>
+          <Card className="w-full max-w-lg p-8 shadow-2xl space-y-6 border-red-200">
+            <div className="flex items-center gap-4 text-red-600">
+              <div className="px-4 py-3 bg-red-50 rounded-2xl border border-red-100">
+                <AlertTriangle size={28} />
+              </div>
+              <div>
+                <h3 className="text-xl font-black">Faltante de Inventario</h3>
+                <p className="text-red-500 text-sm font-semibold">Producción en riesgo</p>
+              </div>
+            </div>
+
+            <p className="text-gray-600 text-sm">
+              El sistema ha detectado que <strong className="text-gray-800">no tienes stock suficiente</strong> de los siguientes insumos para fabricar esta receta.
+              Si decides forzar la producción, el sistema registrará un faltante temporal asumiendo el costo transaccional del último lote adquirido para no alterar tus márgenes.
+            </p>
+
+            <div className="bg-red-50/50 rounded-xl p-5 border border-red-100 space-y-4">
+              <h4 className="text-[10px] font-black uppercase tracking-widest text-red-800 flex items-center gap-2">
+                <Package size={12} /> Materiales Incompletos
+              </h4>
+              <ul className="space-y-3">
+                {missingStockModal.missingItems.map((item, idx) => (
+                  <li key={idx} className="flex justify-between items-center text-sm font-bold text-red-900 border-b border-red-100/50 pb-2 last:border-0 last:pb-0">
+                    <span>{item.materialName}</span>
+                    <span className="font-mono bg-white px-3 py-1 rounded-lg text-red-600 shadow-sm border border-red-50">faltan {item.missingQuantity.toFixed(2)} {item.unit}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="flex gap-4 pt-4">
+              <Button variant="ghost" className="flex-1" onClick={() => setMissingStockModal({ isOpen: false, productId: '', missingItems: [] })}>
+                Cancelar Operación
+              </Button>
+              <Button
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white border-transparent"
+                onClick={() => {
+                  consumeStock(missingStockModal.productId);
+                  setMissingStockModal({ isOpen: false, productId: '', missingItems: [] });
+                }}
+              >
+                Forzar Producción
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
     </div >
   );
 };

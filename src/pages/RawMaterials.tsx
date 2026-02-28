@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, Trash2, Edit2, Search, X, History, ShoppingCart, ArrowDownToLine, Printer, Pencil, AlertCircle, Maximize2, Scissors, RotateCcw, Package } from 'lucide-react';
-import { useStore } from '../store';
+import { useStore, getMaterialDebt, calculateTotalFinancialDebt } from '../store';
 import { RawMaterial, Status, Unit, MaterialBatch } from '@/types';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/Badge';
 import { translateError } from '@/utils/errorHandler';
 
 const RawMaterials: React.FC = () => {
-  const { currentCompanyId, currentUserRole, rawMaterials, batches, addRawMaterial, deleteRawMaterial, updateRawMaterial, addBatch, deleteBatch, updateBatch } = useStore();
+  const { currentCompanyId, currentUserRole, rawMaterials, batches, movements, addRawMaterial, deleteRawMaterial, updateRawMaterial, addBatch, deleteBatch, updateBatch } = useStore();
   const { formatCurrency, currencySymbol } = useCurrency();
 
   // 🔹 Helpers de permisos según rol
@@ -54,13 +54,22 @@ const RawMaterials: React.FC = () => {
   const getBatchStats = (materialId: string) => {
     const matBatches = batches.filter(b => b.material_id === materialId);
     const totalOriginalQty = matBatches.reduce((acc, b) => acc + b.initial_quantity, 0);
-    const totalRemainingQty = matBatches.reduce((acc, b) => acc + b.remaining_quantity, 0);
+    let totalRemainingQty = matBatches.reduce((acc, b) => acc + b.remaining_quantity, 0);
+
+    // Deduct active debt from remaining qty
+    const debt = getMaterialDebt(materialId, movements).pendingQty;
+    totalRemainingQty -= debt;
+
     const totalValue = matBatches.reduce((acc, b) => acc + (b.unit_cost * b.initial_quantity), 0);
     const weightedAvgCost = totalOriginalQty > 0 ? totalValue / totalOriginalQty : 0;
     const totalArea = matBatches.reduce((acc, b) => acc + (b.area || 0), 0);
     const avgCostPerM2 = totalArea > 0 ? totalValue / totalArea : 0;
     return { totalOriginalQty, totalRemainingQty, totalValue, weightedAvgCost, totalArea, avgCostPerM2 };
   };
+
+  const totalFinancialDebt = useMemo(() => {
+    return calculateTotalFinancialDebt(movements, rawMaterials);
+  }, [movements, rawMaterials]);
 
   const handleMasterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -247,6 +256,23 @@ const RawMaterials: React.FC = () => {
           .no - print { display: none!important; }
 }
 `}</style>
+
+      {/* Financial Governance Banner */}
+      {totalFinancialDebt > 0 && (
+        <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="h-6 w-6 text-red-600 shrink-0" />
+            <div>
+              <h3 className="text-sm font-bold text-red-900">Producciones realizadas sin respaldo de inventario</h3>
+              <p className="text-xs font-medium text-red-700">Compre e ingrese Lotes Físicos de material para regularizar la integridad contable.</p>
+            </div>
+          </div>
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] uppercase font-bold text-red-500">Deuda Valorizada Estimada</span>
+            <span className="text-lg font-black text-red-700">{formatCurrency(totalFinancialDebt)}</span>
+          </div>
+        </div>
+      )}
 
       {/* Toolbar: Search + Create */}
       <div className="flex items-center gap-2">
