@@ -1,4 +1,4 @@
-import { LayoutDashboard, Layers, Users, CreditCard, Bot, BarChart3, Settings, Package, Beaker } from 'lucide-react';
+import { LayoutDashboard, Layers, Users, CreditCard, Bot, BarChart3, Settings, Package, Beaker, Boxes } from 'lucide-react';
 
 export const MODULES = {
     // ── Tenant Modules (company users) ──
@@ -15,6 +15,14 @@ export const MODULES = {
         name: 'Productos',
         path: '/productos',
         icon: Package,
+        requiredCapability: 'view_products',
+        tenantOnly: true
+    },
+    finished_goods: {
+        id: 'finished_goods',
+        name: 'Inventario',
+        path: '/inventario',
+        icon: Boxes,
         requiredCapability: 'view_products',
         tenantOnly: true
     },

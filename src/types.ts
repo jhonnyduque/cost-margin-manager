@@ -22,7 +22,7 @@ export type SubscriptionTier = Enums<'subscription_tier'>;
 export type RawMaterial = Tables<'raw_materials'>;
 export type MaterialBatch = Tables<'material_batches'>;
 export type StockMovement = Tables<'stock_movements'>;
-
+export type ProductMovement = Tables<'product_movements'>;
 export interface ProductMaterial {
   material_id: string;
   quantity: number;

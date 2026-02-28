@@ -14,6 +14,7 @@ import Login from '@/pages/Login';
 import NotProvisioned from '@/pages/NotProvisioned';
 import Settings from '@/pages/Settings';
 import MorePage from '@/pages/MorePage'; // ✅ Import agregado
+import FinishedGoods from '@/pages/FinishedGoods';
 
 // Pages (New in Src)
 import PlatformAdmin from './pages/PlatformAdmin';
@@ -114,6 +115,7 @@ const AppContent: React.FC = () => {
 
                 {/* Modules */}
                 <Route path="/productos" element={<Products />} />
+                <Route path="/inventario" element={<FinishedGoods />} />
                 <Route path="/materias-primas" element={<RawMaterials />} />
                 <Route path="/equipo" element={<Team />} />
                 <Route path="/platform/users" element={<Team />} />

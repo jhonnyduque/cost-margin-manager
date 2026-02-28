@@ -28,7 +28,7 @@ interface ProductMaterialUI extends ProductMaterial {
 }
 
 const Products: React.FC = () => {
-  const { currentCompanyId, currentUserRole, products, rawMaterials, batches, movements, addProduct, deleteProduct, updateProduct, consumeStock } = useStore();
+  const { currentCompanyId, currentUserRole, products, rawMaterials, batches, movements, addProduct, deleteProduct, updateProduct, consumeStock, consumeStockBatch } = useStore();
   const allowedRoles = ['super_admin', 'admin', 'owner', 'manager'];
   const canCreate = allowedRoles.includes(currentUserRole || '');
   const canEdit = allowedRoles.includes(currentUserRole || '');
@@ -38,29 +38,37 @@ const Products: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedMaterial, setExpandedMaterial] = useState<number | null>(null);
-  const [missingStockModal, setMissingStockModal] = useState<{ isOpen: boolean; productId: string; missingItems: any[] }>({ isOpen: false, productId: '', missingItems: [] });
+  const [missingStockModal, setMissingStockModal] = useState<{ isOpen: boolean; productId: string; missingItems: any[]; quantity: number; targetPrice: number }>({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0 });
+  const [successModal, setSuccessModal] = useState<{ isOpen: boolean; productName: string; cost: number; quantity: number } | null>(null);
 
   const [formData, setFormData] = useState<any>({
     name: '', reference: '', price: 0, target_margin: 30, materials: [], status: 'activa'
   });
 
-  const handleProduce = (productId: string) => {
+  const [productionModal, setProductionModal] = useState<{ isOpen: boolean; productId: string; quantity: number; cost: number; targetPrice: number; productName: string }>({ isOpen: false, productId: '', quantity: 1, cost: 0, targetPrice: 0, productName: '' });
+
+  const handleConfirmBatchProduction = () => {
+    const { productId, quantity, targetPrice } = productionModal;
     const product = products.find(p => p.id === productId);
-    if (!product) return;
+    if (!product || quantity <= 0) return;
 
     const missingItems: any[] = [];
+    let totalCostForBatch = 0;
+
     product.materials?.forEach(pm => {
-      // Calculate derived quantity if it's piece-based, just like we do in total calculation
-      let effectiveQty = pm.quantity;
+      let effectiveQty = pm.quantity * quantity;
       if (pm.mode === 'pieces' && pm.pieces) {
         const latestBatch = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
         const width = latestBatch?.width || 140;
         const totalAreaCm2 = pm.pieces.reduce((acc: number, p: any) => acc + (p.length * p.width), 0);
-        effectiveQty = (totalAreaCm2 / width) / 100;
+        effectiveQty = ((totalAreaCm2 / width) / 100) * quantity;
       }
 
       const breakdown = getFifoBreakdown(pm.material_id, effectiveQty, pm.consumption_unit, batches, rawMaterials);
       const totalMissing = breakdown.filter(b => b.is_missing).reduce((acc, b) => acc + b.quantity_used_in_target_unit, 0);
+
+      breakdown.forEach(b => { totalCostForBatch += b.subtotal; });
+
       if (totalMissing > 0) {
         const material = rawMaterials.find(m => m.id === pm.material_id);
         missingItems.push({
@@ -72,11 +80,15 @@ const Products: React.FC = () => {
     });
 
     if (missingItems.length > 0) {
-      setMissingStockModal({ isOpen: true, productId, missingItems });
+      setMissingStockModal({ isOpen: true, productId, missingItems, quantity, targetPrice });
+      setProductionModal({ ...productionModal, isOpen: false });
     } else {
-      if (window.confirm('¿Registrar consumo de stock real? Esta acción descontará inventario.')) {
-        consumeStock(productId);
-      }
+      consumeStockBatch(productId, quantity, targetPrice).then(() => {
+        setProductionModal({ ...productionModal, isOpen: false });
+        setSuccessModal({ isOpen: true, productName: product.name, cost: totalCostForBatch, quantity });
+      }).catch(err => {
+        alert('Error registrando producción: ' + err.message);
+      });
     }
   };
 
@@ -281,7 +293,7 @@ const Products: React.FC = () => {
                 </div>
 
                 <div className="flex justify-end gap-2 border-t border-gray-100 pt-3">
-                  <Button variant="ghost" size="sm" className="h-8 hover:bg-emerald-50 text-emerald-600" onClick={() => handleProduce(p.id)}>
+                  <Button variant="ghost" size="sm" className="h-8 hover:bg-emerald-50 text-emerald-600" onClick={() => setProductionModal({ isOpen: true, productId: p.id, productName: p.name, quantity: 1, targetPrice: p.price, cost })}>
                     <PlayCircle size={14} className="mr-1.5" /> Producir
                   </Button>
                   {canCreate && (
@@ -360,7 +372,7 @@ const Products: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 text-center">
                         <div className="flex justify-center gap-1.5 opacity-70 transition-opacity group-hover:opacity-100">
-                          <button className="rounded-lg p-1.5 transition-colors border border-transparent bg-emerald-50 text-emerald-600 hover:border-emerald-200 hover:bg-emerald-100" onClick={() => handleProduce(p.id)} title="Producir">
+                          <button className="rounded-lg p-1.5 transition-colors border border-transparent bg-emerald-50 text-emerald-600 hover:border-emerald-200 hover:bg-emerald-100" onClick={() => setProductionModal({ isOpen: true, productId: p.id, productName: p.name, quantity: 1, targetPrice: p.price, cost })} title="Producir">
                             <PlayCircle size={16} />
                           </button>
                           {canCreate && (
@@ -696,17 +708,123 @@ const Products: React.FC = () => {
             </div>
 
             <div className="flex gap-4 pt-4">
-              <Button variant="ghost" className="flex-1" onClick={() => setMissingStockModal({ isOpen: false, productId: '', missingItems: [] })}>
+              <Button variant="ghost" className="flex-1" onClick={() => setMissingStockModal({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0 })}>
                 Cancelar Operación
               </Button>
               <Button
                 className="flex-1 bg-red-600 hover:bg-red-700 text-white border-transparent"
                 onClick={() => {
-                  consumeStock(missingStockModal.productId);
-                  setMissingStockModal({ isOpen: false, productId: '', missingItems: [] });
+                  const product = products.find(p => p.id === missingStockModal.productId);
+                  if (!product) return;
+
+                  consumeStockBatch(missingStockModal.productId, missingStockModal.quantity, missingStockModal.targetPrice).then(() => {
+                    const baseCost = calculateProductCost(product, batches, rawMaterials);
+                    setMissingStockModal({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0 });
+                    setSuccessModal({ isOpen: true, productName: product?.name || '', cost: baseCost * missingStockModal.quantity, quantity: missingStockModal.quantity });
+                  }).catch(err => {
+                    alert('Error forzando producción: ' + err.message);
+                  });
                 }}
               >
                 Forzar Producción
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {successModal && successModal.isOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6" style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}>
+          <Card className="w-full max-w-sm p-8 text-center space-y-6 border-emerald-200">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 mb-4">
+              <CheckCircle2 size={32} className="text-emerald-500" />
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-gray-900">¡Producción Exitosa!</h3>
+              <p className="mt-2 text-sm text-gray-500">
+                Se ha registrado el ingreso de <strong className="text-gray-900">{successModal.quantity} unid.</strong> y descontado el inventario de materias primas para:
+                <br />
+                <strong className="text-gray-800">{successModal.productName}</strong>
+              </p>
+            </div>
+
+            <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 mb-1">Costo Total del Lote</p>
+              <p className="text-2xl font-black text-emerald-700">{formatCurrency(successModal.cost)}</p>
+              <p className="text-xs text-emerald-600/70 mt-1 font-medium">{formatCurrency(successModal.cost / successModal.quantity)} por unidad</p>
+            </div>
+
+            <Button
+              variant="primary"
+              className="w-full"
+              onClick={() => setSuccessModal(null)}
+            >
+              Entendido
+            </Button>
+          </Card>
+        </div>
+      )}
+
+      {productionModal.isOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6" style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}>
+          <Card className="w-full max-w-md p-6 shadow-2xl border border-gray-200 bg-white">
+            <div className="flex justify-between items-center mb-6 border-b pb-4">
+              <h3 className="text-xl font-black text-gray-900 flex items-center gap-2">
+                <Package size={20} className="text-emerald-500" /> Nuevo Lote
+              </h3>
+              <button
+                onClick={() => setProductionModal({ ...productionModal, isOpen: false })}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <p className="text-sm font-bold text-gray-500 uppercase tracking-wide">Producto a elaborar</p>
+                <p className="text-lg font-black text-gray-900">{productionModal.productName}</p>
+                <p className="text-sm text-gray-500 mb-4">Costo unitario actual (FIFO): <span className="font-mono font-medium text-gray-700">{formatCurrency(productionModal.cost)}</span></p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase mb-2">Cantidad a fabricar</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={productionModal.quantity}
+                    onChange={e => setProductionModal({ ...productionModal, quantity: Number(e.target.value) || 1 })}
+                    className="text-lg font-black rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase mb-2">Precio Venta (Unid.)</label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={productionModal.targetPrice}
+                    onChange={e => setProductionModal({ ...productionModal, targetPrice: Number(e.target.value) || 0 })}
+                    className="text-lg font-mono font-black rounded-xl text-emerald-600"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-emerald-50/50 rounded-xl p-4 border border-emerald-100 flex justify-between items-center">
+                <div>
+                  <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Costo Estimado Lote</p>
+                  <p className="text-xl font-black text-emerald-700">{formatCurrency(productionModal.cost * productionModal.quantity)}</p>
+                </div>
+              </div>
+
+              <Button
+                variant="primary"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl py-6"
+                onClick={handleConfirmBatchProduction}
+                icon={<CheckCircle2 size={20} />}
+              >
+                Confirmar Producción
               </Button>
             </div>
           </Card>

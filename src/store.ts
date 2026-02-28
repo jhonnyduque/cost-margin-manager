@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Product, RawMaterial, Unit, ProductMaterial, MaterialBatch, StockMovement, UserRole } from '@/types';
+import { Product, RawMaterial, Unit, ProductMaterial, MaterialBatch, StockMovement, UserRole, ProductMovement } from '@/types';
 import { supabase } from './services/supabase';
 import { fetchProductsFromSupabase } from './services/products.service';
 
@@ -18,6 +18,7 @@ interface AppState {
   rawMaterials: RawMaterial[];
   batches: MaterialBatch[];
   movements: StockMovement[];
+  productMovements: ProductMovement[];
 
   addProduct: (product: Product) => Promise<void>;
   updateProduct: (product: Product) => Promise<void>;
@@ -27,6 +28,7 @@ interface AppState {
   loadRawMaterialsFromSupabase: () => Promise<void>;
   loadBatchesFromSupabase: () => Promise<void>;
   loadMovementsFromSupabase: () => Promise<void>;
+  loadProductMovementsFromSupabase: () => Promise<void>;
   logout: () => void;
 
   addRawMaterial: (material: RawMaterial) => Promise<void>;
@@ -38,6 +40,7 @@ interface AppState {
   updateBatch: (batch: MaterialBatch) => Promise<void>;
   updateBatchRemaining: (id: string, newQty: number) => void;
   consumeStock: (productId: string) => void;
+  consumeStockBatch: (productId: string, quantity: number, targetPrice?: number) => Promise<void>;
 }
 
 export const getConversionFactor = (buyUnit: Unit, useUnit: Unit): number => {
@@ -182,6 +185,7 @@ export const useStore = create<AppState>()(
         get().loadRawMaterialsFromSupabase();
         get().loadBatchesFromSupabase();
         get().loadMovementsFromSupabase();
+        get().loadProductMovementsFromSupabase();
       },
 
       setImpersonation: (active, companyId) => {
@@ -192,6 +196,7 @@ export const useStore = create<AppState>()(
       rawMaterials: [],
       batches: [],
       movements: [],
+      productMovements: [],
 
       loadProductsFromSupabase: async () => {
         const companyId = get().currentCompanyId;
@@ -250,6 +255,20 @@ export const useStore = create<AppState>()(
         }
       },
 
+      loadProductMovementsFromSupabase: async () => {
+        const companyId = get().currentCompanyId;
+        if (!companyId) return;
+
+        const { data, error } = await supabase
+          .from('product_movements')
+          .select('*')
+          .eq('company_id', companyId);
+
+        if (!error && data) {
+          set({ productMovements: data as ProductMovement[] });
+        }
+      },
+
       logout: () => {
         set({
           currentCompanyId: null,
@@ -259,7 +278,8 @@ export const useStore = create<AppState>()(
           products: [],
           rawMaterials: [],
           batches: [],
-          movements: []
+          movements: [],
+          productMovements: []
         });
       },
 
@@ -589,6 +609,97 @@ export const useStore = create<AppState>()(
             movements: [...state.movements, ...syncMovements] as StockMovement[],
           };
         });
+      },
+
+      consumeStockBatch: async (productId: string, quantity: number, targetPrice?: number) => {
+        const companyId = get().currentCompanyId;
+        const product = get().products.find(p => p.id === productId);
+        if (!product || !companyId || quantity <= 0) return;
+
+        let currentBatches = [...get().batches];
+        const syncMovements: any[] = [];
+        const now = new Date().toISOString();
+        let totalCostForBatch = 0;
+
+        // 1. Calculate & prepare stock deduction
+        product.materials?.forEach(pm => {
+          let reqQty = pm.quantity * quantity;
+          if (pm.mode === 'pieces' && pm.pieces) {
+            const latestBatch = currentBatches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+            const width = latestBatch?.width || 140;
+            const totalAreaCm2 = pm.pieces.reduce((acc: number, p: any) => acc + (p.length * p.width), 0);
+            reqQty = ((totalAreaCm2 / width) / 100) * quantity;
+          }
+
+          const breakdown = getFifoBreakdown(
+            pm.material_id,
+            reqQty,
+            pm.consumption_unit,
+            currentBatches,
+            get().rawMaterials
+          );
+
+          breakdown.forEach(item => {
+            if (item.batch_id !== 'faltante') {
+              currentBatches = currentBatches.map(b => {
+                if (b.id === item.batch_id) {
+                  const newRemaining = Math.max(0, b.remaining_quantity - item.quantity_used);
+                  return { ...b, remaining_quantity: newRemaining };
+                }
+                return b;
+              });
+            }
+            totalCostForBatch += item.subtotal;
+            syncMovements.push({
+              id: crypto.randomUUID(),
+              company_id: companyId,
+              material_id: pm.material_id,
+              batch_id: item.batch_id === 'faltante' ? null : item.batch_id,
+              date: now,
+              type: item.is_missing ? 'egreso_asumido' : 'egreso',
+              quantity: item.quantity_used,
+              unit_cost: item.unit_cost,
+              reference: item.is_missing ? `Faltante Lote (Prod_ID: ${product.id})` : `Prod Lote: ${product.name}`,
+              created_at: now
+            });
+          });
+        });
+
+        const perUnitCost = totalCostForBatch / quantity;
+
+        // 2. Prepare Ledger insertion
+        const productMovement: ProductMovement = {
+          id: crypto.randomUUID(),
+          company_id: companyId,
+          product_id: productId,
+          type: 'ingreso_produccion',
+          quantity: quantity,
+          unit_cost: perUnitCost,
+          reference: `Lote Producción: ${quantity} uds`,
+          created_at: now
+        };
+
+        // 3. Simulated Atomicity
+        for (const batch of currentBatches) {
+          await supabase.from('material_batches').update({ remaining_quantity: batch.remaining_quantity }).eq('id', batch.id).eq('company_id', companyId);
+        }
+
+        if (syncMovements.length > 0) {
+          await supabase.from('stock_movements').insert(syncMovements);
+        }
+
+        await supabase.from('product_movements').insert([productMovement]);
+
+        if (targetPrice !== undefined && targetPrice !== product.price) {
+          await supabase.from('products').update({ price: targetPrice }).eq('id', productId).eq('company_id', companyId);
+          await get().updateProduct({ ...product, price: targetPrice });
+        }
+
+        set((state) => ({
+          batches: currentBatches,
+          movements: [...state.movements, ...syncMovements] as StockMovement[],
+          productMovements: [productMovement, ...state.productMovements]
+        }));
       },
     }),
     {
