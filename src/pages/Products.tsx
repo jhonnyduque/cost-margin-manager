@@ -37,7 +37,8 @@ interface ProductMaterialUI extends ProductMaterial {
 }
 
 const Products: React.FC = () => {
-  const { currentCompanyId, products, rawMaterials, batches, addProduct, deleteProduct, updateProduct, consumeStock } = useStore();
+  const { currentCompanyId, currentUserRole, products, rawMaterials, batches, addProduct, deleteProduct, updateProduct, consumeStock } = useStore();
+  const canEdit = ['admin', 'manager', 'owner'].includes(currentUserRole || '');
   const { formatCurrency, currencySymbol } = useCurrency();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -190,17 +191,19 @@ const Products: React.FC = () => {
         title="Catálogo de Productos"
         description="Gestión de Escandallos (Costos FIFO)"
         actions={
-          <Button
-            variant="primary"
-            onClick={() => {
-              setEditingId(null);
-              setFormData({ name: '', reference: '', price: 0, target_margin: 30, materials: [], status: 'activa' });
-              setIsModalOpen(true);
-            }}
-            icon={<Plus size={18} />}
-          >
-            Nuevo Producto
-          </Button>
+          canEdit ? (
+            <Button
+              variant="primary"
+              onClick={() => {
+                setEditingId(null);
+                setFormData({ name: '', reference: '', price: 0, target_margin: 30, materials: [], status: 'activa' });
+                setIsModalOpen(true);
+              }}
+              icon={<Plus size={18} />}
+            >
+              Nuevo Producto
+            </Button>
+          ) : undefined
         }
       />
 
@@ -248,24 +251,28 @@ const Products: React.FC = () => {
                     <Button variant="ghost" size="sm" onClick={() => { if (window.confirm('¿Registrar consumo de stock?')) consumeStock(p.id); }} title="Producir">
                       <PlayCircle size={16} className="text-emerald-500" />
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDuplicate(p)} title="Duplicar">
-                      <Copy size={16} className="text-indigo-400" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => { setEditingId(p.id); setFormData(p); setIsModalOpen(true); }} title="Editar">
-                      <Edit2 size={16} />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={async () => {
-                      if (window.confirm("¿Seguro que deseas eliminar este producto?")) {
-                        try {
-                          await deleteProduct(p.id);
-                        } catch (err: any) {
-                          console.error("Error deleting product:", err);
-                          alert(`No se pudo eliminar el producto: ${translateError(err)}`);
-                        }
-                      }
-                    }} title="Eliminar">
-                      <Trash2 size={16} className="text-red-400" />
-                    </Button>
+                    {canEdit && (
+                      <>
+                        <Button variant="ghost" size="sm" onClick={() => handleDuplicate(p)} title="Duplicar">
+                          <Copy size={16} className="text-indigo-400" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => { setEditingId(p.id); setFormData(p); setIsModalOpen(true); }} title="Editar">
+                          <Edit2 size={16} />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={async () => {
+                          if (window.confirm("¿Seguro que deseas eliminar este producto?")) {
+                            try {
+                              await deleteProduct(p.id);
+                            } catch (err: any) {
+                              console.error("Error deleting product:", err);
+                              alert(`No se pudo eliminar el producto: ${translateError(err)}`);
+                            }
+                          }
+                        }} title="Eliminar">
+                          <Trash2 size={16} className="text-red-400" />
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>

@@ -1,0 +1,12 @@
+CREATE POLICY "raw_materials_delete" ON "public"."raw_materials" FOR DELETE USING (("public"."is_super_admin"() OR (("company_id" IN ( SELECT "public"."user_companies"() AS "user_companies")) AND "public"."has_role_level"("company_id", 'manager'::"text"))));
+---
+
+CREATE POLICY "raw_materials_insert" ON "public"."raw_materials" FOR INSERT WITH CHECK (("public"."is_super_admin"() OR (("company_id" IN ( SELECT "public"."user_companies"() AS "user_companies")) AND "public"."has_role_level"("company_id", 'operator'::"text"))));
+---
+
+CREATE POLICY "raw_materials_select" ON "public"."raw_materials" FOR SELECT USING (("public"."is_super_admin"() OR (("company_id" IN ( SELECT "public"."user_companies"() AS "user_companies")) AND ("deleted_at" IS NULL))));
+---
+
+CREATE POLICY "raw_materials_update" ON "public"."raw_materials" FOR UPDATE USING (("public"."is_super_admin"() OR (("company_id" IN ( SELECT "public"."user_companies"() AS "user_companies")) AND "public"."has_role_level"("company_id", 'operator'::"text")))) WITH CHECK (("public"."is_super_admin"() OR (("company_id" IN ( SELECT "public"."user_companies"() AS "user_companies")) AND "public"."has_role_level"("company_id", 'operator'::"text"))));
+---
+

@@ -21,8 +21,9 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { translateError } from '@/utils/errorHandler';
 
 const RawMaterials: React.FC = () => {
-  const { currentCompanyId, rawMaterials, batches, addRawMaterial, deleteRawMaterial, updateRawMaterial, addBatch, deleteBatch, updateBatch } = useStore();
+  const { currentCompanyId, currentUserRole, rawMaterials, batches, addRawMaterial, deleteRawMaterial, updateRawMaterial, addBatch, deleteBatch, updateBatch } = useStore();
   const { formatCurrency, currencySymbol } = useCurrency();
+  const canEdit = ['admin', 'owner', 'manager'].includes(currentUserRole || '');
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
@@ -275,17 +276,19 @@ const RawMaterials: React.FC = () => {
             className="w-full rounded-xl bg-white pl-9 pr-3 py-2.5 text-sm text-slate-700 ring-1 ring-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
           />
         </div>
-        <button
-          onClick={() => {
-            setEditingId(null);
-            setFormData({ name: '', description: '', type: 'Tela', unit: 'metro', provider: '', status: 'activa', initialQty: 0, unitCost: 0, width: 140 });
-            setIsModalOpen(true);
-          }}
-          className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 text-white font-medium shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all h-10 w-10 sm:w-auto sm:px-4 flex-shrink-0"
-        >
-          <Plus size={18} />
-          <span className="hidden sm:inline text-sm">Nuevo Material</span>
-        </button>
+        {canEdit && (
+          <button
+            onClick={() => {
+              setEditingId(null);
+              setFormData({ name: '', description: '', type: 'Tela', unit: 'metro', provider: '', status: 'activa', initialQty: 0, unitCost: 0, width: 140 });
+              setIsModalOpen(true);
+            }}
+            className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 text-white font-medium shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all h-10 w-10 sm:w-auto sm:px-4 flex-shrink-0"
+          >
+            <Plus size={18} />
+            <span className="hidden sm:inline text-sm">Nuevo Material</span>
+          </button>
+        )}
       </div>
 
       {/* ========== MOBILE: Cards ========== */}
@@ -333,30 +336,34 @@ const RawMaterials: React.FC = () => {
                     <History size={13} />
                     Lotes
                   </button>
-                  <button
-                    onClick={() => {
-                      const stats = getBatchStats(m.id);
-                      setEditingId(m.id);
-                      setFormData({ ...m, initialQty: stats.totalRemainingQty, unitCost: stats.weightedAvgCost });
-                      setIsModalOpen(true);
-                    }}
-                    className="flex items-center justify-center rounded-lg bg-slate-50 p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 active:scale-95 transition-all"
-                  >
-                    <Edit2 size={15} />
-                  </button>
-                  <button
-                    onClick={async () => {
-                      try {
-                        await deleteRawMaterial(m.id);
-                      } catch (err: any) {
-                        console.error("Error deleting material:", err);
-                        alert(`No se pudo eliminar el material: ${translateError(err)}`);
-                      }
-                    }}
-                    className="flex items-center justify-center rounded-lg bg-slate-50 p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600 active:scale-95 transition-all"
-                  >
-                    <Trash2 size={15} />
-                  </button>
+                  {canEdit && (
+                    <>
+                      <button
+                        onClick={() => {
+                          const stats = getBatchStats(m.id);
+                          setEditingId(m.id);
+                          setFormData({ ...m, initialQty: stats.totalRemainingQty, unitCost: stats.weightedAvgCost });
+                          setIsModalOpen(true);
+                        }}
+                        className="flex items-center justify-center rounded-lg bg-slate-50 p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 active:scale-95 transition-all"
+                      >
+                        <Edit2 size={15} />
+                      </button>
+                      <button
+                        onClick={async () => {
+                          try {
+                            await deleteRawMaterial(m.id);
+                          } catch (err: any) {
+                            console.error("Error deleting material:", err);
+                            alert(`No se pudo eliminar el material: ${translateError(err)}`);
+                          }
+                        }}
+                        className="flex items-center justify-center rounded-lg bg-slate-50 p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600 active:scale-95 transition-all"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             );
@@ -404,24 +411,28 @@ const RawMaterials: React.FC = () => {
                       <Button variant="ghost" size="sm" onClick={() => { setActiveMaterialId(m.id); setIsBatchModalOpen(true); }} title="Ver Lotes">
                         <History size={16} className="text-indigo-400" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => {
-                        const stats = getBatchStats(m.id);
-                        setEditingId(m.id);
-                        setFormData({ ...m, initialQty: stats.totalRemainingQty, unitCost: stats.weightedAvgCost });
-                        setIsModalOpen(true);
-                      }}>
-                        <Edit2 size={16} />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={async () => {
-                        try {
-                          await deleteRawMaterial(m.id);
-                        } catch (err: any) {
-                          console.error("Error deleting material:", err);
-                          alert(`No se pudo eliminar el material: ${translateError(err)}`);
-                        }
-                      }}>
-                        <Trash2 size={16} className="text-red-400" />
-                      </Button>
+                      {canEdit && (
+                        <>
+                          <Button variant="ghost" size="sm" onClick={() => {
+                            const stats = getBatchStats(m.id);
+                            setEditingId(m.id);
+                            setFormData({ ...m, initialQty: stats.totalRemainingQty, unitCost: stats.weightedAvgCost });
+                            setIsModalOpen(true);
+                          }}>
+                            <Edit2 size={16} />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={async () => {
+                            try {
+                              await deleteRawMaterial(m.id);
+                            } catch (err: any) {
+                              console.error("Error deleting material:", err);
+                              alert(`No se pudo eliminar el material: ${translateError(err)}`);
+                            }
+                          }}>
+                            <Trash2 size={16} className="text-red-400" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -607,78 +618,80 @@ const RawMaterials: React.FC = () => {
                   </div>
                 </div>
 
-                <form onSubmit={handleBatchSubmit} className="space-y-4 sm:space-y-6">
-                  <div className="grid grid-cols-2 items-end gap-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-6">
-                    <Input
-                      type="date"
-                      label="Fecha"
-                      value={batchFormData.date}
-                      onChange={e => setBatchFormData({ ...batchFormData, date: e.target.value })}
-                      required
-                    />
-                    <div className="col-span-2 lg:col-span-2">
+                {canEdit && (
+                  <form onSubmit={handleBatchSubmit} className="space-y-4 sm:space-y-6">
+                    <div className="grid grid-cols-2 items-end gap-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-6">
                       <Input
-                        label="Proveedor / Ref."
-                        value={batchFormData.provider}
-                        onChange={e => setBatchFormData({ ...batchFormData, provider: e.target.value })}
-                      />
-                    </div>
-
-                    {entry_mode === 'rollo' ? (
-                      <Input
-                        label="Metros Lineales"
-                        type="number"
-                        step="0.01"
-                        value={batchFormData.initial_quantity || ''}
-                        onChange={e => setBatchFormData({ ...batchFormData, initial_quantity: parseFloat(e.target.value) })}
+                        type="date"
+                        label="Fecha"
+                        value={batchFormData.date}
+                        onChange={e => setBatchFormData({ ...batchFormData, date: e.target.value })}
                         required
                       />
-                    ) : (
+                      <div className="col-span-2 lg:col-span-2">
+                        <Input
+                          label="Proveedor / Ref."
+                          value={batchFormData.provider}
+                          onChange={e => setBatchFormData({ ...batchFormData, provider: e.target.value })}
+                        />
+                      </div>
+
+                      {entry_mode === 'rollo' ? (
+                        <Input
+                          label="Metros Lineales"
+                          type="number"
+                          step="0.01"
+                          value={batchFormData.initial_quantity || ''}
+                          onChange={e => setBatchFormData({ ...batchFormData, initial_quantity: parseFloat(e.target.value) })}
+                          required
+                        />
+                      ) : (
+                        <Input
+                          label="Largo (cm)"
+                          type="number"
+                          step="0.01"
+                          value={batchFormData.length || ''}
+                          onChange={e => setBatchFormData({ ...batchFormData, length: parseFloat(e.target.value) })}
+                          required
+                        />
+                      )}
+
                       <Input
-                        label="Largo (cm)"
+                        label="Ancho (cm)"
+                        type="number"
+                        step="1"
+                        value={batchFormData.width || ''}
+                        onChange={e => setBatchFormData({ ...batchFormData, width: parseInt(e.target.value) })}
+                        required
+                        className="text-emerald-700"
+                      />
+
+                      <Input
+                        label={entry_mode === 'rollo' ? `Costo/Metro (${currencySymbol})` : `Costo Total (${currencySymbol})`}
                         type="number"
                         step="0.01"
-                        value={batchFormData.length || ''}
-                        onChange={e => setBatchFormData({ ...batchFormData, length: parseFloat(e.target.value) })}
+                        value={batchFormData.unit_cost || ''}
+                        onChange={e => setBatchFormData({ ...batchFormData, unit_cost: parseFloat(e.target.value) })}
                         required
                       />
-                    )}
-
-                    <Input
-                      label="Ancho (cm)"
-                      type="number"
-                      step="1"
-                      value={batchFormData.width || ''}
-                      onChange={e => setBatchFormData({ ...batchFormData, width: parseInt(e.target.value) })}
-                      required
-                      className="text-emerald-700"
-                    />
-
-                    <Input
-                      label={entry_mode === 'rollo' ? `Costo/Metro (${currencySymbol})` : `Costo Total (${currencySymbol})`}
-                      type="number"
-                      step="0.01"
-                      value={batchFormData.unit_cost || ''}
-                      onChange={e => setBatchFormData({ ...batchFormData, unit_cost: parseFloat(e.target.value) })}
-                      required
-                    />
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-4 rounded-xl sm:rounded-2xl border border-indigo-100 bg-white/60 p-3 sm:p-4 shadow-sm">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-bold uppercase text-gray-400">Área Calculada</span>
-                      <span className="text-base sm:text-lg font-black text-indigo-900">{calculatedArea.toFixed(2)} m²</span>
                     </div>
-                    <div className="mx-2 hidden h-8 w-px bg-indigo-100 sm:block"></div>
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-bold uppercase text-gray-400">Costo Real / m²</span>
-                      <span className="text-base sm:text-lg font-black text-emerald-600">{formatCurrency(calculatedCostPerM2)}/m²</span>
+
+                    <div className="flex flex-wrap items-center gap-4 rounded-xl sm:rounded-2xl border border-indigo-100 bg-white/60 p-3 sm:p-4 shadow-sm">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold uppercase text-gray-400">Área Calculada</span>
+                        <span className="text-base sm:text-lg font-black text-indigo-900">{calculatedArea.toFixed(2)} m²</span>
+                      </div>
+                      <div className="mx-2 hidden h-8 w-px bg-indigo-100 sm:block"></div>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold uppercase text-gray-400">Costo Real / m²</span>
+                        <span className="text-base sm:text-lg font-black text-emerald-600">{formatCurrency(calculatedCostPerM2)}/m²</span>
+                      </div>
+                      <div className="ml-auto w-full sm:w-auto">
+                        <Button type="submit" variant="primary" icon={<Plus size={18} />} className="w-full sm:w-auto">Confirmar Entrada</Button>
+                      </div>
                     </div>
-                    <div className="ml-auto w-full sm:w-auto">
-                      <Button type="submit" variant="primary" icon={<Plus size={18} />} className="w-full sm:w-auto">Confirmar Entrada</Button>
-                    </div>
-                  </div>
-                </form>
+                  </form>
+                )}
               </div>
 
               <div className="space-y-4">
@@ -733,15 +746,19 @@ const RawMaterials: React.FC = () => {
                             </TableCell>
                             <TableCell className="no-print text-center">
                               <div className="flex justify-center gap-1">
-                                <Button variant="ghost" size="sm" onClick={() => setEditingBatchData(batch)} icon={<Pencil size={16} />} />
-                                <Button variant="ghost" size="sm" onClick={async () => {
-                                  try {
-                                    await deleteBatch(batch.id);
-                                  } catch (err: any) {
-                                    console.error("Error deleting batch:", err);
-                                    alert(`No se pudo eliminar el lote: ${translateError(err)}`);
-                                  }
-                                }} icon={<Trash2 size={16} className="text-red-400" />} />
+                                {canEdit && (
+                                  <>
+                                    <Button variant="ghost" size="sm" onClick={() => setEditingBatchData(batch)} icon={<Pencil size={16} />} />
+                                    <Button variant="ghost" size="sm" onClick={async () => {
+                                      try {
+                                        await deleteBatch(batch.id);
+                                      } catch (err: any) {
+                                        console.error("Error deleting batch:", err);
+                                        alert(`No se pudo eliminar el lote: ${translateError(err)}`);
+                                      }
+                                    }} icon={<Trash2 size={16} className="text-red-400" />} />
+                                  </>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>
