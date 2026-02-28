@@ -392,10 +392,10 @@ const RawMaterials: React.FC = () => {
                   <TableCell className="px-6">
                     <div className="flex items-center justify-end gap-1.5">
                       <span className={`font-semibold ${totalRemainingQty <= 0
-                          ? 'text-red-600'
-                          : totalRemainingQty <= 5
-                            ? 'text-amber-600'
-                            : 'text-gray-900'
+                        ? 'text-red-600'
+                        : totalRemainingQty <= 5
+                          ? 'text-amber-600'
+                          : 'text-gray-900'
                         }`}>
                         {totalRemainingQty.toFixed(2)}
                       </span>
