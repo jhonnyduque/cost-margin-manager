@@ -123,9 +123,27 @@ export const calculateProductCost = (
 ) => {
   const materials = product.materials ?? [];
   return materials.reduce((total, pm) => {
+    // ⚠️ PRO GUARD: Nunca confiar en pm.quantity si mode === 'pieces'.
+    // pm.quantity se guarda usando el ancho del lote en el momento del save,
+    // lo que puede quedar obsoleto. Ignorarlo siempre y recalcular en vivo.
+    const ignorePersistedQuantity = (pm as any).mode === 'pieces';
+
+    let effectiveQty = pm.quantity;
+    if (ignorePersistedQuantity && Array.isArray((pm as any).pieces) && (pm as any).pieces.length > 0) {
+      const latestBatch = batches
+        .filter(b => b.material_id === pm.material_id)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+      const width = latestBatch?.width || 140;
+      const totalAreaCm2 = (pm as any).pieces.reduce(
+        (acc: number, piece: { length: number; width: number }) => acc + piece.length * piece.width,
+        0
+      );
+      effectiveQty = (totalAreaCm2 / width) / 100; // → metros lineales
+    }
+
     const fifoCost = calculateFifoCost(
       pm.material_id,
-      pm.quantity,
+      effectiveQty,
       pm.consumption_unit,
       batches,
       rawMaterials

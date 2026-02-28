@@ -23,6 +23,7 @@ const RawMaterials: React.FC = () => {
   const canDelete = allowedRoles.includes(currentUserRole || '');
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [unitFilter, setUnitFilter] = useState<'todos' | Unit>('todos');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [expandedMaterialId, setExpandedMaterialId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -48,7 +49,10 @@ const RawMaterials: React.FC = () => {
   const filteredMaterials = rawMaterials.filter(m =>
     m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     m.provider.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ).filter(m => {
+    if (unitFilter === 'todos') return true;
+    return m.unit === unitFilter;
+  });
 
   const getBatchStats = (materialId: string) => {
     const matBatches = batches.filter(b => b.material_id === materialId);
@@ -249,20 +253,37 @@ const RawMaterials: React.FC = () => {
 
   return (
     <div className="space-y-5 lg:space-y-6">
+      <style>{`
+      @media print {
+        body * { visibility: hidden; }
+        #print-area, #print-area * { visibility: visible; }
+        #print-area { position: absolute; left: 0; top: 0; width: 100%; }
+        .no-print { display: none !important; }
+      }
+      `}</style>
+
       {/* Responsive Header */}
-      <div>
-        <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-slate-900">Materias Primas</h1>
-        <p className="mt-1 text-sm lg:text-base text-slate-500">Inventario Maestro y Gestión FIFO</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-slate-900">Materias Primas</h1>
+          <p className="mt-1 text-sm lg:text-base text-slate-500">Inventario Maestro y Gestión FIFO</p>
+        </div>
+        {canCreate && (
+          <Button
+            variant="primary"
+            onClick={() => {
+              setEditingId(null);
+              setFormData({ name: '', description: '', type: 'Tela', unit: 'metro', provider: '', status: 'activa', initialQty: 0, unitCost: 0, width: 140 });
+              setIsModalOpen(true);
+            }}
+            icon={<Plus size={18} />}
+          >
+            Nuevo Material
+          </Button>
+        )}
       </div>
 
-      <style>{`
-@media print {
-  body * { visibility: hidden; }
-  #print - area, #print - area * { visibility: visible; }
-  #print - area { position: absolute; left: 0; top: 0; width: 100 %; }
-          .no - print { display: none!important; }
-}
-`}</style>
+
 
       {/* Financial Governance Banner */}
       {totalFinancialDebt > 0 && (
@@ -281,32 +302,6 @@ const RawMaterials: React.FC = () => {
         </div>
       )}
 
-      {/* Toolbar: Search + Create */}
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1 min-w-0">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Buscar material o proveedor..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full rounded-xl bg-white pl-9 pr-3 py-2.5 text-sm text-slate-700 ring-1 ring-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
-          />
-        </div>
-        {canCreate && (
-          <button
-            onClick={() => {
-              setEditingId(null);
-              setFormData({ name: '', description: '', type: 'Tela', unit: 'metro', provider: '', status: 'activa', initialQty: 0, unitCost: 0, width: 140 });
-              setIsModalOpen(true);
-            }}
-            className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 text-white font-medium shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all h-10 w-10 sm:w-auto sm:px-4 flex-shrink-0"
-          >
-            <Plus size={18} />
-            <span className="hidden sm:inline text-sm">Nuevo Material</span>
-          </button>
-        )}
-      </div>
 
       {/* ========== MOBILE: Cards ========== */}
       <div className="space-y-3 md:hidden">

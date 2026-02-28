@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Trash2, Edit2, Search, PlayCircle, Info, Layers, TrendingUp, CheckCircle2, X, ChevronRight, AlertTriangle, Scissors, RotateCcw, Ruler, History, Copy, Package, PackageSearch } from 'lucide-react';
+import { Plus, Trash2, Edit2, Search, PlayCircle, Info, Layers, TrendingUp, CheckCircle2, X, ChevronRight, AlertTriangle, Scissors, RotateCcw, Ruler, History, Copy, Package, PackageSearch, Printer } from 'lucide-react';
 import { useStore, calculateProductCost, calculateMargin, calculateFifoCost, getFifoBreakdown, hasProductGeneratedActiveDebt } from '../store';
 import { Product, ProductMaterial, Status, Unit, RawMaterial, MaterialBatch } from '@/types';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -35,6 +35,7 @@ const Products: React.FC = () => {
   const canDelete = allowedRoles.includes(currentUserRole || '');
   const { formatCurrency, currencySymbol } = useCurrency();
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'activa' | 'inactiva' | 'todos'>('activa');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedMaterial, setExpandedMaterial] = useState<number | null>(null);
@@ -122,7 +123,10 @@ const Products: React.FC = () => {
   const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.reference.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ).filter(p => {
+    if (statusFilter === 'todos') return true;
+    return p.status === statusFilter;
+  });
 
   const calculateTotalCost = (materials: any[]) => {
     return (materials || []).reduce((total: number, pm: any) => {
@@ -255,8 +259,21 @@ const Products: React.FC = () => {
   const diffPrice = (formData.price || 0) - exactSuggestedPrice;
   const diffPercent = exactSuggestedPrice > 0 ? (diffPrice / exactSuggestedPrice) * 100 : 0;
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div className="space-y-6">
+      <style>{`
+      @media print {
+        body * { visibility: hidden; }
+        #print-area, #print-area * { visibility: visible; }
+        #print-area { position: absolute; left: 0; top: 0; width: 100%; }
+        .no-print { display: none !important; }
+      }
+      `}</style>
+
       <PageHeader
         title="Catálogo de Productos"
         description="Gestión de Escandallos (Costos FIFO)"
@@ -277,17 +294,47 @@ const Products: React.FC = () => {
         }
       />
 
-      <div className="relative">
-        <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-          <Search size={18} />
+      {/* UNIFIED TOOLBAR */}
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-slate-200 no-print">
+        {/* Left: Search */}
+        <div className="relative flex-1 w-full max-w-md group">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors pointer-events-none" size={18} />
+          <Input
+            placeholder="Buscar por nombre o SKU..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 pr-10 py-2.5 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm w-full"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+            >
+              <X size={16} />
+            </button>
+          )}
         </div>
-        <Input
-          placeholder="Buscar por nombre o SKU..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
-          fullWidth
-        />
+
+        {/* Right: Filters & Tools */}
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider hidden sm:inline-block">Estado:</span>
+            <select
+              title="Filtro de estado"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as any)}
+              className="bg-transparent text-sm font-semibold text-slate-700 py-1.5 focus:outline-none border-none cursor-pointer"
+            >
+              <option value="activa">Solo Activos</option>
+              <option value="inactiva">Discontinuados</option>
+              <option value="todos">Todos los productos</option>
+            </select>
+          </div>
+
+          <Button variant="outline" className="border-slate-200 text-slate-600 hover:bg-slate-50 h-10 px-3" onClick={handlePrint} title="Imprimir Catálogo">
+            <Printer size={18} />
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -340,7 +387,7 @@ const Products: React.FC = () => {
                         }
                         setEditingId(p.id); setFormData(p); setIsModalOpen(true);
                       }}
-                      title={hasProductGeneratedActiveDebt(p.id, movements) ? "Receta bloqueada por deuda activa" : "Editar"}
+                      title={hasProductGeneratedActiveDebt(p.id, movements) ? "⚠ Producción con deuda activa" : "Editar"}
                     >
                       <Edit2 size={16} className={hasProductGeneratedActiveDebt(p.id, movements) ? "text-gray-400" : "text-blue-600"} />
                     </Button>
@@ -369,7 +416,7 @@ const Products: React.FC = () => {
         </div>
 
         {/* ✅ ESCRITORIO - Tabla normal */}
-        <div className="hidden md:block overflow-x-auto">
+        <div id="print-area" className="hidden md:block overflow-x-auto">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <table className="w-full border-collapse text-left table-fixed">
               <thead className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50/50 text-xs font-semibold uppercase tracking-wider text-gray-500 backdrop-blur-sm">
@@ -417,7 +464,7 @@ const Products: React.FC = () => {
                                 }
                                 setEditingId(p.id); setFormData(p); setIsModalOpen(true);
                               }}
-                              title={hasProductGeneratedActiveDebt(p.id, movements) ? "Receta bloqueada por deuda activa" : "Editar"}
+                              title={hasProductGeneratedActiveDebt(p.id, movements) ? "⚠ Producción con deuda activa" : "Editar"}
                             >
                               <Edit2 size={16} />
                             </button>

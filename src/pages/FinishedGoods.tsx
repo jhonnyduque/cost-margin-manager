@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { PackageSearch, Search, Info, Plus, FileDown, Printer, History, ArrowUpRight, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { PackageSearch, Search, Info, Plus, FileDown, Printer, History, ArrowUpRight, AlertTriangle, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { useStore } from '../store';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
@@ -90,27 +90,38 @@ const FinishedGoods: React.FC = () => {
                 subtitle="Rastreo de Kardex, existencias físicas y valorización de inventario listo para venta."
             />
 
-            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-                <div className="relative flex-1 w-full max-w-2xl group">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-500 transition-colors pointer-events-none" size={20} />
+            {/* UNIFIED TOOLBAR */}
+            <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-slate-200 no-print">
+                {/* Left: Search */}
+                <div className="relative flex-1 w-full max-w-md group">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors pointer-events-none" size={18} />
                     <Input
-                        placeholder="Buscar por nombre, referencia o precio..."
+                        placeholder="Buscar producto, referencia..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-12 py-3 text-lg rounded-2xl border-gray-200 shadow-sm transition-all focus:border-indigo-300 focus:ring-4 focus:ring-indigo-500/10"
+                        className="pl-10 pr-10 py-2.5 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm w-full"
                         fullWidth
                     />
+                    {searchTerm && (
+                        <button
+                            onClick={() => setSearchTerm('')}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                        >
+                            <X size={16} />
+                        </button>
+                    )}
                 </div>
 
+                {/* Right: Tools */}
                 <div className="flex items-center gap-3 w-full md:w-auto">
-                    <Button variant="outline" className="flex-1 md:flex-none border-gray-200 text-gray-600 hover:bg-gray-50" title="Imprimir Reporte">
+                    <Button variant="outline" className="flex-1 md:flex-none border-slate-200 text-slate-600 hover:bg-slate-50 h-10 px-3" title="Imprimir Reporte" onClick={() => window.print()}>
                         <Printer size={18} />
                     </Button>
-                    <Button variant="outline" className="flex-1 md:flex-none border-gray-200 text-gray-600 hover:bg-gray-50" title="Exportar CSV">
+                    <Button variant="outline" className="flex-1 md:flex-none border-slate-200 text-slate-600 hover:bg-slate-50 h-10 px-3" title="Exportar CSV">
                         <FileDown size={18} />
                     </Button>
-                    <Button variant="primary" onClick={() => navigate('/products')} className="flex-1 md:flex-none bg-indigo-600 hover:bg-indigo-700" title="Producir más desde el Catálogo">
-                        <Plus size={18} className="mr-2" />
+                    <Button variant="primary" onClick={() => navigate('/products')} className="flex-1 md:flex-none bg-indigo-600 hover:bg-indigo-700 h-10 px-4" title="Producir más desde el Catálogo">
+                        <Plus size={18} className="mr-2 hidden sm:block" />
                         Catálogo
                     </Button>
                 </div>
