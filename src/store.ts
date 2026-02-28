@@ -66,8 +66,17 @@ export const getFifoBreakdown = (
   const factor = getConversionFactor(material.unit as Unit, targetUnit);
   let remainingToCover = requiredQuantity / factor;
 
+  // Lotes con stock para la traversal FIFO
   const materialBatches = batches
     .filter(b => b.material_id === material_id && b.remaining_quantity > 0)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  // TODOS los lotes del material (incluyendo consumidos) para obtener
+  // el último precio conocido cuando el stock llega a 0.
+  // ⚠️ Crítico: si se usa materialBatches para el fallback y está vacío
+  // (stock = 0), el fallbackPrice sería 0 → costo $0.01 en el catálogo.
+  const allMaterialBatches = batches
+    .filter(b => b.material_id === material_id)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   const breakdown: any[] = [];
@@ -89,7 +98,9 @@ export const getFifoBreakdown = (
   }
 
   if (remainingToCover > 0) {
-    const lastBatch = materialBatches[materialBatches.length - 1];
+    // Usar allMaterialBatches (no filtrado por remaining > 0) para que
+    // cuando el stock está a 0, aún obtengamos el último unit_cost real.
+    const lastBatch = allMaterialBatches[allMaterialBatches.length - 1];
     const fallbackPrice = lastBatch ? lastBatch.unit_cost : 0;
     breakdown.push({
       batch_id: 'faltante',
