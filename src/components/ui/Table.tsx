@@ -7,7 +7,7 @@ interface BaseTableProps {
 
 export const TableContainer: React.FC<BaseTableProps> = ({ children, className = '' }) => (
     <div className={`w-full overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm ${className}`}>
-        <table className="w-full border-collapse text-left table-fixed min-w-[800px]">
+        <table className="w-full border-collapse text-left min-w-[800px]">
             {children}
         </table>
     </div>
