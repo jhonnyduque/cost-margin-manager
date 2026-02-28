@@ -361,8 +361,9 @@ const RawMaterials: React.FC = () => {
         )}
       </div>
 
-      {/* ========== DESKTOP: Table ========== */}
+      {/* ========== DESKTOP: Tabla Original ========== */}
       <div className="hidden md:block">
+        <h2 className="text-lg font-bold text-slate-800 mb-3">Tabla Original</h2>
         <TableContainer>
           <TableHeader>
             <TableRow>
@@ -467,6 +468,68 @@ const RawMaterials: React.FC = () => {
             })}
           </TableBody>
         </TableContainer>
+      </div>
+
+      {/* ========== DESKTOP: Nueva Tabla (Prototipo basado en EntityTable de Team) ========== */}
+      <div className="hidden md:block overflow-x-auto mt-10">
+        <h2 className="text-lg font-bold text-slate-800 mb-3 border-t pt-8">Nueva Tabla (Estructura Team/Billing)</h2>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <table className="w-full border-collapse text-left table-fixed">
+            <thead className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50/50 text-xs font-semibold uppercase tracking-wider text-gray-500 backdrop-blur-sm">
+              <tr>
+                <th className="w-[35%] px-4 py-3 truncate">Materia Prima</th>
+                <th className="w-[15%] px-4 py-3 truncate">Categoría</th>
+                <th className="w-[20%] px-4 py-3 truncate text-right">Stock Actual</th>
+                <th className="w-[20%] px-4 py-3 truncate text-right">Costo Promedio</th>
+                <th className="w-[10%] px-4 py-3 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filteredMaterials.map((m) => {
+                const { totalRemainingQty, weightedAvgCost } = getBatchStats(m.id);
+                return (
+                  <tr key={`nt-${m.id}`} className="group bg-white transition-all hover:bg-slate-50">
+                    <td className="px-4 py-4 truncate">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-semibold text-gray-900">{m.name}</span>
+                        <span className="text-xs text-gray-500">{m.provider || 'Varios'}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 truncate">
+                      <Badge variant="secondary" className="font-medium bg-gray-100 text-gray-700">
+                        {m.type}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-4 truncate text-right">
+                      <div className="flex justify-end items-center gap-1.5">
+                        <span className={`font-semibold ${totalRemainingQty <= 0 ? 'text-red-600' : totalRemainingQty <= 5 ? 'text-amber-600' : 'text-gray-900'}`}>
+                          {totalRemainingQty.toFixed(2)}
+                        </span>
+                        <span className="text-xs text-gray-500">{m.unit}s</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 truncate text-right">
+                      <span className="font-semibold text-gray-900">{formatCurrency(weightedAvgCost)}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex justify-end gap-1.5 opacity-70 transition-opacity group-hover:opacity-100">
+                        <button className="rounded-lg p-1.5 transition-colors border border-transparent bg-gray-50 text-indigo-600 hover:border-gray-200 hover:bg-white hover:text-indigo-700">
+                          <History size={16} />
+                        </button>
+                        <button className="rounded-lg p-1.5 transition-colors border border-transparent bg-gray-50 text-gray-400 hover:border-gray-200 hover:bg-white hover:text-gray-600">
+                          <Edit2 size={16} />
+                        </button>
+                        <button className="rounded-lg p-1.5 transition-colors border border-transparent bg-gray-50 text-gray-400 hover:border-gray-200 hover:bg-white hover:text-red-600">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* ============================================ */}
