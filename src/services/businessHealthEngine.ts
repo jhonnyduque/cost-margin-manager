@@ -15,14 +15,12 @@ import {
     MaterialBatch,
     StockMovement,
     ProductMovement,
-    Unit,
 } from '@/types';
 import {
     calculateProductCost,
     calculateMargin,
     calculateTotalFinancialDebt,
     getMaterialDebt,
-    getConversionFactor,
 } from '../store';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -198,9 +196,22 @@ function detectMarginDrift(
 function detectStockBreak(
     rawMaterials: RawMaterial[],
     batches: MaterialBatch[],
-    movements: StockMovement[]
+    movements: StockMovement[],
+    productMovements: ProductMovement[]
 ): RiskSignal[] {
     const signals: RiskSignal[] = [];
+
+    // Calcular consumo mensual real de cada material usando ingreso_produccion
+    // Si hay 0 producciones recientes, usamos los egreso movements como proxy
+    const cutoff30 = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const recentProductions = productMovements.filter(
+        (pm) => pm.type === 'ingreso_produccion' && new Date(pm.created_at).getTime() > cutoff30
+    );
+    // Contar cuántas veces se produjo cada producto en el último mes
+    const productionFrequency = new Map<string, number>();
+    for (const pm of recentProductions) {
+        productionFrequency.set(pm.product_id, (productionFrequency.get(pm.product_id) || 0) + 1);
+    }
 
     for (const mat of rawMaterials) {
         const matBatches = batches.filter((b) => b.material_id === mat.id);
@@ -208,6 +219,7 @@ function detectStockBreak(
         const debtQty = getMaterialDebt(mat.id, movements).pendingQty;
         const effectiveRemaining = Math.max(0, remaining - debtQty);
 
+        // Consumo diario: primero intentamos con movimientos reales, luego producción
         const dailyRate = avgDailyConsumption(mat.id, movements);
         const days = daysUntilBreak(effectiveRemaining, dailyRate);
 
@@ -222,16 +234,30 @@ function detectStockBreak(
             const severity: Severity =
                 daysRound <= 1 ? 'critico' : daysRound <= 3 ? 'alto' : 'medio';
 
+            // ¿Cuántos productos dependen de esta materia prima?
+            const dependentProductIds = new Set(
+                recentProductions.filter((pm) =>
+                    movements.some((m) => m.material_id === mat.id && m.reference?.includes(pm.product_id))
+                ).map((pm) => pm.product_id)
+            );
+
             signals.push({
                 id: `stock-break-${mat.id}`,
                 type: 'stock_break',
                 severity,
                 affectedEntityId: mat.id,
                 affectedEntityName: mat.name,
-                probability: 1.0 - daysRound * 0.08, // Más lejano = menos certeza
-                estimatedImpact: dailyRate * avgUnitCost * (7 - daysRound), // Coste días sin producción
+                probability: 1.0 - daysRound * 0.08,
+                estimatedImpact: dailyRate * avgUnitCost * (7 - daysRound),
                 timeToImpactDays: daysRound,
-                rawData: { remaining: effectiveRemaining, dailyRate, daysUntilBreak: days, avgUnitCost },
+                rawData: {
+                    remaining: effectiveRemaining,
+                    dailyRate,
+                    daysUntilBreak: days,
+                    avgUnitCost,
+                    dependentProducts: dependentProductIds.size,
+                    recentProductionRuns: recentProductions.length,
+                },
             });
         }
     }
@@ -241,7 +267,8 @@ function detectStockBreak(
 /** SEÑAL: Capital inmovilizado en lotes sin movimiento > 60 días */
 function detectDeadStock(
     batches: MaterialBatch[],
-    movements: StockMovement[]
+    movements: StockMovement[],
+    rawMaterials: RawMaterial[]
 ): RiskSignal[] {
     const signals: RiskSignal[] = [];
     const cutoff = Date.now() - 60 * 24 * 60 * 60 * 1000;
@@ -264,9 +291,11 @@ function detectDeadStock(
             (acc, b) => acc + b.remaining_quantity * b.unit_cost,
             0
         );
-        if (frozenValue < 5) continue; // Ignorar importes insignificantes
+        if (frozenValue < 5) continue;
 
-        const matName = matBatches[0] ? `Material ID: ${materialId}` : 'Desconocido';
+        // FIX #2: Resolver el nombre real del material desde rawMaterials
+        const matName = rawMaterials.find((m) => m.id === materialId)?.name ?? `Material: ${materialId.slice(0, 8)}`;
+
         signals.push({
             id: `dead-stock-${materialId}`,
             type: 'dead_stock',
@@ -275,7 +304,7 @@ function detectDeadStock(
             affectedEntityName: matName,
             probability: 0.7,
             estimatedImpact: frozenValue,
-            timeToImpactDays: 30, // Capital inmovilizado, no urgente pero real
+            timeToImpactDays: 30,
             rawData: { frozenValue, staleBatchCount: stale.length },
         });
     }
@@ -377,8 +406,8 @@ export function runHealthCheck(input: HealthCheckInput): HealthReport {
         ...detectDebt(movements, rawMaterials, batches),
         ...detectPriceBelowCost(products, batches, rawMaterials),
         ...detectMarginDrift(products, batches, rawMaterials),
-        ...detectStockBreak(rawMaterials, batches, movements),
-        ...detectDeadStock(batches, movements),
+        ...detectStockBreak(rawMaterials, batches, movements, productMovements),
+        ...detectDeadStock(batches, movements, rawMaterials),
     ].sort((a, b) => b.estimatedImpact * b.probability - a.estimatedImpact * a.probability);
 
     const healthScore = computeHealthScore(signals);
