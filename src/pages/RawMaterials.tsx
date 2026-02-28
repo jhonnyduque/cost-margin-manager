@@ -23,10 +23,13 @@ import { translateError } from '@/utils/errorHandler';
 const RawMaterials: React.FC = () => {
   const { currentCompanyId, currentUserRole, rawMaterials, batches, addRawMaterial, deleteRawMaterial, updateRawMaterial, addBatch, deleteBatch, updateBatch } = useStore();
   const { formatCurrency, currencySymbol } = useCurrency();
+
+  // 🔹 Helpers de permisos según rol
   const allowedRoles = ['super_admin', 'admin', 'owner', 'manager'];
   const canCreate = allowedRoles.includes(currentUserRole || '');
   const canEdit = allowedRoles.includes(currentUserRole || '');
   const canDelete = allowedRoles.includes(currentUserRole || '');
+
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
@@ -34,9 +37,7 @@ const RawMaterials: React.FC = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [entry_mode, set_entry_mode] = useState<'rollo' | 'pieza'>('rollo');
   const [isSaving, setIsSaving] = useState(false);
-
   const [editingBatchData, setEditingBatchData] = useState<MaterialBatch | null>(null);
-
   const [formData, setFormData] = useState<any>({
     name: '',
     description: '',
@@ -48,7 +49,6 @@ const RawMaterials: React.FC = () => {
     unitCost: 0,
     width: 140
   });
-
   const [batchFormData, setBatchFormData] = useState<Partial<MaterialBatch>>({
     date: new Date().toISOString().split('T')[0],
     provider: '', initial_quantity: 0, unit_cost: 0, reference: '', width: 140, length: 0
@@ -65,10 +65,8 @@ const RawMaterials: React.FC = () => {
     const totalRemainingQty = matBatches.reduce((acc, b) => acc + b.remaining_quantity, 0);
     const totalValue = matBatches.reduce((acc, b) => acc + (b.unit_cost * b.initial_quantity), 0);
     const weightedAvgCost = totalOriginalQty > 0 ? totalValue / totalOriginalQty : 0;
-
     const totalArea = matBatches.reduce((acc, b) => acc + (b.area || 0), 0);
     const avgCostPerM2 = totalArea > 0 ? totalValue / totalArea : 0;
-
     return { totalOriginalQty, totalRemainingQty, totalValue, weightedAvgCost, totalArea, avgCostPerM2 };
   };
 
@@ -76,7 +74,6 @@ const RawMaterials: React.FC = () => {
     e.preventDefault();
     setIsSaving(true);
     const materialId = editingId || crypto.randomUUID();
-
     const materialData: RawMaterial = {
       id: materialId,
       name: formData.name,
@@ -90,7 +87,6 @@ const RawMaterials: React.FC = () => {
       updated_at: new Date().toISOString(),
       deleted_at: null
     };
-
     try {
       if (editingId) {
         await updateRawMaterial(materialData);
@@ -133,14 +129,11 @@ const RawMaterials: React.FC = () => {
     e.preventDefault();
     if (!activeMaterialId) return;
     setIsSaving(true);
-
     try {
       const material = rawMaterials.find(m => m.id === activeMaterialId);
-
       let area = 0;
       let finalQty = batchFormData.initial_quantity || 0;
       let finalUnitCost = batchFormData.unit_cost || 0;
-
       if (entry_mode === 'rollo') {
         area = (batchFormData.initial_quantity || 0) * ((batchFormData.width || 0) / 100);
         finalUnitCost = batchFormData.unit_cost || 0;
@@ -149,7 +142,6 @@ const RawMaterials: React.FC = () => {
         finalQty = (batchFormData.length || 0) / 100;
         finalUnitCost = (batchFormData.unit_cost || 0) / finalQty;
       }
-
       const data = {
         ...batchFormData,
         id: crypto.randomUUID(),
@@ -163,7 +155,6 @@ const RawMaterials: React.FC = () => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       } as MaterialBatch;
-
       await addBatch(data);
       setBatchFormData({
         date: new Date().toISOString().split('T')[0],
@@ -198,7 +189,6 @@ const RawMaterials: React.FC = () => {
           let area = 0;
           let finalQty = editingBatchData.initial_quantity;
           let finalUnitCost = editingBatchData.unit_cost;
-
           if (editingBatchData.entry_mode === 'rollo') {
             area = editingBatchData.initial_quantity * ((editingBatchData.width || 0) / 100);
             finalUnitCost = editingBatchData.unit_cost;
@@ -207,7 +197,6 @@ const RawMaterials: React.FC = () => {
             finalQty = (editingBatchData.length || 0) / 100;
             finalUnitCost = (editingBatchData.unit_cost || 0) / finalQty;
           }
-
           await updateBatch({
             ...editingBatchData,
             initial_quantity: finalQty,
@@ -314,7 +303,6 @@ const RawMaterials: React.FC = () => {
                   </div>
                   <Badge variant="secondary" className="flex-shrink-0">{m.type}</Badge>
                 </div>
-
                 {/* Stats row */}
                 <div className="flex items-center gap-4 mt-3">
                   <div>
@@ -329,7 +317,6 @@ const RawMaterials: React.FC = () => {
                     <p className="text-sm font-bold text-slate-700">{formatCurrency(weightedAvgCost)}</p>
                   </div>
                 </div>
-
                 {/* Actions */}
                 <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100">
                   <button
@@ -379,11 +366,11 @@ const RawMaterials: React.FC = () => {
         <TableContainer>
           <TableHeader>
             <TableRow>
-              <TableHead>Materia Prima</TableHead>
-              <TableHead>Categoría</TableHead>
-              <TableHead className="text-right">Stock Actual</TableHead>
-              <TableHead className="text-right">Costo Promedio</TableHead>
-              <TableHead className="w-40 text-right">Acciones</TableHead>
+              <TableHead className="w-[35%] px-6">Materia Prima</TableHead>
+              <TableHead className="w-[15%] px-6">Categoría</TableHead>
+              <TableHead className="w-[20%] px-6 text-right">Stock Actual</TableHead>
+              <TableHead className="w-[20%] px-6 text-right">Costo Promedio</TableHead>
+              <TableHead className="w-[10%] px-6 text-center">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -391,49 +378,86 @@ const RawMaterials: React.FC = () => {
               const { totalRemainingQty, weightedAvgCost } = getBatchStats(m.id);
               return (
                 <TableRow key={m.id}>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-bold">{m.name}</span>
+                  <TableCell className="px-6">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-semibold text-gray-900">{m.name}</span>
                       <span className="text-xs text-gray-400">{m.provider || 'Varios'}</span>
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{m.type}</Badge>
+                  <TableCell className="px-6">
+                    <Badge variant="secondary" className="font-medium">
+                      {m.type}
+                    </Badge>
                   </TableCell>
-                  <TableCell className="text-right">
-                    <span className={`font-bold ${totalRemainingQty <= 0 ? 'text-red-500' : ''}`}>
-                      {totalRemainingQty.toFixed(2)}
+                  <TableCell className="px-6">
+                    <div className="flex items-center justify-end gap-1.5">
+                      <span className={`font-semibold ${totalRemainingQty <= 0
+                          ? 'text-red-600'
+                          : totalRemainingQty <= 5
+                            ? 'text-amber-600'
+                            : 'text-gray-900'
+                        }`}>
+                        {totalRemainingQty.toFixed(2)}
+                      </span>
+                      <span className="text-xs text-gray-400">{m.unit}s</span>
+                      {totalRemainingQty <= 5 && totalRemainingQty > 0 && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">
+                          Bajo
+                        </span>
+                      )}
+                      {totalRemainingQty === 0 && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold">
+                          Sin Stock
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="px-6 text-right">
+                    <span className="font-semibold text-gray-900">
+                      {formatCurrency(weightedAvgCost)}
                     </span>
-                    <span className="ml-1 text-xs text-gray-400">{m.unit}s</span>
                   </TableCell>
-                  <TableCell className="text-right font-medium text-gray-700">
-                    {formatCurrency(weightedAvgCost)}
-                  </TableCell>
-                  <TableCell className="w-40 text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => { setActiveMaterialId(m.id); setIsBatchModalOpen(true); }} title="Ver Lotes">
-                        <History size={16} className="text-indigo-400" />
+                  <TableCell className="px-6">
+                    <div className="flex items-center justify-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => { setActiveMaterialId(m.id); setIsBatchModalOpen(true); }}
+                        title="Ver Lotes"
+                        className="h-8 w-8 hover:bg-indigo-50"
+                      >
+                        <History size={16} className="text-indigo-600" />
                       </Button>
                       {canEdit && (
-                        <Button variant="ghost" size="sm" onClick={() => {
-                          const stats = getBatchStats(m.id);
-                          setEditingId(m.id);
-                          setFormData({ ...m, initialQty: stats.totalRemainingQty, unitCost: stats.weightedAvgCost });
-                          setIsModalOpen(true);
-                        }}>
-                          <Edit2 size={16} />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            const stats = getBatchStats(m.id);
+                            setEditingId(m.id);
+                            setFormData({ ...m, initialQty: stats.totalRemainingQty, unitCost: stats.weightedAvgCost });
+                            setIsModalOpen(true);
+                          }}
+                          className="h-8 w-8 hover:bg-blue-50"
+                        >
+                          <Edit2 size={16} className="text-blue-600" />
                         </Button>
                       )}
                       {canDelete && (
-                        <Button variant="ghost" size="sm" onClick={async () => {
-                          try {
-                            await deleteRawMaterial(m.id);
-                          } catch (err: any) {
-                            console.error("Error deleting material:", err);
-                            alert(`No se pudo eliminar el material: ${translateError(err)}`);
-                          }
-                        }}>
-                          <Trash2 size={16} className="text-red-400" />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={async () => {
+                            try {
+                              await deleteRawMaterial(m.id);
+                            } catch (err: any) {
+                              console.error("Error deleting material:", err);
+                              alert(`No se pudo eliminar: ${translateError(err)}`);
+                            }
+                          }}
+                          className="h-8 w-8 hover:bg-red-50"
+                        >
+                          <Trash2 size={16} className="text-red-600" />
                         </Button>
                       )}
                     </div>
@@ -448,7 +472,6 @@ const RawMaterials: React.FC = () => {
       {/* ============================================ */}
       {/* MODALS — unchanged logic, kept as-is         */}
       {/* ============================================ */}
-
       {isModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
@@ -458,7 +481,6 @@ const RawMaterials: React.FC = () => {
             <h3 className="mb-6 sm:mb-8 text-xl sm:text-2xl font-bold">
               {editingId ? 'Editar' : 'Nueva'} Materia Prima
             </h3>
-
             <form onSubmit={handleMasterSubmit} className="space-y-4 sm:space-y-5">
               <Input
                 label="Nombre"
@@ -467,7 +489,6 @@ const RawMaterials: React.FC = () => {
                 placeholder="Ej. Tela de Corazón"
                 required
               />
-
               <div className="grid grid-cols-2 gap-3">
                 <Select
                   label="Tipo / Categoría"
@@ -487,14 +508,12 @@ const RawMaterials: React.FC = () => {
                   placeholder="Ej. Textiles Premium"
                 />
               </div>
-
               <Input
                 label="Descripción"
                 value={formData.description}
                 onChange={e => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Detalles de la materia prima..."
               />
-
               {/* Unidad + Costo en una línea */}
               <div className="grid grid-cols-2 gap-3">
                 <Select
@@ -522,7 +541,6 @@ const RawMaterials: React.FC = () => {
                   />
                 </div>
               </div>
-
               {/* Ancho + Cantidad + Estado toggle en una línea */}
               <div className="grid grid-cols-3 gap-3 items-end">
                 {formData.unit === 'metro' ? (
@@ -568,7 +586,6 @@ const RawMaterials: React.FC = () => {
                   </button>
                 </div>
               </div>
-
               <div className="flex gap-3 pt-2">
                 <Button variant="ghost" className="flex-1" onClick={() => setIsModalOpen(false)} disabled={isSaving}>Cancelar</Button>
                 <Button type="submit" className="flex-1" variant="primary" disabled={isSaving}>
@@ -596,7 +613,6 @@ const RawMaterials: React.FC = () => {
                 <Button variant="ghost" onClick={() => setIsBatchModalOpen(false)} icon={<X size={20} />} />
               </div>
             </div>
-
             <div className="flex-1 space-y-8 sm:space-y-10 overflow-y-auto p-6 sm:p-10" id="print-area">
               <div className="no-print rounded-2xl sm:rounded-3xl border border-indigo-100 bg-indigo-50/50 p-5 sm:p-8">
                 <div className="mb-4 sm:mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-center">
@@ -620,7 +636,6 @@ const RawMaterials: React.FC = () => {
                     </button>
                   </div>
                 </div>
-
                 {canCreate && (
                   <form onSubmit={handleBatchSubmit} className="space-y-4 sm:space-y-6">
                     <div className="grid grid-cols-2 items-end gap-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-6">
@@ -638,7 +653,6 @@ const RawMaterials: React.FC = () => {
                           onChange={e => setBatchFormData({ ...batchFormData, provider: e.target.value })}
                         />
                       </div>
-
                       {entry_mode === 'rollo' ? (
                         <Input
                           label="Metros Lineales"
@@ -658,7 +672,6 @@ const RawMaterials: React.FC = () => {
                           required
                         />
                       )}
-
                       <Input
                         label="Ancho (cm)"
                         type="number"
@@ -668,7 +681,6 @@ const RawMaterials: React.FC = () => {
                         required
                         className="text-emerald-700"
                       />
-
                       <Input
                         label={entry_mode === 'rollo' ? `Costo/Metro (${currencySymbol})` : `Costo Total (${currencySymbol})`}
                         type="number"
@@ -678,7 +690,6 @@ const RawMaterials: React.FC = () => {
                         required
                       />
                     </div>
-
                     <div className="flex flex-wrap items-center gap-4 rounded-xl sm:rounded-2xl border border-indigo-100 bg-white/60 p-3 sm:p-4 shadow-sm">
                       <div className="flex flex-col">
                         <span className="text-[10px] font-bold uppercase text-gray-400">Área Calculada</span>
@@ -696,7 +707,6 @@ const RawMaterials: React.FC = () => {
                   </form>
                 )}
               </div>
-
               <div className="space-y-4">
                 <h4 className="no-print ml-1 text-xs font-bold uppercase tracking-widest text-gray-400">Lotes Activos y Movimientos</h4>
                 <div className="overflow-x-auto">
@@ -719,7 +729,6 @@ const RawMaterials: React.FC = () => {
                       {batches.filter(b => b.material_id === activeMaterialId).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((batch) => {
                         const currentTotalPurchaseCost = batch.entry_mode === 'pieza' ? (batch.unit_cost * batch.initial_quantity) : (batch.unit_cost * batch.initial_quantity);
                         const currentCostPerM2 = batch.area && batch.area > 0 ? currentTotalPurchaseCost / batch.area : 0;
-
                         return (
                           <TableRow key={batch.id}>
                             <TableCell className="text-center"><ArrowDownToLine size={16} className="mx-auto text-emerald-500" /></TableCell>
@@ -767,7 +776,6 @@ const RawMaterials: React.FC = () => {
                           </TableRow>
                         );
                       })}
-
                       {activeMaterialId && (
                         <TableRow className="border-t-2 border-gray-200 bg-gray-50 font-bold">
                           <TableCell></TableCell>
@@ -785,7 +793,6 @@ const RawMaterials: React.FC = () => {
                 </div>
               </div>
             </div>
-
             <div className="no-print flex justify-end border-t bg-gray-50 px-6 py-4 sm:px-10 sm:py-6" style={{ borderColor: tokens.colors.border }}>
               <Button variant="secondary" onClick={() => setIsBatchModalOpen(false)}>Cerrar Visor</Button>
             </div>
@@ -802,7 +809,6 @@ const RawMaterials: React.FC = () => {
             <h4 className="mb-6 flex items-center gap-2 text-lg font-bold">
               <Pencil size={18} className="text-indigo-500" /> Editar Registro
             </h4>
-
             <form onSubmit={handleEditBatchSubmit} className="space-y-4">
               {editingBatchData.remaining_quantity < editingBatchData.initial_quantity && (
                 <div className="flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50 p-4">
@@ -812,7 +818,6 @@ const RawMaterials: React.FC = () => {
                   </p>
                 </div>
               )}
-
               <Input
                 label="Fecha"
                 type="date"
@@ -820,13 +825,11 @@ const RawMaterials: React.FC = () => {
                 onChange={e => setEditingBatchData({ ...editingBatchData, date: e.target.value })}
                 required
               />
-
               <Input
                 label="Proveedor / Referencia"
                 value={editingBatchData.provider}
                 onChange={e => setEditingBatchData({ ...editingBatchData, provider: e.target.value })}
               />
-
               {editingBatchData.entry_mode === 'pieza' ? (
                 <div className="grid grid-cols-2 gap-3">
                   <Input
@@ -862,7 +865,6 @@ const RawMaterials: React.FC = () => {
                   />
                 </div>
               )}
-
               <Input
                 label={editingBatchData.entry_mode === 'pieza' ? 'Costo Total (€)' : 'Costo Unitario (€/m)'}
                 type="number" step="0.01"
@@ -870,7 +872,6 @@ const RawMaterials: React.FC = () => {
                 value={editingBatchData.unit_cost}
                 onChange={e => setEditingBatchData({ ...editingBatchData, unit_cost: parseFloat(e.target.value) })}
               />
-
               <div className="flex gap-3 pt-4">
                 <Button variant="ghost" className="flex-1" onClick={() => setEditingBatchData(null)}>Cancelar</Button>
                 <Button type="submit" className="flex-1" variant="primary">Guardar</Button>
