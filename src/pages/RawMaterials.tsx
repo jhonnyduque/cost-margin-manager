@@ -366,11 +366,11 @@ const RawMaterials: React.FC = () => {
         <TableContainer>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[35%] px-6">Materia Prima</TableHead>
-              <TableHead className="w-[15%] px-6">Categoría</TableHead>
-              <TableHead className="w-[20%] px-6 text-right">Stock Actual</TableHead>
-              <TableHead className="w-[20%] px-6 text-right">Costo Promedio</TableHead>
-              <TableHead className="w-[10%] px-6 text-center">Acciones</TableHead>
+              <TableHead className="w-[35%]">Materia Prima</TableHead>
+              <TableHead className="w-[15%]">Categoría</TableHead>
+              <TableHead className="w-[20%] text-right">Stock Actual</TableHead>
+              <TableHead className="w-[20%] text-right">Costo Promedio</TableHead>
+              <TableHead className="w-[10%] text-center">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -378,18 +378,18 @@ const RawMaterials: React.FC = () => {
               const { totalRemainingQty, weightedAvgCost } = getBatchStats(m.id);
               return (
                 <TableRow key={m.id}>
-                  <TableCell className="px-6">
+                  <TableCell>
                     <div className="flex flex-col gap-0.5">
                       <span className="font-semibold text-gray-900">{m.name}</span>
                       <span className="text-xs text-gray-400">{m.provider || 'Varios'}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="px-6">
+                  <TableCell>
                     <Badge variant="secondary" className="font-medium">
                       {m.type}
                     </Badge>
                   </TableCell>
-                  <TableCell className="px-6">
+                  <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1.5">
                       <span className={`font-semibold ${totalRemainingQty <= 0
                         ? 'text-red-600'
@@ -412,12 +412,12 @@ const RawMaterials: React.FC = () => {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="px-6 text-right">
+                  <TableCell className="text-right">
                     <span className="font-semibold text-gray-900">
                       {formatCurrency(weightedAvgCost)}
                     </span>
                   </TableCell>
-                  <TableCell className="px-6">
+                  <TableCell>
                     <div className="flex items-center justify-center gap-1">
                       <Button
                         variant="ghost"
