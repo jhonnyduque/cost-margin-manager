@@ -513,15 +513,43 @@ const RawMaterials: React.FC = () => {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-1.5 opacity-70 transition-opacity group-hover:opacity-100">
-                        <button className="rounded-lg p-1.5 transition-colors border border-transparent bg-gray-50 text-indigo-600 hover:border-gray-200 hover:bg-white hover:text-indigo-700">
+                        <button
+                          onClick={() => { setActiveMaterialId(m.id); setIsBatchModalOpen(true); }}
+                          className="rounded-lg p-1.5 transition-colors border border-transparent bg-gray-50 text-indigo-600 hover:border-gray-200 hover:bg-white hover:text-indigo-700"
+                          title="Ver Lotes"
+                        >
                           <History size={16} />
                         </button>
-                        <button className="rounded-lg p-1.5 transition-colors border border-transparent bg-gray-50 text-gray-400 hover:border-gray-200 hover:bg-white hover:text-gray-600">
-                          <Edit2 size={16} />
-                        </button>
-                        <button className="rounded-lg p-1.5 transition-colors border border-transparent bg-gray-50 text-gray-400 hover:border-gray-200 hover:bg-white hover:text-red-600">
-                          <Trash2 size={16} />
-                        </button>
+                        {canEdit && (
+                          <button
+                            onClick={() => {
+                              const stats = getBatchStats(m.id);
+                              setEditingId(m.id);
+                              setFormData({ ...m, initialQty: stats.totalRemainingQty, unitCost: stats.weightedAvgCost });
+                              setIsModalOpen(true);
+                            }}
+                            className="rounded-lg p-1.5 transition-colors border border-transparent bg-gray-50 text-gray-400 hover:border-gray-200 hover:bg-white hover:text-gray-600"
+                            title="Editar"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={async () => {
+                              try {
+                                await deleteRawMaterial(m.id);
+                              } catch (err: any) {
+                                console.error("Error deleting material:", err);
+                                alert(`No se pudo eliminar: ${translateError(err)}`);
+                              }
+                            }}
+                            className="rounded-lg p-1.5 transition-colors border border-transparent bg-gray-50 text-gray-400 hover:border-gray-200 hover:bg-white hover:text-red-600"
+                            title="Eliminar"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
