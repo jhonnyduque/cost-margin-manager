@@ -145,7 +145,7 @@ const Products: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const processedMaterials = formData.materials.map((pm: any) => {
       if (pm.mode === 'pieces' && pm.pieces) {
@@ -167,9 +167,17 @@ const Products: React.FC = () => {
       updated_at: now
     } as Product;
 
-    if (editingId) updateProduct(data);
-    else addProduct(data);
-    setIsModalOpen(false);
+    try {
+      if (editingId) {
+        await updateProduct(data);
+      } else {
+        await addProduct(data);
+      }
+      setIsModalOpen(false);
+    } catch (error: any) {
+      console.error("Error saving product:", error);
+      alert(`No se pudo guardar el producto: ${error.message}`);
+    }
   };
 
   const diffPrice = (formData.price || 0) - exactSuggestedPrice;
@@ -245,7 +253,16 @@ const Products: React.FC = () => {
                     <Button variant="ghost" size="sm" onClick={() => { setEditingId(p.id); setFormData(p); setIsModalOpen(true); }} title="Editar">
                       <Edit2 size={16} />
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => deleteProduct(p.id)} title="Eliminar">
+                    <Button variant="ghost" size="sm" onClick={async () => {
+                      if (window.confirm("¿Seguro que deseas eliminar este producto?")) {
+                        try {
+                          await deleteProduct(p.id);
+                        } catch (err: any) {
+                          console.error("Error deleting product:", err);
+                          alert(`No se pudo eliminar el producto: ${err.message}`);
+                        }
+                      }
+                    }} title="Eliminar">
                       <Trash2 size={16} className="text-red-400" />
                     </Button>
                   </div>

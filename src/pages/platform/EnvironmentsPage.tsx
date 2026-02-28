@@ -152,7 +152,7 @@ export const EnvironmentsPage: React.FC = () => {
                 type: 'text',
                 render: (c) => (
                     <span className="text-sm capitalize text-slate-700">
-                        {c.stripe_price_id ? 'Professional' : (c.subscription_tier || 'Demo')}
+                        {c.subscription_tier || 'Demo'}
                     </span>
                 )
             },

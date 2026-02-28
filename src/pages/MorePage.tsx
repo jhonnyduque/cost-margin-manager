@@ -31,8 +31,10 @@ interface MenuSection {
     items: MenuItem[];
 }
 
+import { supabase } from '@/services/supabase';
+
 export default function MorePage() {
-    const { user, currentCompany, logout } = useAuth();
+    const { user, currentCompany } = useAuth();
     const navigate = useNavigate();
 
     const userName = user?.user_metadata?.full_name || user?.email || 'Usuario';
@@ -40,7 +42,7 @@ export default function MorePage() {
     const isSuperAdmin = user?.is_super_admin;
 
     const handleLogout = async () => {
-        await logout();
+        await supabase.auth.signOut();
         navigate('/login');
     };
 

@@ -9,6 +9,8 @@ export type User = Tables<'users'>;
 export type Company = Tables<'companies'> & {
   // Added to support grace period logic in AuthProvider/subscription utils
   grace_period_ends_at?: string | null;
+  seat_count?: number;
+  seat_limit?: number;
 };
 
 export type UserRole = Enums<'user_role'>;

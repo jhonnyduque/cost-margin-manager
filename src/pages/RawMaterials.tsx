@@ -88,7 +88,7 @@ const RawMaterials: React.FC = () => {
 
     try {
       if (editingId) {
-        updateRawMaterial(materialData);
+        await updateRawMaterial(materialData);
       } else {
         await addRawMaterial(materialData);
         if (formData.initialQty > 0) {
@@ -111,96 +111,113 @@ const RawMaterials: React.FC = () => {
             updated_at: new Date().toISOString(),
             deleted_at: null
           };
-          addBatch(batch);
+          await addBatch(batch);
         }
       }
       setIsModalOpen(false);
       setEditingId(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving material:", error);
-      alert("Hubo un error al guardar. Por favor intenta de nuevo.");
+      alert(`Hubo un error al guardar: ${error.message || 'Verifica tu conexión y permisos.'}`);
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleBatchSubmit = (e: React.FormEvent) => {
+  const handleBatchSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeMaterialId) return;
-    const material = rawMaterials.find(m => m.id === activeMaterialId);
+    setIsSaving(true);
 
-    let area = 0;
-    let finalQty = batchFormData.initial_quantity || 0;
-    let finalUnitCost = batchFormData.unit_cost || 0;
+    try {
+      const material = rawMaterials.find(m => m.id === activeMaterialId);
 
-    if (entry_mode === 'rollo') {
-      area = (batchFormData.initial_quantity || 0) * ((batchFormData.width || 0) / 100);
-      finalUnitCost = batchFormData.unit_cost || 0;
-    } else {
-      area = ((batchFormData.length || 0) * (batchFormData.width || 0)) / 10000;
-      finalQty = (batchFormData.length || 0) / 100;
-      finalUnitCost = (batchFormData.unit_cost || 0) / finalQty;
+      let area = 0;
+      let finalQty = batchFormData.initial_quantity || 0;
+      let finalUnitCost = batchFormData.unit_cost || 0;
+
+      if (entry_mode === 'rollo') {
+        area = (batchFormData.initial_quantity || 0) * ((batchFormData.width || 0) / 100);
+        finalUnitCost = batchFormData.unit_cost || 0;
+      } else {
+        area = ((batchFormData.length || 0) * (batchFormData.width || 0)) / 10000;
+        finalQty = (batchFormData.length || 0) / 100;
+        finalUnitCost = (batchFormData.unit_cost || 0) / finalQty;
+      }
+
+      const data = {
+        ...batchFormData,
+        id: crypto.randomUUID(),
+        material_id: activeMaterialId,
+        initial_quantity: finalQty,
+        remaining_quantity: finalQty,
+        unit_cost: finalUnitCost,
+        area: area,
+        entry_mode: entry_mode,
+        company_id: currentCompanyId || '',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      } as MaterialBatch;
+
+      await addBatch(data);
+      setBatchFormData({
+        date: new Date().toISOString().split('T')[0],
+        provider: material?.provider || '',
+        initial_quantity: 0,
+        unit_cost: 0,
+        reference: '',
+        width: 140,
+        length: 0
+      });
+    } catch (error: any) {
+      console.error("Error saving batch:", error);
+      alert(`No se pudo agregar el ingreso físico: ${error.message}`);
+    } finally {
+      setIsSaving(false);
     }
-
-    const data = {
-      ...batchFormData,
-      id: crypto.randomUUID(),
-      material_id: activeMaterialId,
-      initial_quantity: finalQty,
-      remaining_quantity: finalQty,
-      unit_cost: finalUnitCost,
-      area: area,
-      entry_mode: entry_mode,
-      company_id: currentCompanyId || '',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    } as MaterialBatch;
-
-    addBatch(data);
-    setBatchFormData({
-      date: new Date().toISOString().split('T')[0],
-      provider: material?.provider || '',
-      initial_quantity: 0,
-      unit_cost: 0,
-      reference: '',
-      width: 140,
-      length: 0
-    });
   };
 
-  const handleEditBatchSubmit = (e: React.FormEvent) => {
+  const handleEditBatchSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editingBatchData) {
-      const original = batches.find(b => b.id === editingBatchData.id);
-      if (original && original.remaining_quantity < original.initial_quantity) {
-        updateBatch({
-          ...editingBatchData,
-          initial_quantity: original.initial_quantity,
-          unit_cost: original.unit_cost
-        });
-      } else {
-        let area = 0;
-        let finalQty = editingBatchData.initial_quantity;
-        let finalUnitCost = editingBatchData.unit_cost;
-
-        if (editingBatchData.entry_mode === 'rollo') {
-          area = editingBatchData.initial_quantity * ((editingBatchData.width || 0) / 100);
-          finalUnitCost = editingBatchData.unit_cost;
+      setIsSaving(true);
+      try {
+        const original = batches.find(b => b.id === editingBatchData.id);
+        if (original && original.remaining_quantity < original.initial_quantity) {
+          await updateBatch({
+            ...editingBatchData,
+            initial_quantity: original.initial_quantity,
+            unit_cost: original.unit_cost
+          });
         } else {
-          area = ((editingBatchData.length || 0) * (editingBatchData.width || 0)) / 10000;
-          finalQty = (editingBatchData.length || 0) / 100;
-          finalUnitCost = (editingBatchData.unit_cost || 0) / finalQty;
-        }
+          let area = 0;
+          let finalQty = editingBatchData.initial_quantity;
+          let finalUnitCost = editingBatchData.unit_cost;
 
-        updateBatch({
-          ...editingBatchData,
-          initial_quantity: finalQty,
-          unit_cost: finalUnitCost,
-          area: area,
-          remaining_quantity: finalQty
-        });
+          if (editingBatchData.entry_mode === 'rollo') {
+            area = editingBatchData.initial_quantity * ((editingBatchData.width || 0) / 100);
+            finalUnitCost = editingBatchData.unit_cost;
+          } else {
+            area = ((editingBatchData.length || 0) * (editingBatchData.width || 0)) / 10000;
+            finalQty = (editingBatchData.length || 0) / 100;
+            finalUnitCost = (editingBatchData.unit_cost || 0) / finalQty;
+          }
+
+          await updateBatch({
+            ...editingBatchData,
+            initial_quantity: finalQty,
+            unit_cost: finalUnitCost,
+            area: area,
+            remaining_quantity: finalQty
+          });
+        }
+        setEditingBatchData(null);
+      } catch (error: any) {
+        console.error("Error editing batch:", error);
+        alert(`Fallo al actualizar el lote: ${error.message}`);
+      } finally {
+        setIsSaving(false);
       }
-      setEditingBatchData(null);
     }
   };
 
@@ -327,7 +344,14 @@ const RawMaterials: React.FC = () => {
                     <Edit2 size={15} />
                   </button>
                   <button
-                    onClick={() => deleteRawMaterial(m.id)}
+                    onClick={async () => {
+                      try {
+                        await deleteRawMaterial(m.id);
+                      } catch (err: any) {
+                        console.error("Error deleting material:", err);
+                        alert(`No se pudo eliminar el material: ${err.message}`);
+                      }
+                    }}
                     className="flex items-center justify-center rounded-lg bg-slate-50 p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600 active:scale-95 transition-all"
                   >
                     <Trash2 size={15} />
@@ -387,7 +411,14 @@ const RawMaterials: React.FC = () => {
                       }}>
                         <Edit2 size={16} />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => deleteRawMaterial(m.id)}>
+                      <Button variant="ghost" size="sm" onClick={async () => {
+                        try {
+                          await deleteRawMaterial(m.id);
+                        } catch (err: any) {
+                          console.error("Error deleting material:", err);
+                          alert(`No se pudo eliminar el material: ${err.message}`);
+                        }
+                      }}>
                         <Trash2 size={16} className="text-red-400" />
                       </Button>
                     </div>
@@ -702,7 +733,14 @@ const RawMaterials: React.FC = () => {
                             <TableCell className="no-print text-center">
                               <div className="flex justify-center gap-1">
                                 <Button variant="ghost" size="sm" onClick={() => setEditingBatchData(batch)} icon={<Pencil size={16} />} />
-                                <Button variant="ghost" size="sm" onClick={() => deleteBatch(batch.id)} icon={<Trash2 size={16} className="text-red-400" />} />
+                                <Button variant="ghost" size="sm" onClick={async () => {
+                                  try {
+                                    await deleteBatch(batch.id);
+                                  } catch (err: any) {
+                                    console.error("Error deleting batch:", err);
+                                    alert(`No se pudo eliminar el lote: ${err.message}`);
+                                  }
+                                }} icon={<Trash2 size={16} className="text-red-400" />} />
                               </div>
                             </TableCell>
                           </TableRow>

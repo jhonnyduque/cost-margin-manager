@@ -19,9 +19,9 @@ interface AppState {
   batches: MaterialBatch[];
   movements: StockMovement[];
 
-  addProduct: (product: Product) => void;
-  updateProduct: (product: Product) => void;
-  deleteProduct: (id: string) => void;
+  addProduct: (product: Product) => Promise<void>;
+  updateProduct: (product: Product) => Promise<void>;
+  deleteProduct: (id: string) => Promise<void>;
 
   loadProductsFromSupabase: () => Promise<void>;
   loadRawMaterialsFromSupabase: () => Promise<void>;
@@ -30,12 +30,12 @@ interface AppState {
   logout: () => void;
 
   addRawMaterial: (material: RawMaterial) => Promise<void>;
-  updateRawMaterial: (material: RawMaterial) => void;
-  deleteRawMaterial: (id: string) => void;
+  updateRawMaterial: (material: RawMaterial) => Promise<void>;
+  deleteRawMaterial: (id: string) => Promise<void>;
 
-  addBatch: (batch: MaterialBatch) => void;
-  deleteBatch: (id: string) => void;
-  updateBatch: (batch: MaterialBatch) => void;
+  addBatch: (batch: MaterialBatch) => Promise<void>;
+  deleteBatch: (id: string) => Promise<void>;
+  updateBatch: (batch: MaterialBatch) => Promise<void>;
   updateBatchRemaining: (id: string, newQty: number) => void;
   consumeStock: (productId: string) => void;
 }
@@ -227,13 +227,11 @@ export const useStore = create<AppState>()(
         });
       },
 
-      addProduct: (product) => {
+      addProduct: async (product) => {
         const companyId = get().currentCompanyId;
         if (!companyId) return;
 
-        set((state) => ({ products: [...state.products, product] }));
-
-        supabase.from('products').insert({
+        const { error } = await supabase.from('products').insert({
           id: product.id,
           company_id: companyId,
           name: product.name,
@@ -244,17 +242,15 @@ export const useStore = create<AppState>()(
           materials: product.materials, // JSONB
           status: product.status,
           created_at: product.created_at,
-        }).then(({ error }) => {
-          if (error) console.error('[Supabase] addProduct Error:', error.message);
         });
+
+        if (error) throw error;
+
+        set((state) => ({ products: [...state.products, product] }));
       },
 
-      updateProduct: (product) => {
-        set((state) => ({
-          products: state.products.map((p) => (p.id === product.id ? product : p)),
-        }));
-
-        supabase.from('products')
+      updateProduct: async (product) => {
+        const { error } = await supabase.from('products')
           .update({
             name: product.name,
             reference: product.reference,
@@ -267,17 +263,25 @@ export const useStore = create<AppState>()(
           })
           .eq('id', product.id)
           .eq('company_id', get().currentCompanyId);
+
+        if (error) throw error;
+
+        set((state) => ({
+          products: state.products.map((p) => (p.id === product.id ? product : p)),
+        }));
       },
 
-      deleteProduct: (id) => {
-        set((state) => ({
-          products: state.products.filter((p) => p.id !== id),
-        }));
-
-        supabase.from('products')
+      deleteProduct: async (id) => {
+        const { error } = await supabase.from('products')
           .update({ deleted_at: new Date().toISOString() })
           .eq('id', id)
           .eq('company_id', get().currentCompanyId);
+
+        if (error) throw error;
+
+        set((state) => ({
+          products: state.products.filter((p) => p.id !== id),
+        }));
       },
 
       addRawMaterial: async (material) => {
@@ -304,14 +308,8 @@ export const useStore = create<AppState>()(
         }
       },
 
-      updateRawMaterial: (material) => {
-        set((state) => ({
-          rawMaterials: state.rawMaterials.map((m) =>
-            m.id === material.id ? material : m
-          ),
-        }));
-
-        supabase.from('raw_materials').update({
+      updateRawMaterial: async (material) => {
+        const { error } = await supabase.from('raw_materials').update({
           name: material.name,
           description: material.description,
           type: material.type,
@@ -322,22 +320,32 @@ export const useStore = create<AppState>()(
         })
           .eq('id', material.id)
           .eq('company_id', get().currentCompanyId);
+
+        if (error) throw error;
+
+        set((state) => ({
+          rawMaterials: state.rawMaterials.map((m) =>
+            m.id === material.id ? material : m
+          ),
+        }));
       },
 
-      deleteRawMaterial: (id) => {
+      deleteRawMaterial: async (id) => {
+        const { error } = await supabase.from('raw_materials')
+          .update({ deleted_at: new Date().toISOString() })
+          .eq('id', id)
+          .eq('company_id', get().currentCompanyId);
+
+        if (error) throw error;
+
         set((state) => ({
           rawMaterials: state.rawMaterials.filter((m) => m.id !== id),
           batches: state.batches.filter((b) => b.material_id !== id),
           movements: state.movements.filter((mov) => mov.material_id !== id),
         }));
-
-        supabase.from('raw_materials')
-          .update({ deleted_at: new Date().toISOString() })
-          .eq('id', id)
-          .eq('company_id', get().currentCompanyId);
       },
 
-      addBatch: (batch) => {
+      addBatch: async (batch) => {
         const companyId = get().currentCompanyId;
         if (!companyId) return;
 
@@ -354,13 +362,7 @@ export const useStore = create<AppState>()(
           created_at: new Date().toISOString()
         };
 
-        set((state) => ({
-          batches: [...state.batches, batch],
-          movements: [...state.movements, movement],
-        }));
-
-        // Multi-sync batch + movement
-        supabase.from('material_batches').insert({
+        const { error: batchError } = await supabase.from('material_batches').insert({
           id: batch.id,
           company_id: companyId,
           material_id: batch.material_id,
@@ -374,11 +376,11 @@ export const useStore = create<AppState>()(
           length: batch.length,
           area: batch.area,
           entry_mode: batch.entry_mode,
-        }).then(({ error }) => {
-          if (error) console.error('[Supabase] addBatch Error:', error.message);
         });
 
-        supabase.from('stock_movements').insert({
+        if (batchError) throw batchError;
+
+        const { error: movementError } = await supabase.from('stock_movements').insert({
           id: movement.id,
           company_id: companyId,
           material_id: movement.material_id,
@@ -388,28 +390,53 @@ export const useStore = create<AppState>()(
           quantity: movement.quantity,
           unit_cost: movement.unit_cost,
           reference: movement.reference,
-        }).then(({ error }) => {
-          if (error) console.error('[Supabase] addMovement Error:', error.message);
         });
+
+        if (movementError) console.error('[Supabase] Non-fatal addMovement Error:', movementError.message);
+
+        set((state) => ({
+          batches: [...state.batches, batch],
+          movements: [...state.movements, movement],
+        }));
       },
 
-      deleteBatch: (id) => {
+      deleteBatch: async (id) => {
         const companyId = get().currentCompanyId;
-        set((state) => ({
-          batches: state.batches.filter((b) => b.id !== id),
-          movements: state.movements.filter((mov) => mov.batch_id !== id),
-        }));
 
-        supabase.from('material_batches')
+        const { error } = await supabase.from('material_batches')
           .update({ deleted_at: new Date().toISOString() })
           .eq('id', id)
           .eq('company_id', companyId);
 
-        // Los movimientos hijos no tienen soft delete, pero podríamos borrarlos o ignorarlos
+        if (error) throw error;
+
+        set((state) => ({
+          batches: state.batches.filter((b) => b.id !== id),
+          movements: state.movements.filter((mov) => mov.batch_id !== id),
+        }));
       },
 
-      updateBatch: (batch) => {
+      updateBatch: async (batch) => {
         const companyId = get().currentCompanyId;
+
+        const { error } = await supabase.from('material_batches').update({
+          date: batch.date,
+          provider: batch.provider,
+          initial_quantity: batch.initial_quantity,
+          remaining_quantity: batch.remaining_quantity,
+          unit_cost: batch.unit_cost,
+          reference: batch.reference,
+          width: batch.width,
+          length: batch.length,
+          area: batch.area,
+          entry_mode: batch.entry_mode,
+          updated_at: new Date().toISOString()
+        })
+          .eq('id', batch.id)
+          .eq('company_id', companyId);
+
+        if (error) throw error;
+
         set((state) => {
           const updatedMovements = state.movements.map((mov) =>
             mov.batch_id === batch.id && mov.type === 'ingreso'
@@ -429,22 +456,6 @@ export const useStore = create<AppState>()(
             movements: updatedMovements,
           };
         });
-
-        supabase.from('material_batches').update({
-          date: batch.date,
-          provider: batch.provider,
-          initial_quantity: batch.initial_quantity,
-          remaining_quantity: batch.remaining_quantity,
-          unit_cost: batch.unit_cost,
-          reference: batch.reference,
-          width: batch.width,
-          length: batch.length,
-          area: batch.area,
-          entry_mode: batch.entry_mode,
-          updated_at: new Date().toISOString()
-        })
-          .eq('id', batch.id)
-          .eq('company_id', companyId);
       },
 
       updateBatchRemaining: (id, newQty) => {
