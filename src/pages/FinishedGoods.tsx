@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { PackageSearch, Search, Info, Plus, FileDown, Printer, History } from 'lucide-react';
+import { PackageSearch, Search, Info, Plus, FileDown, Printer, History, ArrowUpRight, AlertTriangle } from 'lucide-react';
 import { useStore } from '../store';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
@@ -15,12 +15,31 @@ const FinishedGoods: React.FC = () => {
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
     const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
+
+    const [outputModal, setOutputModal] = useState<{
+        isOpen: boolean;
+        productId: string;
+        productName: string;
+        currentStock: number;
+        quantity: number;
+        type: string;
+        reference: string;
+    }>({
+        isOpen: false,
+        productId: '',
+        productName: '',
+        currentStock: 0,
+        quantity: 1,
+        type: 'salida_venta',
+        reference: ''
+    });
 
     const getProductStock = (productId: string) => {
         const movements = productMovements.filter(m => m.product_id === productId);
         const inQty = movements.filter(m => m.type === 'ingreso_produccion').reduce((acc, m) => acc + m.quantity, 0);
-        const outQty = movements.filter(m => m.type === 'salida_venta').reduce((acc, m) => acc + m.quantity, 0);
-        const adjQty = movements.filter(m => m.type === 'ajuste').reduce((acc, m) => acc + m.quantity, 0);
+        const outQty = movements.filter(m => ['salida_venta', 'salida_manual', 'merma'].includes(m.type)).reduce((acc, m) => acc + m.quantity, 0);
+        const adjQty = movements.filter(m => m.type === 'ajuste').reduce((acc, m) => acc + (m.quantity || 0), 0);
 
         // Simplification: adjQty positive means more stock, negative means less.
         return inQty - outQty + adjQty;
@@ -45,6 +64,23 @@ const FinishedGoods: React.FC = () => {
             p.price.toString().includes(term)
         );
     }, [products, searchTerm]);
+
+    const handleConfirmOutput = async () => {
+        setIsSaving(true);
+        try {
+            await useStore.getState().registerFinishedGoodOutput(
+                outputModal.productId,
+                outputModal.quantity < 0 ? outputModal.quantity * -1 : outputModal.quantity, // Enforce positive sum for ledger since 'type' defines direction
+                outputModal.type,
+                outputModal.reference
+            );
+            setOutputModal(prev => ({ ...prev, isOpen: false }));
+        } catch (error: any) {
+            alert(error.message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
@@ -135,14 +171,33 @@ const FinishedGoods: React.FC = () => {
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4 text-center">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className={`h-8 transition-colors ${isExpanded ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-gray-100 text-gray-500'}`}
-                                                            onClick={() => setExpandedProductId(isExpanded ? null : p.id)}
-                                                        >
-                                                            <History size={16} className="mr-2" /> Histórico ({pMovements.length})
-                                                        </Button>
+                                                        <div className="flex items-center justify-center gap-2">
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="h-8 transition-colors border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                                                                onClick={() => setOutputModal({
+                                                                    isOpen: true,
+                                                                    productId: p.id,
+                                                                    productName: p.name,
+                                                                    currentStock: stock,
+                                                                    quantity: 1,
+                                                                    type: 'salida_venta',
+                                                                    reference: ''
+                                                                })}
+                                                                title="Registrar Salida / Venta"
+                                                            >
+                                                                <ArrowUpRight size={16} className="mr-1" /> Sacar
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className={`h-8 transition-colors ${isExpanded ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-gray-100 text-gray-500'}`}
+                                                                onClick={() => setExpandedProductId(isExpanded ? null : p.id)}
+                                                            >
+                                                                <History size={16} className="mr-2" /> Histórico ({pMovements.length})
+                                                            </Button>
+                                                        </div>
                                                     </td>
                                                 </tr>
 
@@ -172,12 +227,12 @@ const FinishedGoods: React.FC = () => {
                                                                                             {new Date(m.created_at).toLocaleString()}
                                                                                         </td>
                                                                                         <td className="px-4 py-3">
-                                                                                            <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase ${m.type === 'ingreso_produccion' ? 'bg-emerald-100 text-emerald-700' : m.type === 'salida_venta' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-700'}`}>
+                                                                                            <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase ${m.type === 'ingreso_produccion' ? 'bg-emerald-100 text-emerald-700' : m.type === 'merma' ? 'bg-red-100 text-red-700' : m.type === 'ajuste' ? 'bg-slate-100 text-slate-700' : 'bg-orange-100 text-orange-700'}`}>
                                                                                                 {m.type.replace('_', ' ')}
                                                                                             </span>
                                                                                         </td>
-                                                                                        <td className={`px-4 py-3 text-right font-mono font-bold ${m.type === 'salida_venta' ? 'text-red-500' : 'text-emerald-600'}`}>
-                                                                                            {m.type === 'salida_venta' ? '-' : '+'}{m.quantity}
+                                                                                        <td className={`px-4 py-3 text-right font-mono font-bold ${m.type === 'ingreso_produccion' ? 'text-emerald-600' : m.type === 'ajuste' ? 'text-slate-600' : 'text-red-500'}`}>
+                                                                                            {m.type === 'ingreso_produccion' ? '+' : '-'}{m.quantity}
                                                                                         </td>
                                                                                         <td className="px-4 py-3 text-right font-mono text-gray-500">
                                                                                             {formatCurrency(m.unit_cost)}
@@ -206,6 +261,97 @@ const FinishedGoods: React.FC = () => {
                             </table>
                         </div>
                     )}
+                </div>
+            )}
+
+            {outputModal.isOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                            <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800">
+                                <ArrowUpRight className="text-orange-500" />
+                                Registrar Salida
+                            </h2>
+                            <button onClick={() => setOutputModal(prev => ({ ...prev, isOpen: false }))} className="text-slate-400 hover:text-slate-600 transition-colors">
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-5 bg-slate-50/50">
+                            <div>
+                                <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-1">Producto a retirar</p>
+                                <p className="text-lg font-bold text-slate-800">{outputModal.productName}</p>
+                                <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 rounded-md">
+                                    <span className="text-xs text-slate-500 font-medium">Stock Físico Actual:</span>
+                                    <span className={`text-sm font-bold ${outputModal.currentStock > 0 ? 'text-emerald-600' : 'text-red-500'}`}>{outputModal.currentStock} und.</span>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="col-span-1">
+                                    <label className="block text-xs font-bold text-slate-500 mb-1">CANTIDAD</label>
+                                    <Input
+                                        type="number"
+                                        min="1"
+                                        step="1"
+                                        value={outputModal.quantity || ''}
+                                        onChange={(e) => setOutputModal(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
+                                        className="text-lg font-bold text-slate-800"
+                                        fullWidth
+                                    />
+                                </div>
+                                <div className="col-span-1">
+                                    <label className="block text-xs font-bold text-slate-500 mb-1">TIPO DE SALIDA</label>
+                                    <select
+                                        value={outputModal.type}
+                                        onChange={(e) => setOutputModal(prev => ({ ...prev, type: e.target.value }))}
+                                        className="w-full text-sm rounded-lg border-slate-200 bg-white px-3 py-2.5 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-medium text-slate-700"
+                                    >
+                                        <option value="salida_venta">Venta (Normal)</option>
+                                        <option value="merma">Merma / Pérdida</option>
+                                        <option value="salida_manual">Salida Manual</option>
+                                        <option value="ajuste">Ajuste de Stock</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 mb-1">REFERENCIA / NOTA (OPCIONAL)</label>
+                                <Input
+                                    placeholder="Ej: Factura #0012, Dañado en almacén..."
+                                    value={outputModal.reference}
+                                    onChange={(e) => setOutputModal(prev => ({ ...prev, reference: e.target.value }))}
+                                    fullWidth
+                                />
+                            </div>
+
+                            {/* Backorder / Debt Alert */}
+                            {outputModal.quantity > outputModal.currentStock && (
+                                <div className="p-3 mt-4 rounded-xl bg-orange-50 border border-orange-200 flex items-start gap-3">
+                                    <AlertTriangle className="text-orange-500 flex-shrink-0 mt-0.5" size={18} />
+                                    <div>
+                                        <h4 className="text-sm font-bold text-orange-800">Deuda de Stock Detectada</h4>
+                                        <p className="text-xs text-orange-600 mt-1 leading-snug">
+                                            Estás retirando más unidades de las que posees físicamente en el almacén. Esta acción dejará tu stock en <span className="font-bold font-mono">{(outputModal.currentStock - outputModal.quantity).toString()}</span> generando una <span className="font-bold">Deuda de Producto Terminado</span>.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="p-6 border-t border-slate-100 bg-white flex justify-end gap-3">
+                            <Button variant="ghost" className="text-slate-500 hover:text-slate-700" onClick={() => setOutputModal(prev => ({ ...prev, isOpen: false }))}>
+                                Cancelar
+                            </Button>
+                            <Button
+                                variant={outputModal.quantity > outputModal.currentStock ? "warning" : "primary"}
+                                onClick={handleConfirmOutput}
+                                isLoading={isSaving}
+                            >
+                                {outputModal.quantity > outputModal.currentStock ? `Aceptar y Generar Deuda` : `Confirmar Salida`}
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

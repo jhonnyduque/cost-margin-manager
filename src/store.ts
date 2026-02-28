@@ -41,6 +41,7 @@ interface AppState {
   updateBatchRemaining: (id: string, newQty: number) => void;
   consumeStock: (productId: string) => void;
   consumeStockBatch: (productId: string, quantity: number, targetPrice?: number) => Promise<void>;
+  registerFinishedGoodOutput: (productId: string, quantity: number, type: string, reference: string) => Promise<void>;
 }
 
 export const getConversionFactor = (buyUnit: Unit, useUnit: Unit): number => {
@@ -328,6 +329,11 @@ export const useStore = create<AppState>()(
       },
 
       deleteProduct: async (id) => {
+        const hasHistory = get().productMovements.some(m => m.product_id === id);
+        if (hasHistory) {
+          throw new Error('No se puede eliminar un producto con historial de inventario activo. Desactívelo en su lugar.');
+        }
+
         const { error } = await supabase.from('products')
           .update({ deleted_at: new Date().toISOString() })
           .eq('id', id)
@@ -699,6 +705,38 @@ export const useStore = create<AppState>()(
           batches: currentBatches,
           movements: [...state.movements, ...syncMovements] as StockMovement[],
           productMovements: [productMovement, ...state.productMovements]
+        }));
+      },
+
+      registerFinishedGoodOutput: async (productId, quantity, type, reference) => {
+        const companyId = get().currentCompanyId;
+        if (!companyId) throw new Error("No hay compañía activa");
+
+        // The unit cost is determined by the average incoming cost (FIFO simplified) or latest
+        const inMovements = get().productMovements.filter(m => m.product_id === productId && m.type === 'ingreso_produccion');
+        const avgCost = inMovements.length > 0
+          ? inMovements.reduce((acc, m) => acc + (m.quantity * m.unit_cost), 0) / inMovements.reduce((acc, m) => acc + m.quantity, 0)
+          : 0;
+
+        const newMovement: ProductMovement = {
+          id: crypto.randomUUID(),
+          company_id: companyId,
+          product_id: productId,
+          // Negative quantity physically represents an output in the ledger sum, OR type handles it. 
+          // Previous design: getProductStock uses `type === 'salida_venta'` to subtract in FinishedGoods.tsx.
+          // Let's store positive quantity here since the `getProductStock` logic subtracts based on type.
+          type: type as any,
+          quantity: quantity,
+          unit_cost: avgCost,
+          reference: reference,
+          created_at: new Date().toISOString()
+        };
+
+        const { error } = await supabase.from('product_movements').insert([newMovement]);
+        if (error) throw error;
+
+        set(state => ({
+          productMovements: [newMovement, ...state.productMovements]
         }));
       },
     }),

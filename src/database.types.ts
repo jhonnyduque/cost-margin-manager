@@ -406,7 +406,7 @@ export type Database = {
           id: string
           company_id: string
           product_id: string
-          type: 'ingreso_produccion' | 'salida_venta' | 'ajuste'
+          type: 'ingreso_produccion' | 'salida_venta' | 'ajuste' | 'salida_manual' | 'merma'
           quantity: number
           unit_cost: number
           reference: string | null
@@ -416,7 +416,7 @@ export type Database = {
           id?: string
           company_id: string
           product_id: string
-          type: 'ingreso_produccion' | 'salida_venta' | 'ajuste'
+          type: 'ingreso_produccion' | 'salida_venta' | 'ajuste' | 'salida_manual' | 'merma'
           quantity: number
           unit_cost?: number
           reference?: string | null
@@ -426,7 +426,7 @@ export type Database = {
           id?: string
           company_id?: string
           product_id?: string
-          type?: 'ingreso_produccion' | 'salida_venta' | 'ajuste'
+          type?: 'ingreso_produccion' | 'salida_venta' | 'ajuste' | 'salida_manual' | 'merma'
           quantity?: number
           unit_cost?: number
           reference?: string | null
