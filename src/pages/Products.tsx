@@ -8,15 +8,6 @@ import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/Table';
 import { tokens } from '@/design/design-tokens';
 import { useCurrency } from '@/hooks/useCurrency';
 import { translateError } from '@/utils/errorHandler';
@@ -223,69 +214,147 @@ const Products: React.FC = () => {
         />
       </div>
 
-      <TableContainer>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[30%] px-6">Producto</TableHead>
-            <TableHead className="w-[15%] px-6">Referencia / SKU</TableHead>
-            <TableHead className="w-[15%] px-6 text-right">Costo (FIFO)</TableHead>
-            <TableHead className="w-[15%] px-6 text-right">Precio Venta</TableHead>
-            <TableHead className="w-[10%] px-6 text-center">Margen</TableHead>
-            <TableHead className="w-[15%] px-6 text-center">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+      <div className="space-y-4">
+        {/* ✅ MÓVIL - Layout Cards */}
+        <div className="md:hidden space-y-4">
           {filteredProducts.map((p) => {
             const cost = calculateProductCost(p, batches, rawMaterials);
             const margin = calculateMargin(p.price, cost);
             return (
-              <TableRow key={p.id}>
-                <TableCell className="px-6 font-semibold text-gray-900">{p.name}</TableCell>
-                <TableCell className="px-6 font-mono text-xs text-gray-500">{p.reference || '---'}</TableCell>
-                <TableCell className="px-6 text-right font-mono font-medium text-gray-700">{formatCurrency(cost)}</TableCell>
-                <TableCell className="px-6 text-right font-mono font-black" style={{ color: tokens.colors.brand }}>{formatCurrency(p.price)}</TableCell>
-                <TableCell className="px-6 text-center">
+              <div key={p.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <h3 className="font-bold text-gray-900">{p.name}</h3>
+                    <p className="text-xs font-mono text-gray-500 mt-0.5">{p.reference || 'Sin Ref'}</p>
+                  </div>
                   <Badge variant={margin >= 30 ? 'success' : 'warning'}>
                     {margin.toFixed(1)}%
                   </Badge>
-                </TableCell>
-                <TableCell className="px-6">
-                  <div className="flex justify-center gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-emerald-50" onClick={() => { if (window.confirm('¿Registrar consumo de stock?')) consumeStock(p.id); }} title="Producir">
-                      <PlayCircle size={16} className="text-emerald-500" />
-                    </Button>
-                    {canCreate && (
-                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-50" onClick={() => handleDuplicate(p)} title="Duplicar">
-                        <Copy size={16} className="text-slate-500" />
-                      </Button>
-                    )}
-                    {canEdit && (
-                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-blue-50" onClick={() => { setEditingId(p.id); setFormData(p); setIsModalOpen(true); }} title="Editar">
-                        <Edit2 size={16} className="text-blue-600" />
-                      </Button>
-                    )}
-                    {canDelete && (
-                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-red-50" onClick={async () => {
-                        if (window.confirm("¿Seguro que deseas eliminar este producto?")) {
-                          try {
-                            await deleteProduct(p.id);
-                          } catch (err: any) {
-                            console.error("Error deleting product:", err);
-                            alert(`No se pudo eliminar el producto: ${translateError(err)}`);
-                          }
-                        }
-                      }} title="Eliminar">
-                        <Trash2 size={16} className="text-red-500" />
-                      </Button>
-                    )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-4 rounded-lg bg-gray-50 p-3">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase text-gray-400">Costo (FIFO)</p>
+                    <p className="font-mono font-medium text-gray-700">{formatCurrency(cost)}</p>
                   </div>
-                </TableCell>
-              </TableRow>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold uppercase text-gray-400">Precio Venta</p>
+                    <p className="font-mono font-black" style={{ color: tokens.colors.brand }}>{formatCurrency(p.price)}</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 border-t border-gray-100 pt-3">
+                  <Button variant="ghost" size="sm" className="h-8 hover:bg-emerald-50 text-emerald-600" onClick={() => { if (window.confirm('¿Registrar consumo de stock?')) consumeStock(p.id); }}>
+                    <PlayCircle size={14} className="mr-1.5" /> Producir
+                  </Button>
+                  {canCreate && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-slate-50" onClick={() => handleDuplicate(p)} title="Duplicar">
+                      <Copy size={16} className="text-slate-500" />
+                    </Button>
+                  )}
+                  {canEdit && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-blue-50" onClick={() => { setEditingId(p.id); setFormData(p); setIsModalOpen(true); }} title="Editar">
+                      <Edit2 size={16} className="text-blue-600" />
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-red-50" onClick={async () => {
+                      if (window.confirm("¿Seguro que deseas eliminar este producto?")) {
+                        try {
+                          await deleteProduct(p.id);
+                        } catch (err: any) {
+                          console.error("Error deleting product:", err);
+                          alert(`No se pudo eliminar el producto: ${translateError(err)}`);
+                        }
+                      }
+                    }} title="Eliminar">
+                      <Trash2 size={16} className="text-red-500" />
+                    </Button>
+                  )}
+                </div>
+              </div>
             );
           })}
-        </TableBody>
+          {filteredProducts.length === 0 && (
+            <div className="p-8 text-center text-gray-500">No se encontraron productos.</div>
+          )}
+        </div>
 
-      </TableContainer>
+        {/* ✅ ESCRITORIO - Tabla normal */}
+        <div className="hidden md:block overflow-x-auto">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <table className="w-full border-collapse text-left table-fixed">
+              <thead className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50/50 text-xs font-semibold uppercase tracking-wider text-gray-500 backdrop-blur-sm">
+                <tr>
+                  <th className="w-[30%] px-6 py-4 truncate">Producto</th>
+                  <th className="w-[20%] px-6 py-4 truncate">Referencia / SKU</th>
+                  <th className="w-[15%] px-6 py-4 text-right truncate">Costo (FIFO)</th>
+                  <th className="w-[15%] px-6 py-4 text-right truncate">Precio Venta</th>
+                  <th className="w-[10%] px-6 py-4 text-center truncate">Margen</th>
+                  <th className="w-[10%] min-w-[140px] px-6 py-4 text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredProducts.map((p) => {
+                  const cost = calculateProductCost(p, batches, rawMaterials);
+                  const margin = calculateMargin(p.price, cost);
+                  return (
+                    <tr key={p.id} className="group transition-all hover:bg-slate-50 bg-white">
+                      <td className="px-6 py-4 font-semibold text-gray-900 truncate" title={p.name}>{p.name}</td>
+                      <td className="px-6 py-4 font-mono text-xs text-gray-500 truncate" title={p.reference || '---'}>{p.reference || '---'}</td>
+                      <td className="px-6 py-4 text-right font-mono font-medium text-gray-700 truncate" title={formatCurrency(cost)}>{formatCurrency(cost)}</td>
+                      <td className="px-6 py-4 text-right font-mono font-black truncate" style={{ color: tokens.colors.brand }} title={formatCurrency(p.price)}>{formatCurrency(p.price)}</td>
+                      <td className="px-6 py-4 text-center">
+                        <Badge variant={margin >= 30 ? 'success' : 'warning'}>
+                          {margin.toFixed(1)}%
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex justify-center gap-1.5 opacity-70 transition-opacity group-hover:opacity-100">
+                          <button className="rounded-lg p-1.5 transition-colors border border-transparent bg-emerald-50 text-emerald-600 hover:border-emerald-200 hover:bg-emerald-100" onClick={() => { if (window.confirm('¿Registrar consumo de stock?')) consumeStock(p.id); }} title="Producir">
+                            <PlayCircle size={16} />
+                          </button>
+                          {canCreate && (
+                            <button className="rounded-lg p-1.5 transition-colors border border-transparent bg-gray-50 text-gray-600 hover:border-gray-200 hover:bg-white" onClick={() => handleDuplicate(p)} title="Duplicar">
+                              <Copy size={16} />
+                            </button>
+                          )}
+                          {canEdit && (
+                            <button className="rounded-lg p-1.5 transition-colors border border-transparent bg-blue-50 text-blue-600 hover:border-blue-200 hover:bg-blue-100" onClick={() => { setEditingId(p.id); setFormData(p); setIsModalOpen(true); }} title="Editar">
+                              <Edit2 size={16} />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button className="rounded-lg p-1.5 transition-colors border border-transparent bg-red-50 text-red-600 hover:border-red-200 hover:bg-red-100" onClick={async () => {
+                              if (window.confirm("¿Seguro que deseas eliminar este producto?")) {
+                                try {
+                                  await deleteProduct(p.id);
+                                } catch (err: any) {
+                                  console.error("Error deleting product:", err);
+                                  alert(`No se pudo eliminar el producto: ${translateError(err)}`);
+                                }
+                              }
+                            }} title="Eliminar">
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {filteredProducts.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-8 text-center text-sm font-medium text-gray-500">
+                      No se encontraron productos. Usa el botón "Nuevo Producto" para empezar.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
       {
         isModalOpen && (

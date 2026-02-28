@@ -2,22 +2,14 @@ import React, { useState, useMemo } from 'react';
 import { Plus, Trash2, Edit2, Search, X, History, ShoppingCart, ArrowDownToLine, Printer, Pencil, AlertCircle, Maximize2, Scissors, RotateCcw, Package } from 'lucide-react';
 import { useStore } from '../store';
 import { RawMaterial, Status, Unit, MaterialBatch } from '@/types';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/Table';
 import { tokens } from '@/design/design-tokens';
 import { useCurrency } from '@/hooks/useCurrency';
+import { Badge } from '@/components/ui/Badge';
 import { translateError } from '@/utils/errorHandler';
 
 const RawMaterials: React.FC = () => {
@@ -119,7 +111,7 @@ const RawMaterials: React.FC = () => {
       setEditingId(null);
     } catch (error: any) {
       console.error("Error saving material:", error);
-      alert(`Hubo un error al guardar: ${translateError(error)}`);
+      alert(`Hubo un error al guardar: ${translateError(error)} `);
     } finally {
       setIsSaving(false);
     }
@@ -167,7 +159,7 @@ const RawMaterials: React.FC = () => {
       });
     } catch (error: any) {
       console.error("Error saving batch:", error);
-      alert(`No se pudo agregar el ingreso físico: ${translateError(error)}`);
+      alert(`No se pudo agregar el ingreso físico: ${translateError(error)} `);
     } finally {
       setIsSaving(false);
     }
@@ -208,7 +200,7 @@ const RawMaterials: React.FC = () => {
         setEditingBatchData(null);
       } catch (error: any) {
         console.error("Error editing batch:", error);
-        alert(`Fallo al actualizar el lote: ${translateError(error)}`);
+        alert(`Fallo al actualizar el lote: ${translateError(error)} `);
       } finally {
         setIsSaving(false);
       }
@@ -248,13 +240,13 @@ const RawMaterials: React.FC = () => {
       </div>
 
       <style>{`
-        @media print {
-          body * { visibility: hidden; }
-          #print-area, #print-area * { visibility: visible; }
-          #print-area { position: absolute; left: 0; top: 0; width: 100%; }
-          .no-print { display: none !important; }
-        }
-      `}</style>
+@media print {
+  body * { visibility: hidden; }
+  #print - area, #print - area * { visibility: visible; }
+  #print - area { position: absolute; left: 0; top: 0; width: 100 %; }
+          .no - print { display: none!important; }
+}
+`}</style>
 
       {/* Toolbar: Search + Create */}
       <div className="flex items-center gap-2">
@@ -307,7 +299,7 @@ const RawMaterials: React.FC = () => {
                 <div className="flex items-center gap-4 mt-3">
                   <div>
                     <p className="text-[10px] font-bold uppercase text-slate-400">Stock</p>
-                    <p className={`text-sm font-bold ${totalRemainingQty <= 0 ? 'text-red-500' : 'text-slate-900'}`}>
+                    <p className={`text - sm font - bold ${totalRemainingQty <= 0 ? 'text-red-500' : 'text-slate-900'} `}>
                       {totalRemainingQty.toFixed(2)} <span className="text-xs font-normal text-slate-400">{m.unit}s</span>
                     </p>
                   </div>
@@ -346,7 +338,7 @@ const RawMaterials: React.FC = () => {
                           await deleteRawMaterial(m.id);
                         } catch (err: any) {
                           console.error("Error deleting material:", err);
-                          alert(`No se pudo eliminar el material: ${translateError(err)}`);
+                          alert(`No se pudo eliminar el material: ${translateError(err)} `);
                         }
                       }}
                       className="flex items-center justify-center rounded-lg bg-slate-50 p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600 active:scale-95 transition-all"
@@ -380,7 +372,7 @@ const RawMaterials: React.FC = () => {
                 return (
                   <tr key={m.id} className="group bg-white transition-all hover:bg-slate-50">
                     <td className="px-4 py-4 truncate">
-                      <div className="flex flex-col gap-0.5" title={`${m.name} - ${m.provider || 'Varios'}`}>
+                      <div className="flex flex-col gap-0.5" title={`${m.name} - ${m.provider || 'Varios'} `}>
                         <span className="font-semibold text-gray-900 truncate" title={m.name}>{m.name}</span>
                         <span className="text-xs text-gray-500 truncate" title={m.provider || 'Varios'}>{m.provider || 'Varios'}</span>
                       </div>
@@ -391,15 +383,15 @@ const RawMaterials: React.FC = () => {
                       </Badge>
                     </td>
                     <td className="px-4 py-4 truncate text-right">
-                      <div className="flex justify-end items-center gap-1.5" title={`Stock Actual: ${totalRemainingQty.toFixed(2)} ${m.unit}s`}>
-                        <span className={`font-semibold ${totalRemainingQty <= 0 ? 'text-red-600' : totalRemainingQty <= 5 ? 'text-amber-600' : 'text-gray-900'}`}>
+                      <div className="flex justify-end items-center gap-1.5" title={`Stock Actual: ${totalRemainingQty.toFixed(2)} ${m.unit} s`}>
+                        <span className={`font - semibold ${totalRemainingQty <= 0 ? 'text-red-600' : totalRemainingQty <= 5 ? 'text-amber-600' : 'text-gray-900'} `}>
                           {totalRemainingQty.toFixed(2)}
                         </span>
                         <span className="text-xs text-gray-500">{m.unit}s</span>
                       </div>
                     </td>
                     <td className="px-4 py-4 truncate text-right">
-                      <span className="font-semibold text-gray-900" title={`Costo Promedio: ${formatCurrency(weightedAvgCost)}`}>
+                      <span className="font-semibold text-gray-900" title={`Costo Promedio: ${formatCurrency(weightedAvgCost)} `}>
                         {formatCurrency(weightedAvgCost)}
                       </span>
                     </td>
@@ -433,7 +425,7 @@ const RawMaterials: React.FC = () => {
                                 await deleteRawMaterial(m.id);
                               } catch (err: any) {
                                 console.error("Error deleting material:", err);
-                                alert(`No se pudo eliminar: ${translateError(err)}`);
+                                alert(`No se pudo eliminar: ${translateError(err)} `);
                               }
                             }}
                             className="rounded-lg p-1.5 transition-colors border border-transparent bg-gray-50 text-gray-400 hover:border-gray-200 hover:bg-white hover:text-red-600"
@@ -557,14 +549,14 @@ const RawMaterials: React.FC = () => {
                     type="button"
                     onClick={() => setFormData({ ...formData, status: formData.status === 'activa' ? 'inactiva' : 'activa' })}
                     className={`
-                      w-full flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold transition-all active:scale-95
+w - full flex items - center justify - center gap - 2 rounded - xl px - 3 py - 2.5 text - sm font - bold transition - all active: scale - 95
                       ${formData.status === 'activa'
                         ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
                         : 'bg-gray-100 text-gray-400 ring-1 ring-gray-200'
                       }
-                    `}
+`}
                   >
-                    <div className={`size-2.5 rounded-full transition-colors ${formData.status === 'activa' ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                    <div className={`size - 2.5 rounded - full transition - colors ${formData.status === 'activa' ? 'bg-emerald-500' : 'bg-gray-300'} `} />
                     {formData.status === 'activa' ? 'Activa' : 'Inactiva'}
                   </button>
                 </div>
@@ -606,14 +598,14 @@ const RawMaterials: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => set_entry_mode('rollo')}
-                      className={`flex items-center gap-2 rounded-lg px-4 py-1.5 text-xs font-bold uppercase transition-all ${entry_mode === 'rollo' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:bg-gray-50'}`}
+                      className={`flex items - center gap - 2 rounded - lg px - 4 py - 1.5 text - xs font - bold uppercase transition - all ${entry_mode === 'rollo' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:bg-gray-50'} `}
                     >
                       <RotateCcw size={12} /> Rollo
                     </button>
                     <button
                       type="button"
                       onClick={() => set_entry_mode('pieza')}
-                      className={`flex items-center gap-2 rounded-lg px-4 py-1.5 text-xs font-bold uppercase transition-all ${entry_mode === 'pieza' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:bg-gray-50'}`}
+                      className={`flex items - center gap - 2 rounded - lg px - 4 py - 1.5 text - xs font - bold uppercase transition - all ${entry_mode === 'pieza' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:bg-gray-50'} `}
                     >
                       <Scissors size={12} /> Pieza
                     </button>
@@ -665,7 +657,7 @@ const RawMaterials: React.FC = () => {
                         className="text-emerald-700"
                       />
                       <Input
-                        label={entry_mode === 'rollo' ? `Costo/Metro (${currencySymbol})` : `Costo Total (${currencySymbol})`}
+                        label={entry_mode === 'rollo' ? `Costo / Metro(${currencySymbol})` : `Costo Total(${currencySymbol})`}
                         type="number"
                         step="0.01"
                         value={batchFormData.unit_cost || ''}
@@ -752,7 +744,7 @@ const RawMaterials: React.FC = () => {
                                       await deleteBatch(batch.id);
                                     } catch (err: any) {
                                       console.error("Error deleting batch:", err);
-                                      alert(`No se pudo eliminar el lote: ${translateError(err)}`);
+                                      alert(`No se pudo eliminar el lote: ${translateError(err)} `);
                                     }
                                   }} className="p-1 rounded bg-gray-50 text-gray-400 hover:text-red-600 hover:bg-white border border-transparent hover:border-gray-200 transition-colors" title="Eliminar Lote">
                                     <Trash2 size={14} />
