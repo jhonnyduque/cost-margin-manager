@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Trash2, Edit2, Search, PlayCircle, Info, Layers, TrendingUp, CheckCircle2, X, ChevronRight, AlertTriangle, Scissors, RotateCcw, Ruler, History, Copy, Package, PackageSearch, Printer } from 'lucide-react';
+import { Plus, Trash2, Edit2, Search, PlayCircle, Info, Layers, TrendingUp, CheckCircle2, X, ChevronRight, AlertTriangle, Scissors, RotateCcw, Ruler, History, Copy, Package, PackageSearch, Printer, Archive } from 'lucide-react';
 import { useStore, calculateProductCost, calculateMargin, calculateFifoCost, getFifoBreakdown, hasProductGeneratedActiveDebt } from '../store';
 import { Product, ProductMaterial, Status, Unit, RawMaterial, MaterialBatch } from '@/types';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -28,7 +28,7 @@ interface ProductMaterialUI extends ProductMaterial {
 }
 
 const Products: React.FC = () => {
-  const { currentCompanyId, currentUserRole, products, rawMaterials, batches, movements, addProduct, deleteProduct, updateProduct, consumeStock, consumeStockBatch } = useStore();
+  const { currentCompanyId, currentUserRole, products, productMovements, rawMaterials, batches, movements, addProduct, deleteProduct, discontinueProduct, updateProduct, consumeStock, consumeStockBatch } = useStore();
   const allowedRoles = ['super_admin', 'admin', 'owner', 'manager'];
   const canCreate = allowedRoles.includes(currentUserRole || '');
   const canEdit = allowedRoles.includes(currentUserRole || '');
@@ -392,20 +392,32 @@ const Products: React.FC = () => {
                       <Edit2 size={16} className={hasProductGeneratedActiveDebt(p.id, movements) ? "text-gray-400" : "text-blue-600"} />
                     </Button>
                   )}
-                  {canDelete && (
-                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-red-50" onClick={async () => {
-                      if (window.confirm("¿Seguro que deseas eliminar este producto?")) {
-                        try {
-                          await deleteProduct(p.id);
-                        } catch (err: any) {
-                          console.error("Error deleting product:", err);
-                          alert(`No se pudo eliminar el producto: ${translateError(err)}`);
-                        }
-                      }
-                    }} title="Eliminar">
-                      <Trash2 size={16} className="text-red-500" />
-                    </Button>
-                  )}
+                  {canDelete && (() => {
+                    const hasMovements = productMovements.some(m => m.product_id === p.id);
+                    return hasMovements ? (
+                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-amber-50"
+                        title="Discontinuar producto (tiene historial de movimientos)"
+                        onClick={async () => {
+                          if (window.confirm(`¿Discontinuar "${p.name}"? El producto se archivará y no aparecerá en nuevas producciones, pero se conserva el historial.`)) {
+                            try { await discontinueProduct(p.id); }
+                            catch (err: any) { alert(`Error: ${translateError(err)}`); }
+                          }
+                        }}>
+                        <Archive size={16} className="text-amber-600" />
+                      </Button>
+                    ) : (
+                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-red-50"
+                        title="Eliminar producto (sin historial)"
+                        onClick={async () => {
+                          if (window.confirm(`¿Eliminar "${p.name}"? Esta acción no se puede deshacer.`)) {
+                            try { await deleteProduct(p.id); }
+                            catch (err: any) { alert(`No se pudo eliminar: ${translateError(err)}`); }
+                          }
+                        }}>
+                        <Trash2 size={16} className="text-red-500" />
+                      </Button>
+                    );
+                  })()}
                 </div>
               </div>
             );
@@ -469,20 +481,34 @@ const Products: React.FC = () => {
                               <Edit2 size={16} />
                             </button>
                           )}
-                          {canDelete && (
-                            <button className="rounded-lg p-1.5 transition-colors border border-transparent bg-red-50 text-red-600 hover:border-red-200 hover:bg-red-100" onClick={async () => {
-                              if (window.confirm("¿Seguro que deseas eliminar este producto?")) {
-                                try {
-                                  await deleteProduct(p.id);
-                                } catch (err: any) {
-                                  console.error("Error deleting product:", err);
-                                  alert(`No se pudo eliminar el producto: ${translateError(err)}`);
-                                }
-                              }
-                            }} title="Eliminar">
-                              <Trash2 size={16} />
-                            </button>
-                          )}
+                          {canDelete && (() => {
+                            const hasMovements = productMovements.some(m => m.product_id === p.id);
+                            return hasMovements ? (
+                              <button
+                                className="rounded-lg p-1.5 transition-colors border border-transparent bg-amber-50 text-amber-600 hover:border-amber-200 hover:bg-amber-100"
+                                title="Discontinuar (tiene historial — no se puede eliminar)"
+                                onClick={async () => {
+                                  if (window.confirm(`¿Discontinuar "${p.name}"? Se archivará conservando el historial de movimientos.`)) {
+                                    try { await discontinueProduct(p.id); }
+                                    catch (err: any) { alert(`Error: ${translateError(err)}`); }
+                                  }
+                                }}>
+                                <Archive size={16} />
+                              </button>
+                            ) : (
+                              <button
+                                className="rounded-lg p-1.5 transition-colors border border-transparent bg-red-50 text-red-600 hover:border-red-200 hover:bg-red-100"
+                                title="Eliminar (sin historial)"
+                                onClick={async () => {
+                                  if (window.confirm(`¿Eliminar "${p.name}"? Esta acción no se puede deshacer.`)) {
+                                    try { await deleteProduct(p.id); }
+                                    catch (err: any) { alert(`No se pudo eliminar: ${translateError(err)}`); }
+                                  }
+                                }}>
+                                <Trash2 size={16} />
+                              </button>
+                            );
+                          })()}
                         </div>
                       </td>
                     </tr>

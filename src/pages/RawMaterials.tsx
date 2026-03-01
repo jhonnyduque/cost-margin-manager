@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Trash2, Edit2, Search, X, History, ShoppingCart, ArrowDownToLine, Printer, Pencil, AlertCircle, Maximize2, Scissors, RotateCcw, Package } from 'lucide-react';
+import { Plus, Trash2, Edit2, Search, X, History, ShoppingCart, ArrowDownToLine, Printer, Pencil, AlertCircle, Maximize2, Scissors, RotateCcw, Package, Archive } from 'lucide-react';
 import { useStore, getMaterialDebt, calculateTotalFinancialDebt } from '../store';
 import { RawMaterial, Status, Unit, MaterialBatch } from '@/types';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/Badge';
 import { translateError } from '@/utils/errorHandler';
 
 const RawMaterials: React.FC = () => {
-  const { currentCompanyId, currentUserRole, rawMaterials, batches, movements, addRawMaterial, deleteRawMaterial, updateRawMaterial, addBatch, deleteBatch, updateBatch } = useStore();
+  const { currentCompanyId, currentUserRole, rawMaterials, products, batches, movements, addRawMaterial, deleteRawMaterial, archiveMaterial, updateRawMaterial, addBatch, deleteBatch, updateBatch } = useStore();
   const { formatCurrency, currencySymbol } = useCurrency();
 
   // 🔹 Helpers de permisos según rol
@@ -359,21 +359,38 @@ const RawMaterials: React.FC = () => {
                       <Edit2 size={15} />
                     </button>
                   )}
-                  {canDelete && (
-                    <button
-                      onClick={async () => {
-                        try {
-                          await deleteRawMaterial(m.id);
-                        } catch (err: any) {
-                          console.error("Error deleting material:", err);
-                          alert(`No se pudo eliminar el material: ${translateError(err)} `);
-                        }
-                      }}
-                      className="flex items-center justify-center rounded-lg bg-slate-50 p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600 active:scale-95 transition-all"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  )}
+                  {canDelete && (() => {
+                    const hasLinkedProducts = products.some(p =>
+                      (p.materials ?? []).some(pm => pm.material_id === m.id)
+                    );
+                    return hasLinkedProducts ? (
+                      <button
+                        onClick={async () => {
+                          if (window.confirm(`¿Archivar "${m.name}"? Está vinculada a productos. Se archivará (quedará inactiva) pero se conservará el historial.`)) {
+                            try { await archiveMaterial(m.id); }
+                            catch (err: any) { alert(`Error: ${translateError(err)}`); }
+                          }
+                        }}
+                        className="flex items-center justify-center rounded-lg bg-slate-50 p-1.5 text-amber-500 hover:bg-amber-50 hover:text-amber-600 active:scale-95 transition-all"
+                        title="Archivar (vinculada a productos)"
+                      >
+                        <Archive size={15} />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={async () => {
+                          if (window.confirm(`¿Eliminar "${m.name}"? Esta acción no se puede deshacer.`)) {
+                            try { await deleteRawMaterial(m.id); }
+                            catch (err: any) { alert(`No se pudo eliminar: ${translateError(err)}`); }
+                          }
+                        }}
+                        className="flex items-center justify-center rounded-lg bg-slate-50 p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600 active:scale-95 transition-all"
+                        title="Eliminar (sin productos vinculados)"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    );
+                  })()}
                 </div>
 
                 {/* ACCORDION MOBILE */}
@@ -472,22 +489,36 @@ const RawMaterials: React.FC = () => {
                               <Edit2 size={16} />
                             </button>
                           )}
-                          {canDelete && (
-                            <button
-                              onClick={async () => {
-                                try {
-                                  await deleteRawMaterial(m.id);
-                                } catch (err: any) {
-                                  console.error("Error deleting material:", err);
-                                  alert(`No se pudo eliminar: ${translateError(err)}`);
-                                }
-                              }}
-                              className="rounded-lg p-1.5 transition-colors border border-transparent bg-gray-50 text-gray-400 hover:border-gray-200 hover:bg-white hover:text-red-600"
-                              title="Eliminar Materia Prima"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          )}
+                          {canDelete && (() => {
+                            const hasLinkedProducts = products.some(p =>
+                              (p.materials ?? []).some(pm => pm.material_id === m.id)
+                            );
+                            return hasLinkedProducts ? (
+                              <button
+                                className="rounded-lg p-1.5 transition-colors border border-transparent bg-amber-50 text-amber-500 hover:border-amber-200 hover:bg-amber-100"
+                                title="Archivar (vinculada a productos — no se puede eliminar)"
+                                onClick={async () => {
+                                  if (window.confirm(`¿Archivar "${m.name}"? Está vinculada a productos. Se marcará como inactiva pero el historial se conserva.`)) {
+                                    try { await archiveMaterial(m.id); }
+                                    catch (err: any) { alert(`Error: ${translateError(err)}`); }
+                                  }
+                                }}>
+                                <Archive size={16} />
+                              </button>
+                            ) : (
+                              <button
+                                className="rounded-lg p-1.5 transition-colors border border-transparent bg-gray-50 text-gray-400 hover:border-gray-200 hover:bg-white hover:text-red-600"
+                                title="Eliminar (sin productos vinculados)"
+                                onClick={async () => {
+                                  if (window.confirm(`¿Eliminar "${m.name}"? Esta acción no se puede deshacer.`)) {
+                                    try { await deleteRawMaterial(m.id); }
+                                    catch (err: any) { alert(`No se pudo eliminar: ${translateError(err)}`); }
+                                  }
+                                }}>
+                                <Trash2 size={16} />
+                              </button>
+                            );
+                          })()}
                         </div>
                       </td>
                     </tr>

@@ -23,6 +23,7 @@ interface AppState {
   addProduct: (product: Product) => Promise<void>;
   updateProduct: (product: Product) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
+  discontinueProduct: (id: string) => Promise<void>;
 
   loadProductsFromSupabase: () => Promise<void>;
   loadRawMaterialsFromSupabase: () => Promise<void>;
@@ -34,6 +35,7 @@ interface AppState {
   addRawMaterial: (material: RawMaterial) => Promise<void>;
   updateRawMaterial: (material: RawMaterial) => Promise<void>;
   deleteRawMaterial: (id: string) => Promise<void>;
+  archiveMaterial: (id: string) => Promise<void>;
 
   addBatch: (batch: MaterialBatch) => Promise<void>;
   deleteBatch: (id: string) => Promise<void>;
@@ -375,6 +377,20 @@ export const useStore = create<AppState>()(
         }));
       },
 
+      discontinueProduct: async (id) => {
+        const { error } = await supabase.from('products')
+          .update({ status: 'inactiva', updated_at: new Date().toISOString() })
+          .eq('id', id)
+          .eq('company_id', get().currentCompanyId);
+        if (error) throw error;
+        set((state) => ({
+          products: state.products.map((p) =>
+            p.id === id ? { ...p, status: 'inactiva' } : p
+          ),
+        }));
+      },
+
+
       addRawMaterial: async (material) => {
         const companyId = get().currentCompanyId;
         if (!companyId) return;
@@ -440,6 +456,20 @@ export const useStore = create<AppState>()(
           movements: state.movements.filter((mov) => mov.material_id !== id),
         }));
       },
+
+      archiveMaterial: async (id) => {
+        const { error } = await supabase.from('raw_materials')
+          .update({ status: 'inactiva', updated_at: new Date().toISOString() })
+          .eq('id', id)
+          .eq('company_id', get().currentCompanyId);
+        if (error) throw error;
+        set((state) => ({
+          rawMaterials: state.rawMaterials.map((m) =>
+            m.id === id ? { ...m, status: 'inactiva' } : m
+          ),
+        }));
+      },
+
 
       addBatch: async (batch) => {
         const companyId = get().currentCompanyId;
