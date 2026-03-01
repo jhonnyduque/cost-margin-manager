@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { EntityConfig } from './types';
+import { EntityConfig, EntityField } from './types';
 
 interface EntityDetailProps<T> {
     config: EntityConfig<T>;
@@ -9,7 +9,7 @@ interface EntityDetailProps<T> {
 }
 
 export function EntityDetail<T>({ config, item, isOpen, onClose }: EntityDetailProps<T>) {
-    // Close on Escape key
+    // Close on Escape
     useEffect(() => {
         if (!isOpen) return;
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -19,7 +19,7 @@ export function EntityDetail<T>({ config, item, isOpen, onClose }: EntityDetailP
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [isOpen, onClose]);
 
-    // Prevent body scroll when open on mobile
+    // Prevent body scroll
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden';
@@ -34,6 +34,13 @@ export function EntityDetail<T>({ config, item, isOpen, onClose }: EntityDetailP
     // Filtrar acción "Detalles" — redundante dentro del panel
     const relevantActions = config.actions.filter(a => a.id !== 'detail');
 
+    const renderField = (field: EntityField<T>) =>
+        field.render ? field.render(item) : String((item as any)[field.key] || '---');
+
+    const field0 = config.fields[0]; // Usuario (principal)
+    const field1 = config.fields[1]; // Rol / Empresa (secundario en fila 1)
+    const restFields = config.fields.slice(2); // Fechas y resto
+
     return (
         <div className="fixed inset-0 z-[110] overflow-hidden">
             {/* Backdrop */}
@@ -42,13 +49,14 @@ export function EntityDetail<T>({ config, item, isOpen, onClose }: EntityDetailP
                 onClick={onClose}
             />
 
-            {/* Panel — full screen on mobile, slide-over on desktop */}
+            {/* Panel */}
             <div className="absolute inset-0 sm:inset-y-0 sm:left-auto sm:right-0 sm:max-w-md sm:pl-10">
                 <div className="animate-in slide-in-from-bottom sm:slide-in-from-right flex h-full flex-col bg-white shadow-2xl transition duration-300 ease-in-out sm:duration-500">
-                    {/* Header */}
-                    <div className="bg-indigo-600 px-4 py-6 sm:px-6 sm:py-8">
-                        <div className="flex items-start justify-between">
-                            <h2 className="text-lg sm:text-xl font-bold leading-6 text-white">
+
+                    {/* ── Header ─────────────────────────────────────────── */}
+                    <div className="bg-indigo-600 px-5 py-4 sm:px-6 sm:py-6">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-lg font-bold leading-6 text-white">
                                 Detalles de {config.name}
                             </h2>
                             <button
@@ -65,46 +73,66 @@ export function EntityDetail<T>({ config, item, isOpen, onClose }: EntityDetailP
                         </div>
                     </div>
 
-                    {/* Content — scrollable */}
-                    <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 sm:py-8">
-                        {/* Campos en grid 2 columnas */}
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-5">
-                            {config.fields.map((field, idx) => (
-                                <div
-                                    key={idx}
-                                    className={`border-b border-gray-50 pb-4 ${idx === 0 ? 'col-span-2' : ''}`}
-                                >
-                                    <dt className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                                        {field.label}
+                    {/* ── Content ─────────────────────────────────────────── */}
+                    <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+                        <div className="space-y-5">
+
+                            {/* ── Fila 1: campo secundario (Rol) + iconos de acción ── */}
+                            {field1 && (
+                                <div className="flex items-center justify-between border-b border-gray-100 pb-5">
+                                    <div>
+                                        <dt className="mb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                            {field1.label}
+                                        </dt>
+                                        <dd className="text-sm font-medium text-gray-900">
+                                            {renderField(field1)}
+                                        </dd>
+                                    </div>
+
+                                    {/* Iconos de acción — sin texto */}
+                                    <div className="flex gap-2">
+                                        {relevantActions.map(action => (
+                                            <button
+                                                key={action.id}
+                                                onClick={() => { action.onClick(item); onClose(); }}
+                                                title={action.label}
+                                                className={`flex size-10 items-center justify-center rounded-xl bg-gray-50 transition-colors hover:bg-gray-100 min-w-[40px] min-h-[40px] ${action.color || 'text-gray-500 hover:text-gray-700'}`}
+                                            >
+                                                {action.icon}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ── Fila 2: campo principal (Usuario) — ancho completo ── */}
+                            {field0 && (
+                                <div className="border-b border-gray-100 pb-5">
+                                    <dt className="mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                        {field0.label}
                                     </dt>
                                     <dd className="text-sm font-medium text-gray-900">
-                                        {field.render
-                                            ? field.render(item)
-                                            : String((item as any)[field.key] || '---')}
+                                        {renderField(field0)}
                                     </dd>
                                 </div>
-                            ))}
-                        </div>
+                            )}
 
-                        {/* Acciones como iconos */}
-                        <div className="mt-6">
-                            <h4 className="mb-3 text-xs font-bold uppercase tracking-widest text-gray-400">Acciones</h4>
-                            <div className="flex gap-2">
-                                {relevantActions.map(action => (
-                                    <button
-                                        key={action.id}
-                                        onClick={() => {
-                                            action.onClick(item);
-                                            onClose();
-                                        }}
-                                        title={action.label}
-                                        className={`flex items-center gap-2 rounded-xl border border-transparent bg-gray-50 px-4 py-2.5 text-sm font-bold text-gray-600 transition-colors hover:border-indigo-100 hover:bg-indigo-50 hover:text-indigo-600 min-h-[44px] active:scale-95 ${action.color || ''}`}
-                                    >
-                                        {action.icon}
-                                        <span>{action.label}</span>
-                                    </button>
-                                ))}
-                            </div>
+                            {/* ── Fila 3+: campos restantes en 2 columnas ── */}
+                            {restFields.length > 0 && (
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-5">
+                                    {restFields.map((field, idx) => (
+                                        <div key={idx} className="border-b border-gray-100 pb-4">
+                                            <dt className="mb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                                {field.label}
+                                            </dt>
+                                            <dd className="text-sm font-medium text-gray-900">
+                                                {renderField(field)}
+                                            </dd>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
                         </div>
                     </div>
                 </div>
