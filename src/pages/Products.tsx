@@ -42,12 +42,32 @@ const Products: React.FC = () => {
   const [expandedMaterial, setExpandedMaterial] = useState<number | null>(null);
   const [missingStockModal, setMissingStockModal] = useState<{ isOpen: boolean; productId: string; missingItems: any[]; quantity: number; targetPrice: number; maxCoveredProduction: number; fullBreakdown: any[]; showFullBreakdown: boolean }>({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0, maxCoveredProduction: 0, fullBreakdown: [], showFullBreakdown: false });
   const [successModal, setSuccessModal] = useState<{ isOpen: boolean; productName: string; cost: number; quantity: number } | null>(null);
+  const [selectorModal, setSelectorModal] = useState<{ isOpen: boolean; forIndex: number | null }>({ isOpen: false, forIndex: null });
+  const [selectorSearch, setSelectorSearch] = useState('');
 
   const [formData, setFormData] = useState<any>({
     name: '', reference: '', price: 0, target_margin: 30, materials: [], status: 'activa'
   });
 
   const [productionModal, setProductionModal] = useState<{ isOpen: boolean; productId: string; quantity: number; cost: number; targetPrice: number; productName: string }>({ isOpen: false, productId: '', quantity: 1, cost: 0, targetPrice: 0, productName: '' });
+
+  // Utility to handle NumPad Comma for decimal inputs
+  const handleNumberInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === ',') {
+      e.preventDefault();
+      // Insert dot instead of comma
+      const target = e.target as HTMLInputElement;
+      const start = target.selectionStart;
+      const end = target.selectionEnd;
+      if (start !== null && end !== null) {
+        target.value = target.value.substring(0, start) + '.' + target.value.substring(end);
+        target.selectionStart = target.selectionEnd = start + 1;
+        // Trigger onChange event synthetically
+        const event = new Event('input', { bubbles: true });
+        target.dispatchEvent(event);
+      }
+    }
+  };
 
   const handleConfirmBatchProduction = () => {
     const { productId, quantity, targetPrice } = productionModal;
@@ -637,13 +657,14 @@ const Products: React.FC = () => {
 
                               {/* Col 1: Insumo */}
                               <div className="min-w-0 flex-1 lg:flex-none">
-                                <select
-                                  value={pm.material_id}
-                                  onChange={e => updateMaterial(idx, 'material_id', e.target.value)}
-                                  className="w-full rounded-lg border-0 bg-transparent py-1.5 text-sm font-medium text-gray-800 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                                <button
+                                  type="button"
+                                  onClick={() => { setSelectorModal({ isOpen: true, forIndex: idx }); setSelectorSearch(''); }}
+                                  className="w-full flex items-center justify-between rounded-lg border border-gray-200 bg-white py-1.5 px-3 text-sm font-medium text-gray-800 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-colors"
                                 >
-                                  {rawMaterials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                                </select>
+                                  <span className="truncate">{material ? material.name : 'Seleccionar insumo...'}</span>
+                                  <ChevronRight size={14} className="text-gray-400 flex-shrink-0" />
+                                </button>
                               </div>
 
                               {/* Col 2: Modo (siempre presente como celda; vacía si no es tela) */}
@@ -726,12 +747,12 @@ const Products: React.FC = () => {
                                           <div key={pIdx} className="flex items-center gap-3 rounded-xl border bg-white p-3 shadow-sm">
                                             <div className="flex-1">
                                               <label className="text-[10px] font-bold uppercase text-gray-400">Largo</label>
-                                              <input type="number" className="w-full rounded bg-gray-50 p-1 text-sm font-bold" value={piece.length} onChange={e => updatePiece(idx, pIdx, 'length', parseFloat(e.target.value))} />
+                                              <input type="number" className="w-full rounded bg-gray-50 p-1 text-sm font-bold" value={piece.length} onChange={e => updatePiece(idx, pIdx, 'length', parseFloat(e.target.value))} onKeyDown={handleNumberInputKeyDown} />
                                             </div>
                                             <span className="text-gray-300">×</span>
                                             <div className="flex-1">
                                               <label className="text-[10px] font-bold uppercase text-gray-400">Ancho</label>
-                                              <input type="number" className="w-full rounded bg-gray-50 p-1 text-sm font-bold" value={piece.width} onChange={e => updatePiece(idx, pIdx, 'width', parseFloat(e.target.value))} />
+                                              <input type="number" className="w-full rounded bg-gray-50 p-1 text-sm font-bold" value={piece.width} onChange={e => updatePiece(idx, pIdx, 'width', parseFloat(e.target.value))} onKeyDown={handleNumberInputKeyDown} />
                                             </div>
                                             <button type="button" onClick={() => removePiece(idx, pIdx)} className="text-gray-300 hover:text-red-500"><X size={14} /></button>
                                           </div>
@@ -758,17 +779,7 @@ const Products: React.FC = () => {
                     <span className="text-lg font-black tabular-nums leading-tight text-gray-800">{formatCurrency(totalCurrentCost)}</span>
                   </div>
 
-                  {/* Precios sugeridos — sin label redundante */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <button type="button" onClick={() => setFormData({ ...formData, price: exactSuggestedPrice })} className="rounded-xl border border-gray-200 bg-white p-3 text-left transition-shadow hover:shadow-sm hover:border-indigo-200">
-                      <div className="text-[10px] font-bold uppercase leading-tight text-gray-400">Exacto</div>
-                      <div className="text-sm font-black leading-snug tabular-nums text-indigo-600">{formatCurrency(exactSuggestedPrice)}</div>
-                    </button>
-                    <button type="button" onClick={() => setFormData({ ...formData, price: commercialSuggestedPrice })} className="rounded-xl border border-gray-200 bg-white p-3 text-left transition-shadow hover:shadow-sm hover:border-emerald-200">
-                      <div className="flex items-center gap-1 text-[10px] font-bold uppercase leading-tight text-gray-400"><TrendingUp size={10} /> Redondeo</div>
-                      <div className="text-sm font-black leading-snug tabular-nums text-emerald-600">{formatCurrency(commercialSuggestedPrice)}</div>
-                    </button>
-                  </div>
+
 
                   {/* Margen objetivo */}
                   <div className="flex items-center gap-2">
@@ -782,7 +793,8 @@ const Products: React.FC = () => {
                         const v = Math.min(100, Math.max(0, Number(e.target.value)));
                         setFormData({ ...formData, target_margin: v });
                       }}
-                      className="w-14 rounded-lg border border-gray-200 bg-white px-2 py-1 text-center text-sm font-bold leading-none text-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      onKeyDown={handleNumberInputKeyDown}
+                      className="w-14 rounded-lg border border-transparent bg-gray-100 px-2 py-1.5 text-center text-sm font-bold leading-none text-gray-800 hover:bg-gray-200 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     />
                     <span className="text-sm font-bold leading-none text-gray-400">%</span>
                   </div>
@@ -795,32 +807,61 @@ const Products: React.FC = () => {
                     const symbolClass = priceState === 'loss' ? 'text-red-400' : priceState === 'warning' ? 'text-amber-400' : 'text-emerald-500';
                     return (
                       <>
-                        {/* ── DESKTOP: dark financial block (unchanged) ── */}
-                        <div className="hidden lg:block space-y-2 rounded-xl border border-gray-700 bg-gray-800 p-4">
-                          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Precio Final</label>
-                          <div className="relative">
-                            <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-base font-bold leading-none ${symbolClass}`}>{currencySymbol}</span>
-                            <input
-                              type="number"
-                              step="0.01"
-                              className={`w-full rounded-lg border py-3 pl-9 pr-4 text-xl font-black leading-tight tabular-nums outline-none transition-colors bg-gray-900 ${borderClass} ${textClass} focus:ring-1 focus:ring-offset-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
-                              value={formData.price || ''}
-                              onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) })}
-                            />
+                        {/* ── DESKTOP: dark financial block (PHASE 1) ── */}
+                        <div className="hidden lg:block space-y-3 rounded-xl border border-gray-700 bg-gray-800 p-4">
+                          <div>
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Precio Final</label>
+                            <div className="relative mt-1">
+                              <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-base font-bold leading-none ${symbolClass}`}>{currencySymbol}</span>
+                              <input
+                                type="number"
+                                step="0.01"
+                                className={`w-full rounded-lg border py-3 pl-9 pr-4 text-xl font-black leading-tight tabular-nums outline-none transition-colors bg-gray-900 ${borderClass} ${textClass} focus:ring-1 focus:ring-offset-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
+                                value={formData.price || ''}
+                                onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+                                onKeyDown={handleNumberInputKeyDown}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Inject: Quick Action Chips */}
+                          <div className="flex gap-2 pb-3 border-b border-gray-700">
+                            <button
+                              type="button"
+                              onClick={() => setFormData({ ...formData, price: exactSuggestedPrice })}
+                              className="flex-1 rounded-md border border-gray-700 bg-gray-900/50 px-2 py-2 text-left transition-colors hover:border-gray-500 hover:bg-gray-800 group"
+                            >
+                              <div className="text-[10px] font-bold uppercase leading-tight text-gray-500 group-hover:text-gray-400">Exacto</div>
+                              <div className="text-sm font-black leading-snug tabular-nums text-gray-300">{formatCurrency(exactSuggestedPrice)}</div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setFormData({ ...formData, price: commercialSuggestedPrice })}
+                              className="flex-1 rounded-md border border-gray-700 bg-gray-900/50 px-2 py-2 text-left transition-colors hover:border-emerald-700 hover:bg-emerald-900/20 group"
+                            >
+                              <div className="flex items-center gap-1 text-[10px] font-bold uppercase leading-tight text-gray-500 group-hover:text-emerald-500"><TrendingUp size={10} /> Redondeo</div>
+                              <div className="text-sm font-black leading-snug tabular-nums text-emerald-500">{formatCurrency(commercialSuggestedPrice)}</div>
+                            </button>
                           </div>
 
                           {formData.price && formData.price > 0 && (
-                            <div className="space-y-1 pt-0.5">
+                            <div className="space-y-1.5 pt-1">
                               <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Margen real</span>
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Ganancia Neta</span>
+                                <span className={`text-sm font-black tabular-nums ${metrics.profitVsCost >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                  {metrics.profitVsCost >= 0 ? '+' : ''}{formatCurrency(metrics.profitVsCost)}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Margen real</span>
                                 <span className={`text-sm font-black tabular-nums ${priceState === 'loss' ? 'text-red-400' : priceState === 'warning' ? 'text-amber-300' : metrics.targetStatus === 'increase_required' ? 'text-amber-400' : 'text-emerald-400'}`}>
                                   {metrics.marginDisplay}
                                 </span>
                               </div>
-                              <p className={`text-xs leading-tight ${metrics.profitVsCost >= 0 ? 'text-gray-500' : 'text-red-400'}`}>
+                              <p className={`text-xs pt-1 leading-tight ${metrics.profitVsCost >= 0 ? 'text-gray-300' : 'text-red-400'}`}>
                                 {metrics.profitLabel}
                               </p>
-                              <p className="text-xs leading-tight text-gray-500">
+                              <p className="text-xs leading-tight text-gray-400">
                                 {metrics.adjustmentLabel}
                               </p>
                             </div>
