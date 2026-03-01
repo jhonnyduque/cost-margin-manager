@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, Trash2, Edit2, Search, PlayCircle, Info, Layers, TrendingUp, CheckCircle2, X, ChevronRight, AlertTriangle, Scissors, RotateCcw, Ruler, History, Copy, Package, PackageSearch, Printer, Archive } from 'lucide-react';
 import { useStore, calculateProductCost, calculateMargin, calculateFifoCost, getFifoBreakdown, hasProductGeneratedActiveDebt } from '../store';
+import { calculateFinancialMetrics } from '@/core/financialMetricsEngine';
 import { Product, ProductMaterial, Status, Unit, RawMaterial, MaterialBatch } from '@/types';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
@@ -256,10 +257,12 @@ const Products: React.FC = () => {
     }
   };
 
-  // Target compliance: how far the entered price is from the suggested price (margin strategy)
-  const targetDelta = (formData.price || 0) - exactSuggestedPrice;
-  // Real profitability: how much money above/below actual FIFO cost
-  const profitDelta = (formData.price || 0) - totalCurrentCost;
+  // Central financial metrics engine — single source of truth
+  const metrics = calculateFinancialMetrics(
+    totalCurrentCost,
+    formData.price || 0,
+    (formData.target_margin || 30) / 100
+  );
 
   const handlePrint = () => {
     window.print();
@@ -755,21 +758,27 @@ const Products: React.FC = () => {
                         <div className="flex items-center justify-between rounded-2xl border border-gray-700 bg-gray-800/50 p-6">
                           <div>
                             <div className="text-xs font-bold uppercase text-gray-300">Margen Real</div>
-                            <div className="text-3xl font-black text-white">{calculateMargin(formData.price, totalCurrentCost).toFixed(1)}%</div>
+                            <div className="text-3xl font-black text-white">{(metrics.realMargin * 100).toFixed(1)}%</div>
                           </div>
                           <CheckCircle2 size={32} className="text-emerald-500 opacity-30" />
                         </div>
-                        {/* Indicator 1 — Real Profitability (vs FIFO cost) */}
-                        <div className={`flex items-center justify-between rounded-lg px-4 py-3 text-xs font-bold ${profitDelta >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+                        {/* Indicator 1 — Real Profitability */}
+                        <div className={`flex items-center justify-between rounded-lg px-4 py-3 text-xs font-bold ${metrics.profitVsCost >= 0
+                            ? 'bg-emerald-500/10 text-emerald-400'
+                            : 'bg-red-500/10 text-red-400'
                           }`}>
                           <span className="uppercase tracking-widest opacity-70">Rentabilidad</span>
-                          <span>{profitDelta >= 0 ? '+' : ''}{formatCurrency(profitDelta)} sobre costo FIFO</span>
+                          <span>{metrics.profitLabel}</span>
                         </div>
-                        {/* Indicator 2 — Target Compliance (vs suggested price) */}
-                        <div className={`flex items-center justify-between rounded-lg px-4 py-3 text-xs font-bold ${targetDelta >= 0 ? 'bg-indigo-500/10 text-indigo-300' : 'bg-amber-500/15 text-amber-400'
+                        {/* Indicator 2 — Target Compliance */}
+                        <div className={`flex items-center justify-between rounded-lg px-4 py-3 text-xs font-bold ${metrics.targetStatus === 'above_target'
+                            ? 'bg-indigo-500/10 text-indigo-300'
+                            : metrics.targetStatus === 'on_target'
+                              ? 'bg-emerald-500/10 text-emerald-400'
+                              : 'bg-amber-500/15 text-amber-400'
                           }`}>
                           <span className="uppercase tracking-widest opacity-70">Cumplimiento objetivo</span>
-                          <span>{targetDelta >= 0 ? '+' : ''}{formatCurrency(targetDelta)} vs precio sugerido</span>
+                          <span>{metrics.adjustmentLabel}</span>
                         </div>
                       </div>
                     )}
