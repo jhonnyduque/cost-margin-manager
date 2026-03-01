@@ -256,8 +256,10 @@ const Products: React.FC = () => {
     }
   };
 
-  const diffPrice = (formData.price || 0) - exactSuggestedPrice;
-  const diffPercent = exactSuggestedPrice > 0 ? (diffPrice / exactSuggestedPrice) * 100 : 0;
+  // Target compliance: how far the entered price is from the suggested price (margin strategy)
+  const targetDelta = (formData.price || 0) - exactSuggestedPrice;
+  // Real profitability: how much money above/below actual FIFO cost
+  const profitDelta = (formData.price || 0) - totalCurrentCost;
 
   const handlePrint = () => {
     window.print();
@@ -757,8 +759,17 @@ const Products: React.FC = () => {
                           </div>
                           <CheckCircle2 size={32} className="text-emerald-500 opacity-30" />
                         </div>
-                        <div className={`flex items-center gap-2 rounded-lg px-4 py-3 text-xs font-bold ${diffPrice >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
-                          {diffPrice >= 0 ? '+' : ''}{formatCurrency(diffPrice)} vs costo
+                        {/* Indicator 1 — Real Profitability (vs FIFO cost) */}
+                        <div className={`flex items-center justify-between rounded-lg px-4 py-3 text-xs font-bold ${profitDelta >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+                          }`}>
+                          <span className="uppercase tracking-widest opacity-70">Rentabilidad</span>
+                          <span>{profitDelta >= 0 ? '+' : ''}{formatCurrency(profitDelta)} sobre costo FIFO</span>
+                        </div>
+                        {/* Indicator 2 — Target Compliance (vs suggested price) */}
+                        <div className={`flex items-center justify-between rounded-lg px-4 py-3 text-xs font-bold ${targetDelta >= 0 ? 'bg-indigo-500/10 text-indigo-300' : 'bg-amber-500/15 text-amber-400'
+                          }`}>
+                          <span className="uppercase tracking-widest opacity-70">Cumplimiento objetivo</span>
+                          <span>{targetDelta >= 0 ? '+' : ''}{formatCurrency(targetDelta)} vs precio sugerido</span>
                         </div>
                       </div>
                     )}
