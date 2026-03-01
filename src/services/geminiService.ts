@@ -22,7 +22,7 @@ export const getPricingInsights = async (
     const genAI = new GoogleGenerativeAI(apiKey);
 
     // Modelo que funciona en free tier febrero 2026
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const dataString = products
       .map((p) => {
@@ -47,6 +47,12 @@ ${dataString}
     return responseText;
   } catch (error: any) {
     console.error("Error Gemini:", error.message || error);
+    if (error.message?.includes('429') || error.status === 429) {
+      return "⏳ Cuota de API temporalmente excedida. Espera 1 minuto e intenta de nuevo, o genera una nueva API Key en aistudio.google.com/apikey";
+    }
+    if (error.message?.includes('400') || error.message?.includes('API_KEY_INVALID')) {
+      return "🔑 API Key inválida. Verifica VITE_GEMINI_API_KEY en tu archivo .env.local";
+    }
     return `Error: ${error.message || "desconocido"}`;
   }
 };
