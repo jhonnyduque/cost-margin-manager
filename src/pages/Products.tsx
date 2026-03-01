@@ -555,22 +555,22 @@ const Products: React.FC = () => {
       {
         isModalOpen && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-6"
+            className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6"
             style={{
               backgroundColor: 'rgba(15, 23, 42, 0.4)',
               backdropFilter: 'blur(4px)'
             }}
           >
-            <Card className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden !p-0 mx-2 sm:mx-0">
-              <div className="flex items-center justify-between border-b px-4 py-4 sm:px-10 sm:py-6" style={{ borderColor: tokens.colors.border, backgroundColor: tokens.colors.bg }}>
-                <h3 className="text-xl font-bold" style={{ color: tokens.colors.text.primary }}>{editingId ? 'Editar Receta' : 'Nueva Receta de Producto'}</h3>
+            <Card className="flex max-h-[95vh] w-full max-w-5xl flex-col overflow-hidden !p-0 mx-0 sm:mx-0">
+              <div className="flex items-center justify-between border-b px-4 py-3 sm:px-10 sm:py-6" style={{ borderColor: tokens.colors.border, backgroundColor: tokens.colors.bg }}>
+                <h3 className="text-lg font-bold lg:text-xl" style={{ color: tokens.colors.text.primary }}>{editingId ? 'Editar Receta' : 'Nueva Receta de Producto'}</h3>
                 <Button variant="ghost" onClick={() => setIsModalOpen(false)} icon={<X size={20} />} />
               </div>
 
-              <form onSubmit={handleSubmit} className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_20rem] overflow-hidden">
+              <form onSubmit={handleSubmit} className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_20rem] overflow-hidden min-h-0">
                 {/* ── LEFT PANEL — scroll independiente ─────────────────── */}
-                <div className="overflow-y-auto p-4 lg:p-6 space-y-5">
-                  <div className="grid grid-cols-2 gap-3">
+                <div className="overflow-y-auto p-3 lg:p-6 space-y-4 lg:space-y-5">
+                  <div className="grid grid-cols-2 gap-2 lg:gap-3">
                     <Input
                       label="Nombre Comercial"
                       value={formData.name}
@@ -751,7 +751,7 @@ const Products: React.FC = () => {
                 </div>{/* end LEFT PANEL */}
 
                 {/* ── RIGHT PANEL — zona de decisión ─────────────────────── */}
-                <div className="overflow-y-auto p-4 lg:p-6 space-y-5 border-t border-gray-100 lg:border-t-0 lg:border-l bg-gray-50/40">
+                <div className="overflow-y-auto p-3 lg:p-6 space-y-4 lg:space-y-5 border-t border-gray-100 lg:border-t-0 lg:border-l bg-gray-50/40">
                   {/* Costo FIFO */}
                   <div className="flex items-center justify-between border-b border-gray-200 pb-3">
                     <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Costo FIFO</span>
@@ -787,53 +787,103 @@ const Products: React.FC = () => {
                     <span className="text-sm font-bold leading-none text-gray-400">%</span>
                   </div>
 
-                  {/* ── Precio Final — zona de acción ────────── */}
+                  {/* ── Precio Final — DESKTOP dark block (lg only) ────── */}
                   {(() => {
                     const priceState = metrics.priceState;
                     const borderClass = priceState === 'loss' ? 'border-red-700' : priceState === 'warning' ? 'border-amber-600' : 'border-gray-700';
                     const textClass = priceState === 'loss' ? 'text-red-400' : priceState === 'warning' ? 'text-amber-300' : 'text-emerald-400';
                     const symbolClass = priceState === 'loss' ? 'text-red-400' : priceState === 'warning' ? 'text-amber-400' : 'text-emerald-500';
                     return (
-                      <div className="space-y-2 rounded-xl border border-gray-700 bg-gray-800 p-4">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Precio Final</label>
-                        <div className="relative">
-                          <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-base font-bold leading-none ${symbolClass}`}>{currencySymbol}</span>
-                          <input
-                            required
-                            type="number"
-                            step="0.01"
-                            className={`w-full rounded-lg border py-3 pl-9 pr-4 text-xl font-black leading-tight tabular-nums outline-none transition-colors bg-gray-900 ${borderClass} ${textClass} focus:ring-1 focus:ring-offset-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
-                            value={formData.price || ''}
-                            onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) })}
-                          />
+                      <>
+                        {/* ── DESKTOP: dark financial block (unchanged) ── */}
+                        <div className="hidden lg:block space-y-2 rounded-xl border border-gray-700 bg-gray-800 p-4">
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Precio Final</label>
+                          <div className="relative">
+                            <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-base font-bold leading-none ${symbolClass}`}>{currencySymbol}</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              className={`w-full rounded-lg border py-3 pl-9 pr-4 text-xl font-black leading-tight tabular-nums outline-none transition-colors bg-gray-900 ${borderClass} ${textClass} focus:ring-1 focus:ring-offset-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
+                              value={formData.price || ''}
+                              onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+                            />
+                          </div>
+
+                          {formData.price && formData.price > 0 && (
+                            <div className="space-y-1 pt-0.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Margen real</span>
+                                <span className={`text-sm font-black tabular-nums ${priceState === 'loss' ? 'text-red-400' : priceState === 'warning' ? 'text-amber-300' : metrics.targetStatus === 'increase_required' ? 'text-amber-400' : 'text-emerald-400'}`}>
+                                  {metrics.marginDisplay}
+                                </span>
+                              </div>
+                              <p className={`text-xs leading-tight ${metrics.profitVsCost >= 0 ? 'text-gray-500' : 'text-red-400'}`}>
+                                {metrics.profitLabel}
+                              </p>
+                              <p className="text-xs leading-tight text-gray-500">
+                                {metrics.adjustmentLabel}
+                              </p>
+                            </div>
+                          )}
                         </div>
 
-                        {formData.price && formData.price > 0 && (
-                          <div className="space-y-1 pt-0.5">
-                            {/* Margen real — business-readable */}
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Margen real</span>
-                              <span className={`text-sm font-black tabular-nums ${priceState === 'loss' ? 'text-red-400' : priceState === 'warning' ? 'text-amber-300' : metrics.targetStatus === 'increase_required' ? 'text-amber-400' : 'text-emerald-400'}`}>
-                                {metrics.marginDisplay}
-                              </span>
+                        {/* ── MOBILE: light operational card ── */}
+                        <div className="lg:hidden space-y-3">
+                          {/* Precio Final input */}
+                          <div className="rounded-xl border border-gray-200 bg-white p-3">
+                            <label className="text-xs font-bold uppercase tracking-widest text-gray-400">Precio Final</label>
+                            <div className="relative mt-1.5">
+                              <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold leading-none ${priceState === 'loss' ? 'text-red-500' : priceState === 'warning' ? 'text-amber-500' : 'text-emerald-600'
+                                }`}>{currencySymbol}</span>
+                              <input
+                                type="number"
+                                step="0.01"
+                                className={`w-full rounded-lg border py-2.5 pl-8 pr-3 text-lg font-bold leading-tight tabular-nums outline-none transition-colors bg-gray-50 ${priceState === 'loss' ? 'border-red-300 text-red-600' : priceState === 'warning' ? 'border-amber-300 text-amber-700' : 'border-gray-200 text-gray-800'
+                                  } focus:ring-1 focus:ring-indigo-400 focus:border-indigo-300 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
+                                value={formData.price || ''}
+                                onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+                              />
                             </div>
-                            {/* Feedback lines */}
-                            <p className={`text-xs leading-tight ${metrics.profitVsCost >= 0 ? 'text-gray-500' : 'text-red-400'}`}>
-                              {metrics.profitLabel}
-                            </p>
-                            <p className="text-xs leading-tight text-gray-500">
-                              {metrics.adjustmentLabel}
-                            </p>
                           </div>
-                        )}
-                      </div>
+
+                          {/* Result card — only shown when price is set */}
+                          {formData.price && formData.price > 0 && (
+                            <div className="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
+                              {/* Row 1: Margen Real */}
+                              <div className="flex items-center justify-between px-3 py-2.5">
+                                <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Margen Real</span>
+                                <span className={`text-sm font-black tabular-nums ${priceState === 'loss' ? 'text-red-500' : priceState === 'warning' ? 'text-amber-600' : metrics.targetStatus === 'increase_required' ? 'text-amber-500' : 'text-emerald-600'
+                                  }`}>
+                                  {metrics.marginDisplay}
+                                </span>
+                              </div>
+                              {/* Row 2: Ganancia */}
+                              <div className="px-3 py-2">
+                                <p className={`text-xs leading-snug ${metrics.profitVsCost >= 0 ? 'text-gray-500' : 'text-red-500'
+                                  }`}>
+                                  {metrics.profitLabel}
+                                </p>
+                              </div>
+                              {/* Row 3: Vs Objetivo */}
+                              <div className="px-3 py-2">
+                                <p className="text-xs leading-snug text-gray-400">
+                                  {metrics.adjustmentLabel}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </>
                     );
                   })()}
 
                 </div>{/* end RIGHT PANEL */}
               </form>
 
-              <div className="flex gap-3 border-t px-4 py-3" style={{ backgroundColor: tokens.colors.bg, borderColor: tokens.colors.border }}>
+              <div
+                className="flex gap-3 border-t px-4 py-3 sticky bottom-0"
+                style={{ backgroundColor: tokens.colors.bg, borderColor: tokens.colors.border, paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
+              >
                 <Button variant="ghost" className="flex-1" onClick={() => setIsModalOpen(false)}>Descartar</Button>
                 <Button className="flex-1" onClick={saveProduct} icon={<CheckCircle2 size={20} />}>
                   {editingId ? 'Guardar Cambios' : 'Crear Producto'}
