@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Edit2, Search, PlayCircle, Info, Layers, TrendingUp, CheckCircle2, X, ChevronRight, AlertTriangle, Scissors, RotateCcw, Ruler, History, Copy, Package, PackageSearch, Printer, Archive } from 'lucide-react';
 import { useStore, calculateProductCost, calculateFifoCost, getFifoBreakdown, hasProductGeneratedActiveDebt } from '../store';
 import { calculateFinancialMetrics } from '@/core/financialMetricsEngine';
@@ -222,8 +222,7 @@ const Products: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const saveProduct = useCallback(async () => {
     const processedMaterials = formData.materials.map((pm: any) => {
       if (pm.mode === 'pieces' && pm.pieces) {
         const latestBatch = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
@@ -255,7 +254,28 @@ const Products: React.FC = () => {
       console.error("Error saving product:", error);
       alert(`No se pudo guardar el producto: ${translateError(error)}`);
     }
+  }, [formData, editingId, batches, products, currentCompanyId, updateProduct, addProduct]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await saveProduct();
   };
+
+  // Atajo de teclado: Ctrl+G guarda, Escape cierra
+  useEffect(() => {
+    if (!isModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === 'g') {
+        e.preventDefault();
+        saveProduct();
+      }
+      if (e.key === 'Escape') {
+        setIsModalOpen(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isModalOpen, saveProduct]);
 
   // Central financial metrics engine — single source of truth
   const metrics = calculateFinancialMetrics(
@@ -541,13 +561,13 @@ const Products: React.FC = () => {
               backdropFilter: 'blur(4px)'
             }}
           >
-            <Card className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden !p-0">
-              <div className="flex items-center justify-between border-b px-10 py-6" style={{ borderColor: tokens.colors.border, backgroundColor: tokens.colors.bg }}>
+            <Card className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden !p-0 mx-2 sm:mx-0">
+              <div className="flex items-center justify-between border-b px-4 py-4 sm:px-10 sm:py-6" style={{ borderColor: tokens.colors.border, backgroundColor: tokens.colors.bg }}>
                 <h3 className="text-xl font-bold" style={{ color: tokens.colors.text.primary }}>{editingId ? 'Editar Receta' : 'Nueva Receta de Producto'}</h3>
                 <Button variant="ghost" onClick={() => setIsModalOpen(false)} icon={<X size={20} />} />
               </div>
 
-              <form onSubmit={handleSubmit} className="flex-1 space-y-10 overflow-y-auto p-10">
+              <form onSubmit={handleSubmit} className="flex-1 space-y-6 overflow-y-auto p-4 sm:space-y-10 sm:p-10">
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   <Input
                     label="Nombre Comercial"
@@ -609,7 +629,7 @@ const Products: React.FC = () => {
 
                       return (
                         <div key={idx} className="overflow-hidden rounded-2xl border shadow-sm transition-all" style={{ borderColor: hasMissingStock ? tokens.colors.error : tokens.colors.border }}>
-                          <div className="flex flex-wrap items-center gap-6 p-6" style={{ backgroundColor: tokens.colors.surface }}>
+                          <div className="flex flex-wrap items-center gap-3 p-3 sm:gap-6 sm:p-6" style={{ backgroundColor: tokens.colors.surface }}>
                             <div className="min-w-[200px] flex-1">
                               <Select
                                 label="Insumo"
@@ -703,9 +723,9 @@ const Products: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:gap-10">
                   {/* Summary Section - simplification for Design System: using Card */}
-                  <Card className="space-y-6 border-indigo-100 bg-indigo-50/30">
+                  <Card className="space-y-4 border-indigo-100 bg-indigo-50/30 !p-4 sm:space-y-6 sm:!p-6">
                     <div>
                       <h4 className="mb-4 text-xs font-bold uppercase tracking-widest text-indigo-400">Escandallo de Producción</h4>
                       <div className="flex items-end justify-between border-b border-indigo-100 pb-2">
@@ -737,7 +757,7 @@ const Products: React.FC = () => {
                     </div>
                   </Card>
 
-                  <Card className="space-y-6 border-gray-800 bg-gray-900 text-white">
+                  <Card className="space-y-4 border-gray-800 bg-gray-900 text-white !p-4 sm:space-y-6 sm:!p-6">
                     <div className="space-y-3">
                       <label className="text-xs font-bold uppercase tracking-widest text-gray-400">Precio Final</label>
                       <div className="relative">
@@ -786,9 +806,12 @@ const Products: React.FC = () => {
                 </div>
               </form>
 
-              <div className="flex gap-4 border-t px-10 py-6" style={{ backgroundColor: tokens.colors.bg, borderColor: tokens.colors.border }}>
+              <div className="flex gap-3 border-t px-4 py-3 sm:gap-4 sm:px-10 sm:py-6" style={{ backgroundColor: tokens.colors.bg, borderColor: tokens.colors.border }}>
                 <Button variant="ghost" className="flex-1" onClick={() => setIsModalOpen(false)}>Descartar</Button>
-                <Button className="flex-1" onClick={handleSubmit} icon={<CheckCircle2 size={20} />}>Guardar Receta</Button>
+                <Button className="flex-1" onClick={saveProduct} icon={<CheckCircle2 size={20} />}>
+                  <span className="hidden sm:inline">Guardar Receta</span>
+                  <span className="sm:hidden">Guardar</span>
+                </Button>
               </div>
             </Card>
           </div>

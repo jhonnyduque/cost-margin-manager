@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { UserPlus, Trash2, Shield, Building2, Search, Printer } from 'lucide-react';
 import { EntityList } from '../components/entity/EntityList';
 import { EntityModal } from '../components/entity/EntityModal';
+import { AppModal } from '../components/ui/AppModal';
 import { EntityDetail } from '../components/entity/EntityDetail';
 import { EntityConfig } from '../components/entity/types';
 
@@ -460,15 +461,19 @@ export default function Team() {
                 />
             </div>
 
-            {/* CREATE MODAL - 2 COLUMNAS */}
-            <EntityModal
-                config={teamConfig}
+            {/* CREATE MODAL — AppModal T2 */}
+            <AppModal
                 isOpen={showCreateModal}
                 onClose={() => setShowCreateModal(false)}
-                onSubmit={handleCreateUser}
+                onSave={handleCreateUser}
+                title="Nuevo Miembro"
+                description="Añadir un usuario al equipo"
+                tier={2}
+                size="md"
+                saveLabel="Crear Miembro"
                 loading={loading}
             >
-                <div className="grid grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
                         <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Nombre Completo</label>
                         <input name="full_name" type="text" placeholder="Ej: Juan Pérez" className="w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500" value={newUserFullName} onChange={(e) => setNewUserFullName(e.target.value)} required />
@@ -490,7 +495,7 @@ export default function Team() {
                         <input name="password" type="password" placeholder="••••••••" className="w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500" value={newUserPassword} onChange={(e) => setNewUserPassword(e.target.value)} required />
                     </div>
                 </div>
-            </EntityModal>
+            </AppModal>
 
             {/* ✅ EDIT MODAL - CORREGIDO (sin preview, etiquetas cortas, botones visibles) */}
             <EntityModal
