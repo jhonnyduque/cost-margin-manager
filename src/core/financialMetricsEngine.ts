@@ -13,6 +13,14 @@ export interface FinancialMetrics {
     /** Real margin as a decimal: (price - cost) / price */
     realMargin: number;
 
+    /**
+     * Business-readable margin display:
+     * - price > cost  → "32.5%"
+     * - price = cost  → "Punto de equilibrio"
+     * - price < cost  → "Pierdes $X por unidad"
+     */
+    marginDisplay: string;
+
     /** Price required to hit the target margin */
     priceTarget: number;
 
@@ -23,11 +31,14 @@ export interface FinancialMetrics {
 
     /** Categorical state for UI color/icon decisions */
     targetStatus: 'increase_required' | 'above_target' | 'on_target';
+
+    /** Visual input state for the price field */
+    priceState: 'normal' | 'warning' | 'loss';
 }
 
 /**
  * Calculate all financial metrics from primitives.
- * @param cost       FIFO unit cost of the product
+ * @param cost          FIFO unit cost of the product
  * @param currentPrice  The price the user is entering / has set
  * @param marginTarget  Target margin as a decimal (e.g. 0.30 for 30%)
  */
@@ -55,9 +66,11 @@ export function calculateFinancialMetrics(
 
     // ── Labels ────────────────────────────────────────────────────────────────
     const profitLabel =
-        profitVsCost >= 0
+        profitVsCost > 0
             ? `+$${profitVsCost.toFixed(2)} sobre costo FIFO`
-            : `-$${Math.abs(profitVsCost).toFixed(2)} bajo costo FIFO`;
+            : profitVsCost < 0
+                ? `-$${Math.abs(profitVsCost).toFixed(2)} bajo costo FIFO`
+                : 'Punto de equilibrio';
 
     const adjustmentLabel =
         adjustmentNeeded > 0.005
@@ -73,13 +86,35 @@ export function calculateFinancialMetrics(
                 ? 'above_target'
                 : 'on_target';
 
+    // ── Business-readable margin display ──────────────────────────────────────
+    const marginDisplay =
+        currentPrice <= 0
+            ? ''
+            : currentPrice < cost
+                ? `Pierdes $${Math.abs(profitVsCost).toFixed(2)} por unidad`
+                : currentPrice === cost
+                    ? 'Punto de equilibrio'
+                    : `${(realMargin * 100).toFixed(1)}%`;
+
+    // ── Price input visual state ───────────────────────────────────────────────
+    const priceState: FinancialMetrics['priceState'] =
+        currentPrice <= 0 || cost <= 0
+            ? 'normal'
+            : currentPrice < cost
+                ? 'loss'
+                : currentPrice < cost * 1.08
+                    ? 'warning'
+                    : 'normal';
+
     return {
         profitVsCost,
         profitLabel,
         realMargin,
+        marginDisplay,
         priceTarget,
         adjustmentNeeded,
         adjustmentLabel,
         targetStatus,
+        priceState,
     };
 }

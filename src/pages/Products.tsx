@@ -626,14 +626,17 @@ const Products: React.FC = () => {
                         if (breakdown.length > 0 && !breakdown[0].is_missing) {
                           const batch = batches.find(b => b.id === breakdown[0].batch_id);
                           const costPerM2 = breakdown[0].unit_cost / ((batch?.width || 140) / 100);
-                          mainBatchInfo = `FIFO → lote ${breakdown[0].date} @ ${formatCurrency(costPerM2)}/m²`;
+                          const formattedDate = new Date(breakdown[0].date).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                          mainBatchInfo = `FIFO — lote ${formattedDate} @ ${formatCurrency(costPerM2)}/m²`;
                         }
 
                         return (
                           <div key={idx} className={`overflow-hidden rounded-lg border transition-all ${hasMissingStock ? 'border-red-200' : 'border-gray-100'}`}>
-                            <div className="flex flex-wrap items-center gap-2 bg-gray-50/60 px-3 py-2">
-                              {/* Insumo selector */}
-                              <div className="min-w-0 flex-1">
+                            {/* Desktop: grid columnas fijas | Mobile: flex-wrap */}
+                            <div className="flex flex-wrap items-center gap-2 bg-gray-50/60 px-3 py-2 lg:grid lg:flex-none lg:grid-cols-[1fr_auto_90px_110px_56px] lg:gap-x-3">
+
+                              {/* Col 1: Insumo */}
+                              <div className="min-w-0 flex-1 lg:flex-none">
                                 <select
                                   value={pm.material_id}
                                   onChange={e => updateMaterial(idx, 'material_id', e.target.value)}
@@ -643,20 +646,22 @@ const Products: React.FC = () => {
                                 </select>
                               </div>
 
-                              {/* Modo (solo tela) */}
-                              {isFabric && (
-                                <div className="flex gap-0.5 rounded-md bg-gray-200/60 p-0.5">
-                                  <button type="button" onClick={() => updateMaterial(idx, 'mode', 'linear')} className={`flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold uppercase transition-all ${pm.mode === 'linear' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
-                                    <RotateCcw size={9} /> Lin.
-                                  </button>
-                                  <button type="button" onClick={() => updateMaterial(idx, 'mode', 'pieces')} className={`flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold uppercase transition-all ${pm.mode === 'pieces' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
-                                    <Scissors size={9} /> Pzas.
-                                  </button>
-                                </div>
-                              )}
+                              {/* Col 2: Modo (siempre presente como celda; vacía si no es tela) */}
+                              <div className="flex items-center">
+                                {isFabric && (
+                                  <div className="flex gap-0.5 rounded-md bg-gray-200/60 p-0.5">
+                                    <button type="button" onClick={() => updateMaterial(idx, 'mode', 'linear')} className={`flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold uppercase transition-all ${pm.mode === 'linear' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
+                                      <RotateCcw size={9} /> Lin.
+                                    </button>
+                                    <button type="button" onClick={() => updateMaterial(idx, 'mode', 'pieces')} className={`flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold uppercase transition-all ${pm.mode === 'pieces' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
+                                      <Scissors size={9} /> Pzas.
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
 
-                              {/* Cantidad */}
-                              <div className="w-20">
+                              {/* Col 3: Cantidad */}
+                              <div className="w-20 lg:w-auto">
                                 {pm.mode === 'linear' ? (
                                   <div className="flex items-center rounded-lg border border-gray-200 bg-white">
                                     <span className="pl-2 text-xs text-gray-400">Cant.</span>
@@ -665,27 +670,27 @@ const Products: React.FC = () => {
                                       step="0.01"
                                       value={pm.quantity}
                                       onChange={e => updateMaterial(idx, 'quantity', parseFloat(e.target.value))}
-                                      className="w-full rounded-lg border-0 bg-transparent px-1 py-1.5 text-right text-sm font-bold text-gray-800 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                                      className="w-full rounded-lg border-0 bg-transparent px-1 py-1.5 text-right text-sm font-bold tabular-nums text-gray-800 [appearance:textfield] focus:outline-none focus:ring-1 focus:ring-indigo-400 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                     />
                                   </div>
                                 ) : (
-                                  <div className="flex h-8 items-center justify-end rounded-lg border border-indigo-100 bg-indigo-50 px-2 text-right text-xs font-bold text-indigo-700">
+                                  <div className="flex h-8 items-center justify-end rounded-lg border border-indigo-100 bg-indigo-50 px-2 text-right text-xs font-bold tabular-nums text-indigo-700">
                                     {areaM2.toFixed(2)}m²
                                   </div>
                                 )}
                               </div>
 
-                              {/* Costo + FIFO badge */}
-                              <div className="flex items-center gap-1.5">
+                              {/* Col 4: Costo + FIFO badge */}
+                              <div className="flex items-center gap-1.5 lg:justify-end">
                                 <span
-                                  className={`text-sm font-bold tabular-nums ${hasMissingStock ? 'text-red-500' : 'text-indigo-600'}`}
+                                  className={`text-sm font-bold tabular-nums ${hasMissingStock ? 'text-red-500' : 'text-gray-700'}`}
                                   title={hasMissingStock ? 'Stock insuficiente' : mainBatchInfo}
                                 >
                                   {formatCurrency(costRow)}
                                 </span>
                                 {mainBatchInfo && !hasMissingStock && (
                                   <span
-                                    className="cursor-help rounded px-1 py-0.5 text-[9px] font-bold uppercase tracking-widest text-gray-400 hover:bg-gray-200"
+                                    className="cursor-help rounded bg-gray-100 px-1 py-0.5 text-[9px] font-bold uppercase tracking-widest text-gray-400 hover:bg-gray-200"
                                     title={mainBatchInfo}
                                   >
                                     FIFO
@@ -696,8 +701,8 @@ const Products: React.FC = () => {
                                 )}
                               </div>
 
-                              {/* Acciones */}
-                              <div className="flex gap-0.5">
+                              {/* Col 5: Acciones */}
+                              <div className="flex gap-0.5 lg:justify-center">
                                 <button type="button" onClick={() => setExpandedMaterial(isExpanded ? null : idx)} className="rounded p-1.5 text-gray-300 hover:bg-gray-100 hover:text-gray-500" title="Desglose FIFO">
                                   <Info size={14} />
                                 </button>
@@ -783,40 +788,47 @@ const Products: React.FC = () => {
                   </div>
 
                   {/* ── Precio Final — zona de acción ────────── */}
-                  <div className="space-y-2 rounded-2xl border border-gray-800 bg-gray-900 p-4">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Precio Final</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base font-bold leading-none text-emerald-500">{currencySymbol}</span>
-                      <input
-                        required
-                        type="number"
-                        step="0.01"
-                        className="w-full rounded-xl border border-gray-700 bg-gray-800 py-3 pl-9 pr-4 text-xl font-black leading-tight tabular-nums text-emerald-400 outline-none transition-colors focus:border-emerald-500"
-                        value={formData.price || ''}
-                        onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) })}
-                      />
-                    </div>
-
-                    {formData.price && formData.price > 0 && (
-                      <div className="space-y-1.5 pt-1">
-                        {/* Margen real — inline */}
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Margen real</span>
-                          <span className={`text-sm font-black tabular-nums ${metrics.realMargin >= formData.target_margin / 100 ? 'text-emerald-400' : 'text-amber-400'}`}>
-                            {(metrics.realMargin * 100).toFixed(1)}%
-                          </span>
+                  {(() => {
+                    const priceState = metrics.priceState;
+                    const borderClass = priceState === 'loss' ? 'border-red-700' : priceState === 'warning' ? 'border-amber-600' : 'border-gray-700';
+                    const textClass = priceState === 'loss' ? 'text-red-400' : priceState === 'warning' ? 'text-amber-300' : 'text-emerald-400';
+                    const symbolClass = priceState === 'loss' ? 'text-red-400' : priceState === 'warning' ? 'text-amber-400' : 'text-emerald-500';
+                    return (
+                      <div className="space-y-2 rounded-xl border border-gray-700 bg-gray-800 p-4">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Precio Final</label>
+                        <div className="relative">
+                          <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-base font-bold leading-none ${symbolClass}`}>{currencySymbol}</span>
+                          <input
+                            required
+                            type="number"
+                            step="0.01"
+                            className={`w-full rounded-lg border py-3 pl-9 pr-4 text-xl font-black leading-tight tabular-nums outline-none transition-colors bg-gray-900 ${borderClass} ${textClass} focus:ring-1 focus:ring-offset-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
+                            value={formData.price || ''}
+                            onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+                          />
                         </div>
-                        {/* Rentabilidad — helper text */}
-                        <p className={`text-xs leading-tight ${metrics.profitVsCost >= 0 ? 'text-gray-400' : 'text-red-400'}`}>
-                          {metrics.profitLabel}
-                        </p>
-                        {/* Objetivo — helper text */}
-                        <p className="text-xs leading-tight text-gray-400">
-                          {metrics.adjustmentLabel}
-                        </p>
+
+                        {formData.price && formData.price > 0 && (
+                          <div className="space-y-1 pt-0.5">
+                            {/* Margen real — business-readable */}
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Margen real</span>
+                              <span className={`text-sm font-black tabular-nums ${priceState === 'loss' ? 'text-red-400' : priceState === 'warning' ? 'text-amber-300' : metrics.targetStatus === 'increase_required' ? 'text-amber-400' : 'text-emerald-400'}`}>
+                                {metrics.marginDisplay}
+                              </span>
+                            </div>
+                            {/* Feedback lines */}
+                            <p className={`text-xs leading-tight ${metrics.profitVsCost >= 0 ? 'text-gray-500' : 'text-red-400'}`}>
+                              {metrics.profitLabel}
+                            </p>
+                            <p className="text-xs leading-tight text-gray-500">
+                              {metrics.adjustmentLabel}
+                            </p>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    );
+                  })()}
 
                 </div>{/* end RIGHT PANEL */}
               </form>
@@ -824,8 +836,7 @@ const Products: React.FC = () => {
               <div className="flex gap-3 border-t px-4 py-3" style={{ backgroundColor: tokens.colors.bg, borderColor: tokens.colors.border }}>
                 <Button variant="ghost" className="flex-1" onClick={() => setIsModalOpen(false)}>Descartar</Button>
                 <Button className="flex-1" onClick={saveProduct} icon={<CheckCircle2 size={20} />}>
-                  <span className="hidden sm:inline">Guardar Receta</span>
-                  <span className="sm:hidden">Guardar</span>
+                  {editingId ? 'Guardar Cambios' : 'Crear Producto'}
                 </Button>
               </div>
             </Card>
