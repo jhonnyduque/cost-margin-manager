@@ -567,206 +567,221 @@ const Products: React.FC = () => {
                 <Button variant="ghost" onClick={() => setIsModalOpen(false)} icon={<X size={20} />} />
               </div>
 
-              <form onSubmit={handleSubmit} className="flex-1 space-y-6 overflow-y-auto p-4 sm:space-y-10 sm:p-10">
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  <Input
-                    label="Nombre Comercial"
-                    value={formData.name}
-                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Ej. Bolso de Mano Primavera"
-                    required
-                  />
-                  <Input
-                    label="Referencia / SKU"
-                    value={formData.reference}
-                    onChange={e => setFormData({ ...formData, reference: e.target.value })}
-                    placeholder="REF-001"
-                  />
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b pb-4" style={{ borderColor: tokens.colors.border }}>
-                    <h4
-                      className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider"
-                      style={{ color: tokens.colors.text.primary }}
-                    >
-                      <Layers size={14} color={tokens.colors.brand} /> Composición del Producto
-                    </h4>
-                    <Button type="button" variant="secondary" onClick={handleAddMaterial} size="sm">
-                      + Añadir Insumo
-                    </Button>
+              <form onSubmit={handleSubmit} className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_20rem] overflow-hidden">
+                {/* ── LEFT PANEL — scroll independiente ─────────────────── */}
+                <div className="overflow-y-auto p-4 lg:p-6 space-y-5">
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input
+                      label="Nombre Comercial"
+                      value={formData.name}
+                      onChange={e => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="Ej. Bolso de Mano Primavera"
+                      required
+                    />
+                    <Input
+                      label="Referencia / SKU"
+                      value={formData.reference}
+                      onChange={e => setFormData({ ...formData, reference: e.target.value })}
+                      placeholder="REF-001"
+                    />
                   </div>
 
                   <div className="space-y-4">
-                    {(formData.materials || []).map((pm: any, idx: number) => {
-                      const material = rawMaterials.find(m => m.id === pm.material_id);
-                      const isFabric = material?.unit === 'metro';
+                    <div className="flex items-center justify-between border-b pb-4" style={{ borderColor: tokens.colors.border }}>
+                      <h4
+                        className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider"
+                        style={{ color: tokens.colors.text.primary }}
+                      >
+                        <Layers size={14} color={tokens.colors.brand} /> Composición del Producto
+                      </h4>
+                      <Button type="button" variant="secondary" onClick={handleAddMaterial} size="sm">
+                        + Añadir Insumo
+                      </Button>
+                    </div>
 
-                      let effectiveQty = pm.quantity;
-                      let areaM2 = 0;
-                      if (pm.mode === 'pieces' && pm.pieces) {
-                        const latestBatch = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-                        const width = latestBatch?.width || 140;
-                        const totalAreaCm2 = pm.pieces.reduce((acc: number, p: any) => acc + (p.length * p.width), 0);
-                        areaM2 = totalAreaCm2 / 10000;
-                        effectiveQty = (totalAreaCm2 / width) / 100;
-                      } else if (isFabric) {
-                        const latestBatch = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-                        areaM2 = pm.quantity * ((latestBatch?.width || 140) / 100);
-                      }
+                    <div className="space-y-4">
+                      {(formData.materials || []).map((pm: any, idx: number) => {
+                        const material = rawMaterials.find(m => m.id === pm.material_id);
+                        const isFabric = material?.unit === 'metro';
 
-                      const breakdown = getFifoBreakdown(pm.material_id, effectiveQty, pm.consumption_unit, batches, rawMaterials);
-                      const costRow = breakdown.reduce((acc, item) => acc + item.subtotal, 0);
-                      const isExpanded = expandedMaterial === idx;
-                      const hasMissingStock = breakdown.some(b => b.is_missing);
+                        let effectiveQty = pm.quantity;
+                        let areaM2 = 0;
+                        if (pm.mode === 'pieces' && pm.pieces) {
+                          const latestBatch = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+                          const width = latestBatch?.width || 140;
+                          const totalAreaCm2 = pm.pieces.reduce((acc: number, p: any) => acc + (p.length * p.width), 0);
+                          areaM2 = totalAreaCm2 / 10000;
+                          effectiveQty = (totalAreaCm2 / width) / 100;
+                        } else if (isFabric) {
+                          const latestBatch = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+                          areaM2 = pm.quantity * ((latestBatch?.width || 140) / 100);
+                        }
 
-                      let mainBatchInfo = '';
-                      if (breakdown.length > 0 && !breakdown[0].is_missing) {
-                        const batch = batches.find(b => b.id === breakdown[0].batch_id);
-                        const costPerM2 = breakdown[0].unit_cost / ((batch?.width || 140) / 100);
-                        mainBatchInfo = `FIFO → lote ${breakdown[0].date} @ ${formatCurrency(costPerM2)}/m²`;
-                      }
+                        const breakdown = getFifoBreakdown(pm.material_id, effectiveQty, pm.consumption_unit, batches, rawMaterials);
+                        const costRow = breakdown.reduce((acc, item) => acc + item.subtotal, 0);
+                        const isExpanded = expandedMaterial === idx;
+                        const hasMissingStock = breakdown.some(b => b.is_missing);
 
-                      return (
-                        <div key={idx} className="overflow-hidden rounded-2xl border shadow-sm transition-all" style={{ borderColor: hasMissingStock ? tokens.colors.error : tokens.colors.border }}>
-                          <div className="flex flex-wrap items-center gap-3 p-3 sm:gap-6 sm:p-6" style={{ backgroundColor: tokens.colors.surface }}>
-                            <div className="min-w-[200px] flex-1">
-                              <Select
-                                label="Insumo"
-                                value={pm.material_id}
-                                onChange={e => updateMaterial(idx, 'material_id', e.target.value)}
-                              >
-                                {rawMaterials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                              </Select>
+                        let mainBatchInfo = '';
+                        if (breakdown.length > 0 && !breakdown[0].is_missing) {
+                          const batch = batches.find(b => b.id === breakdown[0].batch_id);
+                          const costPerM2 = breakdown[0].unit_cost / ((batch?.width || 140) / 100);
+                          mainBatchInfo = `FIFO → lote ${breakdown[0].date} @ ${formatCurrency(costPerM2)}/m²`;
+                        }
+
+                        return (
+                          <div key={idx} className="overflow-hidden rounded-2xl border shadow-sm transition-all" style={{ borderColor: hasMissingStock ? tokens.colors.error : tokens.colors.border }}>
+                            <div className="flex flex-wrap items-center gap-3 p-3 sm:gap-6 sm:p-6" style={{ backgroundColor: tokens.colors.surface }}>
+                              <div className="min-w-[200px] flex-1">
+                                <Select
+                                  label="Insumo"
+                                  value={pm.material_id}
+                                  onChange={e => updateMaterial(idx, 'material_id', e.target.value)}
+                                >
+                                  {rawMaterials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                </Select>
+                              </div>
+
+                              {isFabric && (
+                                <div className="flex flex-col gap-1">
+                                  <label className="text-center text-xs font-medium text-gray-500">Modo</label>
+                                  <div className="flex gap-1 rounded-lg bg-gray-100 p-1">
+                                    <button type="button" onClick={() => updateMaterial(idx, 'mode', 'linear')} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-bold uppercase transition-all ${pm.mode === 'linear' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400'}`}>
+                                      <RotateCcw size={10} /> Lineal
+                                    </button>
+                                    <button type="button" onClick={() => updateMaterial(idx, 'mode', 'pieces')} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-bold uppercase transition-all ${pm.mode === 'pieces' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400'}`}>
+                                      <Scissors size={10} /> Piezas
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+
+                              <div className="w-36">
+                                {pm.mode === 'linear' ? (
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    label={`Cant. (${pm.consumption_unit}s)`}
+                                    value={pm.quantity}
+                                    onChange={e => updateMaterial(idx, 'quantity', parseFloat(e.target.value))}
+                                  />
+                                ) : (
+                                  <div>
+                                    <label className="mb-1 block text-xs font-medium text-gray-500">Superficie Total</label>
+                                    <div className="flex h-[40px] items-center justify-end rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-2 text-right text-sm font-bold text-indigo-700">
+                                      {areaM2.toFixed(3)} m²
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="min-w-[150px] flex-1 text-right">
+                                <label className="mb-1 block text-xs font-medium text-gray-500">Costo Aplicado</label>
+                                <div className={`text-lg font-bold ${hasMissingStock ? 'text-red-500' : 'text-indigo-600'}`}>
+                                  {formatCurrency(costRow)}
+                                </div>
+                                <div className="text-xs text-gray-400">
+                                  {hasMissingStock ? "Stock insuficiente" : mainBatchInfo}
+                                </div>
+                              </div>
+
+                              <div className="mb-1 flex gap-1 self-end">
+                                <Button variant="ghost" size="sm" onClick={() => setExpandedMaterial(isExpanded ? null : idx)} icon={<Info size={18} />} />
+                                <Button variant="ghost" size="sm" onClick={() => removeMaterial(idx)} icon={<Trash2 size={18} className="text-red-400" />} />
+                              </div>
                             </div>
 
-                            {isFabric && (
-                              <div className="flex flex-col gap-1">
-                                <label className="text-center text-xs font-medium text-gray-500">Modo</label>
-                                <div className="flex gap-1 rounded-lg bg-gray-100 p-1">
-                                  <button type="button" onClick={() => updateMaterial(idx, 'mode', 'linear')} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-bold uppercase transition-all ${pm.mode === 'linear' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400'}`}>
-                                    <RotateCcw size={10} /> Lineal
-                                  </button>
-                                  <button type="button" onClick={() => updateMaterial(idx, 'mode', 'pieces')} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-bold uppercase transition-all ${pm.mode === 'pieces' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400'}`}>
-                                    <Scissors size={10} /> Piezas
-                                  </button>
-                                </div>
+                            {isExpanded && (
+                              <div className="space-y-6 border-t px-8 pb-8 pt-4" style={{ backgroundColor: tokens.colors.bg, borderColor: tokens.colors.border }}>
+                                {pm.mode === 'pieces' && (
+                                  <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                      <h5 className="flex items-center gap-2 text-xs font-bold uppercase text-indigo-500"><Scissors size={12} /> Desglose de piezas (cm)</h5>
+                                      <Button size="sm" variant="secondary" onClick={() => addPiece(idx)}>+ Añadir Pieza</Button>
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                                      {(pm.pieces || []).map((piece: any, pIdx: number) => (
+                                        <div key={pIdx} className="flex items-center gap-3 rounded-xl border bg-white p-3 shadow-sm">
+                                          <div className="flex-1">
+                                            <label className="text-[10px] font-bold uppercase text-gray-400">Largo</label>
+                                            <input type="number" className="w-full rounded bg-gray-50 p-1 text-sm font-bold" value={piece.length} onChange={e => updatePiece(idx, pIdx, 'length', parseFloat(e.target.value))} />
+                                          </div>
+                                          <span className="text-gray-300">×</span>
+                                          <div className="flex-1">
+                                            <label className="text-[10px] font-bold uppercase text-gray-400">Ancho</label>
+                                            <input type="number" className="w-full rounded bg-gray-50 p-1 text-sm font-bold" value={piece.width} onChange={e => updatePiece(idx, pIdx, 'width', parseFloat(e.target.value))} />
+                                          </div>
+                                          <button type="button" onClick={() => removePiece(idx, pIdx)} className="text-gray-300 hover:text-red-500"><X size={14} /></button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             )}
-
-                            <div className="w-36">
-                              {pm.mode === 'linear' ? (
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  label={`Cant. (${pm.consumption_unit}s)`}
-                                  value={pm.quantity}
-                                  onChange={e => updateMaterial(idx, 'quantity', parseFloat(e.target.value))}
-                                />
-                              ) : (
-                                <div>
-                                  <label className="mb-1 block text-xs font-medium text-gray-500">Superficie Total</label>
-                                  <div className="flex h-[40px] items-center justify-end rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-2 text-right text-sm font-bold text-indigo-700">
-                                    {areaM2.toFixed(3)} m²
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="min-w-[150px] flex-1 text-right">
-                              <label className="mb-1 block text-xs font-medium text-gray-500">Costo Aplicado</label>
-                              <div className={`text-lg font-bold ${hasMissingStock ? 'text-red-500' : 'text-indigo-600'}`}>
-                                {formatCurrency(costRow)}
-                              </div>
-                              <div className="text-xs text-gray-400">
-                                {hasMissingStock ? "Stock insuficiente" : mainBatchInfo}
-                              </div>
-                            </div>
-
-                            <div className="mb-1 flex gap-1 self-end">
-                              <Button variant="ghost" size="sm" onClick={() => setExpandedMaterial(isExpanded ? null : idx)} icon={<Info size={18} />} />
-                              <Button variant="ghost" size="sm" onClick={() => removeMaterial(idx)} icon={<Trash2 size={18} className="text-red-400" />} />
-                            </div>
                           </div>
-
-                          {isExpanded && (
-                            <div className="space-y-6 border-t px-8 pb-8 pt-4" style={{ backgroundColor: tokens.colors.bg, borderColor: tokens.colors.border }}>
-                              {pm.mode === 'pieces' && (
-                                <div className="space-y-4">
-                                  <div className="flex items-center justify-between">
-                                    <h5 className="flex items-center gap-2 text-xs font-bold uppercase text-indigo-500"><Scissors size={12} /> Desglose de piezas (cm)</h5>
-                                    <Button size="sm" variant="secondary" onClick={() => addPiece(idx)}>+ Añadir Pieza</Button>
-                                  </div>
-                                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-                                    {(pm.pieces || []).map((piece: any, pIdx: number) => (
-                                      <div key={pIdx} className="flex items-center gap-3 rounded-xl border bg-white p-3 shadow-sm">
-                                        <div className="flex-1">
-                                          <label className="text-[10px] font-bold uppercase text-gray-400">Largo</label>
-                                          <input type="number" className="w-full rounded bg-gray-50 p-1 text-sm font-bold" value={piece.length} onChange={e => updatePiece(idx, pIdx, 'length', parseFloat(e.target.value))} />
-                                        </div>
-                                        <span className="text-gray-300">×</span>
-                                        <div className="flex-1">
-                                          <label className="text-[10px] font-bold uppercase text-gray-400">Ancho</label>
-                                          <input type="number" className="w-full rounded bg-gray-50 p-1 text-sm font-bold" value={piece.width} onChange={e => updatePiece(idx, pIdx, 'width', parseFloat(e.target.value))} />
-                                        </div>
-                                        <button type="button" onClick={() => removePiece(idx, pIdx)} className="text-gray-300 hover:text-red-500"><X size={14} /></button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:gap-10">
+                </div>{/* end LEFT PANEL */}
+
+                {/* ── RIGHT PANEL — sticky, scroll independiente ────────── */}
+                <div className="overflow-y-auto p-4 lg:p-6 space-y-4 border-t border-gray-100 lg:border-t-0 lg:border-l">
                   {/* Summary Section - simplification for Design System: using Card */}
-                  <Card className="space-y-4 border-indigo-100 bg-indigo-50/30 !p-4 sm:space-y-6 sm:!p-6">
+                  <Card className="space-y-4 border-indigo-100 bg-indigo-50/30 !p-4">
                     <div>
                       <h4 className="mb-4 text-xs font-bold uppercase tracking-widest text-indigo-400">Escandallo de Producción</h4>
-                      <div className="flex items-end justify-between border-b border-indigo-100 pb-2">
+                      <div className="flex items-center justify-between border-b border-indigo-100 pb-2">
                         <span className="text-sm font-bold text-gray-500">Costo FIFO Total</span>
-                        <span className="text-3xl font-black text-indigo-900">{formatCurrency(totalCurrentCost)}</span>
+                        <span className="text-xl font-black tabular-nums leading-tight text-indigo-900">{formatCurrency(totalCurrentCost)}</span>
                       </div>
                     </div>
 
                     <div className="space-y-4">
                       <label className="text-xs font-bold uppercase text-gray-400">Precios Sugeridos ({formData.target_margin}%)</label>
-                      <div className="grid grid-cols-2 gap-4">
-                        <button type="button" onClick={() => setFormData({ ...formData, price: exactSuggestedPrice })} className="rounded-xl border border-indigo-100 bg-white p-4 text-left transition-shadow hover:shadow-md">
-                          <div className="text-[10px] font-bold uppercase text-gray-400">Margen Exacto</div>
-                          <div className="text-lg font-black text-indigo-600">{formatCurrency(exactSuggestedPrice)}</div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button type="button" onClick={() => setFormData({ ...formData, price: exactSuggestedPrice })} className="rounded-xl border border-indigo-100 bg-white p-3 text-left transition-shadow hover:shadow-md">
+                          <div className="text-[10px] font-bold uppercase leading-tight text-gray-400">Margen Exacto</div>
+                          <div className="text-base font-black leading-snug text-indigo-600">{formatCurrency(exactSuggestedPrice)}</div>
                         </button>
-                        <button type="button" onClick={() => setFormData({ ...formData, price: commercialSuggestedPrice })} className="rounded-xl border border-emerald-200 bg-white p-4 text-left transition-shadow hover:shadow-md">
-                          <div className="flex items-center gap-1 text-[10px] font-bold uppercase text-gray-400"><TrendingUp size={10} /> Redondeo</div>
-                          <div className="text-lg font-black text-emerald-600">{formatCurrency(commercialSuggestedPrice)}</div>
+                        <button type="button" onClick={() => setFormData({ ...formData, price: commercialSuggestedPrice })} className="rounded-xl border border-emerald-200 bg-white p-3 text-left transition-shadow hover:shadow-md">
+                          <div className="flex items-center gap-1 text-[10px] font-bold uppercase leading-tight text-gray-400"><TrendingUp size={10} /> Redondeo</div>
+                          <div className="text-base font-black leading-snug text-emerald-600">{formatCurrency(commercialSuggestedPrice)}</div>
                         </button>
                       </div>
                     </div>
 
                     <div>
-                      <div className="mb-2 flex justify-between text-xs font-bold uppercase text-gray-400">
-                        <span>Margen Objetivo</span>
-                        <span className="text-indigo-600">{formData.target_margin}%</span>
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs font-bold uppercase leading-none tracking-widest text-gray-400">Margen Objetivo</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={formData.target_margin}
+                          onChange={e => {
+                            const v = Math.min(100, Math.max(0, Number(e.target.value)));
+                            setFormData({ ...formData, target_margin: v });
+                          }}
+                          className="w-16 rounded-lg border border-indigo-200 bg-white px-2 py-1 text-center text-sm font-bold leading-none text-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <span className="text-sm font-bold leading-none text-gray-400">%</span>
                       </div>
-                      <input type="range" min="10" max="90" className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-indigo-100 accent-indigo-600" value={formData.target_margin} onChange={e => setFormData({ ...formData, target_margin: parseFloat(e.target.value) })} />
                     </div>
                   </Card>
 
-                  <Card className="space-y-4 border-gray-800 bg-gray-900 text-white !p-4 sm:space-y-6 sm:!p-6">
+                  <Card className="space-y-3 border-gray-800 bg-gray-900 text-white !p-4">
                     <div className="space-y-3">
                       <label className="text-xs font-bold uppercase tracking-widest text-gray-400">Precio Final</label>
                       <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-emerald-500">{currencySymbol}</span>
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold leading-none text-emerald-500">{currencySymbol}</span>
                         <input
                           required
                           type="number"
                           step="0.01"
-                          className="w-full rounded-2xl border border-gray-700 bg-gray-800 py-6 pl-10 pr-6 text-3xl font-black text-emerald-400 outline-none transition-colors focus:border-emerald-500"
+                          className="w-full rounded-2xl border border-gray-700 bg-gray-800 py-3 pl-10 pr-6 text-xl font-black leading-tight text-emerald-400 outline-none transition-colors focus:border-emerald-500"
                           value={formData.price || ''}
                           onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) })}
                         />
@@ -775,15 +790,15 @@ const Products: React.FC = () => {
 
                     {formData.price && formData.price > 0 && (
                       <div className="space-y-4">
-                        <div className="flex items-center justify-between rounded-2xl border border-gray-700 bg-gray-800/50 p-6">
+                        <div className="flex items-center justify-between rounded-xl border border-gray-700 bg-gray-800/50 px-4 py-3">
                           <div>
-                            <div className="text-xs font-bold uppercase text-gray-300">Margen Real</div>
-                            <div className="text-3xl font-black text-white">{(metrics.realMargin * 100).toFixed(1)}%</div>
+                            <div className="text-[10px] font-bold uppercase leading-none tracking-widest text-gray-300">Margen Real</div>
+                            <div className="text-lg font-black leading-tight text-white">{(metrics.realMargin * 100).toFixed(1)}%</div>
                           </div>
-                          <CheckCircle2 size={32} className="text-emerald-500 opacity-30" />
+                          <CheckCircle2 size={24} className="text-emerald-500 opacity-30" />
                         </div>
                         {/* Indicator 1 — Real Profitability */}
-                        <div className={`flex items-center justify-between rounded-lg px-4 py-3 text-xs font-bold ${metrics.profitVsCost >= 0
+                        <div className={`flex items-center justify-between rounded-lg px-3 py-2 text-xs font-bold leading-none ${metrics.profitVsCost >= 0
                           ? 'bg-emerald-500/10 text-emerald-400'
                           : 'bg-red-500/10 text-red-400'
                           }`}>
@@ -791,22 +806,22 @@ const Products: React.FC = () => {
                           <span>{metrics.profitLabel}</span>
                         </div>
                         {/* Indicator 2 — Target Compliance */}
-                        <div className={`flex items-center justify-between rounded-lg px-4 py-3 text-xs font-bold ${metrics.targetStatus === 'above_target'
+                        <div className={`flex items-center justify-between rounded-lg px-3 py-2 text-xs font-bold leading-none ${metrics.targetStatus === 'above_target'
                           ? 'bg-indigo-500/10 text-indigo-300'
                           : metrics.targetStatus === 'on_target'
                             ? 'bg-emerald-500/10 text-emerald-400'
                             : 'bg-amber-500/15 text-amber-400'
                           }`}>
-                          <span className="uppercase tracking-widest opacity-70">Cumplimiento objetivo</span>
+                          <span className="uppercase tracking-widest opacity-70">Objetivo</span>
                           <span>{metrics.adjustmentLabel}</span>
                         </div>
                       </div>
                     )}
                   </Card>
-                </div>
+                </div>{/* end RIGHT PANEL */}
               </form>
 
-              <div className="flex gap-3 border-t px-4 py-3 sm:gap-4 sm:px-10 sm:py-6" style={{ backgroundColor: tokens.colors.bg, borderColor: tokens.colors.border }}>
+              <div className="flex gap-3 border-t px-4 py-3" style={{ backgroundColor: tokens.colors.bg, borderColor: tokens.colors.border }}>
                 <Button variant="ghost" className="flex-1" onClick={() => setIsModalOpen(false)}>Descartar</Button>
                 <Button className="flex-1" onClick={saveProduct} icon={<CheckCircle2 size={20} />}>
                   <span className="hidden sm:inline">Guardar Receta</span>
