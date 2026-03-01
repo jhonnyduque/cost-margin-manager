@@ -319,8 +319,8 @@ export default function Team() {
                 label: 'Rol',
                 type: 'badge',
                 render: (m) => (
-                    <span className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-bold truncate ${m.is_active ? 'border-gray-100 bg-gray-50 text-gray-700' : 'border-orange-100 bg-orange-50 text-orange-700'}`}>
-                        {m.role.toUpperCase()} {!m.is_active && '(ARCHIVADO)'}
+                    <span className={`text-sm font-bold ${m.is_active ? 'text-gray-800' : 'text-orange-600'}`}>
+                        {m.role.toUpperCase()}{!m.is_active && ' · ARCHIVADO'}
                     </span>
                 )
             },
