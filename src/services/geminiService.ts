@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Product, RawMaterial, MaterialBatch } from "@/types";
-import { calculateProductCost, calculateMargin } from "../store";
+import { calculateProductCost } from "../store";
+import { calculateFinancialMetrics } from "../core/financialMetricsEngine";
 
 export const getPricingInsights = async (
   products: Product[],
@@ -27,8 +28,8 @@ export const getPricingInsights = async (
     const dataString = products
       .map((p) => {
         const cost = calculateProductCost(p, batches, materials);
-        const margin = calculateMargin(p.price, cost);
-        return `Producto: ${p.name || 'Sin nombre'}, Costo FIFO: ${cost.toFixed(2)}, Precio: ${p.price.toFixed(2)}, Margen: ${margin.toFixed(1)}%`;
+        const metrics = calculateFinancialMetrics(cost, p.price, (p.target_margin || 30) / 100);
+        return `Producto: ${p.name || 'Sin nombre'}, Costo FIFO: ${cost.toFixed(2)}, Precio: ${p.price.toFixed(2)}, Margen: ${(metrics.realMargin * 100).toFixed(1)}%`;
       })
       .join("\n");
 

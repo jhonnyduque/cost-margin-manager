@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, Trash2, Edit2, Search, PlayCircle, Info, Layers, TrendingUp, CheckCircle2, X, ChevronRight, AlertTriangle, Scissors, RotateCcw, Ruler, History, Copy, Package, PackageSearch, Printer, Archive } from 'lucide-react';
-import { useStore, calculateProductCost, calculateMargin, calculateFifoCost, getFifoBreakdown, hasProductGeneratedActiveDebt } from '../store';
+import { useStore, calculateProductCost, calculateFifoCost, getFifoBreakdown, hasProductGeneratedActiveDebt } from '../store';
 import { calculateFinancialMetrics } from '@/core/financialMetricsEngine';
 import { Product, ProductMaterial, Status, Unit, RawMaterial, MaterialBatch } from '@/types';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -347,7 +347,7 @@ const Products: React.FC = () => {
         <div className="md:hidden space-y-4">
           {filteredProducts.map((p) => {
             const cost = calculateProductCost(p, batches, rawMaterials);
-            const margin = calculateMargin(p.price, cost);
+            const metrics = calculateFinancialMetrics(cost, p.price, p.target_margin || 0.3);
             return (
               <div key={p.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                 <div className="flex items-start justify-between mb-3">
@@ -355,8 +355,8 @@ const Products: React.FC = () => {
                     <h3 className="font-bold text-gray-900">{p.name}</h3>
                     <p className="text-xs font-mono text-gray-500 mt-0.5">{p.reference || 'Sin Ref'}</p>
                   </div>
-                  <Badge variant={margin >= 30 ? 'success' : 'warning'}>
-                    {margin.toFixed(1)}%
+                  <Badge variant={metrics.realMargin >= (p.target_margin || 30) / 100 ? 'success' : 'warning'}>
+                    {(metrics.realMargin * 100).toFixed(1)}%
                   </Badge>
                 </div>
 
@@ -449,7 +449,7 @@ const Products: React.FC = () => {
               <tbody className="divide-y divide-gray-100">
                 {filteredProducts.map((p) => {
                   const cost = calculateProductCost(p, batches, rawMaterials);
-                  const margin = calculateMargin(p.price, cost);
+                  const metrics = calculateFinancialMetrics(cost, p.price, p.target_margin || 0.3);
                   return (
                     <tr key={p.id} className="group transition-all hover:bg-slate-50 bg-white">
                       <td className="px-6 py-4 font-semibold text-gray-900 truncate" title={p.name}>{p.name}</td>
@@ -457,8 +457,8 @@ const Products: React.FC = () => {
                       <td className="px-6 py-4 text-right font-mono font-medium text-gray-700 truncate" title={formatCurrency(cost)}>{formatCurrency(cost)}</td>
                       <td className="px-6 py-4 text-right font-mono font-black truncate" style={{ color: tokens.colors.brand }} title={formatCurrency(p.price)}>{formatCurrency(p.price)}</td>
                       <td className="px-6 py-4 text-center">
-                        <Badge variant={margin >= 30 ? 'success' : 'warning'}>
-                          {margin.toFixed(1)}%
+                        <Badge variant={metrics.realMargin >= (p.target_margin || 30) / 100 ? 'success' : 'warning'}>
+                          {(metrics.realMargin * 100).toFixed(1)}%
                         </Badge>
                       </td>
                       <td className="px-6 py-4 text-center">
@@ -764,18 +764,18 @@ const Products: React.FC = () => {
                         </div>
                         {/* Indicator 1 — Real Profitability */}
                         <div className={`flex items-center justify-between rounded-lg px-4 py-3 text-xs font-bold ${metrics.profitVsCost >= 0
-                            ? 'bg-emerald-500/10 text-emerald-400'
-                            : 'bg-red-500/10 text-red-400'
+                          ? 'bg-emerald-500/10 text-emerald-400'
+                          : 'bg-red-500/10 text-red-400'
                           }`}>
                           <span className="uppercase tracking-widest opacity-70">Rentabilidad</span>
                           <span>{metrics.profitLabel}</span>
                         </div>
                         {/* Indicator 2 — Target Compliance */}
                         <div className={`flex items-center justify-between rounded-lg px-4 py-3 text-xs font-bold ${metrics.targetStatus === 'above_target'
-                            ? 'bg-indigo-500/10 text-indigo-300'
-                            : metrics.targetStatus === 'on_target'
-                              ? 'bg-emerald-500/10 text-emerald-400'
-                              : 'bg-amber-500/15 text-amber-400'
+                          ? 'bg-indigo-500/10 text-indigo-300'
+                          : metrics.targetStatus === 'on_target'
+                            ? 'bg-emerald-500/10 text-emerald-400'
+                            : 'bg-amber-500/15 text-amber-400'
                           }`}>
                           <span className="uppercase tracking-widest opacity-70">Cumplimiento objetivo</span>
                           <span>{metrics.adjustmentLabel}</span>

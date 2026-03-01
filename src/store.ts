@@ -808,7 +808,4 @@ export const useStore = create<AppState>()(
   )
 );
 
-export const calculateMargin = (price: number, cost: number) => {
-  if (price === 0) return 0;
-  return ((price - cost) / price) * 100;
-};
+

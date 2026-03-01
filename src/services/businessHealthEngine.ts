@@ -18,10 +18,10 @@ import {
 } from '@/types';
 import {
     calculateProductCost,
-    calculateMargin,
     calculateTotalFinancialDebt,
     getMaterialDebt,
 } from '../store';
+import { calculateFinancialMetrics } from '../core/financialMetricsEngine';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -168,14 +168,15 @@ function detectMarginDrift(
     for (const p of products) {
         const targetMargin: number = (p as any).target_margin ?? 30;
         const cost = calculateProductCost(p, batches, rawMaterials);
-        const actualMargin = calculateMargin(p.price, cost);
+        const metrics = calculateFinancialMetrics(cost, p.price, targetMargin / 100);
+        const actualMargin = metrics.realMargin * 100;
         const drift = targetMargin - actualMargin;
 
         if (drift > 5 && cost > 0) {
             const severity: Severity = drift > 20 ? 'alto' : 'medio';
             // Impacto estimado: cuánto dinero extra se necesita subir el precio para alcanzar el target
-            const targetPrice = cost / (1 - targetMargin / 100);
-            const gap = targetPrice - p.price;
+            const gap = metrics.adjustmentNeeded;
+            const targetPrice = metrics.priceTarget;
             signals.push({
                 id: `margin-drift-${p.id}`,
                 type: 'margin_drift',
@@ -321,13 +322,13 @@ function buildKPIs(
 ): KPI[] {
     const totalDebt = calculateTotalFinancialDebt(movements, rawMaterials);
 
-    const productMargins = products.map((p) => {
+    const margins = products.map(p => {
         const cost = calculateProductCost(p, batches, rawMaterials);
-        return calculateMargin(p.price, cost);
-    });
+        return calculateFinancialMetrics(cost, p.price, (p.target_margin || 30) / 100).realMargin * 100;
+    }).filter(m => !isNaN(m));
     const avgMargin =
-        productMargins.length > 0
-            ? productMargins.reduce((a, b) => a + b, 0) / productMargins.length
+        margins.length > 0
+            ? margins.reduce((a, b) => a + b, 0) / margins.length
             : 0;
 
     const inventoryValue = batches.reduce(
