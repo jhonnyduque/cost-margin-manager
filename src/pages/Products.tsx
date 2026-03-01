@@ -827,51 +827,46 @@ const Products: React.FC = () => {
                           )}
                         </div>
 
-                        {/* ── MOBILE: light operational card ── */}
-                        <div className="lg:hidden space-y-3">
-                          {/* Precio Final input */}
-                          <div className="rounded-xl border border-gray-200 bg-white p-3">
-                            <label className="text-xs font-bold uppercase tracking-widest text-gray-400">Precio Final</label>
-                            <div className="relative mt-1.5">
+                        {/* ── MOBILE: light operational card (COMPACT) ── */}
+                        <div className="lg:hidden">
+                          <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+                            {/* Header Row: Label + Margen Real */}
+                            <div className="flex items-center justify-between mb-2">
+                              <label className="text-xs font-bold uppercase tracking-widest text-gray-500">Precio Final</label>
+                              {formData.price && formData.price > 0 && (
+                                <span className={`text-sm font-bold tabular-nums ${priceState === 'loss' ? 'text-red-500' : priceState === 'warning' ? 'text-amber-600' : metrics.targetStatus === 'increase_required' ? 'text-amber-500' : 'text-emerald-600'
+                                  }`}>
+                                  {metrics.marginDisplay}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Price Input */}
+                            <div className="relative">
                               <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold leading-none ${priceState === 'loss' ? 'text-red-500' : priceState === 'warning' ? 'text-amber-500' : 'text-emerald-600'
                                 }`}>{currencySymbol}</span>
                               <input
                                 type="number"
                                 step="0.01"
-                                className={`w-full rounded-lg border py-2.5 pl-8 pr-3 text-lg font-bold leading-tight tabular-nums outline-none transition-colors bg-gray-50 ${priceState === 'loss' ? 'border-red-300 text-red-600' : priceState === 'warning' ? 'border-amber-300 text-amber-700' : 'border-gray-200 text-gray-800'
-                                  } focus:ring-1 focus:ring-indigo-400 focus:border-indigo-300 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
+                                className={`w-full rounded-lg border py-2 pl-8 pr-3 text-lg font-bold leading-tight tabular-nums outline-none transition-colors bg-gray-50 ${priceState === 'loss' ? 'border-red-300 text-red-600 focus:border-red-400 focus:ring-red-200' : priceState === 'warning' ? 'border-amber-300 text-amber-700 focus:border-amber-400 focus:ring-amber-200' : 'border-gray-200 text-gray-800 focus:border-indigo-400 focus:ring-indigo-100'
+                                  } focus:ring-2`}
                                 value={formData.price || ''}
                                 onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) })}
                               />
                             </div>
-                          </div>
 
-                          {/* Result card — only shown when price is set */}
-                          {formData.price && formData.price > 0 && (
-                            <div className="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
-                              {/* Row 1: Margen Real */}
-                              <div className="flex items-center justify-between px-3 py-2.5">
-                                <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Margen Real</span>
-                                <span className={`text-sm font-black tabular-nums ${priceState === 'loss' ? 'text-red-500' : priceState === 'warning' ? 'text-amber-600' : metrics.targetStatus === 'increase_required' ? 'text-amber-500' : 'text-emerald-600'
-                                  }`}>
-                                  {metrics.marginDisplay}
+                            {/* Compact Legend */}
+                            {formData.price && formData.price > 0 && (
+                              <div className="mt-2.5 flex items-center justify-between text-xs leading-tight">
+                                <span className={`font-medium ${metrics.profitVsCost >= 0 ? 'text-gray-500' : 'text-red-500'}`}>
+                                  {metrics.profitLabel}
+                                </span>
+                                <span className="text-gray-400 font-medium whitespace-nowrap ml-2">
+                                  {metrics.adjustmentLabel}
                                 </span>
                               </div>
-                              {/* Row 2: Ganancia */}
-                              <div className="px-3 py-2">
-                                <p className={`text-xs leading-snug ${metrics.profitVsCost >= 0 ? 'text-gray-500' : 'text-red-500'
-                                  }`}>
-                                  {metrics.profitLabel}
-                                </p>
-                              </div>
-                              {/* Row 3: Vs Objetivo */}
-                              <div className="px-3 py-2">
-                                <p className="text-xs leading-snug text-gray-400">
-                                  {metrics.adjustmentLabel}
-                                </p>
-                              </div>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
                       </>
                     );
