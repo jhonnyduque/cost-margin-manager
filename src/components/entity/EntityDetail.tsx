@@ -43,7 +43,7 @@ export function EntityDetail<T>({ config, item, isOpen, onClose }: EntityDetailP
             <div className="absolute inset-0 sm:inset-y-0 sm:left-auto sm:right-0 sm:max-w-md sm:pl-10">
                 <div className="animate-in slide-in-from-bottom sm:slide-in-from-right flex h-full flex-col bg-white shadow-2xl transition duration-300 ease-in-out sm:duration-500">
                     {/* Header */}
-                    <div className="bg-indigo-600 px-4 py-6 sm:px-6 sm:py-8">
+                    <div className="bg-indigo-600 px-4 py-4 sm:px-6 sm:py-8">
                         <div className="flex items-start justify-between">
                             <h2 className="text-lg sm:text-xl font-bold leading-6 text-white">
                                 Detalles de {config.name}
@@ -69,10 +69,14 @@ export function EntityDetail<T>({ config, item, isOpen, onClose }: EntityDetailP
 
                     {/* Content — scrollable */}
                     <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 sm:py-8">
-                        <div className="space-y-6 sm:space-y-8">
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                             {config.fields.map((field, idx) => (
-                                <div key={idx} className="border-b border-gray-50 pb-4">
-                                    <dt className="mb-2 text-xs font-bold uppercase tracking-widest text-gray-400">
+                                <div
+                                    key={idx}
+                                    className={`border-b border-gray-50 pb-3 ${idx === 0 ? 'col-span-2' : ''
+                                        }`}
+                                >
+                                    <dt className="mb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
                                         {field.label}
                                     </dt>
                                     <dd className="text-sm font-medium text-gray-900">
