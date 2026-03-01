@@ -208,8 +208,7 @@ export function AppModal({
                                         ) : (
                                             <>
                                                 {tier === 2 ? <Pencil size={14} /> : tier === 3 ? <AlertTriangle size={14} /> : <Settings size={14} />}
-                                                <span className="hidden sm:inline">{saveLabel}</span>
-                                                <span className="sm:hidden">OK</span>
+                                                <span>{saveLabel}</span>
                                             </>
                                         )}
                                     </button>

@@ -3,7 +3,6 @@ import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { UserPlus, Trash2, Shield, Building2, Search, Printer } from 'lucide-react';
 import { EntityList } from '../components/entity/EntityList';
-import { EntityModal } from '../components/entity/EntityModal';
 import { AppModal } from '../components/ui/AppModal';
 import { EntityDetail } from '../components/entity/EntityDetail';
 import { EntityConfig } from '../components/entity/types';
@@ -499,43 +498,35 @@ export default function Team() {
                 </div>
             </AppModal>
 
-            {/* ✅ EDIT MODAL - CORREGIDO (sin preview, etiquetas cortas, botones visibles) */}
-            <EntityModal
-                config={teamConfig}
-                item={editingMember}
+            {/* EDIT MODAL — AppModal T2 */}
+            <AppModal
                 isOpen={!!editingMember}
                 onClose={() => setEditingMember(null)}
-                onSubmit={handleUpdateMember}
+                onSave={handleUpdateMember}
+                title="Editar Miembro"
+                description={editingMember?.email || ''}
+                tier={2}
+                size="md"
+                saveLabel="Guardar Cambios"
                 loading={loading}
             >
-                <div className="grid grid-cols-2 gap-5">
+                <div className="grid grid-cols-2 gap-3">
+                    {/* Fila 1: Identidad + Rol */}
                     <div className="space-y-1.5">
-                        <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Nombre Completo</label>
+                        <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Nombre</label>
                         <input
                             type="text"
-                            placeholder="Ej: Juan Pérez"
-                            className={`w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500 ${!canEdit ? 'cursor-not-allowed opacity-50' : ''}`}
+                            placeholder="Juan Pérez"
+                            className={`w-full rounded-2xl border-none bg-gray-50 px-4 py-3 text-sm transition-all focus:ring-2 focus:ring-indigo-500 ${!canEdit ? 'cursor-not-allowed opacity-50' : ''}`}
                             value={editName || editingMember?.full_name || ''}
                             onChange={(e) => setEditName(e.target.value)}
                             disabled={!canEdit}
                         />
                     </div>
-
-                    <div className="space-y-1.5">
-                        <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Correo Electrónico</label>
-                        <input
-                            type="email"
-                            disabled
-                            className="w-full rounded-2xl border-none bg-gray-100 px-5 py-3 cursor-not-allowed"
-                            value={editingMember?.email || ''}
-                            readOnly
-                        />
-                    </div>
-
                     <div className="space-y-1.5">
                         <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Rol</label>
                         <select
-                            className={`w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500 ${!canEdit ? 'cursor-not-allowed opacity-50' : ''}`}
+                            className={`w-full rounded-2xl border-none bg-gray-50 px-4 py-3 text-sm transition-all focus:ring-2 focus:ring-indigo-500 ${!canEdit ? 'cursor-not-allowed opacity-50' : ''}`}
                             value={editRole || editingMember?.role || ''}
                             onChange={(e) => setEditRole(e.target.value)}
                             disabled={!canEdit}
@@ -545,20 +536,29 @@ export default function Team() {
                             <option value="viewer">Lector</option>
                         </select>
                     </div>
-
-                    {/* ✅ CORRECCIÓN #3: Etiqueta más corta */}
+                    {/* Fila 2: Correo (readonly) + Contraseña */}
+                    <div className="space-y-1.5">
+                        <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Correo</label>
+                        <input
+                            type="email"
+                            disabled
+                            readOnly
+                            className="w-full rounded-2xl border-none bg-gray-100 px-4 py-3 text-sm cursor-not-allowed text-gray-400"
+                            value={editingMember?.email || ''}
+                        />
+                    </div>
                     <div className="space-y-1.5">
                         <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Contraseña</label>
                         <input
                             type="password"
                             placeholder="Opcional"
-                            className="w-full rounded-2xl border-none bg-gray-50 px-5 py-3 transition-all focus:ring-2 focus:ring-indigo-500"
+                            className="w-full rounded-2xl border-none bg-gray-50 px-4 py-3 text-sm transition-all focus:ring-2 focus:ring-indigo-500"
                             value={editPassword}
                             onChange={(e) => setEditPassword(e.target.value)}
                         />
                     </div>
                 </div>
-            </EntityModal>
+            </AppModal>
 
             {/* DETAIL SIDE-OVER */}
             <EntityDetail
