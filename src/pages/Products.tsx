@@ -630,95 +630,113 @@ const Products: React.FC = () => {
                         }
 
                         return (
-                          <div key={idx} className="overflow-hidden rounded-2xl border shadow-sm transition-all" style={{ borderColor: hasMissingStock ? tokens.colors.error : tokens.colors.border }}>
-                            <div className="flex flex-wrap items-center gap-3 p-3 sm:gap-6 sm:p-6" style={{ backgroundColor: tokens.colors.surface }}>
-                              <div className="min-w-[200px] flex-1">
-                                <Select
-                                  label="Insumo"
+                          <div key={idx} className={`overflow-hidden rounded-lg border transition-all ${hasMissingStock ? 'border-red-200' : 'border-gray-100'}`}>
+                            <div className="flex flex-wrap items-center gap-2 bg-gray-50/60 px-3 py-2">
+                              {/* Insumo selector */}
+                              <div className="min-w-0 flex-1">
+                                <select
                                   value={pm.material_id}
                                   onChange={e => updateMaterial(idx, 'material_id', e.target.value)}
+                                  className="w-full rounded-lg border-0 bg-transparent py-1.5 text-sm font-medium text-gray-800 focus:outline-none focus:ring-1 focus:ring-indigo-400"
                                 >
                                   {rawMaterials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                                </Select>
+                                </select>
                               </div>
 
+                              {/* Modo (solo tela) */}
                               {isFabric && (
-                                <div className="flex flex-col gap-1">
-                                  <label className="text-center text-xs font-medium text-gray-500">Modo</label>
-                                  <div className="flex gap-1 rounded-lg bg-gray-100 p-1">
-                                    <button type="button" onClick={() => updateMaterial(idx, 'mode', 'linear')} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-bold uppercase transition-all ${pm.mode === 'linear' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400'}`}>
-                                      <RotateCcw size={10} /> Lineal
-                                    </button>
-                                    <button type="button" onClick={() => updateMaterial(idx, 'mode', 'pieces')} className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-bold uppercase transition-all ${pm.mode === 'pieces' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400'}`}>
-                                      <Scissors size={10} /> Piezas
-                                    </button>
-                                  </div>
+                                <div className="flex gap-0.5 rounded-md bg-gray-200/60 p-0.5">
+                                  <button type="button" onClick={() => updateMaterial(idx, 'mode', 'linear')} className={`flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold uppercase transition-all ${pm.mode === 'linear' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
+                                    <RotateCcw size={9} /> Lin.
+                                  </button>
+                                  <button type="button" onClick={() => updateMaterial(idx, 'mode', 'pieces')} className={`flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold uppercase transition-all ${pm.mode === 'pieces' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
+                                    <Scissors size={9} /> Pzas.
+                                  </button>
                                 </div>
                               )}
 
-                              <div className="w-36">
+                              {/* Cantidad */}
+                              <div className="w-20">
                                 {pm.mode === 'linear' ? (
-                                  <Input
-                                    type="number"
-                                    step="0.01"
-                                    label={`Cant. (${pm.consumption_unit}s)`}
-                                    value={pm.quantity}
-                                    onChange={e => updateMaterial(idx, 'quantity', parseFloat(e.target.value))}
-                                  />
+                                  <div className="flex items-center rounded-lg border border-gray-200 bg-white">
+                                    <span className="pl-2 text-xs text-gray-400">Cant.</span>
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      value={pm.quantity}
+                                      onChange={e => updateMaterial(idx, 'quantity', parseFloat(e.target.value))}
+                                      className="w-full rounded-lg border-0 bg-transparent px-1 py-1.5 text-right text-sm font-bold text-gray-800 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                                    />
+                                  </div>
                                 ) : (
-                                  <div>
-                                    <label className="mb-1 block text-xs font-medium text-gray-500">Superficie Total</label>
-                                    <div className="flex h-[40px] items-center justify-end rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-2 text-right text-sm font-bold text-indigo-700">
-                                      {areaM2.toFixed(3)} m²
-                                    </div>
+                                  <div className="flex h-8 items-center justify-end rounded-lg border border-indigo-100 bg-indigo-50 px-2 text-right text-xs font-bold text-indigo-700">
+                                    {areaM2.toFixed(2)}m²
                                   </div>
                                 )}
                               </div>
 
-                              <div className="min-w-[150px] flex-1 text-right">
-                                <label className="mb-1 block text-xs font-medium text-gray-500">Costo Aplicado</label>
-                                <div className={`text-lg font-bold ${hasMissingStock ? 'text-red-500' : 'text-indigo-600'}`}>
+                              {/* Costo + FIFO badge */}
+                              <div className="flex items-center gap-1.5">
+                                <span
+                                  className={`text-sm font-bold tabular-nums ${hasMissingStock ? 'text-red-500' : 'text-indigo-600'}`}
+                                  title={hasMissingStock ? 'Stock insuficiente' : mainBatchInfo}
+                                >
                                   {formatCurrency(costRow)}
-                                </div>
-                                <div className="text-xs text-gray-400">
-                                  {hasMissingStock ? "Stock insuficiente" : mainBatchInfo}
-                                </div>
+                                </span>
+                                {mainBatchInfo && !hasMissingStock && (
+                                  <span
+                                    className="cursor-help rounded px-1 py-0.5 text-[9px] font-bold uppercase tracking-widest text-gray-400 hover:bg-gray-200"
+                                    title={mainBatchInfo}
+                                  >
+                                    FIFO
+                                  </span>
+                                )}
+                                {hasMissingStock && (
+                                  <span className="text-[10px] font-bold text-red-400">Sin stock</span>
+                                )}
                               </div>
 
-                              <div className="mb-1 flex gap-1 self-end">
-                                <Button variant="ghost" size="sm" onClick={() => setExpandedMaterial(isExpanded ? null : idx)} icon={<Info size={18} />} />
-                                <Button variant="ghost" size="sm" onClick={() => removeMaterial(idx)} icon={<Trash2 size={18} className="text-red-400" />} />
+                              {/* Acciones */}
+                              <div className="flex gap-0.5">
+                                <button type="button" onClick={() => setExpandedMaterial(isExpanded ? null : idx)} className="rounded p-1.5 text-gray-300 hover:bg-gray-100 hover:text-gray-500" title="Desglose FIFO">
+                                  <Info size={14} />
+                                </button>
+                                <button type="button" onClick={() => removeMaterial(idx)} className="rounded p-1.5 text-gray-300 hover:bg-red-50 hover:text-red-400">
+                                  <Trash2 size={14} />
+                                </button>
                               </div>
                             </div>
 
-                            {isExpanded && (
-                              <div className="space-y-6 border-t px-8 pb-8 pt-4" style={{ backgroundColor: tokens.colors.bg, borderColor: tokens.colors.border }}>
-                                {pm.mode === 'pieces' && (
-                                  <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                      <h5 className="flex items-center gap-2 text-xs font-bold uppercase text-indigo-500"><Scissors size={12} /> Desglose de piezas (cm)</h5>
-                                      <Button size="sm" variant="secondary" onClick={() => addPiece(idx)}>+ Añadir Pieza</Button>
-                                    </div>
-                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-                                      {(pm.pieces || []).map((piece: any, pIdx: number) => (
-                                        <div key={pIdx} className="flex items-center gap-3 rounded-xl border bg-white p-3 shadow-sm">
-                                          <div className="flex-1">
-                                            <label className="text-[10px] font-bold uppercase text-gray-400">Largo</label>
-                                            <input type="number" className="w-full rounded bg-gray-50 p-1 text-sm font-bold" value={piece.length} onChange={e => updatePiece(idx, pIdx, 'length', parseFloat(e.target.value))} />
+                            {
+                              isExpanded && (
+                                <div className="space-y-6 border-t px-8 pb-8 pt-4" style={{ backgroundColor: tokens.colors.bg, borderColor: tokens.colors.border }}>
+                                  {pm.mode === 'pieces' && (
+                                    <div className="space-y-4">
+                                      <div className="flex items-center justify-between">
+                                        <h5 className="flex items-center gap-2 text-xs font-bold uppercase text-indigo-500"><Scissors size={12} /> Desglose de piezas (cm)</h5>
+                                        <Button size="sm" variant="secondary" onClick={() => addPiece(idx)}>+ Añadir Pieza</Button>
+                                      </div>
+                                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                                        {(pm.pieces || []).map((piece: any, pIdx: number) => (
+                                          <div key={pIdx} className="flex items-center gap-3 rounded-xl border bg-white p-3 shadow-sm">
+                                            <div className="flex-1">
+                                              <label className="text-[10px] font-bold uppercase text-gray-400">Largo</label>
+                                              <input type="number" className="w-full rounded bg-gray-50 p-1 text-sm font-bold" value={piece.length} onChange={e => updatePiece(idx, pIdx, 'length', parseFloat(e.target.value))} />
+                                            </div>
+                                            <span className="text-gray-300">×</span>
+                                            <div className="flex-1">
+                                              <label className="text-[10px] font-bold uppercase text-gray-400">Ancho</label>
+                                              <input type="number" className="w-full rounded bg-gray-50 p-1 text-sm font-bold" value={piece.width} onChange={e => updatePiece(idx, pIdx, 'width', parseFloat(e.target.value))} />
+                                            </div>
+                                            <button type="button" onClick={() => removePiece(idx, pIdx)} className="text-gray-300 hover:text-red-500"><X size={14} /></button>
                                           </div>
-                                          <span className="text-gray-300">×</span>
-                                          <div className="flex-1">
-                                            <label className="text-[10px] font-bold uppercase text-gray-400">Ancho</label>
-                                            <input type="number" className="w-full rounded bg-gray-50 p-1 text-sm font-bold" value={piece.width} onChange={e => updatePiece(idx, pIdx, 'width', parseFloat(e.target.value))} />
-                                          </div>
-                                          <button type="button" onClick={() => removePiece(idx, pIdx)} className="text-gray-300 hover:text-red-500"><X size={14} /></button>
-                                        </div>
-                                      ))}
+                                        ))}
+                                      </div>
                                     </div>
-                                  </div>
-                                )}
-                              </div>
-                            )}
+                                  )}
+                                </div>
+                              )
+                            }
                           </div>
                         );
                       })}
@@ -727,97 +745,79 @@ const Products: React.FC = () => {
 
                 </div>{/* end LEFT PANEL */}
 
-                {/* ── RIGHT PANEL — sticky, scroll independiente ────────── */}
-                <div className="overflow-y-auto p-4 lg:p-6 space-y-4 border-t border-gray-100 lg:border-t-0 lg:border-l">
-                  {/* Summary Section - simplification for Design System: using Card */}
-                  <Card className="space-y-4 border-indigo-100 bg-indigo-50/30 !p-4">
-                    <div>
-                      <h4 className="mb-4 text-xs font-bold uppercase tracking-widest text-indigo-400">Escandallo de Producción</h4>
-                      <div className="flex items-center justify-between border-b border-indigo-100 pb-2">
-                        <span className="text-sm font-bold text-gray-500">Costo FIFO Total</span>
-                        <span className="text-xl font-black tabular-nums leading-tight text-indigo-900">{formatCurrency(totalCurrentCost)}</span>
-                      </div>
-                    </div>
+                {/* ── RIGHT PANEL — zona de decisión ─────────────────────── */}
+                <div className="overflow-y-auto p-4 lg:p-6 space-y-5 border-t border-gray-100 lg:border-t-0 lg:border-l bg-gray-50/40">
+                  {/* Costo FIFO */}
+                  <div className="flex items-center justify-between border-b border-gray-200 pb-3">
+                    <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Costo FIFO</span>
+                    <span className="text-lg font-black tabular-nums leading-tight text-gray-800">{formatCurrency(totalCurrentCost)}</span>
+                  </div>
 
-                    <div className="space-y-4">
-                      <label className="text-xs font-bold uppercase text-gray-400">Precios Sugeridos ({formData.target_margin}%)</label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button type="button" onClick={() => setFormData({ ...formData, price: exactSuggestedPrice })} className="rounded-xl border border-indigo-100 bg-white p-3 text-left transition-shadow hover:shadow-md">
-                          <div className="text-[10px] font-bold uppercase leading-tight text-gray-400">Margen Exacto</div>
-                          <div className="text-base font-black leading-snug text-indigo-600">{formatCurrency(exactSuggestedPrice)}</div>
-                        </button>
-                        <button type="button" onClick={() => setFormData({ ...formData, price: commercialSuggestedPrice })} className="rounded-xl border border-emerald-200 bg-white p-3 text-left transition-shadow hover:shadow-md">
-                          <div className="flex items-center gap-1 text-[10px] font-bold uppercase leading-tight text-gray-400"><TrendingUp size={10} /> Redondeo</div>
-                          <div className="text-base font-black leading-snug text-emerald-600">{formatCurrency(commercialSuggestedPrice)}</div>
-                        </button>
-                      </div>
-                    </div>
+                  {/* Precios sugeridos — sin label redundante */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => setFormData({ ...formData, price: exactSuggestedPrice })} className="rounded-xl border border-gray-200 bg-white p-3 text-left transition-shadow hover:shadow-sm hover:border-indigo-200">
+                      <div className="text-[10px] font-bold uppercase leading-tight text-gray-400">Exacto</div>
+                      <div className="text-sm font-black leading-snug tabular-nums text-indigo-600">{formatCurrency(exactSuggestedPrice)}</div>
+                    </button>
+                    <button type="button" onClick={() => setFormData({ ...formData, price: commercialSuggestedPrice })} className="rounded-xl border border-gray-200 bg-white p-3 text-left transition-shadow hover:shadow-sm hover:border-emerald-200">
+                      <div className="flex items-center gap-1 text-[10px] font-bold uppercase leading-tight text-gray-400"><TrendingUp size={10} /> Redondeo</div>
+                      <div className="text-sm font-black leading-snug tabular-nums text-emerald-600">{formatCurrency(commercialSuggestedPrice)}</div>
+                    </button>
+                  </div>
 
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <label className="text-xs font-bold uppercase leading-none tracking-widest text-gray-400">Margen Objetivo</label>
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={formData.target_margin}
-                          onChange={e => {
-                            const v = Math.min(100, Math.max(0, Number(e.target.value)));
-                            setFormData({ ...formData, target_margin: v });
-                          }}
-                          className="w-16 rounded-lg border border-indigo-200 bg-white px-2 py-1 text-center text-sm font-bold leading-none text-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        />
-                        <span className="text-sm font-bold leading-none text-gray-400">%</span>
-                      </div>
-                    </div>
-                  </Card>
+                  {/* Margen objetivo */}
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-bold uppercase leading-none tracking-widest text-gray-400">Margen</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={formData.target_margin}
+                      onChange={e => {
+                        const v = Math.min(100, Math.max(0, Number(e.target.value)));
+                        setFormData({ ...formData, target_margin: v });
+                      }}
+                      className="w-14 rounded-lg border border-gray-200 bg-white px-2 py-1 text-center text-sm font-bold leading-none text-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <span className="text-sm font-bold leading-none text-gray-400">%</span>
+                  </div>
 
-                  <Card className="space-y-3 border-gray-800 bg-gray-900 text-white !p-4">
-                    <div className="space-y-3">
-                      <label className="text-xs font-bold uppercase tracking-widest text-gray-400">Precio Final</label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold leading-none text-emerald-500">{currencySymbol}</span>
-                        <input
-                          required
-                          type="number"
-                          step="0.01"
-                          className="w-full rounded-2xl border border-gray-700 bg-gray-800 py-3 pl-10 pr-6 text-xl font-black leading-tight text-emerald-400 outline-none transition-colors focus:border-emerald-500"
-                          value={formData.price || ''}
-                          onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) })}
-                        />
-                      </div>
+                  {/* ── Precio Final — zona de acción ────────── */}
+                  <div className="space-y-2 rounded-2xl border border-gray-800 bg-gray-900 p-4">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Precio Final</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base font-bold leading-none text-emerald-500">{currencySymbol}</span>
+                      <input
+                        required
+                        type="number"
+                        step="0.01"
+                        className="w-full rounded-xl border border-gray-700 bg-gray-800 py-3 pl-9 pr-4 text-xl font-black leading-tight tabular-nums text-emerald-400 outline-none transition-colors focus:border-emerald-500"
+                        value={formData.price || ''}
+                        onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+                      />
                     </div>
 
                     {formData.price && formData.price > 0 && (
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between rounded-xl border border-gray-700 bg-gray-800/50 px-4 py-3">
-                          <div>
-                            <div className="text-[10px] font-bold uppercase leading-none tracking-widest text-gray-300">Margen Real</div>
-                            <div className="text-lg font-black leading-tight text-white">{(metrics.realMargin * 100).toFixed(1)}%</div>
-                          </div>
-                          <CheckCircle2 size={24} className="text-emerald-500 opacity-30" />
+                      <div className="space-y-1.5 pt-1">
+                        {/* Margen real — inline */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Margen real</span>
+                          <span className={`text-sm font-black tabular-nums ${metrics.realMargin >= formData.target_margin / 100 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                            {(metrics.realMargin * 100).toFixed(1)}%
+                          </span>
                         </div>
-                        {/* Indicator 1 — Real Profitability */}
-                        <div className={`flex items-center justify-between rounded-lg px-3 py-2 text-xs font-bold leading-none ${metrics.profitVsCost >= 0
-                          ? 'bg-emerald-500/10 text-emerald-400'
-                          : 'bg-red-500/10 text-red-400'
-                          }`}>
-                          <span className="uppercase tracking-widest opacity-70">Rentabilidad</span>
-                          <span>{metrics.profitLabel}</span>
-                        </div>
-                        {/* Indicator 2 — Target Compliance */}
-                        <div className={`flex items-center justify-between rounded-lg px-3 py-2 text-xs font-bold leading-none ${metrics.targetStatus === 'above_target'
-                          ? 'bg-indigo-500/10 text-indigo-300'
-                          : metrics.targetStatus === 'on_target'
-                            ? 'bg-emerald-500/10 text-emerald-400'
-                            : 'bg-amber-500/15 text-amber-400'
-                          }`}>
-                          <span className="uppercase tracking-widest opacity-70">Objetivo</span>
-                          <span>{metrics.adjustmentLabel}</span>
-                        </div>
+                        {/* Rentabilidad — helper text */}
+                        <p className={`text-xs leading-tight ${metrics.profitVsCost >= 0 ? 'text-gray-400' : 'text-red-400'}`}>
+                          {metrics.profitLabel}
+                        </p>
+                        {/* Objetivo — helper text */}
+                        <p className="text-xs leading-tight text-gray-400">
+                          {metrics.adjustmentLabel}
+                        </p>
                       </div>
                     )}
-                  </Card>
+                  </div>
+
                 </div>{/* end RIGHT PANEL */}
               </form>
 
@@ -833,252 +833,258 @@ const Products: React.FC = () => {
         )
       }
 
-      {missingStockModal.isOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6" style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}>
-          <Card className={`w-full ${missingStockModal.showFullBreakdown ? 'max-w-2xl' : 'max-w-xl'} p-8 shadow-2xl space-y-6 border-red-200 transition-all duration-300`}>
-            <div className="flex items-center gap-4 text-red-600">
-              <div className="px-4 py-3 bg-red-50 rounded-2xl border border-red-100 flex-shrink-0">
-                <AlertTriangle size={28} />
-              </div>
-              <div className="flex-1 flex justify-between items-center">
-                <div>
-                  <h3 className="text-xl font-black">Faltante de Inventario</h3>
-                  <p className="text-red-500 text-sm font-semibold">Se generará Deuda de Inventario</p>
+      {
+        missingStockModal.isOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-6" style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}>
+            <Card className={`w-full ${missingStockModal.showFullBreakdown ? 'max-w-2xl' : 'max-w-xl'} p-8 shadow-2xl space-y-6 border-red-200 transition-all duration-300`}>
+              <div className="flex items-center gap-4 text-red-600">
+                <div className="px-4 py-3 bg-red-50 rounded-2xl border border-red-100 flex-shrink-0">
+                  <AlertTriangle size={28} />
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={`border-red-200 text-red-600 hover:bg-red-50 transition-colors ${missingStockModal.showFullBreakdown ? 'bg-red-50' : ''}`}
-                  onClick={() => setMissingStockModal(m => ({ ...m, showFullBreakdown: !m.showFullBreakdown }))}
-                >
-                  <PackageSearch size={16} className="mr-2" />
-                  {missingStockModal.showFullBreakdown ? 'Ocultar detalle de consumo' : 'Ver detalle de consumo'}
-                </Button>
+                <div className="flex-1 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-xl font-black">Faltante de Inventario</h3>
+                    <p className="text-red-500 text-sm font-semibold">Se generará Deuda de Inventario</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={`border-red-200 text-red-600 hover:bg-red-50 transition-colors ${missingStockModal.showFullBreakdown ? 'bg-red-50' : ''}`}
+                    onClick={() => setMissingStockModal(m => ({ ...m, showFullBreakdown: !m.showFullBreakdown }))}
+                  >
+                    <PackageSearch size={16} className="mr-2" />
+                    {missingStockModal.showFullBreakdown ? 'Ocultar detalle de consumo' : 'Ver detalle de consumo'}
+                  </Button>
+                </div>
               </div>
-            </div>
 
-            <p className="text-gray-600 text-sm">
-              El sistema ha detectado que <strong className="text-gray-800">no tienes stock suficiente</strong> de los siguientes insumos para fabricar esta receta.
-              Si decides forzar la producción, el sistema registrará un faltante temporal asumiendo el costo transaccional del último lote adquirido para no alterar tus márgenes.
-            </p>
+              <p className="text-gray-600 text-sm">
+                El sistema ha detectado que <strong className="text-gray-800">no tienes stock suficiente</strong> de los siguientes insumos para fabricar esta receta.
+                Si decides forzar la producción, el sistema registrará un faltante temporal asumiendo el costo transaccional del último lote adquirido para no alterar tus márgenes.
+              </p>
 
-            {missingStockModal.showFullBreakdown ? (
-              <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 space-y-4 animate-in fade-in duration-300">
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2 mb-2">
-                  <PackageSearch size={12} /> Detalle de Consumo de Producción
-                </h4>
+              {missingStockModal.showFullBreakdown ? (
+                <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 space-y-4 animate-in fade-in duration-300">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2 mb-2">
+                    <PackageSearch size={12} /> Detalle de Consumo de Producción
+                  </h4>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-left">
-                    <thead className="text-[10px] uppercase text-slate-500 border-b border-slate-200">
-                      <tr>
-                        <th className="pb-2 font-bold">Material</th>
-                        <th className="pb-2 text-right font-bold">Requerido</th>
-                        <th className="pb-2 text-center font-bold">Estado del Consumo</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {missingStockModal.fullBreakdown.map((item, idx) => (
-                        <tr key={idx} className="text-slate-700">
-                          <td className="py-2.5 font-bold">{item.materialName}</td>
-                          <td className="py-2.5 text-right font-mono bg-white mx-1 px-2 border border-slate-100 shadow-sm rounded text-slate-600">{item.requiredQuantity.toFixed(2)} {item.unit}</td>
-                          <td className="py-2.5">
-                            <div className="flex flex-col gap-1 items-end justify-center w-full pl-4">
-                              {item.coveredQuantity > 0 && (
-                                <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 w-full justify-between">
-                                  <span>CUBIERTO:</span> <span>{item.coveredQuantity.toFixed(2)} {item.unit}</span>
-                                </span>
-                              )}
-                              {item.missingQuantity > 0 && (
-                                <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 w-full justify-between border border-red-200">
-                                  <span>DEUDA:</span> <span>{item.missingQuantity.toFixed(2)} {item.unit}</span>
-                                </span>
-                              )}
-                            </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead className="text-[10px] uppercase text-slate-500 border-b border-slate-200">
+                        <tr>
+                          <th className="pb-2 font-bold">Material</th>
+                          <th className="pb-2 text-right font-bold">Requerido</th>
+                          <th className="pb-2 text-center font-bold">Estado del Consumo</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {missingStockModal.fullBreakdown.map((item, idx) => (
+                          <tr key={idx} className="text-slate-700">
+                            <td className="py-2.5 font-bold">{item.materialName}</td>
+                            <td className="py-2.5 text-right font-mono bg-white mx-1 px-2 border border-slate-100 shadow-sm rounded text-slate-600">{item.requiredQuantity.toFixed(2)} {item.unit}</td>
+                            <td className="py-2.5">
+                              <div className="flex flex-col gap-1 items-end justify-center w-full pl-4">
+                                {item.coveredQuantity > 0 && (
+                                  <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 w-full justify-between">
+                                    <span>CUBIERTO:</span> <span>{item.coveredQuantity.toFixed(2)} {item.unit}</span>
+                                  </span>
+                                )}
+                                {item.missingQuantity > 0 && (
+                                  <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 w-full justify-between border border-red-200">
+                                    <span>DEUDA:</span> <span>{item.missingQuantity.toFixed(2)} {item.unit}</span>
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-red-50/50 rounded-xl p-5 border border-red-100 space-y-4 animate-in fade-in duration-300">
+                  <div className="grid grid-cols-3 gap-4 mb-2 pb-4 border-b border-red-200/50">
+                    <div className="text-center">
+                      <p className="text-[10px] font-black uppercase text-red-800/60 mb-1">Prod. Solicitada</p>
+                      <p className="text-xl font-bold text-gray-800">{missingStockModal.quantity}</p>
+                    </div>
+                    <div className="text-center border-l border-red-200/50">
+                      <p className="text-[10px] font-black uppercase text-emerald-800/60 mb-1">Cubierta por Stock</p>
+                      <p className="text-xl font-bold text-emerald-600">{missingStockModal.maxCoveredProduction}</p>
+                    </div>
+                    <div className="text-center border-l border-red-200/50">
+                      <p className="text-[10px] font-black uppercase text-red-800/60 mb-1">Generará Deuda</p>
+                      <p className="text-xl font-bold text-red-600">{missingStockModal.quantity - missingStockModal.maxCoveredProduction}</p>
+                    </div>
+                  </div>
+
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-red-800 flex items-center gap-2 mb-2">
+                    <Package size={12} /> Desglose de Faltantes y Costo Asumido
+                  </h4>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead className="text-xs uppercase text-red-700/70 border-b border-red-200">
+                        <tr>
+                          <th className="pb-2 font-bold">Material</th>
+                          <th className="pb-2 text-right font-bold">Faltante</th>
+                          <th className="pb-2 text-right font-bold">Costo Aplicado</th>
+                          <th className="pb-2 text-right font-bold">Deuda Generada</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-red-100/50">
+                        {missingStockModal.missingItems.map((item, idx) => (
+                          <tr key={idx} className="text-red-900">
+                            <td className="py-2.5 font-bold">{item.materialName}</td>
+                            <td className="py-2.5 text-right font-mono bg-white rounded my-1 px-2 border border-red-100 text-red-600 shadow-sm">faltan {item.missingQuantity.toFixed(2)} {item.unit}</td>
+                            <td className="py-2.5 text-right font-mono text-red-700/80">{formatCurrency(item.unitCost)}</td>
+                            <td className="py-2.5 text-right font-mono font-black">{formatCurrency(item.totalDebt)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr>
+                          <td colSpan={3} className="pt-3 text-right text-xs font-bold uppercase text-red-800">Costo Faltante Total Asumido:</td>
+                          <td className="pt-3 text-right font-mono font-black text-red-600 text-base">
+                            {formatCurrency(missingStockModal.missingItems.reduce((acc, item) => acc + item.totalDebt, 0))}
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </tfoot>
+                    </table>
+                  </div>
                 </div>
+              )}
+
+              <div className="flex gap-4 pt-4">
+                <Button variant="ghost" className="flex-1" onClick={() => setMissingStockModal({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0, maxCoveredProduction: 0, fullBreakdown: [], showFullBreakdown: false })}>
+                  Cancelar Operación
+                </Button>
+                <Button
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white border-transparent"
+                  onClick={() => {
+                    const product = products.find(p => p.id === missingStockModal.productId);
+                    if (!product) return;
+
+                    consumeStockBatch(missingStockModal.productId, missingStockModal.quantity, missingStockModal.targetPrice).then(() => {
+                      const baseCost = calculateProductCost(product, batches, rawMaterials);
+                      setMissingStockModal({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0, maxCoveredProduction: 0, fullBreakdown: [], showFullBreakdown: false });
+                      setSuccessModal({ isOpen: true, productName: product?.name || '', cost: baseCost * missingStockModal.quantity, quantity: missingStockModal.quantity });
+                    }).catch(err => {
+                      alert('Error forzando producción: ' + err.message);
+                    });
+                  }}
+                >
+                  Aceptar y Generar Deuda
+                </Button>
               </div>
-            ) : (
-              <div className="bg-red-50/50 rounded-xl p-5 border border-red-100 space-y-4 animate-in fade-in duration-300">
-                <div className="grid grid-cols-3 gap-4 mb-2 pb-4 border-b border-red-200/50">
-                  <div className="text-center">
-                    <p className="text-[10px] font-black uppercase text-red-800/60 mb-1">Prod. Solicitada</p>
-                    <p className="text-xl font-bold text-gray-800">{missingStockModal.quantity}</p>
-                  </div>
-                  <div className="text-center border-l border-red-200/50">
-                    <p className="text-[10px] font-black uppercase text-emerald-800/60 mb-1">Cubierta por Stock</p>
-                    <p className="text-xl font-bold text-emerald-600">{missingStockModal.maxCoveredProduction}</p>
-                  </div>
-                  <div className="text-center border-l border-red-200/50">
-                    <p className="text-[10px] font-black uppercase text-red-800/60 mb-1">Generará Deuda</p>
-                    <p className="text-xl font-bold text-red-600">{missingStockModal.quantity - missingStockModal.maxCoveredProduction}</p>
-                  </div>
-                </div>
+            </Card>
+          </div>
+        )
+      }
 
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-red-800 flex items-center gap-2 mb-2">
-                  <Package size={12} /> Desglose de Faltantes y Costo Asumido
-                </h4>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-left">
-                    <thead className="text-xs uppercase text-red-700/70 border-b border-red-200">
-                      <tr>
-                        <th className="pb-2 font-bold">Material</th>
-                        <th className="pb-2 text-right font-bold">Faltante</th>
-                        <th className="pb-2 text-right font-bold">Costo Aplicado</th>
-                        <th className="pb-2 text-right font-bold">Deuda Generada</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-red-100/50">
-                      {missingStockModal.missingItems.map((item, idx) => (
-                        <tr key={idx} className="text-red-900">
-                          <td className="py-2.5 font-bold">{item.materialName}</td>
-                          <td className="py-2.5 text-right font-mono bg-white rounded my-1 px-2 border border-red-100 text-red-600 shadow-sm">faltan {item.missingQuantity.toFixed(2)} {item.unit}</td>
-                          <td className="py-2.5 text-right font-mono text-red-700/80">{formatCurrency(item.unitCost)}</td>
-                          <td className="py-2.5 text-right font-mono font-black">{formatCurrency(item.totalDebt)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr>
-                        <td colSpan={3} className="pt-3 text-right text-xs font-bold uppercase text-red-800">Costo Faltante Total Asumido:</td>
-                        <td className="pt-3 text-right font-mono font-black text-red-600 text-base">
-                          {formatCurrency(missingStockModal.missingItems.reduce((acc, item) => acc + item.totalDebt, 0))}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
+      {
+        successModal && successModal.isOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-6" style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}>
+            <Card className="w-full max-w-sm p-8 text-center space-y-6 border-emerald-200">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 mb-4">
+                <CheckCircle2 size={32} className="text-emerald-500" />
               </div>
-            )}
-
-            <div className="flex gap-4 pt-4">
-              <Button variant="ghost" className="flex-1" onClick={() => setMissingStockModal({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0, maxCoveredProduction: 0, fullBreakdown: [], showFullBreakdown: false })}>
-                Cancelar Operación
-              </Button>
-              <Button
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white border-transparent"
-                onClick={() => {
-                  const product = products.find(p => p.id === missingStockModal.productId);
-                  if (!product) return;
-
-                  consumeStockBatch(missingStockModal.productId, missingStockModal.quantity, missingStockModal.targetPrice).then(() => {
-                    const baseCost = calculateProductCost(product, batches, rawMaterials);
-                    setMissingStockModal({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0, maxCoveredProduction: 0, fullBreakdown: [], showFullBreakdown: false });
-                    setSuccessModal({ isOpen: true, productName: product?.name || '', cost: baseCost * missingStockModal.quantity, quantity: missingStockModal.quantity });
-                  }).catch(err => {
-                    alert('Error forzando producción: ' + err.message);
-                  });
-                }}
-              >
-                Aceptar y Generar Deuda
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {successModal && successModal.isOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6" style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}>
-          <Card className="w-full max-w-sm p-8 text-center space-y-6 border-emerald-200">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 mb-4">
-              <CheckCircle2 size={32} className="text-emerald-500" />
-            </div>
-            <div>
-              <h3 className="text-xl font-black text-gray-900">¡Producción Exitosa!</h3>
-              <p className="mt-2 text-sm text-gray-500">
-                Se ha registrado el ingreso de <strong className="text-gray-900">{successModal.quantity} unid.</strong> y descontado el inventario de materias primas para:
-                <br />
-                <strong className="text-gray-800">{successModal.productName}</strong>
-              </p>
-            </div>
-
-            <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 mb-1">Costo Total del Lote</p>
-              <p className="text-2xl font-black text-emerald-700">{formatCurrency(successModal.cost)}</p>
-              <p className="text-xs text-emerald-600/70 mt-1 font-medium">{formatCurrency(successModal.cost / successModal.quantity)} por unidad</p>
-            </div>
-
-            <Button
-              variant="primary"
-              className="w-full"
-              onClick={() => setSuccessModal(null)}
-            >
-              Entendido
-            </Button>
-          </Card>
-        </div>
-      )}
-
-      {productionModal.isOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6" style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}>
-          <Card className="w-full max-w-md p-6 shadow-2xl border border-gray-200 bg-white">
-            <div className="flex justify-between items-center mb-6 border-b pb-4">
-              <h3 className="text-xl font-black text-gray-900 flex items-center gap-2">
-                <Package size={20} className="text-emerald-500" /> Nuevo Lote
-              </h3>
-              <button
-                onClick={() => setProductionModal({ ...productionModal, isOpen: false })}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="space-y-6">
               <div>
-                <p className="text-sm font-bold text-gray-500 uppercase tracking-wide">Producto a elaborar</p>
-                <p className="text-lg font-black text-gray-900">{productionModal.productName}</p>
-                <p className="text-sm text-gray-500 mb-4">Costo unitario actual (FIFO): <span className="font-mono font-medium text-gray-700">{formatCurrency(productionModal.cost)}</span></p>
+                <h3 className="text-xl font-black text-gray-900">¡Producción Exitosa!</h3>
+                <p className="mt-2 text-sm text-gray-500">
+                  Se ha registrado el ingreso de <strong className="text-gray-900">{successModal.quantity} unid.</strong> y descontado el inventario de materias primas para:
+                  <br />
+                  <strong className="text-gray-800">{successModal.productName}</strong>
+                </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-2">Cantidad a fabricar</label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={productionModal.quantity}
-                    onChange={e => setProductionModal({ ...productionModal, quantity: Number(e.target.value) || 1 })}
-                    className="text-lg font-black rounded-xl"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-2">Precio Venta (Unid.)</label>
-                  <Input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={productionModal.targetPrice}
-                    onChange={e => setProductionModal({ ...productionModal, targetPrice: Number(e.target.value) || 0 })}
-                    className="text-lg font-mono font-black rounded-xl text-emerald-600"
-                  />
-                </div>
-              </div>
-
-              <div className="bg-emerald-50/50 rounded-xl p-4 border border-emerald-100 flex justify-between items-center">
-                <div>
-                  <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Costo Estimado Lote</p>
-                  <p className="text-xl font-black text-emerald-700">{formatCurrency(productionModal.cost * productionModal.quantity)}</p>
-                </div>
+              <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 mb-1">Costo Total del Lote</p>
+                <p className="text-2xl font-black text-emerald-700">{formatCurrency(successModal.cost)}</p>
+                <p className="text-xs text-emerald-600/70 mt-1 font-medium">{formatCurrency(successModal.cost / successModal.quantity)} por unidad</p>
               </div>
 
               <Button
                 variant="primary"
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl py-6"
-                onClick={handleConfirmBatchProduction}
-                icon={<CheckCircle2 size={20} />}
+                className="w-full"
+                onClick={() => setSuccessModal(null)}
               >
-                Confirmar Producción
+                Entendido
               </Button>
-            </div>
-          </Card>
-        </div>
-      )}
+            </Card>
+          </div>
+        )
+      }
+
+      {
+        productionModal.isOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-6" style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}>
+            <Card className="w-full max-w-md p-6 shadow-2xl border border-gray-200 bg-white">
+              <div className="flex justify-between items-center mb-6 border-b pb-4">
+                <h3 className="text-xl font-black text-gray-900 flex items-center gap-2">
+                  <Package size={20} className="text-emerald-500" /> Nuevo Lote
+                </h3>
+                <button
+                  onClick={() => setProductionModal({ ...productionModal, isOpen: false })}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div>
+                  <p className="text-sm font-bold text-gray-500 uppercase tracking-wide">Producto a elaborar</p>
+                  <p className="text-lg font-black text-gray-900">{productionModal.productName}</p>
+                  <p className="text-sm text-gray-500 mb-4">Costo unitario actual (FIFO): <span className="font-mono font-medium text-gray-700">{formatCurrency(productionModal.cost)}</span></p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase mb-2">Cantidad a fabricar</label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={productionModal.quantity}
+                      onChange={e => setProductionModal({ ...productionModal, quantity: Number(e.target.value) || 1 })}
+                      className="text-lg font-black rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase mb-2">Precio Venta (Unid.)</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={productionModal.targetPrice}
+                      onChange={e => setProductionModal({ ...productionModal, targetPrice: Number(e.target.value) || 0 })}
+                      className="text-lg font-mono font-black rounded-xl text-emerald-600"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-emerald-50/50 rounded-xl p-4 border border-emerald-100 flex justify-between items-center">
+                  <div>
+                    <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Costo Estimado Lote</p>
+                    <p className="text-xl font-black text-emerald-700">{formatCurrency(productionModal.cost * productionModal.quantity)}</p>
+                  </div>
+                </div>
+
+                <Button
+                  variant="primary"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl py-6"
+                  onClick={handleConfirmBatchProduction}
+                  icon={<CheckCircle2 size={20} />}
+                >
+                  Confirmar Producción
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )
+      }
 
     </div >
   );
