@@ -726,8 +726,8 @@ const Products: React.FC = () => {
                       <div className="space-y-4">
                         <div className="flex items-center justify-between rounded-2xl border border-gray-700 bg-gray-800/50 p-6">
                           <div>
-                            <div className="text-xs font-bold uppercase text-gray-400">Margen Real</div>
-                            <div className="text-3xl font-black">{calculateMargin(formData.price, totalCurrentCost).toFixed(1)}%</div>
+                            <div className="text-xs font-bold uppercase text-gray-300">Margen Real</div>
+                            <div className="text-3xl font-black text-white">{calculateMargin(formData.price, totalCurrentCost).toFixed(1)}%</div>
                           </div>
                           <CheckCircle2 size={32} className="text-emerald-500 opacity-30" />
                         </div>
