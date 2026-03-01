@@ -68,12 +68,12 @@ export function EntityDetail<T>({ config, item, isOpen, onClose }: EntityDetailP
                     </div>
 
                     {/* ── Content ─────────────────────────────────────────── */}
-                    <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
-                        <div className="space-y-4">
+                    <div className="flex-1 overflow-y-auto px-5 py-6 sm:px-7">
+                        <div className="space-y-6">
 
                             {/* Fila 1: campo secundario (Rol) a la izquierda + iconos de acción a la derecha */}
                             {config.fields.length > 1 && (
-                                <div className="flex items-start justify-between border-b border-gray-100 pb-4">
+                                <div className="flex items-start justify-between border-b border-gray-100 pb-5">
                                     <div>
                                         <dt className="mb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
                                             {config.fields[1].label}
@@ -104,7 +104,7 @@ export function EntityDetail<T>({ config, item, isOpen, onClose }: EntityDetailP
                             )}
 
                             {/* Fila 2: campo primario (Usuario) — ancho completo */}
-                            <div className="border-b border-gray-100 pb-4">
+                            <div className="border-b border-gray-100 pb-5">
                                 <dt className="mb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
                                     {config.fields[0].label}
                                 </dt>
@@ -117,7 +117,7 @@ export function EntityDetail<T>({ config, item, isOpen, onClose }: EntityDetailP
                             {config.fields.length > 2 && (
                                 <div className="grid grid-cols-2 gap-x-4 gap-y-4">
                                     {config.fields.slice(2).map((field, idx) => (
-                                        <div key={idx} className="border-b border-gray-100 pb-3">
+                                        <div key={idx} className="border-b border-gray-100 pb-4">
                                             <dt className="mb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
                                                 {field.label}
                                             </dt>
