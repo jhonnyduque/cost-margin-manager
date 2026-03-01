@@ -363,29 +363,34 @@ const RawMaterials: React.FC = () => {
                     const hasLinkedProducts = products.some(p =>
                       (p.materials ?? []).some(pm => pm.material_id === m.id)
                     );
-                    return hasLinkedProducts ? (
+                    const remainingStock = getBatchStats(m.id).totalRemainingQty;
+                    const mustArchive = hasLinkedProducts || remainingStock > 0;
+                    const archiveReason = hasLinkedProducts
+                      ? 'Vinculada a productos activos'
+                      : 'Tiene stock físico con valor en libro';
+                    return mustArchive ? (
                       <button
                         onClick={async () => {
-                          if (window.confirm(`¿Archivar "${m.name}"? Está vinculada a productos. Se archivará (quedará inactiva) pero se conservará el historial.`)) {
+                          if (window.confirm(`¿Archivar "${m.name}"? Razón: ${archiveReason}. Quedará inactiva pero el historial se conserva.`)) {
                             try { await archiveMaterial(m.id); }
                             catch (err: any) { alert(`Error: ${translateError(err)}`); }
                           }
                         }}
                         className="flex items-center justify-center rounded-lg bg-slate-50 p-1.5 text-amber-500 hover:bg-amber-50 hover:text-amber-600 active:scale-95 transition-all"
-                        title="Archivar (vinculada a productos)"
+                        title={`Archivar (${archiveReason})`}
                       >
                         <Archive size={15} />
                       </button>
                     ) : (
                       <button
                         onClick={async () => {
-                          if (window.confirm(`¿Eliminar "${m.name}"? Esta acción no se puede deshacer.`)) {
+                          if (window.confirm(`¿Eliminar "${m.name}"? Sin stock ni productos vinculados. Esta acción no se puede deshacer.`)) {
                             try { await deleteRawMaterial(m.id); }
                             catch (err: any) { alert(`No se pudo eliminar: ${translateError(err)}`); }
                           }
                         }}
                         className="flex items-center justify-center rounded-lg bg-slate-50 p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600 active:scale-95 transition-all"
-                        title="Eliminar (sin productos vinculados)"
+                        title="Eliminar (sin stock ni productos vinculados)"
                       >
                         <Trash2 size={15} />
                       </button>
@@ -493,12 +498,17 @@ const RawMaterials: React.FC = () => {
                             const hasLinkedProducts = products.some(p =>
                               (p.materials ?? []).some(pm => pm.material_id === m.id)
                             );
-                            return hasLinkedProducts ? (
+                            const remainingStock = getBatchStats(m.id).totalRemainingQty;
+                            const mustArchive = hasLinkedProducts || remainingStock > 0;
+                            const archiveReason = hasLinkedProducts
+                              ? 'Vinculada a productos activos'
+                              : 'Tiene stock físico con valor en libro';
+                            return mustArchive ? (
                               <button
                                 className="rounded-lg p-1.5 transition-colors border border-transparent bg-amber-50 text-amber-500 hover:border-amber-200 hover:bg-amber-100"
-                                title="Archivar (vinculada a productos — no se puede eliminar)"
+                                title={`Archivar (${archiveReason})`}
                                 onClick={async () => {
-                                  if (window.confirm(`¿Archivar "${m.name}"? Está vinculada a productos. Se marcará como inactiva pero el historial se conserva.`)) {
+                                  if (window.confirm(`¿Archivar "${m.name}"? Razón: ${archiveReason}. Quedará inactiva pero el historial se conserva.`)) {
                                     try { await archiveMaterial(m.id); }
                                     catch (err: any) { alert(`Error: ${translateError(err)}`); }
                                   }
@@ -508,9 +518,9 @@ const RawMaterials: React.FC = () => {
                             ) : (
                               <button
                                 className="rounded-lg p-1.5 transition-colors border border-transparent bg-gray-50 text-gray-400 hover:border-gray-200 hover:bg-white hover:text-red-600"
-                                title="Eliminar (sin productos vinculados)"
+                                title="Eliminar (sin stock ni productos vinculados)"
                                 onClick={async () => {
-                                  if (window.confirm(`¿Eliminar "${m.name}"? Esta acción no se puede deshacer.`)) {
+                                  if (window.confirm(`¿Eliminar "${m.name}"? Sin stock ni productos vinculados. Esta acción no se puede deshacer.`)) {
                                     try { await deleteRawMaterial(m.id); }
                                     catch (err: any) { alert(`No se pudo eliminar: ${translateError(err)}`); }
                                   }
