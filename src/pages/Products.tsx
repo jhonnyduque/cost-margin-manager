@@ -729,7 +729,7 @@ const Products: React.FC = () => {
                             <div className="flex flex-wrap items-center gap-2 bg-gray-50/60 px-3 py-2 lg:grid lg:flex-none lg:grid-cols-[1fr_auto_90px_110px_56px] lg:gap-x-3">
 
                               {/* Col 1: Insumo */}
-                              <div className="min-w-0 flex-1 lg:flex-none">
+                              <div className="min-w-0 w-full lg:w-auto lg:flex-1">
                                 <button
                                   type="button"
                                   onClick={() => { setSelectorModal({ isOpen: true, forIndex: idx }); setSelectorSearch(''); }}
@@ -775,7 +775,7 @@ const Products: React.FC = () => {
                               </div>
 
                               {/* Col 4: Costo + FIFO badge */}
-                              <div className="flex items-center gap-1.5 lg:justify-end">
+                              <div className="flex items-center gap-1.5 ml-auto lg:ml-0 lg:justify-end">
                                 <span
                                   className={`text-sm font-bold tabular-nums ${hasMissingStock ? 'text-red-500' : 'text-gray-700'}`}
                                   title={hasMissingStock ? 'Stock insuficiente' : mainBatchInfo}

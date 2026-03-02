@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Edit2, Search, X, History, ShoppingCart, ArrowDownToLine, Printer, Pencil, AlertCircle, Maximize2, Scissors, RotateCcw, Package, Archive } from 'lucide-react';
 import { useStore, getMaterialDebt, calculateTotalFinancialDebt } from '../store';
 import { RawMaterial, Status, Unit, MaterialBatch } from '@/types';
@@ -13,6 +14,7 @@ import { Badge } from '@/components/ui/Badge';
 import { translateError } from '@/utils/errorHandler';
 
 const RawMaterials: React.FC = () => {
+  const navigate = useNavigate();
   const { currentCompanyId, currentUserRole, rawMaterials, products, batches, movements, addRawMaterial, deleteRawMaterial, archiveMaterial, updateRawMaterial, addBatch, deleteBatch, updateBatch } = useStore();
   const { formatCurrency, currencySymbol } = useCurrency();
 
@@ -269,17 +271,26 @@ const RawMaterials: React.FC = () => {
           <p className="mt-1 text-sm lg:text-base text-slate-500">Inventario Maestro y Gestión FIFO</p>
         </div>
         {canCreate && (
-          <Button
-            variant="primary"
-            onClick={() => {
-              setEditingId(null);
-              setFormData({ name: '', description: '', type: 'Tela', unit: 'metro', provider: '', status: 'activa', initialQty: 0, unitCost: 0, width: 140 });
-              setIsModalOpen(true);
-            }}
-            icon={<Plus size={18} />}
-          >
-            Nuevo Material
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => navigate('/productos')}
+              className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-none px-3"
+            >
+              Nuevo Producto
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                setEditingId(null);
+                setFormData({ name: '', description: '', type: 'Tela', unit: 'metro', provider: '', status: 'activa', initialQty: 0, unitCost: 0, width: 140 });
+                setIsModalOpen(true);
+              }}
+              icon={<Plus size={18} />}
+            >
+              Nuevo Material
+            </Button>
+          </div>
         )}
       </div>
 
