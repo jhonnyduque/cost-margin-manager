@@ -14,21 +14,6 @@ import { tokens } from '@/design/design-tokens';
 import { useCurrency } from '@/hooks/useCurrency';
 import { translateError } from '@/utils/errorHandler';
 
-const getCommercialPrice = (price: number) => {
-  if (price <= 0) return 0;
-  const floor = Math.floor(price);
-  const decimals = price - floor;
-  if (decimals < 0.50) return floor + 0.50;
-  if (decimals < 0.90) return floor + 0.99;
-  return floor + 1.00;
-};
-
-// Interfaz extendida localmente para el estado del formulario de composición
-interface ProductMaterialUI extends ProductMaterial {
-  mode: 'linear' | 'pieces';
-  pieces: { length: number; width: number }[];
-}
-
 const Products: React.FC = () => {
   const navigate = useNavigate();
   const { currentCompanyId, currentUserRole, products, productMovements, rawMaterials, batches, movements, addProduct, deleteProduct, discontinueProduct, updateProduct, consumeStock, consumeStockBatch } = useStore();
@@ -39,50 +24,10 @@ const Products: React.FC = () => {
   const { formatCurrency, currencySymbol } = useCurrency();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'activa' | 'inactiva' | 'todos'>('activa');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [expandedMaterial, setExpandedMaterial] = useState<number | null>(null);
-  const [missingStockModal, setMissingStockModal] = useState<{ isOpen: boolean; productId: string; missingItems: any[]; quantity: number; targetPrice: number; maxCoveredProduction: number; fullBreakdown: any[]; showFullBreakdown: boolean }>({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0, maxCoveredProduction: 0, fullBreakdown: [], showFullBreakdown: false });
-  const [successModal, setSuccessModal] = useState<{ isOpen: boolean; productName: string; cost: number; quantity: number } | null>(null);
-  const [selectorModal, setSelectorModal] = useState<{ isOpen: boolean; forIndex: number | null }>({ isOpen: false, forIndex: null });
-  const [selectorSearch, setSelectorSearch] = useState('');
-  const [inlineSearch, setInlineSearch] = useState('');
-  const [showInlineResults, setShowInlineResults] = useState(false);
-  const inlineSearchRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (inlineSearchRef.current && !inlineSearchRef.current.contains(event.target as Node)) {
-        setShowInlineResults(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const [formData, setFormData] = useState<any>({
-    name: '', reference: '', price: 0, target_margin: 30, materials: [], status: 'activa'
-  });
 
   const [productionModal, setProductionModal] = useState<{ isOpen: boolean; productId: string; quantity: number; cost: number; targetPrice: number; productName: string }>({ isOpen: false, productId: '', quantity: 1, cost: 0, targetPrice: 0, productName: '' });
-
-  // Utility to handle NumPad Comma for decimal inputs
-  const handleNumberInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === ',') {
-      e.preventDefault();
-      // Insert dot instead of comma
-      const target = e.target as HTMLInputElement;
-      const start = target.selectionStart;
-      const end = target.selectionEnd;
-      if (start !== null && end !== null) {
-        target.value = target.value.substring(0, start) + '.' + target.value.substring(end);
-        target.selectionStart = target.selectionEnd = start + 1;
-        // Trigger onChange event synthetically
-        const event = new Event('input', { bubbles: true });
-        target.dispatchEvent(event);
-      }
-    }
-  };
+  const [missingStockModal, setMissingStockModal] = useState<{ isOpen: boolean; productId: string; missingItems: any[]; quantity: number; targetPrice: number; maxCoveredProduction: number; fullBreakdown: any[]; showFullBreakdown: boolean }>({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0, maxCoveredProduction: 0, fullBreakdown: [], showFullBreakdown: false });
+  const [successModal, setSuccessModal] = useState<{ isOpen: boolean; productName: string; cost: number; quantity: number } | null>(null);
 
   const handleConfirmBatchProduction = () => {
     const { productId, quantity, targetPrice } = productionModal;
@@ -164,153 +109,9 @@ const Products: React.FC = () => {
     return p.status === statusFilter;
   });
 
-  const calculateTotalCost = (materials: any[]) => {
-    return (materials || []).reduce((total: number, pm: any) => {
-      let effectiveQty = pm.quantity;
-      if (pm.mode === 'pieces' && pm.pieces) {
-        const latestBatch = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-        const width = latestBatch?.width || 140;
-        const totalAreaCm2 = pm.pieces.reduce((acc: number, p: any) => acc + (p.length * p.width), 0);
-        effectiveQty = (totalAreaCm2 / width) / 100;
-      }
-      return total + calculateFifoCost(pm.material_id, effectiveQty, pm.consumption_unit, batches, rawMaterials);
-    }, 0);
-  };
-
-  const totalCurrentCost = useMemo(() => calculateTotalCost(formData.materials), [formData.materials, batches, rawMaterials]);
-
-  const exactSuggestedPrice = useMemo(() => {
-    const margin = formData.target_margin || 0;
-    if (margin >= 100) return 0;
-    return totalCurrentCost / (1 - margin / 100);
-  }, [totalCurrentCost, formData.target_margin]);
-
-  const commercialSuggestedPrice = useMemo(() => getCommercialPrice(exactSuggestedPrice), [exactSuggestedPrice]);
-
-  const handleAddMaterial = () => {
-    if (rawMaterials.length === 0) return;
-    setSelectorModal({ isOpen: true, forIndex: null });
-    setSelectorSearch('');
-  };
-
-  const updateMaterial = (idx: number, field: string, value: any) => {
-    const materials = [...(formData.materials || [])];
-    materials[idx] = { ...materials[idx], [field]: value };
-
-    if (field === 'material_id') {
-      const selectedBase = rawMaterials.find(m => m.id === value);
-      if (selectedBase) {
-        materials[idx].consumption_unit = selectedBase.unit;
-        materials[idx].mode = 'linear';
-      }
-    }
-    setFormData({ ...formData, materials });
-  };
-
-  const removeMaterial = (idx: number) => {
-    const materials = (formData.materials || []).filter((_: any, i: number) => i !== idx);
-    setFormData({ ...formData, materials });
-    if (expandedMaterial === idx) {
-      setExpandedMaterial(null);
-    } else if (expandedMaterial !== null && expandedMaterial > idx) {
-      setExpandedMaterial(expandedMaterial - 1);
-    }
-  };
-
-  const addPiece = (idx: number) => {
-    const materials = [...(formData.materials || [])];
-    const mat = materials[idx];
-    const latestBatch = batches.filter(b => b.material_id === mat.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-    mat.pieces = [...(mat.pieces || []), { length: 10, width: latestBatch?.width || 140 }];
-    setFormData({ ...formData, materials });
-  };
-
-  const updatePiece = (matIdx: number, pieceIdx: number, field: 'length' | 'width', value: number) => {
-    const materials = [...(formData.materials || [])];
-    materials[matIdx].pieces[pieceIdx][field] = value;
-    setFormData({ ...formData, materials });
-  };
-
-  const removePiece = (matIdx: number, pieceIdx: number) => {
-    const materials = [...(formData.materials || [])];
-    materials[matIdx].pieces = materials[matIdx].pieces.filter((_: any, i: number) => i !== pieceIdx);
-    setFormData({ ...formData, materials });
-  };
-
   const handleDuplicate = (product: Product) => {
-    const duplicatedProduct = {
-      ...product,
-      name: `${product.name} (copia)`,
-      reference: product.reference ? `${product.reference}-COPIA` : '',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    setEditingId(null);
-    setFormData(duplicatedProduct);
-    setIsModalOpen(true);
+    navigate('/productos/nuevo');
   };
-
-  const saveProduct = useCallback(async () => {
-    const processedMaterials = formData.materials.map((pm: any) => {
-      if (pm.mode === 'pieces' && pm.pieces) {
-        const latestBatch = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-        const width = latestBatch?.width || 140;
-        const totalAreaCm2 = pm.pieces.reduce((acc: number, p: any) => acc + (p.length * p.width), 0);
-        return { ...pm, quantity: (totalAreaCm2 / width) / 100 };
-      }
-      return pm;
-    });
-
-    const now = new Date().toISOString();
-    const data = {
-      ...formData,
-      materials: processedMaterials,
-      id: editingId || crypto.randomUUID(),
-      company_id: currentCompanyId || '',
-      created_at: editingId ? (products.find(p => p.id === editingId)?.created_at) : now,
-      updated_at: now
-    } as Product;
-
-    try {
-      if (editingId) {
-        await updateProduct(data);
-      } else {
-        await addProduct(data);
-      }
-      setIsModalOpen(false);
-    } catch (error: any) {
-      console.error("Error saving product:", error);
-      alert(`No se pudo guardar el producto: ${translateError(error)}`);
-    }
-  }, [formData, editingId, batches, products, currentCompanyId, updateProduct, addProduct]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await saveProduct();
-  };
-
-  // Atajo de teclado: Ctrl+G guarda, Escape cierra
-  useEffect(() => {
-    if (!isModalOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === 'g') {
-        e.preventDefault();
-        saveProduct();
-      }
-      if (e.key === 'Escape') {
-        setIsModalOpen(false);
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isModalOpen, saveProduct]);
-
-  // Central financial metrics engine — single source of truth
-  const metrics = calculateFinancialMetrics(
-    totalCurrentCost,
-    formData.price || 0,
-    (formData.target_margin || 30) / 100
-  );
 
   const handlePrint = () => {
     window.print();
@@ -342,11 +143,7 @@ const Products: React.FC = () => {
               </Button>
               <Button
                 variant="primary"
-                onClick={() => {
-                  setEditingId(null);
-                  setFormData({ name: '', reference: '', price: 0, target_margin: 30, materials: [], status: 'activa' });
-                  setIsModalOpen(true);
-                }}
+                onClick={() => navigate('/productos/nuevo')}
                 icon={<Plus size={18} />}
               >
                 Nuevo Producto
@@ -358,7 +155,6 @@ const Products: React.FC = () => {
 
       {/* UNIFIED TOOLBAR */}
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-slate-200 no-print">
-        {/* Left: Search */}
         <div className="relative flex-1 w-full max-w-md group">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors pointer-events-none" size={18} />
           <Input
@@ -368,16 +164,12 @@ const Products: React.FC = () => {
             className="pl-10 pr-10 py-2.5 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm w-full"
           />
           {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
-            >
+            <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
               <X size={16} />
             </button>
           )}
         </div>
 
-        {/* Right: Filters & Tools */}
         <div className="flex items-center gap-3 w-full md:w-auto">
           <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider hidden sm:inline-block">Estado:</span>
@@ -392,7 +184,6 @@ const Products: React.FC = () => {
               <option value="todos">Todos los productos</option>
             </select>
           </div>
-
           <Button variant="outline" className="border-slate-200 text-slate-600 hover:bg-slate-50 h-10 px-3" onClick={handlePrint} title="Imprimir Catálogo">
             <Printer size={18} />
           </Button>
@@ -412,7 +203,7 @@ const Products: React.FC = () => {
                     <h3 className="font-bold text-gray-900">{p.name}</h3>
                     <p className="text-xs font-mono text-gray-500 mt-0.5">{p.reference || 'Sin Ref'}</p>
                   </div>
-                  <Badge variant={metrics.realMargin >= (p.target_margin || 30) / 100 ? 'success' : 'warning'}>
+                  <Badge variant={metrics.realMargin >= (p.target_margin || 0.3) ? 'success' : 'warning'}>
                     {(metrics.realMargin * 100).toFixed(1)}%
                   </Badge>
                 </div>
@@ -447,46 +238,17 @@ const Products: React.FC = () => {
                           alert('Integridad Contable: No se puede editar la receta de un producto que mantiene deuda activa de inventario.');
                           return;
                         }
-                        setEditingId(p.id); setFormData(p); setIsModalOpen(true);
+                        navigate(`/productos/editar/${p.id}`);
                       }}
                       title={hasProductGeneratedActiveDebt(p.id, movements) ? "⚠ Producción con deuda activa" : "Editar"}
                     >
                       <Edit2 size={16} className={hasProductGeneratedActiveDebt(p.id, movements) ? "text-gray-400" : "text-blue-600"} />
                     </Button>
                   )}
-                  {canDelete && (() => {
-                    const hasMovements = productMovements.some(m => m.product_id === p.id);
-                    return hasMovements ? (
-                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-amber-50"
-                        title="Discontinuar producto (tiene historial de movimientos)"
-                        onClick={async () => {
-                          if (window.confirm(`¿Discontinuar "${p.name}"? El producto se archivará y no aparecerá en nuevas producciones, pero se conserva el historial.`)) {
-                            try { await discontinueProduct(p.id); }
-                            catch (err: any) { alert(`Error: ${translateError(err)}`); }
-                          }
-                        }}>
-                        <Archive size={16} className="text-amber-600" />
-                      </Button>
-                    ) : (
-                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-red-50"
-                        title="Eliminar producto (sin historial)"
-                        onClick={async () => {
-                          if (window.confirm(`¿Eliminar "${p.name}"? Esta acción no se puede deshacer.`)) {
-                            try { await deleteProduct(p.id); }
-                            catch (err: any) { alert(`No se pudo eliminar: ${translateError(err)}`); }
-                          }
-                        }}>
-                        <Trash2 size={16} className="text-red-500" />
-                      </Button>
-                    );
-                  })()}
                 </div>
               </div>
             );
           })}
-          {filteredProducts.length === 0 && (
-            <div className="p-8 text-center text-gray-500">No se encontraron productos.</div>
-          )}
         </div>
 
         {/* ✅ ESCRITORIO - Tabla normal */}
@@ -511,10 +273,10 @@ const Products: React.FC = () => {
                     <tr key={p.id} className="group transition-all hover:bg-slate-50 bg-white">
                       <td className="px-6 py-4 font-semibold text-gray-900 truncate" title={p.name}>{p.name}</td>
                       <td className="px-6 py-4 font-mono text-xs text-gray-500 truncate" title={p.reference || '---'}>{p.reference || '---'}</td>
-                      <td className="px-6 py-4 text-right font-mono font-medium text-gray-700 truncate" title={formatCurrency(cost)}>{formatCurrency(cost)}</td>
-                      <td className="px-6 py-4 text-right font-mono font-black truncate" style={{ color: tokens.colors.brand }} title={formatCurrency(p.price)}>{formatCurrency(p.price)}</td>
+                      <td className="px-6 py-4 text-right font-mono font-medium text-gray-700 truncate">{formatCurrency(cost)}</td>
+                      <td className="px-6 py-4 text-right font-mono font-black truncate" style={{ color: tokens.colors.brand }}>{formatCurrency(p.price)}</td>
                       <td className="px-6 py-4 text-center">
-                        <Badge variant={metrics.realMargin >= (p.target_margin || 30) / 100 ? 'success' : 'warning'}>
+                        <Badge variant={metrics.realMargin >= (p.target_margin || 0.3) ? 'success' : 'warning'}>
                           {(metrics.realMargin * 100).toFixed(1)}%
                         </Badge>
                       </td>
@@ -536,861 +298,70 @@ const Products: React.FC = () => {
                                   alert('Integridad Contable: No se puede editar la receta de un producto que mantiene deuda activa de inventario.');
                                   return;
                                 }
-                                setEditingId(p.id); setFormData(p); setIsModalOpen(true);
+                                navigate(`/productos/editar/${p.id}`);
                               }}
                               title={hasProductGeneratedActiveDebt(p.id, movements) ? "⚠ Producción con deuda activa" : "Editar"}
                             >
                               <Edit2 size={16} />
                             </button>
                           )}
-                          {canDelete && (() => {
-                            const hasMovements = productMovements.some(m => m.product_id === p.id);
-                            return hasMovements ? (
-                              <button
-                                className="rounded-lg p-1.5 transition-colors border border-transparent bg-amber-50 text-amber-600 hover:border-amber-200 hover:bg-amber-100"
-                                title="Discontinuar (tiene historial — no se puede eliminar)"
-                                onClick={async () => {
-                                  if (window.confirm(`¿Discontinuar "${p.name}"? Se archivará conservando el historial de movimientos.`)) {
-                                    try { await discontinueProduct(p.id); }
-                                    catch (err: any) { alert(`Error: ${translateError(err)}`); }
-                                  }
-                                }}>
-                                <Archive size={16} />
-                              </button>
-                            ) : (
-                              <button
-                                className="rounded-lg p-1.5 transition-colors border border-transparent bg-red-50 text-red-600 hover:border-red-200 hover:bg-red-100"
-                                title="Eliminar (sin historial)"
-                                onClick={async () => {
-                                  if (window.confirm(`¿Eliminar "${p.name}"? Esta acción no se puede deshacer.`)) {
-                                    try { await deleteProduct(p.id); }
-                                    catch (err: any) { alert(`No se pudo eliminar: ${translateError(err)}`); }
-                                  }
-                                }}>
-                                <Trash2 size={16} />
-                              </button>
-                            );
-                          })()}
                         </div>
                       </td>
                     </tr>
                   );
                 })}
-                {filteredProducts.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-sm font-medium text-gray-500">
-                      No se encontraron productos. Usa el botón "Nuevo Producto" para empezar.
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>
         </div>
       </div>
 
-      {
-        isModalOpen && (
-          <div
-            className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-2 pt-4 sm:p-6"
-            style={{
-              backgroundColor: 'rgba(15, 23, 42, 0.4)',
-              backdropFilter: 'blur(4px)'
-            }}
-          >
-            <Card className="flex max-h-[95vh] w-full max-w-5xl flex-col overflow-hidden !p-0 mx-0 sm:mx-0">
-              <div className="flex items-center justify-between border-b px-4 py-3 sm:px-10 sm:py-6" style={{ borderColor: tokens.colors.border, backgroundColor: tokens.colors.bg }}>
-                <h3 className="text-lg font-bold lg:text-xl" style={{ color: tokens.colors.text.primary }}>{editingId ? 'Editar Receta' : 'Nueva Receta de Producto'}</h3>
-                <Button variant="ghost" onClick={() => setIsModalOpen(false)} icon={<X size={20} />} />
-              </div>
-
-              <form onSubmit={handleSubmit} className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_20rem] overflow-y-auto lg:overflow-hidden min-h-0">
-                {/* ── LEFT PANEL — scroll independiente ─────────────────── */}
-                <div className="lg:overflow-y-auto relative z-10 p-3 lg:p-6 space-y-4 lg:space-y-5">
-                  <div className="grid grid-cols-2 gap-2 lg:gap-3">
-                    <Input
-                      label="Nombre Comercial"
-                      value={formData.name}
-                      onChange={e => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="Ej. Bolso de Mano Primavera"
-                      required
-                    />
-                    <Input
-                      label="Referencia / SKU"
-                      value={formData.reference}
-                      onChange={e => setFormData({ ...formData, reference: e.target.value })}
-                      placeholder="REF-001"
-                    />
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="relative pb-2 z-20" ref={inlineSearchRef}>
-                      <div className="relative">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input
-                          type="text"
-                          placeholder="Buscar insumo para agregar..."
-                          value={inlineSearch}
-                          onChange={e => {
-                            setInlineSearch(e.target.value);
-                            setShowInlineResults(true);
-                          }}
-                          onFocus={() => setShowInlineResults(true)}
-                          className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3 pl-9 pr-4 text-sm font-medium outline-none transition-colors focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 shadow-sm"
-                        />
-                      </div>
-
-                      {showInlineResults && (
-                        <div className="absolute top-full left-0 right-0 mt-1 z-[60] max-h-48 overflow-y-auto rounded-xl bg-white shadow-xl border border-gray-200 overscroll-contain">
-                          {rawMaterials
-                            .filter(m => m.name.toLowerCase().includes(inlineSearch.toLowerCase()))
-                            .map(m => {
-                              const mBatches = batches.filter(b => b.material_id === m.id);
-                              const totalAvailable = mBatches.reduce((acc, b) => acc + (b.remaining_quantity || 0), 0);
-                              let costStr = '';
-                              if (mBatches.length > 0) {
-                                const currentBatch = mBatches.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-                                const unitCost = currentBatch.unit_cost || 0;
-                                costStr = m.unit === 'metro' ? `${formatCurrency(unitCost / ((currentBatch.width || 140) / 100))}/m²` : `${formatCurrency(unitCost)}/${m.unit === 'unidad' ? 'und' : m.unit}`;
-                              } else {
-                                costStr = 'Agotado';
-                              }
-
-                              return (
-                                <button
-                                  key={m.id}
-                                  type="button"
-                                  onClick={() => {
-                                    const materials = [...(formData.materials || []), {
-                                      material_id: m.id,
-                                      quantity: 1,
-                                      consumption_unit: m.unit,
-                                      mode: 'linear',
-                                      pieces: [{ length: 50, width: m.unit === 'metro' ? 140 : 0 }]
-                                    }];
-                                    setFormData({ ...formData, materials });
-                                    setInlineSearch('');
-                                    setShowInlineResults(false);
-                                  }}
-                                  className="w-full flex items-center justify-between p-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors text-left"
-                                >
-                                  <div className="flex-1 min-w-0 pr-2">
-                                    <div className="text-sm font-bold text-gray-900 truncate">{m.name}</div>
-                                    <div className="text-xs text-gray-500">{totalAvailable > 0 ? `${totalAvailable} disponibles` : 'Sin stock'}</div>
-                                  </div>
-                                  <div className="text-right whitespace-nowrap">
-                                    <div className="text-sm font-black tabular-nums text-gray-700">{costStr}</div>
-                                  </div>
-                                </button>
-                              );
-                            })
-                          }
-                          {rawMaterials.filter(m => m.name.toLowerCase().includes(inlineSearch.toLowerCase())).length === 0 && (
-                            <div className="p-4 text-center text-gray-500 text-sm">No se encontraron insumos</div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-4">
-                      {(formData.materials || []).map((pm: any, idx: number) => {
-                        const material = rawMaterials.find(m => m.id === pm.material_id);
-                        const isFabric = material?.unit === 'metro';
-
-                        let effectiveQty = pm.quantity;
-                        let areaM2 = 0;
-                        if (pm.mode === 'pieces' && pm.pieces) {
-                          const latestBatch = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-                          const width = latestBatch?.width || 140;
-                          const totalAreaCm2 = pm.pieces.reduce((acc: number, p: any) => acc + (p.length * p.width), 0);
-                          areaM2 = totalAreaCm2 / 10000;
-                          effectiveQty = (totalAreaCm2 / width) / 100;
-                        } else if (isFabric) {
-                          const latestBatch = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-                          areaM2 = pm.quantity * ((latestBatch?.width || 140) / 100);
-                        }
-
-                        const breakdown = getFifoBreakdown(pm.material_id, effectiveQty, pm.consumption_unit, batches, rawMaterials);
-                        const costRow = breakdown.reduce((acc, item) => acc + item.subtotal, 0);
-                        const isExpanded = expandedMaterial === idx;
-                        const hasMissingStock = breakdown.some(b => b.is_missing);
-
-                        let mainBatchInfo = '';
-                        if (breakdown.length > 0 && !breakdown[0].is_missing) {
-                          const batch = batches.find(b => b.id === breakdown[0].batch_id);
-                          const costPerM2 = breakdown[0].unit_cost / ((batch?.width || 140) / 100);
-                          const formattedDate = new Date(breakdown[0].date).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-                          mainBatchInfo = `FIFO — lote ${formattedDate} @ ${formatCurrency(costPerM2)}/m²`;
-                        }
-
-                        return (
-                          <div key={idx} className={`overflow-hidden rounded-lg border transition-all ${hasMissingStock ? 'border-red-200' : 'border-gray-100'}`}>
-                            {/* Desktop: grid columnas fijas | Mobile: flex-wrap */}
-                            <div className="flex flex-wrap items-center gap-2 bg-gray-50/60 px-3 py-2 lg:grid lg:flex-none lg:grid-cols-[1fr_auto_90px_110px_56px] lg:gap-x-3">
-
-                              {/* Col 1: Insumo + Acciones (móvil) */}
-                              <div className="min-w-0 w-full lg:w-auto lg:flex-1 flex justify-between gap-1 items-center">
-                                <button
-                                  type="button"
-                                  onClick={() => { setSelectorModal({ isOpen: true, forIndex: idx }); setSelectorSearch(''); }}
-                                  className="flex-1 min-w-0 flex items-center justify-between rounded-lg border border-gray-200 bg-white py-1.5 px-3 text-sm font-medium text-gray-800 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-colors"
-                                >
-                                  <span className="truncate">{material ? material.name : 'Seleccionar insumo...'}</span>
-                                  <ChevronRight size={14} className="text-gray-400 flex-shrink-0 ml-1" />
-                                </button>
-
-                                {/* Acciones Solo Móvil */}
-                                <div className="flex pl-1 gap-0.5 lg:hidden">
-                                  <button type="button" onClick={() => setExpandedMaterial(isExpanded ? null : idx)} className="rounded p-1.5 text-gray-300 hover:bg-gray-100 hover:text-gray-500 active:scale-95 transition-transform" title="Desglose FIFO">
-                                    <Info size={16} />
-                                  </button>
-                                  <button type="button" onClick={() => removeMaterial(idx)} className="rounded p-1.5 text-gray-300 hover:bg-red-50 hover:text-red-400 active:scale-95 transition-transform">
-                                    <Trash2 size={16} />
-                                  </button>
-                                </div>
-                              </div>
-
-                              {/* Col 2: Modo (siempre presente como celda; vacía si no es tela) */}
-                              <div className="flex items-center">
-                                {isFabric && (
-                                  <div className="flex gap-0.5 rounded-md bg-gray-200/60 p-0.5">
-                                    <button type="button" onClick={() => updateMaterial(idx, 'mode', 'linear')} className={`flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold uppercase transition-all ${pm.mode === 'linear' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
-                                      <RotateCcw size={9} /> Lin.
-                                    </button>
-                                    <button type="button" onClick={() => updateMaterial(idx, 'mode', 'pieces')} className={`flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold uppercase transition-all ${pm.mode === 'pieces' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>
-                                      <Scissors size={9} /> Pzas.
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Col 3: Cantidad */}
-                              <div className="w-20 lg:w-auto">
-                                {pm.mode === 'linear' ? (
-                                  <div className="flex items-center rounded-lg border border-gray-200 bg-white">
-                                    <span className="pl-2 text-xs text-gray-400">Cant.</span>
-                                    <input
-                                      type="number"
-                                      step="0.01"
-                                      value={pm.quantity}
-                                      onChange={e => updateMaterial(idx, 'quantity', parseFloat(e.target.value))}
-                                      className="w-full rounded-lg border-0 bg-transparent px-1 py-1.5 text-right text-sm font-bold tabular-nums text-gray-800 [appearance:textfield] focus:outline-none focus:ring-1 focus:ring-indigo-400 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                                    />
-                                  </div>
-                                ) : (
-                                  <div className="flex h-8 items-center justify-end rounded-lg border border-indigo-100 bg-indigo-50 px-2 text-right text-xs font-bold tabular-nums text-indigo-700">
-                                    {areaM2.toFixed(2)}m²
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Col 4: Costo + FIFO badge */}
-                              <div className="flex items-center gap-1.5 ml-auto lg:ml-0 lg:justify-end">
-                                <span
-                                  className={`text-sm font-bold tabular-nums ${hasMissingStock ? 'text-red-500' : 'text-gray-700'}`}
-                                  title={hasMissingStock ? 'Stock insuficiente' : mainBatchInfo}
-                                >
-                                  {formatCurrency(costRow)}
-                                </span>
-                                {mainBatchInfo && !hasMissingStock && (
-                                  <span
-                                    className="cursor-help rounded bg-gray-100 px-1 py-0.5 text-[9px] font-bold uppercase tracking-widest text-gray-400 hover:bg-gray-200"
-                                    title={mainBatchInfo}
-                                  >
-                                    FIFO
-                                  </span>
-                                )}
-                                {hasMissingStock && (
-                                  <span className="text-[10px] font-bold text-red-400">Sin stock</span>
-                                )}
-                              </div>
-
-                              {/* Col 5: Acciones (Solo Desktop) */}
-                              <div className="hidden lg:flex gap-0.5 justify-center">
-                                <button type="button" onClick={() => setExpandedMaterial(isExpanded ? null : idx)} className="rounded p-1.5 text-gray-300 hover:bg-gray-100 hover:text-gray-500" title="Desglose FIFO">
-                                  <Info size={14} />
-                                </button>
-                                <button type="button" onClick={() => removeMaterial(idx)} className="rounded p-1.5 text-gray-300 hover:bg-red-50 hover:text-red-400">
-                                  <Trash2 size={14} />
-                                </button>
-                              </div>
-                            </div>
-
-                            {
-                              isExpanded && (
-                                <div className="space-y-6 border-t px-8 pb-8 pt-4" style={{ backgroundColor: tokens.colors.bg, borderColor: tokens.colors.border }}>
-
-                                  {/* FIFO Breakdown Reconstruction */}
-                                  {breakdown.length > 0 && (
-                                    <div className="space-y-3">
-                                      <h5 className="flex items-center gap-2 text-xs font-bold uppercase text-gray-500"><History size={12} /> Desglose FIFO Asignado</h5>
-                                      <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
-                                        <table className="w-full text-xs">
-                                          <thead className="bg-gray-50 border-b border-gray-200">
-                                            <tr>
-                                              <th className="px-3 py-2 text-left font-bold text-gray-500">Origen / Lote</th>
-                                              <th className="px-3 py-2 text-right font-bold text-gray-500">Cantidad</th>
-                                              <th className="px-3 py-2 text-right font-bold text-gray-500">Costo Unitario</th>
-                                              <th className="px-3 py-2 text-right font-bold text-gray-500">Subtotal</th>
-                                            </tr>
-                                          </thead>
-                                          <tbody className="divide-y divide-gray-100">
-                                            {breakdown.map((b, i) => (
-                                              <tr key={i} className={b.is_missing ? 'bg-red-50 text-red-600' : 'text-gray-700'}>
-                                                <td className="px-3 py-2 font-medium">
-                                                  {b.is_missing ? 'Stock faltante (Costo actual)' : `Lote — ${new Date(b.date).toLocaleDateString()}`}
-                                                </td>
-                                                <td className="px-3 py-2 text-right tabular-nums">{b.quantity.toFixed(4)}</td>
-                                                <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(b.unit_cost)}</td>
-                                                <td className="px-3 py-2 text-right font-bold tabular-nums">{formatCurrency(b.subtotal)}</td>
-                                              </tr>
-                                            ))}
-                                          </tbody>
-                                        </table>
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {pm.mode === 'pieces' && (
-                                    <div className="space-y-4">
-                                      <div className="flex items-center justify-between">
-                                        <h5 className="flex items-center gap-2 text-xs font-bold uppercase text-indigo-500"><Scissors size={12} /> Desglose de piezas (cm)</h5>
-                                        <Button size="sm" variant="secondary" onClick={() => addPiece(idx)}>+ Añadir Pieza</Button>
-                                      </div>
-                                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-                                        {(pm.pieces || []).map((piece: any, pIdx: number) => (
-                                          <div key={pIdx} className="flex items-center gap-3 rounded-xl border bg-white p-3 shadow-sm">
-                                            <div className="flex-1">
-                                              <label className="text-[10px] font-bold uppercase text-gray-400">Largo</label>
-                                              <input type="number" className="w-full rounded bg-gray-50 p-1 text-sm font-bold" value={piece.length} onChange={e => updatePiece(idx, pIdx, 'length', parseFloat(e.target.value))} onKeyDown={handleNumberInputKeyDown} />
-                                            </div>
-                                            <span className="text-gray-300">×</span>
-                                            <div className="flex-1">
-                                              <label className="text-[10px] font-bold uppercase text-gray-400">Ancho</label>
-                                              <input type="number" className="w-full rounded bg-gray-50 p-1 text-sm font-bold" value={piece.width} onChange={e => updatePiece(idx, pIdx, 'width', parseFloat(e.target.value))} onKeyDown={handleNumberInputKeyDown} />
-                                            </div>
-                                            <button type="button" onClick={() => removePiece(idx, pIdx)} className="text-gray-300 hover:text-red-500"><X size={14} /></button>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              )
-                            }
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                </div>{/* end LEFT PANEL */}
-
-                {/* ── RIGHT PANEL — zona de decisión ─────────────────────── */}
-                <div className="lg:overflow-y-auto relative z-0 p-3 lg:p-6 space-y-4 lg:space-y-5 border-t border-gray-100 lg:border-t-0 lg:border-l bg-gray-50/40">
-                  {/* Costo FIFO */}
-                  <div className="flex items-center justify-end gap-3 border-b border-gray-200 pb-3">
-                    <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Costo FIFO</span>
-                    <span className="text-lg font-black tabular-nums leading-tight text-gray-800">{formatCurrency(totalCurrentCost)}</span>
-                  </div>
-
-
-
-                  {/* Margen objetivo */}
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs font-bold uppercase leading-none tracking-widest text-gray-400">Margen</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={formData.target_margin}
-                      onChange={e => {
-                        const v = Math.min(100, Math.max(0, Number(e.target.value)));
-                        setFormData({ ...formData, target_margin: v });
-                      }}
-                      onKeyDown={handleNumberInputKeyDown}
-                      className="w-14 rounded-lg border border-transparent bg-gray-100 px-2 py-1.5 text-center text-sm font-bold leading-none text-gray-800 hover:bg-gray-200 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                    />
-                    <span className="text-sm font-bold leading-none text-gray-400">%</span>
-                  </div>
-
-                  {/* ── Precio Final — DESKTOP dark block (lg only) ────── */}
-                  {(() => {
-                    const priceState = metrics.priceState;
-                    const borderClass = priceState === 'loss' ? 'border-red-700' : priceState === 'warning' ? 'border-amber-600' : 'border-gray-700';
-                    const textClass = priceState === 'loss' ? 'text-red-400' : priceState === 'warning' ? 'text-amber-300' : 'text-emerald-400';
-                    const symbolClass = priceState === 'loss' ? 'text-red-400' : priceState === 'warning' ? 'text-amber-400' : 'text-emerald-500';
-                    return (
-                      <>
-                        {/* ── DESKTOP: dark financial block (PHASE 1) ── */}
-                        <div className="hidden lg:block space-y-3 rounded-xl border border-gray-700 bg-gray-800 p-4">
-                          <div>
-                            <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Precio Final</label>
-                            <div className="relative mt-1">
-                              <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-base font-bold leading-none ${symbolClass}`}>{currencySymbol}</span>
-                              <input
-                                type="number"
-                                step="0.01"
-                                className={`w-full rounded-lg border py-3 pl-9 pr-4 text-xl font-black leading-tight tabular-nums outline-none transition-colors bg-gray-900 ${borderClass} ${textClass} focus:ring-1 focus:ring-offset-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
-                                value={formData.price || ''}
-                                onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) })}
-                                onKeyDown={handleNumberInputKeyDown}
-                              />
-                            </div>
-                          </div>
-
-                          {/* Inject: Quick Action Chips */}
-                          <div className="flex gap-2 pb-3 border-b border-gray-700">
-                            <button
-                              type="button"
-                              onClick={() => setFormData({ ...formData, price: exactSuggestedPrice })}
-                              className="flex-1 rounded-md border border-gray-700 bg-gray-900/50 px-2 py-2 text-left transition-colors hover:border-gray-500 hover:bg-gray-800 group"
-                            >
-                              <div className="text-[10px] font-bold uppercase leading-tight text-gray-500 group-hover:text-gray-400">Exacto</div>
-                              <div className="text-sm font-black leading-snug tabular-nums text-gray-300">{formatCurrency(exactSuggestedPrice)}</div>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setFormData({ ...formData, price: commercialSuggestedPrice })}
-                              className="flex-1 rounded-md border border-gray-700 bg-gray-900/50 px-2 py-2 text-left transition-colors hover:border-emerald-700 hover:bg-emerald-900/20 group"
-                            >
-                              <div className="flex items-center gap-1 text-[10px] font-bold uppercase leading-tight text-gray-500 group-hover:text-emerald-500"><TrendingUp size={10} /> Redondeo</div>
-                              <div className="text-sm font-black leading-snug tabular-nums text-emerald-500">{formatCurrency(commercialSuggestedPrice)}</div>
-                            </button>
-                          </div>
-
-                          {!!formData.price && formData.price > 0 && (
-                            <div className="space-y-1.5 pt-1">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Ganancia Neta</span>
-                                <span className={`text-sm font-black tabular-nums ${metrics.profitVsCost >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                  {metrics.profitVsCost >= 0 ? '+' : ''}{formatCurrency(metrics.profitVsCost)}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Margen real</span>
-                                <span className={`text-sm font-black tabular-nums ${priceState === 'loss' ? 'text-red-400' : priceState === 'warning' ? 'text-amber-300' : metrics.targetStatus === 'increase_required' ? 'text-amber-400' : 'text-emerald-400'}`}>
-                                  {metrics.marginDisplay}
-                                </span>
-                              </div>
-                              <p className={`text-xs pt-1 leading-tight ${metrics.profitVsCost >= 0 ? 'text-gray-300' : 'text-red-400'}`}>
-                                {metrics.profitLabel}
-                              </p>
-                              <p className="text-xs leading-tight text-gray-400">
-                                {metrics.adjustmentLabel}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* ── MOBILE: light operational card (COMPACT) ── */}
-                        <div className="lg:hidden">
-                          <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
-                            {/* Header Row: Label + Margen Real */}
-                            <div className="flex items-center justify-between mb-2">
-                              <label className="text-xs font-bold uppercase tracking-widest text-gray-500">Precio Final</label>
-                              {!!formData.price && formData.price > 0 && (
-                                <span className={`text-sm font-bold tabular-nums ${priceState === 'loss' ? 'text-red-500' : priceState === 'warning' ? 'text-amber-600' : metrics.targetStatus === 'increase_required' ? 'text-amber-500' : 'text-emerald-600'
-                                  }`}>
-                                  {metrics.marginDisplay}
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Price Input */}
-                            <div className="relative">
-                              <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold leading-none ${priceState === 'loss' ? 'text-red-500' : priceState === 'warning' ? 'text-amber-500' : 'text-emerald-600'
-                                }`}>{currencySymbol}</span>
-                              <input
-                                type="number"
-                                step="0.01"
-                                className={`w-full rounded-lg border py-2 pl-8 pr-3 text-lg font-bold leading-tight tabular-nums outline-none transition-colors bg-gray-50 ${priceState === 'loss' ? 'border-red-300 text-red-600 focus:border-red-400 focus:ring-red-200' : priceState === 'warning' ? 'border-amber-300 text-amber-700 focus:border-amber-400 focus:ring-amber-200' : 'border-gray-200 text-gray-800 focus:border-indigo-400 focus:ring-indigo-100'
-                                  } focus:ring-2`}
-                                value={formData.price || ''}
-                                onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) })}
-                              />
-                            </div>
-
-                            {/* Compact Legend */}
-                            {!!formData.price && formData.price > 0 && (
-                              <div className="mt-2.5 flex items-center justify-between text-xs leading-tight">
-                                <span className={`font-medium ${metrics.profitVsCost >= 0 ? 'text-gray-500' : 'text-red-500'}`}>
-                                  {metrics.profitLabel}
-                                </span>
-                                <span className="text-gray-400 font-medium whitespace-nowrap ml-2">
-                                  {metrics.adjustmentLabel}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </>
-                    );
-                  })()}
-
-                </div>{/* end RIGHT PANEL */}
-              </form>
-
-              <div
-                className="flex gap-3 border-t px-4 py-3 sticky bottom-0"
-                style={{ backgroundColor: tokens.colors.bg, borderColor: tokens.colors.border, paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
-              >
-                <Button variant="ghost" className="flex-1" onClick={() => setIsModalOpen(false)}>Descartar</Button>
-                <Button className="flex-1" onClick={saveProduct} icon={<CheckCircle2 size={20} />}>
-                  {editingId ? 'Guardar Cambios' : 'Crear Producto'}
-                </Button>
+      {/* MODALES DE PRODUCCIÓN */}
+      {(missingStockModal.isOpen || productionModal.isOpen || (successModal && successModal.isOpen)) && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6" style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}>
+          {productionModal.isOpen && (
+            <Card className="w-full max-w-md p-6 shadow-2xl border border-gray-200 bg-white">
+              <h3 className="text-xl font-black mb-6">Nuevo Lote de {productionModal.productName}</h3>
+              <div className="space-y-4">
+                <Input label="Cantidad a fabricar" type="number" value={productionModal.quantity} onChange={e => setProductionModal({ ...productionModal, quantity: Number(e.target.value) || 1 })} />
+                <Input label="Precio Venta (Unid.)" type="number" value={productionModal.targetPrice} onChange={e => setProductionModal({ ...productionModal, targetPrice: Number(e.target.value) || 1 })} />
+                <Button variant="primary" className="w-full py-6" onClick={handleConfirmBatchProduction} icon={<CheckCircle2 size={20} />}>Confirmar Producción</Button>
+                <Button variant="ghost" className="w-full" onClick={() => setProductionModal({ ...productionModal, isOpen: false })}>Cancelar</Button>
               </div>
             </Card>
-          </div>
-        )
-      }
-      {/* ── MATERIAL PICKER MODAL (PRO UX) ── */}
-      {selectorModal.isOpen && (
-        <div className="fixed inset-0 flex flex-col justify-end lg:items-center lg:justify-center bg-gray-900/40 backdrop-blur-sm sm:p-6" style={{ zIndex: 9999 }} onClick={() => setSelectorModal({ isOpen: false, forIndex: null })}>
-          <div
-            className="w-full lg:max-w-md bg-white rounded-t-2xl lg:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] lg:max-h-[70vh] animate-in slide-in-from-bottom-4 lg:slide-in-from-bottom-8 duration-200"
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Header + Search */}
-            <div className="p-4 border-b border-gray-100 space-y-3 bg-white z-10 w-full">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-gray-800">Seleccionar Insumo</h3>
-                <button onClick={() => setSelectorModal({ isOpen: false, forIndex: null })} className="p-1 rounded-full hover:bg-gray-100 text-gray-400 transition-colors">
-                  <X size={18} />
-                </button>
+          )}
+
+          {missingStockModal.isOpen && (
+            <Card className="w-full max-w-xl p-8 shadow-2xl space-y-6 border-red-200">
+              <div className="flex items-center gap-4 text-red-600">
+                <AlertTriangle size={28} />
+                <h3 className="text-xl font-black">Faltante de Inventario</h3>
               </div>
-              <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  autoFocus
-                  placeholder="Buscar insumo por nombre o SKU..."
-                  value={selectorSearch}
-                  onChange={e => setSelectorSearch(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-4 text-sm font-medium outline-none transition-colors focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500"
-                />
+              <p className="text-gray-600">No tienes stock suficiente de algunos insumos. Se registrará una deuda de inventario.</p>
+              <div className="flex gap-4 pt-4">
+                <Button variant="ghost" className="flex-1" onClick={() => setMissingStockModal({ ...missingStockModal, isOpen: false })}>Cancelar</Button>
+                <Button className="flex-1 bg-red-600 text-white" onClick={() => {
+                  consumeStockBatch(missingStockModal.productId, missingStockModal.quantity, missingStockModal.targetPrice).then(() => {
+                    const product = products.find(p => p.id === missingStockModal.productId);
+                    const baseCost = calculateProductCost(product!, batches, rawMaterials);
+                    setMissingStockModal({ ...missingStockModal, isOpen: false });
+                    setSuccessModal({ isOpen: true, productName: product?.name || '', cost: baseCost * missingStockModal.quantity, quantity: missingStockModal.quantity });
+                  });
+                }}>Aceptar y Generar Deuda</Button>
               </div>
-            </div>
+            </Card>
+          )}
 
-            {/* List */}
-            <div className="flex-1 overflow-y-auto p-2 overscroll-contain w-full">
-              {rawMaterials
-                .filter(m => m.name.toLowerCase().includes(selectorSearch.toLowerCase()))
-                .map(m => {
-                  const mBatches = batches.filter(b => b.material_id === m.id);
-                  const totalAvailable = mBatches.reduce((acc, b) => acc + (b.remaining_quantity || 0), 0);
-                  const isFabric = m.unit === 'metro';
-                  let costStr = '';
-                  if (mBatches.length > 0) {
-                    const currentBatch = mBatches.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-                    const unitCost = currentBatch.unit_cost || 0;
-                    costStr = isFabric ? `${formatCurrency(unitCost / ((currentBatch.width || 140) / 100))}/m²` : `${formatCurrency(unitCost)}/${m.unit === 'unidad' ? 'und' : m.unit}`;
-                  } else {
-                    costStr = 'Sin stock';
-                  }
-
-                  const formatStock = (qty: number, unit: string) => {
-                    if (unit === 'unidad') return `${qty} und.`;
-                    return `${qty.toFixed(2)} ${unit}`;
-                  };
-
-                  return (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => {
-                        if (selectorModal.forIndex !== null) {
-                          updateMaterial(selectorModal.forIndex, 'material_id', m.id);
-                        } else {
-                          const materials = [...(formData.materials || []), {
-                            material_id: m.id,
-                            quantity: 1,
-                            consumption_unit: m.unit,
-                            mode: 'linear',
-                            pieces: [{ length: 50, width: m.unit === 'metro' ? 140 : 0 }]
-                          }];
-                          setFormData({ ...formData, materials });
-                        }
-                        setSelectorModal({ isOpen: false, forIndex: null });
-                        setSelectorSearch('');
-                      }}
-                      className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors text-left group gap-2"
-                    >
-                      <div className="text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors truncate flex-1">{m.name}</div>
-
-                      <div className={`text-xs font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider ${totalAvailable > 0 ? 'bg-indigo-50 text-indigo-600' : 'bg-red-50 text-red-500'}`}>
-                        {totalAvailable > 0 ? formatStock(totalAvailable, m.unit) : 'Agotado'}
-                      </div>
-
-                      <div className="text-sm font-black tabular-nums text-gray-700 group-hover:text-gray-900 text-right min-w-[70px]">
-                        {costStr}
-                      </div>
-                    </button>
-                  );
-                })
-              }
-              {rawMaterials.filter(m => m.name.toLowerCase().includes(selectorSearch.toLowerCase())).length === 0 && (
-                <div className="p-8 text-center text-gray-500 text-sm font-medium">
-                  No se encontraron insumos.
-                </div>
-              )}
-            </div>
-          </div>
+          {successModal && successModal.isOpen && (
+            <Card className="w-full max-w-sm p-8 text-center space-y-6">
+              <CheckCircle2 size={48} className="mx-auto text-emerald-500" />
+              <h3 className="text-xl font-black">¡Producción Exitosa!</h3>
+              <p className="text-gray-600">El lote ha sido ingresado al inventario.</p>
+              <Button className="w-full" onClick={() => setSuccessModal(null)}>Entendido</Button>
+            </Card>
+          )}
         </div>
       )}
-
-      {
-        missingStockModal.isOpen && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-6" style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}>
-            <Card className={`w-full ${missingStockModal.showFullBreakdown ? 'max-w-2xl' : 'max-w-xl'} p-8 shadow-2xl space-y-6 border-red-200 transition-all duration-300`}>
-              <div className="flex items-center gap-4 text-red-600">
-                <div className="px-4 py-3 bg-red-50 rounded-2xl border border-red-100 flex-shrink-0">
-                  <AlertTriangle size={28} />
-                </div>
-                <div className="flex-1 flex justify-between items-center">
-                  <div>
-                    <h3 className="text-xl font-black">Faltante de Inventario</h3>
-                    <p className="text-red-500 text-sm font-semibold">Se generará Deuda de Inventario</p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={`border-red-200 text-red-600 hover:bg-red-50 transition-colors ${missingStockModal.showFullBreakdown ? 'bg-red-50' : ''}`}
-                    onClick={() => setMissingStockModal(m => ({ ...m, showFullBreakdown: !m.showFullBreakdown }))}
-                  >
-                    <PackageSearch size={16} className="mr-2" />
-                    {missingStockModal.showFullBreakdown ? 'Ocultar detalle de consumo' : 'Ver detalle de consumo'}
-                  </Button>
-                </div>
-              </div>
-
-              <p className="text-gray-600 text-sm">
-                El sistema ha detectado que <strong className="text-gray-800">no tienes stock suficiente</strong> de los siguientes insumos para fabricar esta receta.
-                Si decides forzar la producción, el sistema registrará un faltante temporal asumiendo el costo transaccional del último lote adquirido para no alterar tus márgenes.
-              </p>
-
-              {missingStockModal.showFullBreakdown ? (
-                <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 space-y-4 animate-in fade-in duration-300">
-                  <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2 mb-2">
-                    <PackageSearch size={12} /> Detalle de Consumo de Producción
-                  </h4>
-
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                      <thead className="text-[10px] uppercase text-slate-500 border-b border-slate-200">
-                        <tr>
-                          <th className="pb-2 font-bold">Material</th>
-                          <th className="pb-2 text-right font-bold">Requerido</th>
-                          <th className="pb-2 text-center font-bold">Estado del Consumo</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {missingStockModal.fullBreakdown.map((item, idx) => (
-                          <tr key={idx} className="text-slate-700">
-                            <td className="py-2.5 font-bold">{item.materialName}</td>
-                            <td className="py-2.5 text-right font-mono bg-white mx-1 px-2 border border-slate-100 shadow-sm rounded text-slate-600">{item.requiredQuantity.toFixed(2)} {item.unit}</td>
-                            <td className="py-2.5">
-                              <div className="flex flex-col gap-1 items-end justify-center w-full pl-4">
-                                {item.coveredQuantity > 0 && (
-                                  <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 w-full justify-between">
-                                    <span>CUBIERTO:</span> <span>{item.coveredQuantity.toFixed(2)} {item.unit}</span>
-                                  </span>
-                                )}
-                                {item.missingQuantity > 0 && (
-                                  <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 w-full justify-between border border-red-200">
-                                    <span>DEUDA:</span> <span>{item.missingQuantity.toFixed(2)} {item.unit}</span>
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-red-50/50 rounded-xl p-5 border border-red-100 space-y-4 animate-in fade-in duration-300">
-                  <div className="grid grid-cols-3 gap-4 mb-2 pb-4 border-b border-red-200/50">
-                    <div className="text-center">
-                      <p className="text-[10px] font-black uppercase text-red-800/60 mb-1">Prod. Solicitada</p>
-                      <p className="text-xl font-bold text-gray-800">{missingStockModal.quantity}</p>
-                    </div>
-                    <div className="text-center border-l border-red-200/50">
-                      <p className="text-[10px] font-black uppercase text-emerald-800/60 mb-1">Cubierta por Stock</p>
-                      <p className="text-xl font-bold text-emerald-600">{missingStockModal.maxCoveredProduction}</p>
-                    </div>
-                    <div className="text-center border-l border-red-200/50">
-                      <p className="text-[10px] font-black uppercase text-red-800/60 mb-1">Generará Deuda</p>
-                      <p className="text-xl font-bold text-red-600">{missingStockModal.quantity - missingStockModal.maxCoveredProduction}</p>
-                    </div>
-                  </div>
-
-                  <h4 className="text-[10px] font-black uppercase tracking-widest text-red-800 flex items-center gap-2 mb-2">
-                    <Package size={12} /> Desglose de Faltantes y Costo Asumido
-                  </h4>
-
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                      <thead className="text-xs uppercase text-red-700/70 border-b border-red-200">
-                        <tr>
-                          <th className="pb-2 font-bold">Material</th>
-                          <th className="pb-2 text-right font-bold">Faltante</th>
-                          <th className="pb-2 text-right font-bold">Costo Aplicado</th>
-                          <th className="pb-2 text-right font-bold">Deuda Generada</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-red-100/50">
-                        {missingStockModal.missingItems.map((item, idx) => (
-                          <tr key={idx} className="text-red-900">
-                            <td className="py-2.5 font-bold">{item.materialName}</td>
-                            <td className="py-2.5 text-right font-mono bg-white rounded my-1 px-2 border border-red-100 text-red-600 shadow-sm">faltan {item.missingQuantity.toFixed(2)} {item.unit}</td>
-                            <td className="py-2.5 text-right font-mono text-red-700/80">{formatCurrency(item.unitCost)}</td>
-                            <td className="py-2.5 text-right font-mono font-black">{formatCurrency(item.totalDebt)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr>
-                          <td colSpan={3} className="pt-3 text-right text-xs font-bold uppercase text-red-800">Costo Faltante Total Asumido:</td>
-                          <td className="pt-3 text-right font-mono font-black text-red-600 text-base">
-                            {formatCurrency(missingStockModal.missingItems.reduce((acc, item) => acc + item.totalDebt, 0))}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-4 pt-4">
-                <Button variant="ghost" className="flex-1" onClick={() => setMissingStockModal({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0, maxCoveredProduction: 0, fullBreakdown: [], showFullBreakdown: false })}>
-                  Cancelar Operación
-                </Button>
-                <Button
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white border-transparent"
-                  onClick={() => {
-                    const product = products.find(p => p.id === missingStockModal.productId);
-                    if (!product) return;
-
-                    consumeStockBatch(missingStockModal.productId, missingStockModal.quantity, missingStockModal.targetPrice).then(() => {
-                      const baseCost = calculateProductCost(product, batches, rawMaterials);
-                      setMissingStockModal({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0, maxCoveredProduction: 0, fullBreakdown: [], showFullBreakdown: false });
-                      setSuccessModal({ isOpen: true, productName: product?.name || '', cost: baseCost * missingStockModal.quantity, quantity: missingStockModal.quantity });
-                    }).catch(err => {
-                      alert('Error forzando producción: ' + err.message);
-                    });
-                  }}
-                >
-                  Aceptar y Generar Deuda
-                </Button>
-              </div>
-            </Card>
-          </div>
-        )
-      }
-
-      {
-        successModal && successModal.isOpen && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-6" style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}>
-            <Card className="w-full max-w-sm p-8 text-center space-y-6 border-emerald-200">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 mb-4">
-                <CheckCircle2 size={32} className="text-emerald-500" />
-              </div>
-              <div>
-                <h3 className="text-xl font-black text-gray-900">¡Producción Exitosa!</h3>
-                <p className="mt-2 text-sm text-gray-500">
-                  Se ha registrado el ingreso de <strong className="text-gray-900">{successModal.quantity} unid.</strong> y descontado el inventario de materias primas para:
-                  <br />
-                  <strong className="text-gray-800">{successModal.productName}</strong>
-                </p>
-              </div>
-
-              <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 mb-1">Costo Total del Lote</p>
-                <p className="text-2xl font-black text-emerald-700">{formatCurrency(successModal.cost)}</p>
-                <p className="text-xs text-emerald-600/70 mt-1 font-medium">{formatCurrency(successModal.cost / successModal.quantity)} por unidad</p>
-              </div>
-
-              <Button
-                variant="primary"
-                className="w-full"
-                onClick={() => setSuccessModal(null)}
-              >
-                Entendido
-              </Button>
-            </Card>
-          </div>
-        )
-      }
-
-      {
-        productionModal.isOpen && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-6" style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}>
-            <Card className="w-full max-w-md p-6 shadow-2xl border border-gray-200 bg-white">
-              <div className="flex justify-between items-center mb-6 border-b pb-4">
-                <h3 className="text-xl font-black text-gray-900 flex items-center gap-2">
-                  <Package size={20} className="text-emerald-500" /> Nuevo Lote
-                </h3>
-                <button
-                  onClick={() => setProductionModal({ ...productionModal, isOpen: false })}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              <div className="space-y-6">
-                <div>
-                  <p className="text-sm font-bold text-gray-500 uppercase tracking-wide">Producto a elaborar</p>
-                  <p className="text-lg font-black text-gray-900">{productionModal.productName}</p>
-                  <p className="text-sm text-gray-500 mb-4">Costo unitario actual (FIFO): <span className="font-mono font-medium text-gray-700">{formatCurrency(productionModal.cost)}</span></p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-2">Cantidad a fabricar</label>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={productionModal.quantity}
-                      onChange={e => setProductionModal({ ...productionModal, quantity: Number(e.target.value) || 1 })}
-                      className="text-lg font-black rounded-xl"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-2">Precio Venta (Unid.)</label>
-                    <Input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={productionModal.targetPrice}
-                      onChange={e => setProductionModal({ ...productionModal, targetPrice: Number(e.target.value) || 0 })}
-                      className="text-lg font-mono font-black rounded-xl text-emerald-600"
-                    />
-                  </div>
-                </div>
-
-                <div className="bg-emerald-50/50 rounded-xl p-4 border border-emerald-100 flex justify-between items-center">
-                  <div>
-                    <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Costo Estimado Lote</p>
-                    <p className="text-xl font-black text-emerald-700">{formatCurrency(productionModal.cost * productionModal.quantity)}</p>
-                  </div>
-                </div>
-
-                <Button
-                  variant="primary"
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl py-6"
-                  onClick={handleConfirmBatchProduction}
-                  icon={<CheckCircle2 size={20} />}
-                >
-                  Confirmar Producción
-                </Button>
-              </div>
-            </Card>
-          </div>
-        )
-      }
     </div>
   );
 };

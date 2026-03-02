@@ -1,0 +1,1 @@
+src/server/guards/seatGuard.ts(1,31): error TS2307: Cannot find module '../supabaseAdmin' or its corresponding type declarations.
