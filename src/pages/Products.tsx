@@ -606,7 +606,7 @@ const Products: React.FC = () => {
 
               <form onSubmit={handleSubmit} className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_20rem] overflow-y-auto lg:overflow-hidden min-h-0">
                 {/* ── LEFT PANEL — scroll independiente ─────────────────── */}
-                <div className="overflow-y-auto p-3 lg:p-6 space-y-4 lg:space-y-5">
+                <div className="lg:overflow-y-auto relative z-10 p-3 lg:p-6 space-y-4 lg:space-y-5">
                   <div className="grid grid-cols-2 gap-2 lg:gap-3">
                     <Input
                       label="Nombre Comercial"
@@ -624,7 +624,7 @@ const Products: React.FC = () => {
                   </div>
 
                   <div className="space-y-4">
-                    <div className="relative pb-2" ref={inlineSearchRef}>
+                    <div className="relative pb-2 z-20" ref={inlineSearchRef}>
                       <div className="relative">
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                         <input
@@ -887,7 +887,7 @@ const Products: React.FC = () => {
                 </div>{/* end LEFT PANEL */}
 
                 {/* ── RIGHT PANEL — zona de decisión ─────────────────────── */}
-                <div className="overflow-y-auto p-3 lg:p-6 space-y-4 lg:space-y-5 border-t border-gray-100 lg:border-t-0 lg:border-l bg-gray-50/40">
+                <div className="lg:overflow-y-auto relative z-0 p-3 lg:p-6 space-y-4 lg:space-y-5 border-t border-gray-100 lg:border-t-0 lg:border-l bg-gray-50/40">
                   {/* Costo FIFO */}
                   <div className="flex items-center justify-end gap-3 border-b border-gray-200 pb-3">
                     <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Costo FIFO</span>
