@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Edit2, Search, PlayCircle, Info, Layers, TrendingUp, CheckCircle2, X, ChevronRight, AlertTriangle, Scissors, RotateCcw, Ruler, History, Copy, Package, PackageSearch, Printer, Archive } from 'lucide-react';
 import { useStore, calculateProductCost, calculateFifoCost, getFifoBreakdown, hasProductGeneratedActiveDebt } from '../store';
 import { calculateFinancialMetrics } from '@/core/financialMetricsEngine';
@@ -29,6 +30,7 @@ interface ProductMaterialUI extends ProductMaterial {
 }
 
 const Products: React.FC = () => {
+  const navigate = useNavigate();
   const { currentCompanyId, currentUserRole, products, productMovements, rawMaterials, batches, movements, addProduct, deleteProduct, discontinueProduct, updateProduct, consumeStock, consumeStockBatch } = useStore();
   const allowedRoles = ['super_admin', 'admin', 'owner', 'manager'];
   const canCreate = allowedRoles.includes(currentUserRole || '');
@@ -44,6 +46,19 @@ const Products: React.FC = () => {
   const [successModal, setSuccessModal] = useState<{ isOpen: boolean; productName: string; cost: number; quantity: number } | null>(null);
   const [selectorModal, setSelectorModal] = useState<{ isOpen: boolean; forIndex: number | null }>({ isOpen: false, forIndex: null });
   const [selectorSearch, setSelectorSearch] = useState('');
+  const [inlineSearch, setInlineSearch] = useState('');
+  const [showInlineResults, setShowInlineResults] = useState(false);
+  const inlineSearchRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (inlineSearchRef.current && !inlineSearchRef.current.contains(event.target as Node)) {
+        setShowInlineResults(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const [formData, setFormData] = useState<any>({
     name: '', reference: '', price: 0, target_margin: 30, materials: [], status: 'activa'
@@ -317,17 +332,26 @@ const Products: React.FC = () => {
         description="Gestión de Escandallos (Costos FIFO)"
         actions={
           canCreate ? (
-            <Button
-              variant="primary"
-              onClick={() => {
-                setEditingId(null);
-                setFormData({ name: '', reference: '', price: 0, target_margin: 30, materials: [], status: 'activa' });
-                setIsModalOpen(true);
-              }}
-              icon={<Plus size={18} />}
-            >
-              Nuevo Producto
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => navigate('/materias-primas')}
+                className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-none px-3"
+              >
+                Nuevo Insumo
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setEditingId(null);
+                  setFormData({ name: '', reference: '', price: 0, target_margin: 30, materials: [], status: 'activa' });
+                  setIsModalOpen(true);
+                }}
+                icon={<Plus size={18} />}
+              >
+                Nuevo Producto
+              </Button>
+            </div>
           ) : undefined
         }
       />
@@ -600,16 +624,72 @@ const Products: React.FC = () => {
                   </div>
 
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b pb-4" style={{ borderColor: tokens.colors.border }}>
-                      <h4
-                        className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider"
-                        style={{ color: tokens.colors.text.primary }}
-                      >
-                        <Layers size={14} color={tokens.colors.brand} /> Composición del Producto
-                      </h4>
-                      <Button type="button" variant="secondary" onClick={handleAddMaterial} size="sm">
-                        + Añadir Insumo
-                      </Button>
+                    <div className="relative pb-2" ref={inlineSearchRef}>
+                      <div className="relative">
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Buscar insumo para agregar..."
+                          value={inlineSearch}
+                          onChange={e => {
+                            setInlineSearch(e.target.value);
+                            setShowInlineResults(true);
+                          }}
+                          onFocus={() => setShowInlineResults(true)}
+                          className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3 pl-9 pr-4 text-sm font-medium outline-none transition-colors focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 shadow-sm"
+                        />
+                      </div>
+
+                      {showInlineResults && (
+                        <div className="absolute top-full left-0 right-0 mt-1 z-[60] max-h-48 overflow-y-auto rounded-xl bg-white shadow-xl border border-gray-200 overscroll-contain">
+                          {rawMaterials
+                            .filter(m => m.name.toLowerCase().includes(inlineSearch.toLowerCase()))
+                            .map(m => {
+                              const mBatches = batches.filter(b => b.material_id === m.id);
+                              const totalAvailable = mBatches.reduce((acc, b) => acc + (b.remaining_quantity || 0), 0);
+                              let costStr = '';
+                              if (mBatches.length > 0) {
+                                const currentBatch = mBatches.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+                                const unitCost = currentBatch.unit_cost || 0;
+                                costStr = m.unit === 'metro' ? `${formatCurrency(unitCost / ((currentBatch.width || 140) / 100))}/m²` : `${formatCurrency(unitCost)}/${m.unit === 'unidad' ? 'und' : m.unit}`;
+                              } else {
+                                costStr = 'Agotado';
+                              }
+
+                              return (
+                                <button
+                                  key={m.id}
+                                  type="button"
+                                  onClick={() => {
+                                    const materials = [...(formData.materials || []), {
+                                      material_id: m.id,
+                                      quantity: 1,
+                                      consumption_unit: m.unit,
+                                      mode: 'linear',
+                                      pieces: [{ length: 50, width: m.unit === 'metro' ? 140 : 0 }]
+                                    }];
+                                    setFormData({ ...formData, materials });
+                                    setInlineSearch('');
+                                    setShowInlineResults(false);
+                                  }}
+                                  className="w-full flex items-center justify-between p-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors text-left"
+                                >
+                                  <div className="flex-1 min-w-0 pr-2">
+                                    <div className="text-sm font-bold text-gray-900 truncate">{m.name}</div>
+                                    <div className="text-xs text-gray-500">{totalAvailable > 0 ? `${totalAvailable} disponibles` : 'Sin stock'}</div>
+                                  </div>
+                                  <div className="text-right whitespace-nowrap">
+                                    <div className="text-sm font-black tabular-nums text-gray-700">{costStr}</div>
+                                  </div>
+                                </button>
+                              );
+                            })
+                          }
+                          {rawMaterials.filter(m => m.name.toLowerCase().includes(inlineSearch.toLowerCase())).length === 0 && (
+                            <div className="p-4 text-center text-gray-500 text-sm">No se encontraron insumos</div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-4">
@@ -799,7 +879,7 @@ const Products: React.FC = () => {
                 {/* ── RIGHT PANEL — zona de decisión ─────────────────────── */}
                 <div className="overflow-y-auto p-3 lg:p-6 space-y-4 lg:space-y-5 border-t border-gray-100 lg:border-t-0 lg:border-l bg-gray-50/40">
                   {/* Costo FIFO */}
-                  <div className="flex items-center justify-between border-b border-gray-200 pb-3">
+                  <div className="flex items-center justify-end gap-3 border-b border-gray-200 pb-3">
                     <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Costo FIFO</span>
                     <span className="text-lg font-black tabular-nums leading-tight text-gray-800">{formatCurrency(totalCurrentCost)}</span>
                   </div>
@@ -869,7 +949,7 @@ const Products: React.FC = () => {
                             </button>
                           </div>
 
-                          {formData.price && formData.price > 0 && (
+                          {!!formData.price && formData.price > 0 && (
                             <div className="space-y-1.5 pt-1">
                               <div className="flex items-center justify-between">
                                 <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Ganancia Neta</span>
@@ -899,7 +979,7 @@ const Products: React.FC = () => {
                             {/* Header Row: Label + Margen Real */}
                             <div className="flex items-center justify-between mb-2">
                               <label className="text-xs font-bold uppercase tracking-widest text-gray-500">Precio Final</label>
-                              {formData.price && formData.price > 0 && (
+                              {!!formData.price && formData.price > 0 && (
                                 <span className={`text-sm font-bold tabular-nums ${priceState === 'loss' ? 'text-red-500' : priceState === 'warning' ? 'text-amber-600' : metrics.targetStatus === 'increase_required' ? 'text-amber-500' : 'text-emerald-600'
                                   }`}>
                                   {metrics.marginDisplay}
@@ -922,7 +1002,7 @@ const Products: React.FC = () => {
                             </div>
 
                             {/* Compact Legend */}
-                            {formData.price && formData.price > 0 && (
+                            {!!formData.price && formData.price > 0 && (
                               <div className="mt-2.5 flex items-center justify-between text-xs leading-tight">
                                 <span className={`font-medium ${metrics.profitVsCost >= 0 ? 'text-gray-500' : 'text-red-500'}`}>
                                   {metrics.profitLabel}
