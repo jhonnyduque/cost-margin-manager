@@ -466,7 +466,7 @@ const ProductBuilder = () => {
                                             <td className="px-3 md:px-4 py-2.5 font-medium truncate max-w-[120px]">
                                               {b.is_missing ? 'Sobreconsumo' : `Lote ${new Date(b.date).toLocaleDateString()}`}
                                             </td>
-                                            <td className="px-3 md:px-4 py-2.5 text-right font-mono text-[11px]">{b.quantity.toFixed(4)}</td>
+                                            <td className="px-3 md:px-4 py-2.5 text-right font-mono text-[11px]">{(b.quantity || 0).toFixed(4)}</td>
                                             <td className="px-3 md:px-4 py-2.5 text-right font-mono text-[11px]">{formatCurrency(b.unit_cost)}</td>
                                             <td className="px-3 md:px-4 py-2.5 text-right font-bold tabular-nums">{formatCurrency(b.subtotal)}</td>
                                           </tr>
