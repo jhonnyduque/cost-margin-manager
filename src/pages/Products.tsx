@@ -604,7 +604,7 @@ const Products: React.FC = () => {
                 <Button variant="ghost" onClick={() => setIsModalOpen(false)} icon={<X size={20} />} />
               </div>
 
-              <form onSubmit={handleSubmit} className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_20rem] overflow-hidden min-h-0">
+              <form onSubmit={handleSubmit} className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_20rem] overflow-y-auto lg:overflow-hidden min-h-0">
                 {/* ── LEFT PANEL — scroll independiente ─────────────────── */}
                 <div className="overflow-y-auto p-3 lg:p-6 space-y-4 lg:space-y-5">
                   <div className="grid grid-cols-2 gap-2 lg:gap-3">
@@ -728,16 +728,26 @@ const Products: React.FC = () => {
                             {/* Desktop: grid columnas fijas | Mobile: flex-wrap */}
                             <div className="flex flex-wrap items-center gap-2 bg-gray-50/60 px-3 py-2 lg:grid lg:flex-none lg:grid-cols-[1fr_auto_90px_110px_56px] lg:gap-x-3">
 
-                              {/* Col 1: Insumo */}
-                              <div className="min-w-0 w-full lg:w-auto lg:flex-1">
+                              {/* Col 1: Insumo + Acciones (móvil) */}
+                              <div className="min-w-0 w-full lg:w-auto lg:flex-1 flex justify-between gap-1 items-center">
                                 <button
                                   type="button"
                                   onClick={() => { setSelectorModal({ isOpen: true, forIndex: idx }); setSelectorSearch(''); }}
-                                  className="w-full flex items-center justify-between rounded-lg border border-gray-200 bg-white py-1.5 px-3 text-sm font-medium text-gray-800 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-colors"
+                                  className="flex-1 min-w-0 flex items-center justify-between rounded-lg border border-gray-200 bg-white py-1.5 px-3 text-sm font-medium text-gray-800 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-colors"
                                 >
                                   <span className="truncate">{material ? material.name : 'Seleccionar insumo...'}</span>
-                                  <ChevronRight size={14} className="text-gray-400 flex-shrink-0" />
+                                  <ChevronRight size={14} className="text-gray-400 flex-shrink-0 ml-1" />
                                 </button>
+
+                                {/* Acciones Solo Móvil */}
+                                <div className="flex pl-1 gap-0.5 lg:hidden">
+                                  <button type="button" onClick={() => setExpandedMaterial(isExpanded ? null : idx)} className="rounded p-1.5 text-gray-300 hover:bg-gray-100 hover:text-gray-500 active:scale-95 transition-transform" title="Desglose FIFO">
+                                    <Info size={16} />
+                                  </button>
+                                  <button type="button" onClick={() => removeMaterial(idx)} className="rounded p-1.5 text-gray-300 hover:bg-red-50 hover:text-red-400 active:scale-95 transition-transform">
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
                               </div>
 
                               {/* Col 2: Modo (siempre presente como celda; vacía si no es tela) */}
@@ -795,8 +805,8 @@ const Products: React.FC = () => {
                                 )}
                               </div>
 
-                              {/* Col 5: Acciones */}
-                              <div className="flex gap-0.5 lg:justify-center">
+                              {/* Col 5: Acciones (Solo Desktop) */}
+                              <div className="hidden lg:flex gap-0.5 justify-center">
                                 <button type="button" onClick={() => setExpandedMaterial(isExpanded ? null : idx)} className="rounded p-1.5 text-gray-300 hover:bg-gray-100 hover:text-gray-500" title="Desglose FIFO">
                                   <Info size={14} />
                                 </button>
