@@ -174,15 +174,8 @@ const Products: React.FC = () => {
 
   const handleAddMaterial = () => {
     if (rawMaterials.length === 0) return;
-    const material = rawMaterials[0];
-    const materials = [...(formData.materials || []), {
-      material_id: material.id,
-      quantity: 1,
-      consumption_unit: material.unit,
-      mode: 'linear',
-      pieces: [{ length: 50, width: material.unit === 'metro' ? 140 : 0 }]
-    }];
-    setFormData({ ...formData, materials });
+    setSelectorModal({ isOpen: true, forIndex: null });
+    setSelectorSearch('');
   };
 
   const updateMaterial = (idx: number, field: string, value: any) => {
@@ -736,6 +729,38 @@ const Products: React.FC = () => {
                             {
                               isExpanded && (
                                 <div className="space-y-6 border-t px-8 pb-8 pt-4" style={{ backgroundColor: tokens.colors.bg, borderColor: tokens.colors.border }}>
+
+                                  {/* FIFO Breakdown Reconstruction */}
+                                  {breakdown.length > 0 && (
+                                    <div className="space-y-3">
+                                      <h5 className="flex items-center gap-2 text-xs font-bold uppercase text-gray-500"><History size={12} /> Desglose FIFO Asignado</h5>
+                                      <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+                                        <table className="w-full text-xs">
+                                          <thead className="bg-gray-50 border-b border-gray-200">
+                                            <tr>
+                                              <th className="px-3 py-2 text-left font-bold text-gray-500">Origen / Lote</th>
+                                              <th className="px-3 py-2 text-right font-bold text-gray-500">Cantidad</th>
+                                              <th className="px-3 py-2 text-right font-bold text-gray-500">Costo Unitario</th>
+                                              <th className="px-3 py-2 text-right font-bold text-gray-500">Subtotal</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody className="divide-y divide-gray-100">
+                                            {breakdown.map((b, i) => (
+                                              <tr key={i} className={b.is_missing ? 'bg-red-50 text-red-600' : 'text-gray-700'}>
+                                                <td className="px-3 py-2 font-medium">
+                                                  {b.is_missing ? 'Stock faltante (Costo actual)' : `Lote — ${new Date(b.date).toLocaleDateString()}`}
+                                                </td>
+                                                <td className="px-3 py-2 text-right tabular-nums">{b.quantity.toFixed(4)}</td>
+                                                <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(b.unit_cost)}</td>
+                                                <td className="px-3 py-2 text-right font-bold tabular-nums">{formatCurrency(b.subtotal)}</td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+                                  )}
+
                                   {pm.mode === 'pieces' && (
                                     <div className="space-y-4">
                                       <div className="flex items-center justify-between">
@@ -929,6 +954,100 @@ const Products: React.FC = () => {
           </div>
         )
       }
+      {/* ── MATERIAL PICKER MODAL (PRO UX) ── */}
+      {selectorModal.isOpen && (
+        <div className="fixed inset-0 flex flex-col justify-end lg:items-center lg:justify-center bg-gray-900/40 backdrop-blur-sm sm:p-6" style={{ zIndex: 9999 }} onClick={() => setSelectorModal({ isOpen: false, forIndex: null })}>
+          <div
+            className="w-full lg:max-w-md bg-white rounded-t-2xl lg:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] lg:max-h-[70vh] animate-in slide-in-from-bottom-4 lg:slide-in-from-bottom-8 duration-200"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header + Search */}
+            <div className="p-4 border-b border-gray-100 space-y-3 bg-white z-10 w-full">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-gray-800">Seleccionar Insumo</h3>
+                <button onClick={() => setSelectorModal({ isOpen: false, forIndex: null })} className="p-1 rounded-full hover:bg-gray-100 text-gray-400 transition-colors">
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Buscar insumo por nombre o SKU..."
+                  value={selectorSearch}
+                  onChange={e => setSelectorSearch(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-4 text-sm font-medium outline-none transition-colors focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+
+            {/* List */}
+            <div className="flex-1 overflow-y-auto p-2 overscroll-contain w-full">
+              {rawMaterials
+                .filter(m => m.name.toLowerCase().includes(selectorSearch.toLowerCase()))
+                .map(m => {
+                  const mBatches = batches.filter(b => b.material_id === m.id);
+                  const totalAvailable = mBatches.reduce((acc, b) => acc + (b.remaining_quantity || 0), 0);
+                  const isFabric = m.unit === 'metro';
+                  let costStr = '';
+                  if (mBatches.length > 0) {
+                    const currentBatch = mBatches.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+                    const unitCost = currentBatch.unit_cost || 0;
+                    costStr = isFabric ? `${formatCurrency(unitCost / ((currentBatch.width || 140) / 100))}/m²` : `${formatCurrency(unitCost)}/${m.unit === 'unidad' ? 'und' : m.unit}`;
+                  } else {
+                    costStr = 'Sin stock';
+                  }
+
+                  const formatStock = (qty: number, unit: string) => {
+                    if (unit === 'unidad') return `${qty} und.`;
+                    return `${qty.toFixed(2)} ${unit}`;
+                  };
+
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => {
+                        if (selectorModal.forIndex !== null) {
+                          updateMaterial(selectorModal.forIndex, 'material_id', m.id);
+                        } else {
+                          const materials = [...(formData.materials || []), {
+                            material_id: m.id,
+                            quantity: 1,
+                            consumption_unit: m.unit,
+                            mode: 'linear',
+                            pieces: [{ length: 50, width: m.unit === 'metro' ? 140 : 0 }]
+                          }];
+                          setFormData({ ...formData, materials });
+                        }
+                        setSelectorModal({ isOpen: false, forIndex: null });
+                        setSelectorSearch('');
+                      }}
+                      className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors text-left group gap-2"
+                    >
+                      <div className="text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors truncate flex-1">{m.name}</div>
+
+                      <div className={`text-xs font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider ${totalAvailable > 0 ? 'bg-indigo-50 text-indigo-600' : 'bg-red-50 text-red-500'}`}>
+                        {totalAvailable > 0 ? formatStock(totalAvailable, m.unit) : 'Agotado'}
+                      </div>
+
+                      <div className="text-sm font-black tabular-nums text-gray-700 group-hover:text-gray-900 text-right min-w-[70px]">
+                        {costStr}
+                      </div>
+                    </button>
+                  );
+                })
+              }
+              {rawMaterials.filter(m => m.name.toLowerCase().includes(selectorSearch.toLowerCase())).length === 0 && (
+                <div className="p-8 text-center text-gray-500 text-sm font-medium">
+                  No se encontraron insumos.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {
         missingStockModal.isOpen && (
@@ -1182,8 +1301,7 @@ const Products: React.FC = () => {
           </div>
         )
       }
-
-    </div >
+    </div>
   );
 };
 
