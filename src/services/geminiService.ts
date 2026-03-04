@@ -19,11 +19,15 @@ export const getPricingInsights = async (
     return "Falta la API Key de Gemini.";
   }
 
+  // Log de diagnóstico para verificar que la clave se cargó correctamente (solo primeros caracteres)
+  console.log("Gemini Service: Usando API Key que comienza con:", apiKey.substring(0, 7));
+
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
 
-    // Modelo que funciona en free tier febrero 2026
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    // Lista de modelos a intentar en orden de preferencia (Estables 2026)
+    const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest", "gemini-pro-latest"];
+    let lastError = "";
 
     const dataString = products
       .map((p) => {
@@ -41,19 +45,37 @@ Datos:
 ${dataString}
     `.trim();
 
-    const result = await model.generateContent(prompt);
+    // Intentamos cada modelo hasta que uno funcione
+    for (const modelName of modelsToTry) {
+      try {
+        console.log(`Intentando modelo: ${modelName}...`);
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(prompt);
+        const responseText = result.response.text?.() || "No se recibió respuesta.";
+        return responseText;
+      } catch (e: any) {
+        lastError = e.message || String(e);
+        console.warn(`Modelo ${modelName} falló:`, lastError);
+        // Si no es un error de "no encontrado" (404), lanzamos para el catch general
+        if (!lastError.includes('404')) break;
+      }
+    }
 
-    const responseText = result.response.text?.() || "No se recibió respuesta.";
-
-    return responseText;
+    throw new Error(lastError);
   } catch (error: any) {
-    console.error("Error Gemini:", error.message || error);
-    if (error.message?.includes('429') || error.status === 429) {
-      return "⏳ Cuota de API temporalmente excedida. Espera 1 minuto e intenta de nuevo, o genera una nueva API Key en aistudio.google.com/apikey";
+    const errorMsg = error.message || String(error);
+    console.error("Error Gemini Details:", errorMsg);
+
+    if (errorMsg.includes('429') || error.status === 429) {
+      return `⏳ Límite de la API excedido. Google indica: "${errorMsg}". Intenta de nuevo en unos segundos.`;
     }
-    if (error.message?.includes('400') || error.message?.includes('API_KEY_INVALID')) {
-      return "🔑 API Key inválida. Verifica VITE_GEMINI_API_KEY en tu archivo .env.local";
+    if (errorMsg.includes('404')) {
+      return "🔭 Ningún modelo de IA respondió. Esto suele significar que la API Key es muy nueva o no tiene permisos. ¡REINICIA EL SERVIDOR! y si falla, revisa AI Studio.";
     }
-    return `Error: ${error.message || "desconocido"}`;
+    if (errorMsg.includes('API_KEY_INVALID') || errorMsg.includes('400')) {
+      return "🔑 API Key inválida o mal configurada. Verifica que hayas copiado la clave completa en el archivo .env.local y REINICIA el servidor con Ctrl+C y 'npm run dev'.";
+    }
+
+    return `🤖 Error de IA: ${errorMsg.split('\n')[0]}`;
   }
 };

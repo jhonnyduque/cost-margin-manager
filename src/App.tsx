@@ -115,10 +115,11 @@ const AppContent: React.FC = () => {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/control-center" element={user.is_super_admin ? <PlatformAdmin /> : <Dashboard />} />
 
-                {/* Modules */}
+                {/* Products */}
                 <Route path="/productos" element={<Products />} />
                 <Route path="/productos/nuevo" element={<ProductBuilder />} />
                 <Route path="/productos/editar/:id" element={<ProductBuilder />} />
+                <Route path="/productos/detalle/:id" element={<ProductDetail />} />
                 <Route path="/productos/detalle/:id" element={<ProductDetail />} />
                 <Route path="/inventario" element={<FinishedGoods />} />
                 <Route path="/materias-primas" element={<RawMaterials />} />

@@ -4,6 +4,7 @@ import { LimitIndicator } from '../components/LimitIndicator';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../services/supabase';
 import { Card } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
 import {
     CreditCard, User, Building2, Lock, Palette, Layers,
     Save, Eye, EyeOff, Smartphone, Globe, Bell, ChevronRight
@@ -127,14 +128,15 @@ export default function Settings() {
                 )}
 
                 <div className="mt-5 flex justify-end">
-                    <button
+                    <Button
+                        variant="primary"
                         onClick={handleSaveProfile}
                         disabled={profileSaving}
-                        className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-50"
+                        isLoading={profileSaving}
+                        icon={<Save size={16} />}
                     >
-                        <Save size={16} />
-                        {profileSaving ? 'Guardando...' : 'Guardar Cambios'}
-                    </button>
+                        Guardar Cambios
+                    </Button>
                 </div>
             </Card>
 

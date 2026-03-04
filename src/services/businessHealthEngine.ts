@@ -350,7 +350,7 @@ function buildKPIs(
             riskLevel: avgMargin >= 30 ? 'ok' : avgMargin >= 20 ? 'medio' : 'alto',
         },
         {
-            label: 'Deuda Técnica',
+            label: 'Deuda de Inventario',
             value: totalDebt,
             formatted: currency(totalDebt),
             trend: totalDebt > 0 ? 'down' : 'stable',

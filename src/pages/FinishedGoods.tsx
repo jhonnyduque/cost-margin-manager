@@ -114,10 +114,10 @@ const FinishedGoods: React.FC = () => {
 
                 {/* Right: Tools */}
                 <div className="flex items-center gap-3 w-full md:w-auto">
-                    <Button variant="outline" className="flex-1 md:flex-none border-slate-200 text-slate-600 hover:bg-slate-50 h-10 px-3" title="Imprimir Reporte" onClick={() => window.print()}>
+                    <Button variant="ghost" className="flex-1 md:flex-none text-slate-500 h-10 px-3" title="Imprimir Reporte" onClick={() => window.print()}>
                         <Printer size={18} />
                     </Button>
-                    <Button variant="outline" className="flex-1 md:flex-none border-slate-200 text-slate-600 hover:bg-slate-50 h-10 px-3" title="Exportar CSV">
+                    <Button variant="ghost" className="flex-1 md:flex-none text-slate-500 h-10 px-3" title="Exportar CSV">
                         <FileDown size={18} />
                     </Button>
                     <Button variant="primary" onClick={() => navigate('/products')} className="flex-1 md:flex-none bg-indigo-600 hover:bg-indigo-700 h-10 px-4" title="Producir más desde el Catálogo">

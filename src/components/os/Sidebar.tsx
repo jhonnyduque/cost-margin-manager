@@ -41,13 +41,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
     return (
         <aside
             className={`
-                fixed left-0 top-0 z-40 h-screen bg-slate-900 text-slate-100 transition-all duration-300
+                fixed left-0 top-0 z-40 h-screen bg-white text-slate-600 transition-all duration-300 border-r border-slate-200
                 ${collapsed ? 'w-16' : 'w-64'}
             `}
             aria-label="Menú lateral de navegación"
         >
             {/* Header / Brand */}
-            <div className="flex h-16 items-center justify-between px-4 border-b border-slate-800">
+            <div className="flex h-16 items-center justify-between px-4 border-b border-slate-100/80">
                 {!collapsed && (
                     <div className="flex items-center gap-2 font-bold text-lg tracking-tight">
                         <Hexagon className="h-6 w-6 text-indigo-500 fill-indigo-500/20 flex-shrink-0" />
@@ -66,12 +66,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
                     className={`
                         flex items-center justify-center
                         p-1.5 rounded-lg
-                        bg-slate-800/60 hover:bg-slate-700
-                        border border-slate-700/60 hover:border-slate-600
-                        text-slate-400 hover:text-white
+                        bg-slate-50 hover:bg-slate-100
+                        border border-slate-200/60 hover:border-slate-300
+                        text-slate-400 hover:text-slate-900
                         transition-all duration-200
                         ${collapsed ? 'mx-auto' : 'ml-auto'}
-                        focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-900
+                        focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
                     `}
                     title={`${collapsed ? 'Expandir' : 'Ocultar'} menú (Ctrl + B)`}
                     aria-label={`${collapsed ? 'Expandir' : 'Ocultar'} menú lateral`}
@@ -114,9 +114,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
                             key={mod.id}
                             to={mod.path}
                             className={({ isActive }) => `
-                                flex items-center gap-3 px-3 py-2 rounded-md transition-colors
-                                ${isActive ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}
-                                ${collapsed ? 'justify-center' : ''}
+                                flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200
+                                ${isActive
+                                    ? 'bg-indigo-50 text-indigo-700 shadow-sm shadow-indigo-100/50'
+                                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}
+                                ${collapsed ? 'justify-center mx-1' : ''}
                             `}
                             title={collapsed ? mod.name : undefined}
                         >
@@ -130,7 +132,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
             {/* Footer / Version */}
             {!collapsed && (
                 <div className="absolute bottom-4 left-0 w-full px-4 text-center">
-                    <span className="text-xs text-slate-600 font-mono">v11.0.0</span>
+                    <span className="text-[10px] text-slate-300 font-bold uppercase tracking-widest">v11.0.0</span>
                 </div>
             )}
         </aside>

@@ -60,7 +60,7 @@ export const OSLayout: React.FC<OSLayoutProps> = ({ children }) => {
             <main
                 className={`
                     relative z-0
-                    pt-[3.75rem] px-4 pb-28
+                    pt-20 px-4 pb-12
                     sm:px-6
                     lg:pt-20 lg:px-6 lg:pb-12
                     transition-all duration-300

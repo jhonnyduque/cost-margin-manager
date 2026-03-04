@@ -1,3 +1,49 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+
+    /* ── SUPERFICIES & CARDS ─────────────────────────────────────── */
+    .surface-card {
+        @apply bg-bg-card border border-border rounded-md shadow-subtle p-6;
+    }
+
+    .surface-modal {
+        @apply bg-bg-card border border-border rounded-lg shadow-elevated p-6;
+    }
+
+    /* ── PATRÓN: CONCEPTO ↔ VALOR ────────────────────────────────── */
+    .kv-row {
+        @apply flex justify-between items-baseline;
+    }
+
+    .kv-concept {
+        @apply text-label text-text-secondary uppercase font-semibold;
+    }
+
+    .kv-value {
+        @apply text-lg font-extrabold text-text-primary tabular-nums;
+    }
+
+    /* ── TABLAS ──────────────────────────────────────────────────── */
+    .table-container {
+        @apply w-full border-collapse text-left table-fixed;
+    }
+
+    .table-header {
+        @apply uppercase text-xs font-semibold text-text-muted border-b border-border bg-bg-page/50 backdrop-blur-sm;
+    }
+
+    .table-header-cell {
+        @apply px-4 h-12 truncate;
+    }
+
+    .table-row {
+        @apply border-b border-border/50 hover:bg-bg-page transition-colors;
+    }
+
+    .table-cell {
+        @apply px-4 h-12 truncate;
+    }
+}

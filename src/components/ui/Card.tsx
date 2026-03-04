@@ -15,15 +15,8 @@ export const Card: React.FC<CardProps> = ({
 }) => {
     return (
         <div
-            style={{
-                backgroundColor: tokens.colors.surface,
-                borderRadius: tokens.radius.lg,
-                boxShadow: tokens.shadow.subtle,
-                border: `1px solid ${tokens.colors.border}`,
-                padding: noPadding ? 0 : tokens.spacing.lg,
-                ...style
-            }}
-            className={`relative overflow-hidden ${className}`}
+            style={style}
+            className={`surface-card relative overflow-hidden ${noPadding ? '!p-0' : ''} ${className}`}
             {...props}
         >
             {children}

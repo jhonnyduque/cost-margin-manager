@@ -3,6 +3,7 @@ import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { UserPlus, Trash2, Shield, Building2, Search, Printer } from 'lucide-react';
 import { EntityList } from '../components/entity/EntityList';
+import { Button } from '../components/ui/Button';
 import { AppModal } from '../components/ui/AppModal';
 import { EntityDetail } from '../components/entity/EntityDetail';
 import { EntityConfig } from '../components/entity/types';
@@ -394,42 +395,34 @@ export default function Team() {
                         />
                     </div>
 
-                    <button
+                    <Button
+                        variant="ghost"
                         onClick={() => window.print()}
                         title="Imprimir listado"
-                        className="flex items-center justify-center h-10 w-10 rounded-xl bg-white text-gray-500 ring-1 ring-gray-200 hover:bg-gray-50 hover:text-gray-700 transition-all flex-shrink-0"
-                    >
-                        <Printer size={18} />
-                    </button>
+                        icon={<Printer size={18} />}
+                    />
 
                     {selectedIds.length > 0 && canDelete && (
-                        <button
+                        <Button
+                            variant="danger"
                             onClick={() => handleBulkAction('Eliminar', selectedIds)}
                             title={`Eliminar ${selectedIds.length} seleccionados`}
-                            className="flex items-center justify-center h-10 w-10 rounded-xl bg-red-50 text-red-500 ring-1 ring-red-200 hover:bg-red-100 hover:text-red-700 transition-all flex-shrink-0"
-                        >
-                            <Trash2 size={18} />
-                        </button>
+                            icon={<Trash2 size={18} />}
+                        />
                     )}
 
                     {canCreate && (
                         <div className="group relative flex-shrink-0">
-                            <button
+                            <Button
+                                variant="primary"
                                 onClick={() => setShowCreateModal(true)}
                                 disabled={isAtLimit}
+                                isLoading={false}
                                 title="Crear miembro"
-                                className={`
-                                    flex items-center justify-center gap-2 font-bold transition-all active:scale-95
-                                    rounded-xl sm:rounded-2xl
-                                    h-10 w-10 sm:h-10 sm:w-auto sm:px-4
-                                    ${isAtLimit
-                                        ? 'cursor-not-allowed bg-gray-100 text-gray-400'
-                                        : 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700'}
-                                `}
+                                icon={<UserPlus size={18} />}
                             >
-                                <UserPlus size={18} />
-                                <span className="hidden sm:inline text-sm">Crear</span>
-                            </button>
+                                <span className="hidden sm:inline">Crear</span>
+                            </Button>
                             {isAtLimit && (
                                 <div className="animate-in fade-in slide-in-from-bottom-2 absolute bottom-full right-0 z-50 mb-3 hidden w-64 rounded-2xl bg-gray-900 p-4 text-xs text-white shadow-2xl group-hover:block">
                                     Límite alcanzado. Actualiza tu plan para invitar más personas.

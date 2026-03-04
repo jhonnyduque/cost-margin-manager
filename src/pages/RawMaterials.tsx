@@ -25,9 +25,9 @@ const RawMaterials: React.FC = () => {
   const { formatCurrency, currencySymbol } = useCurrency();
 
   const allowedRoles = ['super_admin', 'admin', 'owner', 'manager'];
-  const canCreate = allowedRoles.includes(currentUserRole || '');
-  const canEdit = allowedRoles.includes(currentUserRole || '');
-  const canDelete = allowedRoles.includes(currentUserRole || '');
+  const canCreate = allowedRoles.includes((currentUserRole as string) || '');
+  const canEdit = allowedRoles.includes((currentUserRole as string) || '');
+  const canDelete = allowedRoles.includes((currentUserRole as string) || '');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [unitFilter, setUnitFilter] = useState<'todos' | Unit>('todos');
@@ -103,7 +103,9 @@ const RawMaterials: React.FC = () => {
       created_at: now,
       updated_at: now,
       deleted_at: null,
-    };
+      created_by: '', // Auto-handled by store
+      updated_by: '', // Auto-handled by store
+    } as RawMaterial;
 
     try {
       if (editingId) {
@@ -132,7 +134,9 @@ const RawMaterials: React.FC = () => {
             created_at: now,
             updated_at: now,
             deleted_at: null,
-          };
+            created_by: '', // Auto-handled by store
+            updated_by: '', // Auto-handled by store
+          } as MaterialBatch;
           await addBatch(batch);
         }
       }
@@ -318,12 +322,12 @@ const RawMaterials: React.FC = () => {
       {/* Responsive Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-slate-900">Materias Primas</h1>
-          <p className="mt-1 text-sm lg:text-base text-slate-500">Inventario Maestro y Gestión FIFO</p>
+          <h1 className="text-display text-text-primary leading-tight">Materias Primas</h1>
+          <p className="mt-1 text-body text-text-secondary">Inventario Maestro y Gestión FIFO</p> lập tức
         </div>
         {canCreate && (
           <div className="flex items-center gap-2">
-            <Button variant="secondary" onClick={() => navigate('/productos')} className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-none px-3">
+            <Button variant="secondary" onClick={() => navigate('/productos')}>
               Nuevo Producto
             </Button>
             <Button
@@ -343,17 +347,17 @@ const RawMaterials: React.FC = () => {
 
       {/* Financial Governance Banner */}
       {totalFinancialDebt > 0 && (
-        <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm">
+        <div className="flex items-center justify-between rounded-md border border-error/20 bg-error/5 p-4 shadow-subtle">
           <div className="flex items-center gap-3">
-            <AlertCircle className="h-6 w-6 text-red-600 shrink-0" />
+            <AlertCircle className="h-6 w-6 text-error shrink-0" />
             <div>
-              <h3 className="text-sm font-bold text-red-900">Producciones realizadas sin respaldo de inventario</h3>
-              <p className="text-xs font-medium text-red-700">Compre e ingrese Lotes Físicos de material para regularizar la integridad contable.</p>
+              <h3 className="text-body font-bold text-error">Producciones realizadas sin respaldo de inventario</h3>
+              <p className="text-sm font-medium text-error/80">Compre e ingrese Lotes Físicos de material para regularizar la integridad contable.</p>
             </div>
           </div>
           <div className="flex flex-col items-end">
-            <span className="text-[10px] uppercase font-bold text-red-500">Deuda Valorizada Estimada</span>
-            <span className="text-lg font-black text-red-700">{formatCurrency(totalFinancialDebt)}</span>
+            <span className="text-label text-error/80 uppercase tracking-widest">Deuda Valorizada Estimada</span>
+            <span className="text-lg font-extrabold text-error tabular-nums">{formatCurrency(totalFinancialDebt)}</span>
           </div>
         </div>
       )}
@@ -369,47 +373,47 @@ const RawMaterials: React.FC = () => {
           filteredMaterials.map((m) => {
             const { totalRemainingQty, weightedAvgCost } = batchStatsByMaterial[m.id] ?? getBatchStats(m.id);
             return (
-              <div key={m.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+              <div key={m.id} className="surface-card p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <h3 className="font-bold text-slate-900 truncate">{m.name}</h3>
-                    <p className="text-xs text-slate-400">{m.provider || 'Varios'}</p>
+                    <h3 className="text-body font-bold text-text-primary truncate">{m.name}</h3>
+                    <p className="text-sm text-text-secondary mt-0.5">{m.provider || 'Varios'}</p>
                   </div>
                   <Badge variant="secondary" className="flex-shrink-0">{m.type}</Badge>
                 </div>
-                <div className="flex items-center gap-4 mt-3">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase text-slate-400">Stock</p>
-                    <p className={`text-sm font-bold ${totalRemainingQty <= 0 ? 'text-red-500' : 'text-slate-900'}`}>
-                      {totalRemainingQty.toFixed(2)} <span className="text-xs font-normal text-slate-400">{m.unit}s</span>
-                    </p>
+                <div className="grid grid-cols-2 gap-4 mt-4 mb-4 rounded-sm bg-bg-page p-3 border border-border/50">
+                  <div className="flex flex-col">
+                    <span className="text-label text-text-secondary uppercase">Stock</span>
+                    <span className={`text-lg font-extrabold tabular-nums ${totalRemainingQty <= 0 ? 'text-error' : 'text-text-primary'}`}>
+                      {totalRemainingQty.toFixed(2)} <span className="text-sm font-medium text-text-secondary">{m.unit}s</span>
+                    </span>
                   </div>
-                  <div className="h-6 w-px bg-slate-100" />
-                  <div>
-                    <p className="text-[10px] font-bold uppercase text-slate-400">Costo Prom.</p>
-                    <p className="text-sm font-bold text-slate-700">{formatCurrency(weightedAvgCost)}</p>
+                  <div className="flex flex-col items-end text-right">
+                    <span className="text-label text-text-secondary uppercase">Costo Prom.</span>
+                    <span className="text-lg font-extrabold tabular-nums text-text-primary">{formatCurrency(weightedAvgCost)}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100">
-                  <button
+                <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                  <Button
+                    variant="secondary"
                     onClick={() => setExpandedMaterialId(expandedMaterialId === m.id ? null : m.id)}
-                    className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all active:scale-95 ${expandedMaterialId === m.id ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}
+                    className={`h-8 px-3 text-xs ${expandedMaterialId === m.id ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}
+                    icon={<History size={13} />}
                   >
-                    <History size={13} />
                     {expandedMaterialId === m.id ? 'Cerrar' : 'Lotes'}
-                  </button>
+                  </Button>
                   {canEdit && (
-                    <button
+                    <Button
+                      variant="ghost"
                       onClick={() => {
                         const stats = batchStatsByMaterial[m.id] ?? getBatchStats(m.id);
                         setEditingId(m.id);
                         setFormData({ ...m, initialQty: stats.totalRemainingQty, unitCost: stats.weightedAvgCost });
                         setIsModalOpen(true);
                       }}
-                      className="flex items-center justify-center rounded-lg bg-slate-50 p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 active:scale-95 transition-all"
-                    >
-                      <Edit2 size={15} />
-                    </button>
+                      className="h-8 w-8 p-0 border border-slate-200 bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                      icon={<Edit2 size={15} />}
+                    />
                   )}
                   {canDelete && (() => {
                     const hasLinkedProducts = products.some(p => (p.materials ?? []).some(pm => pm.material_id === m.id));
@@ -417,31 +421,31 @@ const RawMaterials: React.FC = () => {
                     const mustArchive = hasLinkedProducts || remainingStock > 0;
                     const archiveReason = hasLinkedProducts ? 'Vinculada a productos activos' : 'Tiene stock físico con valor en libro';
                     return mustArchive ? (
-                      <button
+                      <Button
+                        variant="ghost"
                         onClick={async () => {
                           if (window.confirm(`¿Archivar "${m.name}"? Razón: ${archiveReason}. Quedará inactiva pero el historial se conserva.`)) {
                             try { await archiveMaterial(m.id); }
                             catch (err: any) { alert(`Error: ${translateError(err)}`); }
                           }
                         }}
-                        className="flex items-center justify-center rounded-lg bg-slate-50 p-1.5 text-amber-500 hover:bg-amber-50 hover:text-amber-600 active:scale-95 transition-all"
+                        className="h-8 w-8 p-0 border border-slate-200 bg-slate-50 text-amber-500 hover:bg-amber-50 hover:text-amber-600"
                         title={`Archivar (${archiveReason})`}
-                      >
-                        <Archive size={15} />
-                      </button>
+                        icon={<Archive size={15} />}
+                      />
                     ) : (
-                      <button
+                      <Button
+                        variant="ghost"
                         onClick={async () => {
                           if (window.confirm(`¿Eliminar "${m.name}"? Sin stock ni productos vinculados. Esta acción no se puede deshacer.`)) {
                             try { await deleteRawMaterial(m.id); }
                             catch (err: any) { alert(`No se pudo eliminar: ${translateError(err)}`); }
                           }
                         }}
-                        className="flex items-center justify-center rounded-lg bg-slate-50 p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600 active:scale-95 transition-all"
+                        className="h-8 w-8 p-0 border border-slate-200 bg-slate-50 text-red-400 hover:bg-red-50 hover:text-red-600"
                         title="Eliminar (sin stock ni productos vinculados)"
-                      >
-                        <Trash2 size={15} />
-                      </button>
+                        icon={<Trash2 size={15} />}
+                      />
                     );
                   })()}
                 </div>
@@ -459,10 +463,10 @@ const RawMaterials: React.FC = () => {
       </div>
 
       {/* ========== DESKTOP: Table ========== */}
-      <div className="hidden md:block overflow-x-auto">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <table className="w-full border-collapse text-left table-fixed">
-            <thead className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50/50 text-xs font-semibold uppercase tracking-wider text-gray-500 backdrop-blur-sm">
+      <div className="hidden md:block">
+        <div className="table-container">
+          <table className="w-full text-left table-fixed">
+            <thead className="table-header">
               <tr>
                 <th className="w-[30%] px-4 py-3 truncate">Materia Prima</th>
                 <th className="w-[12%] px-4 py-3 truncate">Categoría</th>
@@ -472,7 +476,7 @@ const RawMaterials: React.FC = () => {
                 <th className="w-[10%] px-4 py-3 text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-border/50">
               {filteredMaterials.map((m) => {
                 const { totalRemainingQty, weightedAvgCost } = batchStatsByMaterial[m.id] ?? getBatchStats(m.id);
                 const debtInfo = getMaterialDebt(m.id, movements);
@@ -482,56 +486,56 @@ const RawMaterials: React.FC = () => {
 
                 return (
                   <React.Fragment key={m.id}>
-                    <tr className={`group transition-all hover:bg-slate-50 ${expandedMaterialId === m.id ? 'bg-slate-50/50' : 'bg-white'}`}>
-                      <td className="px-4 py-4 truncate border-l-4 border-transparent">
-                        <div className="flex flex-col gap-0.5" title={`${m.name} - ${m.provider || 'Varios'}`}>
-                          <span className="font-semibold text-gray-900 truncate" title={m.name}>{m.name}</span>
-                          <span className="text-[10px] font-medium text-gray-500 uppercase tracking-widest truncate" title={m.provider || 'Varios'}>{m.provider || 'Varios'}</span>
+                    <tr className={`table-row ${expandedMaterialId === m.id ? 'bg-bg-page/50' : 'bg-bg-card'}`}>
+                      <td className="px-4 py-3 truncate">
+                        <div className="flex flex-col" title={`${m.name} - ${m.provider || 'Varios'}`}>
+                          <span className="text-body font-bold text-text-primary truncate" title={m.name}>{m.name}</span>
+                          <span className="text-sm font-medium text-text-secondary truncate mt-0.5" title={m.provider || 'Varios'}>{m.provider || 'Varios'}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-4 truncate">
-                        <Badge variant="secondary" className="font-medium bg-gray-100 text-gray-700" title={m.type}>{m.type}</Badge>
+                      <td className="px-4 py-3 truncate">
+                        <Badge variant="secondary" className="text-xs font-semibold bg-bg-page text-text-secondary" title={m.type}>{m.type}</Badge>
                       </td>
-                      <td className="px-4 py-4 truncate text-right">
+                      <td className="px-4 py-3 truncate text-right">
                         <div className="flex justify-end items-center" title={`Stock Actual: ${displayStock.toFixed(2)} ${m.unit}s`}>
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-sm font-black ${displayStock > 0 ? 'bg-emerald-100 text-emerald-800' : displayStock < 0 ? 'bg-red-100 border border-red-200 text-red-700 shadow-sm' : 'bg-gray-100 text-gray-600'}`}>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-sm font-medium ${displayStock > 0 ? 'bg-emerald-50 text-emerald-700' : displayStock < 0 ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-600'}`}>
                             {displayStock < 0 ? '🔴 ' : displayStock > 0 ? '🟢 ' : ''}
-                            {displayStock.toFixed(2)} <span className="ml-1 text-[10px] opacity-70 font-bold">{m.unit}s</span>
+                            {displayStock.toFixed(2)} <span className="ml-1 text-xs font-semibold opacity-70">{m.unit}s</span>
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 py-4 truncate text-right">
-                        <span className={`font-mono text-sm font-bold ${valuation < 0 ? 'text-red-600' : 'text-indigo-900'}`} title={`Valorización: ${formatCurrency(valuation)}`}>
+                      <td className="px-4 py-3 truncate text-right">
+                        <span className={`text-lg font-extrabold tabular-nums ${valuation < 0 ? 'text-error' : 'text-text-primary'}`} title={`Valorización: ${formatCurrency(valuation)}`}>
                           {formatCurrency(valuation)}
                         </span>
                       </td>
-                      <td className="px-4 py-4 truncate text-right">
-                        <span className="font-semibold text-gray-600 text-sm" title={`Costo Promedio FIFO: ${formatCurrency(weightedAvgCost)}`}>
+                      <td className="px-4 py-3 truncate text-right">
+                        <span className="text-body font-medium tabular-nums text-text-secondary" title={`Costo Promedio FIFO: ${formatCurrency(weightedAvgCost)}`}>
                           {formatCurrency(weightedAvgCost)}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-1.5 opacity-70 transition-opacity group-hover:opacity-100">
-                          <button
+                          <Button
+                            variant="secondary"
                             onClick={() => setExpandedMaterialId(expandedMaterialId === m.id ? null : m.id)}
-                            className={`rounded-lg p-1.5 transition-colors border ${expandedMaterialId === m.id ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'border-transparent bg-gray-50 text-indigo-600 hover:border-gray-200 hover:bg-white hover:text-indigo-700'}`}
+                            className={`h-8 w-8 p-0 border ${expandedMaterialId === m.id ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'border-transparent bg-gray-50 text-indigo-600 hover:border-gray-200 hover:bg-white hover:text-indigo-700'}`}
                             title={expandedMaterialId === m.id ? 'Cerrar Detalles' : 'Ver Lotes (Histórico)'}
-                          >
-                            <History size={16} />
-                          </button>
+                            icon={<History size={16} />}
+                          />
                           {canEdit && (
-                            <button
+                            <Button
+                              variant="ghost"
                               onClick={() => {
                                 const stats = batchStatsByMaterial[m.id] ?? getBatchStats(m.id);
                                 setEditingId(m.id);
                                 setFormData({ ...m, initialQty: stats.totalRemainingQty, unitCost: stats.weightedAvgCost });
                                 setIsModalOpen(true);
                               }}
-                              className="rounded-lg p-1.5 transition-colors border border-transparent bg-gray-50 text-gray-400 hover:border-gray-200 hover:bg-white hover:text-gray-600"
+                              className="h-8 w-8 p-0 border border-transparent bg-gray-50 text-gray-400 hover:border-gray-200 hover:bg-white hover:text-gray-600"
                               title="Editar Materia Prima"
-                            >
-                              <Edit2 size={16} />
-                            </button>
+                              icon={<Edit2 size={16} />}
+                            />
                           )}
                           {canDelete && (() => {
                             const hasLinkedProducts = products.some(p => (p.materials ?? []).some(pm => pm.material_id === m.id));
@@ -539,29 +543,31 @@ const RawMaterials: React.FC = () => {
                             const mustArchive = hasLinkedProducts || remainingStock > 0;
                             const archiveReason = hasLinkedProducts ? 'Vinculada a productos activos' : 'Tiene stock físico con valor en libro';
                             return mustArchive ? (
-                              <button
-                                className="rounded-lg p-1.5 transition-colors border border-transparent bg-amber-50 text-amber-500 hover:border-amber-200 hover:bg-amber-100"
+                              <Button
+                                variant="ghost"
+                                className="h-8 w-8 p-0 border border-transparent bg-amber-50 text-amber-500 hover:border-amber-200 hover:bg-amber-100"
                                 title={`Archivar (${archiveReason})`}
                                 onClick={async () => {
                                   if (window.confirm(`¿Archivar "${m.name}"? Razón: ${archiveReason}. Quedará inactiva pero el historial se conserva.`)) {
                                     try { await archiveMaterial(m.id); }
                                     catch (err: any) { alert(`Error: ${translateError(err)}`); }
                                   }
-                                }}>
-                                <Archive size={16} />
-                              </button>
+                                }}
+                                icon={<Archive size={16} />}
+                              />
                             ) : (
-                              <button
-                                className="rounded-lg p-1.5 transition-colors border border-transparent bg-gray-50 text-gray-400 hover:border-gray-200 hover:bg-white hover:text-red-600"
+                              <Button
+                                variant="ghost"
+                                className="h-8 w-8 p-0 border border-transparent bg-gray-50 text-gray-400 hover:border-gray-200 hover:bg-white hover:text-red-600"
                                 title="Eliminar (sin stock ni productos vinculados)"
                                 onClick={async () => {
                                   if (window.confirm(`¿Eliminar "${m.name}"? Sin stock ni productos vinculados. Esta acción no se puede deshacer.`)) {
                                     try { await deleteRawMaterial(m.id); }
                                     catch (err: any) { alert(`No se pudo eliminar: ${translateError(err)}`); }
                                   }
-                                }}>
-                                <Trash2 size={16} />
-                              </button>
+                                }}
+                                icon={<Trash2 size={16} />}
+                              />
                             );
                           })()}
                         </div>
@@ -575,18 +581,18 @@ const RawMaterials: React.FC = () => {
                           <div className="p-6 space-y-8 animate-in fade-in slide-in-from-top-2 duration-300">
 
                             {/* NEW BATCH FORM */}
-                            <div className="no-print rounded-2xl border border-indigo-100 bg-white p-5 shadow-sm">
-                              <div className="mb-4 flex items-center justify-between">
-                                <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-indigo-600">
-                                  <ShoppingCart size={14} /> Registrar Nueva Entrada Física
+                            <div className="no-print surface-card p-6 shadow-sm">
+                              <div className="mb-6 flex items-center justify-between">
+                                <h4 className="flex items-center gap-2 text-label font-bold uppercase tracking-widest text-brand">
+                                  <ShoppingCart size={16} /> Registrar Nueva Entrada Física
                                 </h4>
                                 {isDimensional && (
                                   <div className="flex gap-1 rounded-xl border border-indigo-100 bg-slate-50 p-1">
-                                    <button type="button" onClick={() => set_entry_mode('rollo')} className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-[10px] font-bold uppercase transition-all ${entry_mode === 'rollo' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-100'}`}>
-                                      <RotateCcw size={12} /> Rollo
+                                    <button type="button" onClick={() => set_entry_mode('rollo')} className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold uppercase transition-all ${entry_mode === 'rollo' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}>
+                                      <RotateCcw size={14} /> Rollo
                                     </button>
-                                    <button type="button" onClick={() => set_entry_mode('pieza')} className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-[10px] font-bold uppercase transition-all ${entry_mode === 'pieza' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-100'}`}>
-                                      <Scissors size={12} /> Pieza
+                                    <button type="button" onClick={() => set_entry_mode('pieza')} className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold uppercase transition-all ${entry_mode === 'pieza' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}>
+                                      <Scissors size={14} /> Pieza
                                     </button>
                                   </div>
                                 )}
@@ -620,26 +626,26 @@ const RawMaterials: React.FC = () => {
 
                             {/* BATCHES TABLE IN-LINE */}
                             <div>
-                              <div className="flex items-center justify-between mb-3">
-                                <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500">Kardex de Lotes y Movimientos</h4>
-                                <Button variant="ghost" size="sm" onClick={handlePrint} className="h-8 text-xs font-bold text-slate-500 hover:text-indigo-600"><Printer size={14} className="mr-1" /> Imprimir</Button>
+                              <div className="flex items-center justify-between mb-4 mt-8">
+                                <h4 className="text-body font-bold text-text-primary">Kardex de Lotes y Movimientos</h4>
+                                <Button variant="ghost" size="icon" onClick={handlePrint} className="text-slate-500" title="Imprimir"><Printer size={18} /></Button>
                               </div>
-                              <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-                                <table className="w-full text-left text-sm table-fixed min-w-[700px] border-collapse">
-                                  <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
+                              <div className="table-container shadow-subtle bg-bg-card">
+                                <table className="w-full text-left table-fixed min-w-[700px]">
+                                  <thead className="table-header">
                                     <tr>
-                                      <th className="w-[12%] px-4 py-3">Fecha</th>
-                                      <th className="w-[10%] px-4 py-3">Modo</th>
-                                      <th className="w-[18%] px-4 py-3">Proveedor</th>
-                                      <th className="w-[15%] px-4 py-3 text-right">Dimensiones</th>
-                                      <th className="w-[10%] px-4 py-3 text-right text-emerald-600">Área</th>
-                                      <th className="w-[10%] px-4 py-3 text-right">Costo</th>
-                                      <th className="w-[10%] px-4 py-3 text-right text-indigo-500">/m²</th>
-                                      <th className="w-[10%] px-4 py-3 text-right">Restante</th>
-                                      <th className="w-[5%] px-4 py-3 text-center"></th>
+                                      <th className="table-header-cell w-[12%]">Fecha</th>
+                                      <th className="table-header-cell w-[10%]">Modo</th>
+                                      <th className="table-header-cell w-[18%]">Proveedor</th>
+                                      <th className="table-header-cell w-[15%] text-right">Dimensiones</th>
+                                      <th className="table-header-cell w-[10%] text-right text-emerald-600">Área</th>
+                                      <th className="table-header-cell w-[10%] text-right">Costo</th>
+                                      <th className="table-header-cell w-[10%] text-right text-brand">/m²</th>
+                                      <th className="table-header-cell w-[10%] text-right">Restante</th>
+                                      <th className="table-header-cell w-[5%] text-center"></th>
                                     </tr>
                                   </thead>
-                                  <tbody className="divide-y divide-slate-100 text-slate-600">
+                                  <tbody className="divide-y divide-border/50 text-text-primary bg-bg-card">
                                     {batches.filter(b => b.material_id === m.id).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map(batch => {
                                       const currentTotalPurchaseCost = isDimensional
                                         ? (batch.entry_mode === 'pieza' ? batch.unit_cost : (batch.unit_cost * batch.initial_quantity))
@@ -647,35 +653,35 @@ const RawMaterials: React.FC = () => {
                                       const currentCostPerM2 = isDimensional && batch.area && batch.area > 0 ? currentTotalPurchaseCost / batch.area : 0;
                                       return (
                                         <tr key={batch.id} className="hover:bg-slate-50 transition-colors">
-                                          <td className="px-4 py-2.5 font-mono text-[10px] font-bold">{batch.date}</td>
+                                          <td className="px-4 py-2.5 tabular-nums text-sm font-medium">{batch.date}</td>
                                           <td className="px-4 py-2.5">
                                             {isDimensional ? (
-                                              <Badge variant={batch.entry_mode === 'pieza' ? 'warning' : 'default'} className="flex w-fit items-center gap-1 text-[9px] px-1.5 py-0">
-                                                {batch.entry_mode === 'pieza' ? <Scissors size={8} /> : <RotateCcw size={8} />}
+                                              <Badge variant={batch.entry_mode === 'pieza' ? 'warning' : 'default'} className="flex w-fit items-center gap-1 flex-shrink-0 text-xs font-semibold px-2 py-0.5">
+                                                {batch.entry_mode === 'pieza' ? <Scissors size={12} /> : <RotateCcw size={12} />}
                                                 {batch.entry_mode || 'Rollo'}
                                               </Badge>
                                             ) : (
-                                              <Badge variant="default" className="text-[9px] bg-slate-100 text-slate-500">Estándar</Badge>
+                                              <Badge variant="default" className="text-xs font-semibold bg-slate-100 text-slate-600">Estándar</Badge>
                                             )}
                                           </td>
-                                          <td className="px-4 py-2.5 font-bold text-xs truncate" title={batch.provider}>{batch.provider}</td>
+                                          <td className="px-4 py-2.5 font-medium text-sm truncate" title={batch.provider}>{batch.provider}</td>
                                           <td className="px-4 py-2.5 text-right flex flex-col items-end">
                                             {isDimensional ? (
                                               <>
-                                                <span className="text-xs font-bold text-gray-900 leading-tight">
+                                                <span className="text-sm font-medium text-slate-900 leading-tight">
                                                   {batch.entry_mode === 'pieza' ? `${batch.length} × ${batch.width} cm` : `${batch.initial_quantity.toFixed(2)} m`}
                                                 </span>
-                                                <span className="text-[9px] font-bold uppercase text-gray-400 leading-tight">{batch.width} cm ancho</span>
+                                                <span className="text-xs font-medium text-slate-500 leading-tight">{batch.width} cm ancho</span>
                                               </>
                                             ) : (
-                                              <span className="text-slate-400 font-bold">---</span>
+                                              <span className="text-slate-400 font-medium text-sm">---</span>
                                             )}
                                           </td>
-                                          <td className="px-4 py-2.5 text-right font-mono text-[10px] font-bold text-emerald-600">{isDimensional && batch.area ? `${batch.area.toFixed(2)} m²` : '---'}</td>
-                                          <td className="px-4 py-2.5 text-right font-mono text-[11px] font-bold">{formatCurrency(currentTotalPurchaseCost)}</td>
-                                          <td className="px-4 py-2.5 text-right font-mono text-[11px] font-bold text-indigo-600">{isDimensional && currentCostPerM2 > 0 ? formatCurrency(currentCostPerM2) : '---'}</td>
+                                          <td className="px-4 py-2.5 text-right tabular-nums text-sm font-medium text-emerald-600">{isDimensional && batch.area ? `${batch.area.toFixed(2)} m²` : '---'}</td>
+                                          <td className="px-4 py-2.5 text-right tabular-nums text-sm font-medium">{formatCurrency(currentTotalPurchaseCost)}</td>
+                                          <td className="px-4 py-2.5 text-right tabular-nums text-sm font-medium text-indigo-600">{isDimensional && currentCostPerM2 > 0 ? formatCurrency(currentCostPerM2) : '---'}</td>
                                           <td className="px-4 py-2.5 text-right">
-                                            <Badge variant={batch.remaining_quantity > 0 ? 'success' : 'secondary'} className="text-[10px] font-mono font-bold">
+                                            <Badge variant={batch.remaining_quantity > 0 ? 'success' : 'secondary'} className="text-xs tabular-nums font-semibold">
                                               {batch.remaining_quantity.toFixed(2)}
                                             </Badge>
                                           </td>
@@ -700,13 +706,13 @@ const RawMaterials: React.FC = () => {
                                       );
                                     })}
                                     {/* Totals Row */}
-                                    <tr className="bg-slate-50 font-bold border-t-2 border-slate-200">
-                                      <td colSpan={3} className="px-4 py-3 uppercase text-[10px] text-slate-800 text-right">Totales Acumulados</td>
-                                      <td className="px-4 py-3 text-right font-mono text-[10px] text-slate-500">{isDimensional ? `${totalRemainingQty.toFixed(2)} m` : '---'}</td>
-                                      <td className="px-4 py-3 text-right font-mono text-[10px] text-emerald-600">{isDimensional ? `${batchStatsByMaterial[m.id].totalArea.toFixed(2)} m²` : '---'}</td>
-                                      <td className="px-4 py-3 text-right font-mono text-[11px] text-slate-700">{formatCurrency(batchStatsByMaterial[m.id].totalValue)}</td>
-                                      <td className="px-4 py-3 text-right font-mono text-[11px] text-indigo-600">{isDimensional ? formatCurrency(batchStatsByMaterial[m.id].avgCostPerM2) : '---'}</td>
-                                      <td className="px-4 py-3 text-right font-mono text-[10px] text-emerald-600">{totalRemainingQty.toFixed(2)}</td>
+                                    <tr className="bg-bg-page border-t-2 border-border">
+                                      <td colSpan={3} className="px-4 py-4 uppercase text-label font-bold text-text-secondary text-right">Totales Acumulados</td>
+                                      <td className="px-4 py-4 text-right tabular-nums text-body font-medium text-text-secondary">{isDimensional ? `${totalRemainingQty.toFixed(2)} m` : '---'}</td>
+                                      <td className="px-4 py-4 text-right tabular-nums text-body font-medium text-emerald-600">{isDimensional ? `${batchStatsByMaterial[m.id].totalArea.toFixed(2)} m²` : '---'}</td>
+                                      <td className="px-4 py-4 text-right tabular-nums text-lg font-extrabold text-text-primary">{formatCurrency(batchStatsByMaterial[m.id].totalValue)}</td>
+                                      <td className="px-4 py-4 text-right tabular-nums text-lg font-extrabold text-brand">{isDimensional ? formatCurrency(batchStatsByMaterial[m.id].avgCostPerM2) : '---'}</td>
+                                      <td className="px-4 py-4 text-right tabular-nums text-lg font-extrabold text-emerald-600">{totalRemainingQty.toFixed(2)}</td>
                                       <td></td>
                                     </tr>
                                   </tbody>
@@ -763,16 +769,16 @@ const RawMaterials: React.FC = () => {
               <div className="grid grid-cols-3 gap-3 items-end">
                 {formData.unit === 'metro' ? (
                   <div>
-                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-emerald-500">Ancho (cm)</label>
+                    <label className="mb-1 block text-sm font-medium text-emerald-600">Ancho (cm)</label>
                     <Input type="number" step="1" value={formData.width || ''} onChange={e => setFormData({ ...formData, width: parseInt(e.target.value) })} placeholder="140" />
                   </div>
                 ) : <div />}
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-500">Cantidad</label>
+                  <label className="mb-1 block text-sm font-medium text-slate-600">Cantidad</label>
                   <Input type="number" step="0.01" value={formData.initialQty || ''} onChange={e => setFormData({ ...formData, initialQty: parseFloat(e.target.value) })} placeholder="0" disabled={!!editingId} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-500">Estado</label>
+                  <label className="mb-1 block text-sm font-medium text-slate-600">Estado</label>
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, status: formData.status === 'activa' ? 'inactiva' : 'activa' })}
@@ -798,14 +804,14 @@ const RawMaterials: React.FC = () => {
       {editingBatchData && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6" style={{ backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>
           <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto p-6 sm:p-8">
-            <h4 className="mb-6 flex items-center gap-2 text-lg font-bold">
-              <Pencil size={18} className="text-indigo-500" /> Editar Registro
+            <h4 className="mb-6 flex items-center gap-2 text-xl font-bold">
+              <Pencil size={20} className="text-indigo-500" /> Editar Registro
             </h4>
             <form onSubmit={handleEditBatchSubmit} className="space-y-4">
               {editingBatchData.remaining_quantity < editingBatchData.initial_quantity && (
                 <div className="flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50 p-4">
                   <AlertCircle size={20} className="mt-0.5 shrink-0 text-amber-500" />
-                  <p className="text-xs font-bold leading-tight text-amber-700">
+                  <p className="text-sm font-semibold leading-tight text-amber-700">
                     ESTE LOTE YA SE HA USADO. La cantidad, costo y dimensiones no son editables para mantener la coherencia FIFO.
                   </p>
                 </div>

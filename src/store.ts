@@ -744,7 +744,11 @@ export const useStore = create<AppState>()(
         }
 
         if (syncMovements.length > 0) {
-          await supabase.from('stock_movements').insert(syncMovements);
+          const { error } = await supabase.from('stock_movements').insert(syncMovements);
+          if (error) {
+            console.error('[store] consumeStockBatch movements insert failed:', error.message);
+            throw error;
+          }
         }
 
         await supabase.from('product_movements').insert([productMovement]);

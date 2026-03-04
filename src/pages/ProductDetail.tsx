@@ -1,367 +1,233 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import {
-    ArrowLeft, Edit3, PlayCircle, History, ChevronDown, ChevronUp,
-    PackageSearch, User, Calendar, Clock, Tag, DollarSign, TrendingUp, AlertTriangle
-} from 'lucide-react';
+import { ArrowLeft, Edit2, PlayCircle, Archive, Trash2, Package, CheckCircle2, Copy } from 'lucide-react';
 import { useStore, calculateProductCost } from '../store';
 import { supabase } from '../services/supabase';
-import { useAuth } from '../hooks/useAuth';
+import { calculateFinancialMetrics } from '../core/financialMetricsEngine';
 import { useCurrency } from '@/hooks/useCurrency';
-import { calculateFinancialMetrics } from '@/core/financialMetricsEngine';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { Card } from '@/components/ui/Card';
+import { translateError } from '@/utils/errorHandler';
 
 const ProductDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { currentCompany } = useAuth();
+    const {
+        products,
+        productMovements,
+        rawMaterials,
+        batches,
+        currentCompanyId,
+        currentUserRole
+    } = useStore();
     const { formatCurrency } = useCurrency();
+    const [creatorName, setCreatorName] = useState<string>('Cargando...');
 
-    const { products, productMovements, movements, rawMaterials, batches } = useStore();
+    const allowedRoles = ['super_admin', 'admin', 'owner', 'manager'];
+    const canEdit = allowedRoles.includes((currentUserRole as string) || '');
+    const canCreate = allowedRoles.includes((currentUserRole as string) || '');
 
     const product = products.find(p => p.id === id);
-    const [creatorName, setCreatorName] = useState<string | null>(null);
-    const [updaterName, setUpdaterName] = useState<string | null>(null);
-    const [expandedMovementId, setExpandedMovementId] = useState<string | null>(null);
 
-    // ── Resolve created_by / updated_by to user names ──
-    useEffect(() => {
-        if (!product) return;
-        const resolveUsers = async () => {
-            try {
-                const { data } = await supabase.rpc('get_team_members', {
-                    p_company_id: currentCompany?.id
-                });
-                if (data) {
-                    const members = data as { user_id: string; full_name: string }[];
-                    if (product.created_by) {
-                        const creator = members.find(m => m.user_id === product.created_by);
-                        setCreatorName(creator?.full_name || product.created_by.slice(0, 8) + '…');
-                    }
-                    if (product.updated_by) {
-                        const updater = members.find(m => m.user_id === product.updated_by);
-                        setUpdaterName(updater?.full_name || product.updated_by.slice(0, 8) + '…');
-                    }
-                }
-            } catch (err) {
-                console.error('[ProductDetail] Error resolving users:', err);
-            }
-        };
-        resolveUsers();
-    }, [product?.id, product?.created_by, product?.updated_by, currentCompany?.id]);
-
-    // ── Computed data ──
-    const cost = useMemo(() => {
-        if (!product) return 0;
-        return calculateProductCost(product, batches, rawMaterials);
-    }, [product, batches, rawMaterials]);
-
-    const metrics = useMemo(() => {
-        if (!product) return null;
-        return calculateFinancialMetrics(cost, product.price, product.target_margin ?? 0);
-    }, [product, cost]);
-
-    const pMovements = useMemo(() => {
-        if (!id) return [];
-        return productMovements
-            .filter(m => m.product_id === id)
-            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    }, [productMovements, id]);
-
-    const stock = useMemo(() => {
-        const inQty = pMovements.filter(m => m.type === 'ingreso_produccion').reduce((a, m) => a + m.quantity, 0);
-        const outQty = pMovements.filter(m => ['salida_venta', 'salida_manual', 'merma'].includes(m.type)).reduce((a, m) => a + m.quantity, 0);
-        const adjQty = pMovements.filter(m => m.type === 'ajuste').reduce((a, m) => a + (m.quantity || 0), 0);
-        return inQty - outQty + adjQty;
-    }, [pMovements]);
-
-    // ── Guards ──
     if (!product) {
         return (
-            <div className="flex flex-col items-center justify-center h-96 text-center">
-                <PackageSearch size={48} className="text-slate-300 mb-4" />
-                <h2 className="text-lg font-bold text-slate-600">Producto no encontrado</h2>
-                <p className="text-sm text-slate-400 mt-1">Este producto no existe o ha sido eliminado.</p>
-                <Button variant="outline" className="mt-6" onClick={() => navigate('/productos')}>
-                    <ArrowLeft size={16} className="mr-2" /> Volver al Catálogo
-                </Button>
+            <div className="flex flex-col items-center justify-center p-12 text-center h-[60vh]">
+                <Package className="w-16 h-16 text-slate-300 mb-4" />
+                <h2 className="text-display text-text-primary mb-2">Producto no encontrado</h2>
+                <p className="text-body text-text-secondary mb-6">El producto que buscas no existe o fue eliminado.</p>
+                <Button variant="primary" onClick={() => navigate('/productos')}>Volver al Catálogo</Button>
             </div>
         );
     }
 
-    const marginPct = (metrics?.realMargin ?? 0) * 100;
-    const marginColor = marginPct >= 30
-        ? 'text-emerald-600' : marginPct >= 15
-            ? 'text-amber-600' : 'text-red-600';
+    // Calculate Metrics
+    const cost = calculateProductCost(product, batches, rawMaterials);
+    const metrics = calculateFinancialMetrics(cost, product.price, product.target_margin || 0.3);
+
+    // Calculate Stock
+    const relevantMovements = productMovements.filter(m => m.product_id === product.id)
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    const currentStock = relevantMovements.reduce((acc, mov) => {
+        if (mov.type === 'ingreso_produccion') return acc + mov.quantity;
+        if (mov.type === 'salida_venta') return acc - mov.quantity;
+        if (mov.type === 'ajuste') return acc + mov.quantity;
+        return acc;
+    }, 0);
+
+    // Intentar resolver el nombre del creador a partir de su ID
+    React.useEffect(() => {
+        async function resolveCreator() {
+            if (!product?.created_by) {
+                setCreatorName('Desconocido');
+                return;
+            }
+            try {
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('full_name, email')
+                    .eq('id', product.created_by)
+                    .single();
+
+                if (data) {
+                    setCreatorName(data.full_name || data.email || 'Usuario');
+                } else {
+                    setCreatorName('Usuario Desconocido');
+                }
+            } catch (err) {
+                setCreatorName('Desconocido');
+            }
+        }
+        resolveCreator();
+    }, [product?.created_by]);
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
-            {/* ── HEADER ── */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => navigate('/productos')}
-                        className="h-10 w-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
-                    >
-                        <ArrowLeft size={18} />
-                    </button>
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">{product.name || 'Sin nombre'}</h1>
-                            <Badge variant={product.status === 'activa' ? 'default' : 'secondary'}>
-                                {product.status === 'activa' ? 'Activo' : product.status === 'inactiva' ? 'Discontinuado' : product.status}
-                            </Badge>
-                        </div>
-                        <p className="text-sm text-slate-500 font-mono mt-0.5">{product.reference || 'Sin referencia'}</p>
-                    </div>
-                </div>
+        <div className="space-y-6">
+            {/* Header Actions */}
+            <div className="flex items-center justify-between mb-4">
+                <button
+                    onClick={() => navigate('/productos')}
+                    className="flex items-center gap-2 text-label font-bold text-text-secondary hover:text-brand transition-colors"
+                >
+                    <ArrowLeft size={16} /> Volver al catálogo
+                </button>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={() => navigate(`/productos/editar/${product.id}`)}>
-                        <Edit3 size={16} className="mr-1.5" /> Editar
-                    </Button>
-                    <Button variant="primary" className="bg-emerald-600 hover:bg-emerald-700">
-                        <PlayCircle size={16} className="mr-1.5" /> Producir
-                    </Button>
+                    {canEdit && (
+                        <Button
+                            variant="secondary"
+                            onClick={() => navigate(`/productos/editar/${product.id}`)}
+                            icon={<Edit2 size={16} />}
+                        >
+                            Editar Producto
+                        </Button>
+                    )}
                 </div>
             </div>
 
-            {/* ── PRODUCT INFO CARDS ── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Cost */}
-                <Card className="p-4 bg-white border border-slate-200">
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                            <DollarSign size={16} className="text-blue-500" />
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Costo FIFO</span>
-                    </div>
-                    <p className="text-xl font-black text-slate-900 font-mono">{formatCurrency(cost)}</p>
-                </Card>
+            <PageHeader
+                title={product.name}
+                description={product.reference ? `Ref: ${product.reference}` : 'Sin referencia'}
+                actions={
+                    <Button variant="primary" icon={<PlayCircle size={18} />}>
+                        Producir
+                    </Button>
+                }
+            />
 
-                {/* Price */}
-                <Card className="p-4 bg-white border border-slate-200">
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center">
-                            <Tag size={16} className="text-indigo-500" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Left Column: Stats & Status */}
+                <div className="space-y-6 md:col-span-1">
+                    <Card className="p-6">
+                        <h3 className="text-label text-text-secondary uppercase mb-6 font-bold tracking-widest">Resumen Financiero</h3>
+                        <div className="space-y-5">
+                            <div className="flex justify-between items-baseline border-b border-border/50 pb-2">
+                                <span className="text-body text-text-secondary font-medium">Precio de Venta</span>
+                                <span className="text-xl font-extrabold text-brand tabular-nums">{formatCurrency(product.price)}</span>
+                            </div>
+                            <div className="flex justify-between items-baseline border-b border-border/50 pb-2">
+                                <span className="text-body text-text-secondary font-medium">Costo de Prod.</span>
+                                <span className="text-lg font-bold text-text-primary tabular-nums">{formatCurrency(cost)}</span>
+                            </div>
+                            <div className="flex justify-between items-center py-2 border-b border-border/50">
+                                <span className="text-body text-text-secondary font-medium">Margen Real</span>
+                                <Badge variant={metrics.realMargin >= (product.target_margin || 0.3) ? 'success' : 'warning'} className="text-sm px-2">
+                                    {(metrics.realMargin * 100).toFixed(1)}%
+                                </Badge>
+                            </div>
+                            <div className="flex justify-between items-center pt-2">
+                                <span className="text-body text-text-secondary font-medium">Stock Disponible</span>
+                                <span className={`text-lg font-bold tabular-nums ${currentStock > 0 ? 'text-emerald-600' : 'text-error'}`}>
+                                    {currentStock} und.
+                                </span>
+                            </div>
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Precio Venta</span>
-                    </div>
-                    <p className="text-xl font-black text-indigo-600 font-mono">{formatCurrency(product.price)}</p>
-                </Card>
+                    </Card>
 
-                {/* Margin */}
-                <Card className="p-4 bg-white border border-slate-200">
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center">
-                            <TrendingUp size={16} className="text-emerald-500" />
+                    <Card className="p-6">
+                        <h3 className="text-label text-text-secondary uppercase mb-5 font-bold tracking-widest">Información Base</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <span className="block text-label text-text-secondary uppercase mb-1">Estado</span>
+                                <Badge variant={product.status === 'activa' ? 'success' : 'secondary'}>
+                                    {product.status === 'activa' ? 'Activo' : 'Discontinuado'}
+                                </Badge>
+                            </div>
+                            <div>
+                                <span className="block text-label text-text-secondary uppercase mb-1">Margen Objetivo</span>
+                                <span className="text-body font-bold text-text-primary">{(product.target_margin * 100).toFixed(1)}%</span>
+                            </div>
+                            <div className="pt-4 border-t border-border/50">
+                                <span className="block text-label text-text-secondary uppercase mb-1">Creado Por</span>
+                                <span className="text-body font-medium text-text-primary">{creatorName}</span>
+                                <span className="block text-xs text-text-muted mt-1">
+                                    el {new Date(product.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                </span>
+                            </div>
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Margen Real</span>
-                    </div>
-                    <p className={`text-xl font-black font-mono ${marginColor}`}>
-                        {marginPct.toFixed(1)}%
-                    </p>
-                </Card>
-
-                {/* Stock */}
-                <Card className="p-4 bg-white border border-slate-200">
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="h-8 w-8 rounded-lg bg-orange-50 flex items-center justify-center">
-                            <PackageSearch size={16} className="text-orange-500" />
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Stock</span>
-                    </div>
-                    <p className={`text-xl font-black font-mono ${stock > 0 ? 'text-emerald-600' : stock < 0 ? 'text-red-600' : 'text-slate-400'}`}>
-                        {stock} und.
-                    </p>
-                </Card>
-            </div>
-
-            {/* ── METADATA STRIP ── */}
-            <Card className="p-4 bg-white border border-slate-200">
-                <div className="flex flex-wrap gap-x-8 gap-y-3 text-sm">
-                    {creatorName && (
-                        <div className="flex items-center gap-2 text-slate-600">
-                            <User size={14} className="text-slate-400" />
-                            <span className="text-slate-400 font-medium">Creado por</span>
-                            <span className="font-bold text-slate-800">{creatorName}</span>
-                        </div>
-                    )}
-                    <div className="flex items-center gap-2 text-slate-600">
-                        <Calendar size={14} className="text-slate-400" />
-                        <span className="text-slate-400 font-medium">Creado</span>
-                        <span className="font-bold text-slate-800">{new Date(product.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                    </div>
-                    {updaterName && (
-                        <div className="flex items-center gap-2 text-slate-600">
-                            <Clock size={14} className="text-slate-400" />
-                            <span className="text-slate-400 font-medium">Actualizado por</span>
-                            <span className="font-bold text-slate-800">{updaterName}</span>
-                            <span className="text-xs text-slate-400 font-mono">
-                                {new Date(product.updated_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
-                            </span>
-                        </div>
-                    )}
-                    <div className="flex items-center gap-2 text-slate-600">
-                        <History size={14} className="text-slate-400" />
-                        <span className="text-slate-400 font-medium">Movimientos</span>
-                        <span className="font-bold text-slate-800">{pMovements.length}</span>
-                    </div>
+                    </Card>
                 </div>
-            </Card>
 
-            {/* ── MOVEMENT KARDEX ── */}
-            <div>
-                <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
-                    <History size={14} /> Kardex de Movimientos
-                </h2>
-
-                {pMovements.length === 0 ? (
-                    <Card className="flex flex-col items-center justify-center p-12 text-center border-dashed border-2 bg-slate-50/50">
-                        <div className="h-16 w-16 bg-slate-100 text-slate-300 rounded-full flex items-center justify-center mb-4">
-                            <History size={32} />
+                {/* Right Column: Kardex */}
+                <div className="md:col-span-2">
+                    <Card className="p-6 h-full flex flex-col">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-body font-bold text-text-primary">Kardex de Movimientos</h3>
+                            <Badge variant="secondary" className="bg-bg-page">{relevantMovements.length} registros</Badge>
                         </div>
-                        <h3 className="text-base font-bold text-slate-600 mb-1">Sin movimientos</h3>
-                        <p className="text-sm text-slate-400 max-w-sm">
-                            Este producto no tiene movimientos de inventario registrados. Produce unidades para comenzar el historial.
-                        </p>
-                    </Card>
-                ) : (
-                    <Card className="bg-white border border-slate-200 overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className="bg-slate-50 text-slate-500 font-bold border-b text-xs uppercase tracking-wider">
-                                    <tr>
-                                        <th className="px-5 py-3">Fecha</th>
-                                        <th className="px-5 py-3">Tipo</th>
-                                        <th className="px-5 py-3 text-right">Cantidad</th>
-                                        <th className="px-5 py-3 text-right">Costo Unitario</th>
-                                        <th className="px-5 py-3">Referencia</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {pMovements.map(m => {
-                                        const typeLabels: Record<string, string> = {
-                                            ingreso_produccion: 'Producción',
-                                            salida_venta: 'Venta',
-                                            salida_manual: 'Salida Manual',
-                                            merma: 'Merma',
-                                            ajuste: 'Ajuste'
-                                        };
-                                        const typeColors: Record<string, string> = {
-                                            ingreso_produccion: 'bg-emerald-100 text-emerald-700',
-                                            salida_venta: 'bg-orange-100 text-orange-700',
-                                            salida_manual: 'bg-orange-100 text-orange-700',
-                                            merma: 'bg-red-100 text-red-700',
-                                            ajuste: 'bg-slate-100 text-slate-700'
-                                        };
 
-                                        return (
-                                            <React.Fragment key={m.id}>
-                                                <tr className="hover:bg-slate-50/50 transition-colors">
-                                                    <td className="px-5 py-3.5 font-mono text-slate-500 text-xs">
-                                                        {new Date(m.created_at).toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                                    </td>
-                                                    <td className="px-5 py-3.5">
-                                                        <div className="flex flex-col gap-1 items-start">
-                                                            <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase ${typeColors[m.type] || 'bg-slate-100 text-slate-600'}`}>
-                                                                {typeLabels[m.type] || m.type.replace('_', ' ')}
-                                                            </span>
-                                                            {m.produced_with_debt && (
-                                                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-50 text-red-600 text-[9px] font-black uppercase tracking-wider border border-red-100/50" title="Este lote se produjo asumiendo faltantes de insumos">
-                                                                    <AlertTriangle size={10} /> Con Deuda
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                    <td className={`px-5 py-3.5 text-right font-mono font-bold ${m.type === 'ingreso_produccion' ? 'text-emerald-600' : m.type === 'ajuste' ? 'text-slate-600' : 'text-red-500'}`}>
-                                                        {m.type === 'ingreso_produccion' ? '+' : '-'}{m.quantity}
-                                                    </td>
-                                                    <td className="px-5 py-3.5 text-right font-mono text-slate-500">
-                                                        {formatCurrency(m.unit_cost)}
-                                                    </td>
-                                                    <td className="px-5 py-3.5 text-slate-600">
-                                                        <div className="flex items-center justify-between">
-                                                            <span className="truncate max-w-[200px]" title={m.reference || ''}>{m.reference || '—'}</span>
-                                                            {m.type === 'ingreso_produccion' && (
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    onClick={() => setExpandedMovementId(expandedMovementId === m.id ? null : m.id)}
-                                                                    className={`ml-2 h-7 px-2 text-[10px] ${expandedMovementId === m.id ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50/50'}`}
-                                                                >
-                                                                    {expandedMovementId === m.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />} Detalle
-                                                                </Button>
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-
-                                                {/* ── Expanded: consumption breakdown ── */}
-                                                {expandedMovementId === m.id && m.type === 'ingreso_produccion' && (
-                                                    <tr className="bg-slate-50/50">
-                                                        <td colSpan={5} className="p-0 border-b border-slate-100">
-                                                            <div className="px-8 py-4 bg-white shadow-inner">
-                                                                <h5 className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2 mb-3">
-                                                                    <PackageSearch size={12} /> Desglose de Consumo (Lote Producción)
-                                                                </h5>
-                                                                <div className="overflow-x-auto rounded border border-slate-100">
-                                                                    <table className="w-full text-xs text-left">
-                                                                        <thead className="bg-slate-50 text-slate-500 uppercase">
-                                                                            <tr>
-                                                                                <th className="px-3 py-2 font-bold">Insumo Consumido</th>
-                                                                                <th className="px-3 py-2 text-right font-bold">Cantidad</th>
-                                                                                <th className="px-3 py-2 font-bold text-center">Estado de Cobertura</th>
-                                                                                <th className="px-3 py-2 text-right font-bold">Costo Asumido</th>
-                                                                            </tr>
-                                                                        </thead>
-                                                                        <tbody className="divide-y divide-slate-50">
-                                                                            {movements.filter(sm => sm.date === m.created_at && ['egreso', 'egreso_asumido'].includes(sm.type)).map((sm) => {
-                                                                                const material = rawMaterials.find(rm => rm.id === sm.material_id);
-                                                                                return (
-                                                                                    <tr key={sm.id} className="hover:bg-slate-50/50">
-                                                                                        <td className="px-3 py-2 font-semibold text-slate-700">
-                                                                                            {material?.name || 'Insumo Eliminado'}
-                                                                                        </td>
-                                                                                        <td className="px-3 py-2 text-right font-mono text-slate-600">
-                                                                                            {sm.quantity.toFixed(2)} {material?.unit || ''}
-                                                                                        </td>
-                                                                                        <td className="px-3 py-2">
-                                                                                            <div className="flex justify-center w-full">
-                                                                                                {sm.type === 'egreso_asumido' ? (
-                                                                                                    <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 border border-red-200">
-                                                                                                        ⚠️ DEUDA TÉCNICA
-                                                                                                    </span>
-                                                                                                ) : (
-                                                                                                    <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">
-                                                                                                        CUBIERTO
-                                                                                                    </span>
-                                                                                                )}
-                                                                                            </div>
-                                                                                        </td>
-                                                                                        <td className={`px-3 py-2 text-right font-mono font-semibold ${sm.type === 'egreso_asumido' ? 'text-red-600' : 'text-slate-600'}`}>
-                                                                                            {formatCurrency(sm.quantity * sm.unit_cost)}
-                                                                                        </td>
-                                                                                    </tr>
-                                                                                );
-                                                                            })}
-                                                                        </tbody>
-                                                                    </table>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                )}
-                                            </React.Fragment>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
+                        {relevantMovements.length === 0 ? (
+                            <div className="flex-1 flex flex-col items-center justify-center p-12 text-center border-2 border-dashed border-border rounded-md">
+                                <Archive className="w-12 h-12 text-slate-300 mb-3" />
+                                <p className="text-body font-medium text-text-secondary">No hay movimientos registrados para este producto.</p>
+                                <p className="text-sm text-text-muted mt-1">Acá aparecerá el inventario cuando produzcas o vendas.</p>
+                            </div>
+                        ) : (
+                            <div className="table-container flex-1 bg-bg-card">
+                                <table className="w-full text-left table-fixed min-w-[500px]">
+                                    <thead className="table-header">
+                                        <tr>
+                                            <th className="table-header-cell w-[20%]">Fecha</th>
+                                            <th className="table-header-cell w-[20%]">Tipo</th>
+                                            <th className="table-header-cell w-[35%]">Referencia</th>
+                                            <th className="table-header-cell w-[25%] text-right border-l border-border/50">Cantidad</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border/50 bg-bg-card">
+                                        {relevantMovements.map(mov => (
+                                            <tr key={mov.id} className="table-row">
+                                                <td className="px-4 py-3 text-sm text-text-secondary tabular-nums border-l-4 border-transparent">
+                                                    {new Date(mov.created_at).toLocaleDateString()}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide
+                            ${mov.type === 'ingreso_produccion' ? 'bg-emerald-50 text-emerald-700' :
+                                                            mov.type === 'salida_venta' ? 'bg-indigo-50 text-indigo-700' :
+                                                                mov.type === 'ajuste' && mov.quantity > 0 ? 'bg-emerald-50 text-emerald-700' :
+                                                                    mov.type === 'ajuste' && mov.quantity < 0 ? 'bg-red-50 text-red-700' :
+                                                                        'bg-slate-100 text-slate-600'}`}
+                                                    >
+                                                        {mov.type === 'ingreso_produccion' ? 'Producción' :
+                                                            mov.type === 'salida_venta' ? 'Venta' : 'Ajuste'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 text-body font-medium text-text-primary truncate" title={mov.reference || '---'}>
+                                                    {mov.reference || '---'}
+                                                </td>
+                                                <td className="px-4 py-3 text-right text-lg font-extrabold tabular-nums border-l border-border/50">
+                                                    <span className={mov.quantity > 0 ? 'text-emerald-600' : 'text-error'}>
+                                                        {mov.quantity > 0 ? '+' : ''}{mov.quantity}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </Card>
-                )}
+                </div>
             </div>
         </div>
     );

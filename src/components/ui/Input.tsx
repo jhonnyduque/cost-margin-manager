@@ -12,50 +12,27 @@ export const Input: React.FC<InputProps> = ({
     error,
     fullWidth = true,
     className = '',
-    style,
     ...props
 }) => {
-    const inputStyles: React.CSSProperties = {
-        height: '40px',
-        borderRadius: tokens.radius.md,
-        border: `1px solid ${error ? tokens.colors.error : tokens.colors.border}`,
-        padding: `0 ${tokens.spacing.md}`,
-        fontSize: tokens.typography.body.fontSize,
-        color: tokens.colors.text.primary,
-        backgroundColor: tokens.colors.surface,
-        width: fullWidth ? '100%' : 'auto',
-        outline: 'none',
-        transition: 'border-color 0.2s ease',
-    };
-
     return (
         <div className={`flex flex-col gap-1.5 ${fullWidth ? 'w-full' : ''} ${className}`}>
             {label && (
-                <label
-                    style={{
-                        fontSize: tokens.typography.caption.fontSize,
-                        color: tokens.colors.text.secondary,
-                        fontWeight: 500
-                    }}
-                >
+                <label className="text-label text-text-secondary">
                     {label}
                 </label>
             )}
             <input
-                style={{ ...inputStyles, ...style }}
-                className="placeholder:text-gray-400 focus:ring-2 focus:ring-blue-100"
-                onFocus={(e) => {
-                    e.currentTarget.style.borderColor = tokens.colors.brand;
-                    props.onFocus?.(e);
-                }}
-                onBlur={(e) => {
-                    e.currentTarget.style.borderColor = error ? tokens.colors.error : tokens.colors.border;
-                    props.onBlur?.(e);
-                }}
+                className={`
+                    h-10 px-4 rounded-sm outline-none transition-colors
+                    bg-bg-card text-body text-text-primary
+                    placeholder:text-text-muted
+                    focus:ring-2 focus:ring-offset-0 focus:ring-brand/20
+                    ${error ? 'border border-error focus:border-error' : 'border border-border focus:border-brand'}
+                `}
                 {...props}
             />
             {error && (
-                <span style={{ color: tokens.colors.error, fontSize: tokens.typography.caption.fontSize }}>
+                <span className="text-caption text-error">
                     {error}
                 </span>
             )}
