@@ -184,16 +184,7 @@ export default function Settings() {
             />
 
             {/* ── 5. NOTIFICACIONES — todos ───────────────── */}
-            <SectionPlaceholder
-                icon={<Bell size={20} className="text-indigo-600" />}
-                title="Notificaciones"
-                description="Configura cómo y cuándo recibes alertas."
-                items={[
-                    { icon: <Bell size={16} />, label: 'Alertas de uso del plan (80%, 100%)' },
-                    { icon: <CreditCard size={16} />, label: 'Notificaciones de facturación' },
-                    { icon: <User size={16} />, label: 'Actividad del equipo' },
-                ]}
-            />
+            <NotificationSettings />
 
             {/* ── 6. BRANDING — Super Admin ───────────────── */}
             {isSuperAdmin && (
@@ -222,6 +213,107 @@ export default function Settings() {
                 />
             )}
         </div>
+    );
+}
+
+/* ── Notification Settings Section ─────────────────────── */
+function NotificationSettings() {
+    const { user } = useAuth();
+    const [preferences, setPreferences] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const eventLabels: Record<string, string> = {
+        'LOW_STOCK': 'Stock Bajo',
+        'COST_DEVIATION': 'Desviación de Costos',
+        'USER_INVITED': 'Invitaciones de Equipo',
+        'PAYMENT_FAILED': 'Errores de Facturación',
+        'INVOICE_READY': 'Facturas Disponibles',
+    };
+
+    useEffect(() => {
+        if (!user?.id) return;
+        loadPreferences();
+    }, [user?.id]);
+
+    const loadPreferences = async () => {
+        setLoading(true);
+        const { data, error } = await supabase
+            .from('notification_preferences')
+            .select('*')
+            .eq('user_id', user?.id);
+
+        if (!error && data) setPreferences(data);
+        setLoading(false);
+    };
+
+    const togglePreference = async (eventKey: string, field: 'in_app_enabled' | 'email_enabled', currentVal: boolean) => {
+        const { error } = await supabase
+            .from('notification_preferences')
+            .upsert({
+                user_id: user?.id,
+                event_key: eventKey,
+                [field]: !currentVal
+            }, { onConflict: 'user_id,event_key' });
+
+        if (!error) {
+            setPreferences(prev => {
+                const existing = prev.find(p => p.event_key === eventKey);
+                if (existing) return prev.map(p => p.event_key === eventKey ? { ...p, [field]: !currentVal } : p);
+                return [...prev, { event_key: eventKey, [field]: !currentVal }];
+            });
+        }
+    };
+
+    if (loading) return <Card className="p-6 animate-pulse"><div className="h-20 bg-slate-50 rounded-xl" /></Card>;
+
+    return (
+        <Card className="p-5 sm:p-6">
+            <div className="flex items-center gap-3 mb-5">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-indigo-50 flex-shrink-0">
+                    <Bell size={20} className="text-indigo-600" />
+                </div>
+                <div>
+                    <h2 className="text-base sm:text-lg font-bold text-gray-900">Notificaciones</h2>
+                    <p className="text-sm text-gray-500">Configura qué alertas deseas recibir en la plataforma y por email.</p>
+                </div>
+            </div>
+
+            <div className="space-y-3">
+                {Object.entries(eventLabels).map(([key, label]) => {
+                    const pref = preferences.find(p => p.event_key === key) || { in_app_enabled: true, email_enabled: false };
+                    return (
+                        <div key={key} className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-100">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-white rounded-lg shadow-sm">
+                                    <Bell size={16} className="text-slate-400" />
+                                </div>
+                                <span className="text-sm font-semibold text-slate-700">{label}</span>
+                            </div>
+                            <div className="flex items-center gap-6">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">App</span>
+                                    <button
+                                        onClick={() => togglePreference(key, 'in_app_enabled', pref.in_app_enabled)}
+                                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${pref.in_app_enabled ? 'bg-indigo-600' : 'bg-slate-200'}`}
+                                    >
+                                        <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${pref.in_app_enabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                                    </button>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Email</span>
+                                    <button
+                                        onClick={() => togglePreference(key, 'email_enabled', pref.email_enabled)}
+                                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${pref.email_enabled ? 'bg-indigo-600' : 'bg-slate-200'}`}
+                                    >
+                                        <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${pref.email_enabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </Card>
     );
 }
 

@@ -1,0 +1,31 @@
+export const EVENTS = {
+    // Inventory
+    INVENTORY_LOW_STOCK: 'LOW_STOCK',
+    INVENTORY_COST_DEVIATION: 'COST_DEVIATION',
+
+    // Team
+    TEAM_USER_INVITED: 'USER_INVITED',
+    TEAM_USER_JOINED: 'USER_JOINED',
+    TEAM_SEAT_LIMIT_REACHED: 'SEAT_LIMIT_REACHED',
+
+    // Billing
+    BILLING_PAYMENT_FAILED: 'PAYMENT_FAILED',
+    BILLING_SUBSCRIPTION_RENEWED: 'SUBSCRIPTION_RENEWED',
+    BILLING_INVOICE_READY: 'INVOICE_READY',
+
+    // Global / System
+    SYSTEM_NEW_SIGNUP: 'NEW_SIGNUP',
+    SYSTEM_ERROR: 'SYSTEM_ERROR',
+    SYSTEM_MAINTENANCE: 'MAINTENANCE_ALERT'
+} as const;
+
+export type EventKey = typeof EVENTS[keyof typeof EVENTS];
+
+export const SOURCE_MODULES = {
+    INVENTORY: 'inventory',
+    TEAM: 'team',
+    BILLING: 'billing',
+    SYSTEM: 'system'
+} as const;
+
+export type SourceModule = typeof SOURCE_MODULES[keyof typeof SOURCE_MODULES];

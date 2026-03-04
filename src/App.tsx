@@ -32,6 +32,7 @@ import BillingSuccess from '@/pages/platform/BillingSuccess';
 import { useStore } from '@/store';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthProvider } from '@/hooks/AuthProvider';
+import { notificationListener } from '@/services/eventListeners/notificationListener';
 
 const AppContent: React.FC = () => {
     const currentCompanyId = useStore(state => state.currentCompanyId);
@@ -39,6 +40,15 @@ const AppContent: React.FC = () => {
     const location = useLocation();
 
     // ✅ PRIMERO: Todos los hooks SIEMPRE se ejecutan
+    useEffect(() => {
+        if (user) {
+            const listener = notificationListener.start();
+            return () => {
+                listener.unsubscribe();
+            };
+        }
+    }, [user]);
+
     useEffect(() => {
         if (user && currentCompanyId) {
             console.log('[App] Triggering full business data load');

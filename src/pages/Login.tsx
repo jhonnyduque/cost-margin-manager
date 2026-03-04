@@ -81,8 +81,8 @@ const Login: React.FC = () => {
                     </div>
 
                     <h1 style={{
-                        fontSize: tokens.typography.titleLg.fontSize,
-                        fontWeight: tokens.typography.titleLg.fontWeight,
+                        fontSize: tokens.typography.h1.fontSize,
+                        fontWeight: tokens.typography.h1.fontWeight,
                         color: tokens.colors.text.primary,
                         marginBottom: tokens.spacing.xs
                     }}>
