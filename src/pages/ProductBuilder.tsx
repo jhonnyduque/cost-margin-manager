@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Plus, Trash2, Edit2, Search, PlayCircle, Info, Layers, TrendingUp, CheckCircle2, X, ChevronRight, AlertTriangle, Scissors, RotateCcw, Ruler, History, Copy, Package, PackageSearch, Printer, Archive } from 'lucide-react';
+import { Plus, Trash2, Edit2, Search, PlayCircle, Info, Layers, TrendingUp, CheckCircle2, X, ChevronRight, AlertTriangle, RotateCcw, Ruler, History, Copy, Package, PackageSearch, Printer, Archive } from 'lucide-react';
 import { useStore, calculateProductCost, calculateFifoCost, getFifoBreakdown, hasProductGeneratedActiveDebt } from '../store';
 import { calculateFinancialMetrics } from '@/core/financialMetricsEngine';
+import { getEffectiveQuantity, calculatePiecesAreaM2, getLatestRollWidth, calculatePiecesToLinearMeters } from '@/utils/materialCalculations';
 import { Product, ProductMaterial, Status, Unit, RawMaterial, MaterialBatch } from '@/types';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
@@ -10,7 +11,7 @@ import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
-import { tokens } from '@/design/design-tokens';
+import { tokens, sectionTitleClasses, labelClasses, valueClasses, kvRowClasses } from '@/design/design-tokens';
 import { useCurrency } from '@/hooks/useCurrency';
 import { translateError } from '@/utils/errorHandler';
 
@@ -23,7 +24,16 @@ const getCommercialPrice = (price: number) => {
   return floor + 1.00;
 };
 
-// Interfaz extendida localmente para el estado del formulario de composición
+// ── INTERFACES: Estado tipado del formulario ─────────────────────────────
+interface ProductFormState {
+  name: string;
+  reference?: string;
+  price?: number;
+  target_margin: number;
+  materials: ProductMaterialUI[];
+  status?: Status;
+}
+
 interface ProductMaterialUI extends ProductMaterial {
   mode: 'linear' | 'pieces';
   pieces: { length: number; width: number }[];
@@ -34,10 +44,8 @@ const ProductBuilder = () => {
   const { id } = useParams(); // For editing an existing product
   const { currentCompanyId, currentUserRole, products, productMovements, rawMaterials, batches, movements, addProduct, deleteProduct, discontinueProduct, updateProduct, consumeStock, consumeStockBatch } = useStore();
 
-  const allowedRoles = ['super_admin', 'admin', 'owner', 'manager'];
-  const canCreate = allowedRoles.includes(currentUserRole || '');
-  const canEdit = allowedRoles.includes(currentUserRole || '');
-  const canDelete = allowedRoles.includes(currentUserRole || '');
+  // ✅ RBAC eliminado del frontend — ahora se aplica mediante RLS en Supabase
+  // Policies: 20260303211300_rbac_role_policies_v2.sql
 
   const { formatCurrency, currencySymbol } = useCurrency();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -48,7 +56,8 @@ const ProductBuilder = () => {
   const [selectorModal, setSelectorModal] = useState<{ isOpen: boolean; forIndex: number | null }>({ isOpen: false, forIndex: null });
   const [selectorSearch, setSelectorSearch] = useState('');
 
-  const [formData, setFormData] = useState<any>({
+  // ✅ formData tipado correctamente (hallazgo #6/#13)
+  const [formData, setFormData] = useState<ProductFormState>({
     name: '', reference: '', price: 0, target_margin: 30, materials: [], status: 'activa'
   });
 
@@ -95,26 +104,27 @@ const ProductBuilder = () => {
         navigate('/productos');
       }
     } else if (!id) {
-      // New product mode, clear form
+      // New product mode — auto-generate next incremental reference
       setEditingId(null);
-      setFormData({ name: '', materials: [], target_margin: 30, price: undefined }); // set to undefined to leave empty if new
+      const nextRef = (() => {
+        const existingRefs = products
+          .map(p => p.reference || '')
+          .filter(r => /^REF-\d+$/i.test(r))
+          .map(r => parseInt(r.replace(/^REF-/i, ''), 10));
+        const maxNum = existingRefs.length > 0 ? Math.max(...existingRefs) : 0;
+        return `REF-${String(maxNum + 1).padStart(3, '0')}`;
+      })();
+      setFormData({ name: '', reference: nextRef, materials: [], target_margin: 30, price: undefined });
     }
   }, [id, products, batches, navigate]);
 
-  const calculateTotalCost = (materials: any[]) => {
-    return (materials || []).reduce((total: number, pm: any) => {
-      let effectiveQty = pm.quantity;
-      if (pm.mode === 'pieces' && pm.pieces) {
-        const latestBatch = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-        const width = latestBatch?.width || 140;
-        const totalAreaCm2 = pm.pieces.reduce((acc: number, p: any) => acc + (p.length * p.width), 0);
-        effectiveQty = (totalAreaCm2 / width) / 100;
-      }
-      return total + calculateFifoCost(pm.material_id, effectiveQty, pm.consumption_unit, batches, rawMaterials);
-    }, 0);
-  };
-
-  const totalCurrentCost = useMemo(() => calculateTotalCost(formData.materials), [formData.materials, batches, rawMaterials]);
+  // 🟠 AUDIT FIX: calculateTotalCost local eliminado.
+  // Se usa calculateProductCost del store — fuente única de verdad para el costeo FIFO.
+  // Esto garantiza que el costo mostrado aquí sea idéntico al que guarda el store en Supabase.
+  const totalCurrentCost = useMemo(() => {
+    const tempProduct = { ...formData, materials: formData.materials || [] } as Product;
+    return calculateProductCost(tempProduct, batches, rawMaterials);
+  }, [formData.materials, batches, rawMaterials]);
 
   const exactSuggestedPrice = useMemo(() => {
     const margin = formData.target_margin || 0;
@@ -157,8 +167,8 @@ const ProductBuilder = () => {
   const addPiece = (idx: number) => {
     const materials = [...(formData.materials || [])];
     const mat = materials[idx];
-    const latestBatch = batches.filter(b => b.material_id === mat.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-    mat.pieces = [...(mat.pieces || []), { length: 10, width: latestBatch?.width || 140 }];
+    const rollWidth = getLatestRollWidth(mat.material_id, batches);
+    mat.pieces = [...(mat.pieces || []), { length: 10, width: rollWidth }];
     setFormData({ ...formData, materials });
   };
 
@@ -175,12 +185,27 @@ const ProductBuilder = () => {
   };
 
   const saveProduct = useCallback(async () => {
+    // 🔴 AUDIT FIX: Guard — no escribir sin tenant activo
+    if (!currentCompanyId) {
+      alert('Error: No hay una empresa activa. Por favor recarga la sesión.');
+      return;
+    }
+
+    // ── VALIDATION ──
+    const errors: string[] = [];
+    if (!formData.name?.trim()) errors.push('Nombre del producto');
+    if ((formData.materials || []).length === 0) errors.push('Al menos un insumo en la receta');
+    if (!formData.price || formData.price <= 0) errors.push('Precio de venta mayor a 0');
+    if (errors.length > 0) {
+      alert(`Faltan campos obligatorios:\n\n• ${errors.join('\n• ')}`);
+      return;
+    }
+
+    // Audit trail (created_by/updated_by) is handled by the store mutations.
     const processedMaterials = formData.materials.map((pm: any) => {
       if (pm.mode === 'pieces' && pm.pieces) {
-        const latestBatch = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-        const width = latestBatch?.width || 140;
-        const totalAreaCm2 = pm.pieces.reduce((acc: number, p: any) => acc + (p.length * p.width), 0);
-        return { ...pm, quantity: (totalAreaCm2 / width) / 100 };
+        const rollWidth = getLatestRollWidth(pm.material_id, batches);
+        return { ...pm, quantity: calculatePiecesToLinearMeters(pm.pieces, rollWidth) };
       }
       return pm;
     });
@@ -190,9 +215,9 @@ const ProductBuilder = () => {
       ...formData,
       materials: processedMaterials,
       id: editingId || crypto.randomUUID(),
-      company_id: currentCompanyId || '',
+      company_id: currentCompanyId,
       created_at: editingId ? (products.find(p => p.id === editingId)?.created_at) : now,
-      updated_at: now
+      updated_at: now,
     } as Product;
 
     try {
@@ -245,8 +270,37 @@ const ProductBuilder = () => {
   const metrics = calculateFinancialMetrics(
     totalCurrentCost,
     formData.price || 0,
-    (formData.target_margin || 30) / 100
+    (formData.target_margin || 30) / 100,
+    currencySymbol
   );
+
+  // 🟢 PHASE 3: Production Readiness — feasibility check per material
+  const productionReadiness = useMemo(() => {
+    const materials = formData.materials || [];
+    if (materials.length === 0) return { ready: false, items: [], hasMaterials: false };
+
+    const items = materials.map((pm: any) => {
+      const material = rawMaterials.find(m => m.id === pm.material_id);
+      const effectiveQty = getEffectiveQuantity(pm, batches, pm.material_id);
+      const availableBatches = batches.filter(b => b.material_id === pm.material_id);
+      const totalAvailable = availableBatches.reduce((acc, b) => acc + (b.remaining_quantity || 0), 0);
+      const deficit = Math.max(0, effectiveQty - totalAvailable);
+      return {
+        name: material?.name || 'Desconocido',
+        unit: material?.unit || '',
+        required: effectiveQty,
+        available: totalAvailable,
+        deficit,
+        isCovered: deficit <= 0.0001, // floating point tolerance
+      };
+    });
+
+    return {
+      ready: items.every(i => i.isCovered),
+      items,
+      hasMaterials: true,
+    };
+  }, [formData.materials, batches, rawMaterials]);
 
   const primaryActionLabel = editingId ? "Guardar Cambios" : "Crear Producto";
 
@@ -274,8 +328,8 @@ const ProductBuilder = () => {
 
               {/* ── SECCIÓN 1: INFORMACIÓN GENERAL ── */}
               <Card className="p-4 sm:p-6 shadow-sm border border-gray-100 bg-white">
-                <h2 className="text-sm font-bold uppercase tracking-widest text-gray-800 mb-4 flex items-center gap-2">
-                  <Package size={16} className="text-indigo-500" /> 1. Información General
+                <h2 className={`${sectionTitleClasses} mb-4 flex items-center gap-2`}>
+                  <Package size={16} className="text-indigo-500" aria-hidden="true" /> 1. Información General
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Input
@@ -298,8 +352,8 @@ const ProductBuilder = () => {
               <Card className="p-0 sm:p-0 shadow-sm border border-gray-100 overflow-visible bg-white">
                 <div className="p-4 lg:p-6 border-b border-gray-100 flex items-center justify-between gap-4">
                   <div className="flex flex-col">
-                    <h2 className="text-sm font-bold uppercase tracking-widest text-gray-800 flex items-center gap-2"><Scissors size={16} className="text-indigo-500" /> 2. Materia Prima</h2>
-                    <p className="text-xs text-gray-500 hidden sm:block mt-0.5">Define los insumos y el consumo base.</p>
+                    <h2 className={`${sectionTitleClasses} flex items-center gap-2`}><Layers size={16} className="text-indigo-500" aria-hidden="true" /> 2. Materia Prima</h2>
+                    <p className="text-[11px] text-slate-400 hidden sm:block mt-0.5">Define los insumos y el consumo base.</p>
                   </div>
                   <Button type="button" variant="secondary" onClick={handleAddMaterial} icon={<Plus size={16} />} className="bg-gray-50 hover:bg-indigo-50 text-indigo-600 hover:text-indigo-700 border border-gray-200 hover:border-indigo-200 text-sm py-1.5 px-3">
                     Nuevo Insumo
@@ -308,7 +362,7 @@ const ProductBuilder = () => {
 
                 <div className="flex-1 p-3 lg:p-6 space-y-4">
                   {(formData.materials || []).length === 0 && (
-                    <div className="text-center py-8 px-4 text-sm text-gray-400 font-medium border-2 border-dashed border-gray-100 rounded-xl">
+                    <div className="text-center py-8 px-4 text-sm text-slate-400 font-medium border-2 border-dashed border-slate-200 rounded-xl">
                       <div className="bg-indigo-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
                         <PackageSearch size={24} className="text-indigo-400" />
                       </div>
@@ -324,14 +378,12 @@ const ProductBuilder = () => {
                     let effectiveQty = pm.quantity;
                     let areaM2 = 0;
                     if (pm.mode === 'pieces' && pm.pieces) {
-                      const latestBatch = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-                      const width = latestBatch?.width || 140;
-                      const totalAreaCm2 = pm.pieces.reduce((acc: number, p: any) => acc + (p.length * p.width), 0);
-                      areaM2 = totalAreaCm2 / 10000;
-                      effectiveQty = (totalAreaCm2 / width) / 100;
+                      const rollWidth = getLatestRollWidth(pm.material_id, batches);
+                      areaM2 = calculatePiecesAreaM2(pm.pieces);
+                      effectiveQty = calculatePiecesToLinearMeters(pm.pieces, rollWidth);
                     } else if (isFabric) {
-                      const latestBatch = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-                      areaM2 = pm.quantity * ((latestBatch?.width || 140) / 100);
+                      const rollWidth = getLatestRollWidth(pm.material_id, batches);
+                      areaM2 = pm.quantity * (rollWidth / 100);
                     }
 
                     const breakdown = getFifoBreakdown(pm.material_id, effectiveQty, pm.consumption_unit, batches, rawMaterials);
@@ -361,84 +413,81 @@ const ProductBuilder = () => {
 
                     return (
                       <div key={idx} className={`overflow-hidden rounded-xl border transition-all ${hasMissingStock ? 'border-red-300 shadow-sm bg-red-50/20' : 'border-gray-200 hover:border-gray-300'}`}>
-                        <div className="flex flex-col gap-3 bg-gray-50/60 px-3 py-3 relative border-b border-gray-100 last:border-b-0">
+                        <div className="flex flex-col gap-2 bg-gray-50/60 px-3 py-3 relative border-b border-gray-100 last:border-b-0">
 
-                          {/* LINEA 1: Acciones superioes */}
+                          {/* LINEA ÚNICA: Nombre + Cantidad + Acciones + Costo */}
                           <div className="flex items-center justify-between w-full gap-2">
                             <button
                               type="button"
                               onClick={() => { setSelectorModal({ isOpen: true, forIndex: idx }); setSelectorSearch(''); }}
-                              className="flex-1 min-w-0 flex items-center justify-between rounded-lg border border-gray-200 bg-white py-2 px-3 text-sm font-semibold text-gray-800 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-colors shadow-sm"
+                              className="min-w-0 flex-1 flex items-center justify-between rounded-lg border border-slate-200 bg-white py-2 px-3 text-sm font-semibold text-slate-900 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-colors shadow-sm"
+                              aria-label={`Seleccionar insumo para ${material?.name || 'nuevo material'}`}
                             >
                               <span className="truncate">{material ? material.name : 'Seleccionar insumo...'}</span>
-                              <ChevronRight size={14} className="text-gray-400 flex-shrink-0 ml-1" />
+                              <ChevronRight size={14} className="text-slate-400 flex-shrink-0 ml-1" aria-hidden="true" />
                             </button>
 
+                            {/* Quantity inline */}
+                            <div className="w-20 shrink-0">
+                              {pm.mode === 'linear' ? (
+                                <div className="flex items-center rounded-lg border border-gray-200 bg-white focus-within:ring-2 focus-within:ring-indigo-100 shadow-sm overflow-hidden">
+                                  <input
+                                    type="number" step="0.01" min="0"
+                                    inputMode="decimal"
+                                    value={pm.quantity === 0 ? '' : pm.quantity ?? ''}
+                                    onChange={e => updateMaterial(idx, 'quantity', parseFloat(e.target.value) || 0)}
+                                    onKeyDown={handleNumberInputKeyDown}
+                                    className="w-full border-0 bg-transparent px-2 py-1.5 text-center text-[13px] font-bold tabular-nums text-slate-900 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                    placeholder="0"
+                                    aria-label={`Cantidad de ${material?.name || 'material'}`}
+                                  />
+                                </div>
+                              ) : (
+                                <div className="flex h-[32px] items-center justify-center rounded-lg border border-indigo-200 bg-indigo-50 px-2 shadow-sm">
+                                  <span className="text-[13px] font-bold tabular-nums text-indigo-700">{areaM2.toFixed(2)}m²</span>
+                                </div>
+                              )}
+                            </div>
+
                             <div className="flex items-center gap-0.5 bg-white rounded-lg border border-gray-200 p-0.5 shadow-sm shrink-0">
-                              <button type="button" onClick={() => setExpandedMaterial(isExpanded ? null : idx)} className={`rounded p-1.5 transition-colors ${isExpanded ? 'bg-indigo-50 text-indigo-600' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'}`} title="Método FIFO (Primeras Entradas, Primeras Salidas) - Desglose de lotes para costeo">
-                                <Info size={18} />
+                              <button type="button" onClick={() => setExpandedMaterial(isExpanded ? null : idx)} className={`rounded p-1.5 transition-colors ${isExpanded ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`} title="Desglose FIFO" aria-label={isExpanded ? 'Ocultar desglose FIFO' : 'Mostrar desglose FIFO'}>
+                                <Info size={18} aria-hidden="true" />
                               </button>
-                              <button type="button" onClick={() => removeMaterial(idx)} className="rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors">
-                                <Trash2 size={18} />
+                              <button type="button" onClick={() => removeMaterial(idx)} className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors" aria-label={`Eliminar ${material?.name || 'material'} de la receta`}>
+                                <Trash2 size={18} aria-hidden="true" />
                               </button>
+                            </div>
+
+                            {/* Cost inline */}
+                            <div className="flex flex-col items-end shrink-0">
+                              <span className={`text-sm font-black tabular-nums leading-none ${hasMissingStock ? 'text-red-600' : 'text-slate-900'}`} title={hasMissingStock ? 'Stock insuficiente' : mainBatchInfo}>
+                                {formatCurrency(costRow)}
+                              </span>
                             </div>
                           </div>
 
-                          {/* LINEA 2: Inputs y Resultados */}
-                          <div className="flex items-center justify-between w-full gap-2 mt-1">
+                          {/* LINEA 2: Meta info compacta */}
+                          <div className="flex items-center justify-between w-full gap-2 px-0.5">
                             <div className="flex items-center gap-2">
-                              {/* Quantity Control */}
-                              <div className="w-24 shrink-0">
-                                {pm.mode === 'linear' ? (
-                                  <div className="flex items-center rounded-lg border border-gray-200 bg-white focus-within:ring-2 focus-within:ring-indigo-100 shadow-sm overflow-hidden">
-                                    <span className="pl-2 pt-0.5 text-[9px] text-gray-400 font-bold uppercase transition-colors">Cant</span>
-                                    <input
-                                      type="number" step="0.01" min="0"
-                                      value={pm.quantity === 0 ? '' : pm.quantity ?? ''}
-                                      onChange={e => updateMaterial(idx, 'quantity', parseFloat(e.target.value) || 0)}
-                                      onKeyDown={handleNumberInputKeyDown}
-                                      className="w-full border-0 bg-transparent px-2 py-1.5 text-right text-[13px] font-bold tabular-nums text-gray-900 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                                      placeholder="0"
-                                    />
-                                  </div>
-                                ) : (
-                                  <div className="flex h-[32px] items-center justify-between rounded-lg border border-indigo-200 bg-indigo-50 px-2 shadow-sm">
-                                    <span className="text-[9px] text-indigo-400 font-bold uppercase">Área</span>
-                                    <span className="text-[13px] font-bold tabular-nums text-indigo-700">{areaM2.toFixed(2)}m²</span>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Stock Badge & Mode Toggle */}
-                              <div className="flex flex-col gap-1 items-start justify-center">
-                                {isFabric && (
-                                  <div className="flex gap-0.5 rounded border border-gray-200 bg-white p-0.5 text-[8px] font-bold uppercase leading-none overflow-hidden hidden sm:flex">
-                                    <button type="button" onClick={() => updateMaterial(idx, 'mode', 'linear')} className={`px-1.5 py-1 rounded-[2px] ${pm.mode === 'linear' ? 'bg-indigo-50 text-indigo-600' : 'text-gray-400 hover:bg-gray-50'}`}>Lin</button>
-                                    <button type="button" onClick={() => updateMaterial(idx, 'mode', 'pieces')} className={`px-1.5 py-1 rounded-[2px] ${pm.mode === 'pieces' ? 'bg-indigo-50 text-indigo-600' : 'text-gray-400 hover:bg-gray-50'}`}>Pzas</button>
-                                  </div>
-                                )}
-                                <span className={`text-[9px] font-bold uppercase tracking-widest ${totalAvailable > 0 ? 'text-gray-400' : 'text-red-400'}`}>
-                                  {stockInfo}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Cost Row Area */}
-                            <div className="flex flex-col items-end flex-shrink-0">
-                              <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Costo Línea</span>
-                              <span className={`text-base font-black tabular-nums leading-none ${hasMissingStock ? 'text-red-600' : 'text-gray-900'}`} title={hasMissingStock ? 'Stock insuficiente' : mainBatchInfo}>
-                                {formatCurrency(costRow)}
+                              {isFabric && (
+                                <div className="flex gap-0.5 rounded border border-slate-200 bg-white p-0.5 text-[11px] font-bold uppercase leading-none overflow-hidden hidden sm:flex">
+                                  <button type="button" onClick={() => updateMaterial(idx, 'mode', 'linear')} className={`px-2 py-1 rounded-[3px] ${pm.mode === 'linear' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:bg-slate-50'}`} aria-label="Modo metros lineales">Lin</button>
+                                  <button type="button" onClick={() => updateMaterial(idx, 'mode', 'pieces')} className={`px-2 py-1 rounded-[3px] ${pm.mode === 'pieces' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:bg-slate-50'}`} aria-label="Modo piezas">Pzas</button>
+                                </div>
+                              )}
+                              <span className={`text-[11px] font-bold uppercase tracking-widest ${totalAvailable > 0 ? 'text-slate-600' : 'text-red-500'}`}>
+                                {stockInfo}
                               </span>
-                              <div className="flex items-center mt-1">
-                                {mainBatchInfo && !hasMissingStock && (
-                                  <span className="text-[9px] font-bold text-emerald-600 truncate max-w-[130px]" title={mainBatchInfo}>
-                                    {mainBatchInfo}
-                                  </span>
-                                )}
-                                {hasMissingStock && (
-                                  <span className="text-[9px] font-bold uppercase tracking-widest text-red-500 bg-red-50 px-1 py-0.5 rounded leading-none flex items-center gap-1"><AlertTriangle size={8} /> Falta Stock</span>
-                                )}
-                              </div>
+                            </div>
+                            <div className="flex items-center">
+                              {mainBatchInfo && !hasMissingStock && (
+                                <span className="text-[11px] font-bold text-emerald-600 truncate max-w-[180px]" title={mainBatchInfo}>
+                                  {mainBatchInfo}
+                                </span>
+                              )}
+                              {hasMissingStock && (
+                                <span className="text-[11px] font-bold uppercase tracking-widest text-red-500 bg-red-50 px-1.5 py-0.5 rounded leading-none flex items-center gap-1"><AlertTriangle size={10} aria-hidden="true" /> Falta Stock</span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -448,15 +497,15 @@ const ProductBuilder = () => {
                           <div className="space-y-6 border-t border-gray-100 px-4 sm:px-8 pb-6 pt-5 bg-white shadow-inner">
                             {(breakdown.length > 0 || effectiveQty === 0) && (
                               <div className="space-y-3">
-                                <h5 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-gray-500"><History size={14} /> Asignación Lotes (FIFO)</h5>
+                                <h5 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-slate-600"><History size={14} aria-hidden="true" /> Asignación Lotes (FIFO)</h5>
                                 <div className="rounded-xl border border-gray-200 bg-gray-50 overflow-hidden shadow-sm">
                                   <table className="w-full text-xs">
                                     <thead className="bg-gray-100/80 border-b border-gray-200">
                                       <tr>
-                                        <th className="px-3 md:px-4 py-2 text-left font-bold text-gray-500">Lote</th>
-                                        <th className="px-3 md:px-4 py-2 text-right font-bold text-gray-500">Volumen</th>
-                                        <th className="px-3 md:px-4 py-2 text-right font-bold text-gray-500">Costo Und.</th>
-                                        <th className="px-3 md:px-4 py-2 text-right font-bold text-gray-500">Parcial</th>
+                                        <th className="px-3 md:px-4 py-2 text-left font-bold text-slate-600">Lote</th>
+                                        <th className="px-3 md:px-4 py-2 text-right font-bold text-slate-600">Volumen</th>
+                                        <th className="px-3 md:px-4 py-2 text-right font-bold text-slate-600">Costo Und.</th>
+                                        <th className="px-3 md:px-4 py-2 text-right font-bold text-slate-600">Parcial</th>
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
@@ -494,22 +543,22 @@ const ProductBuilder = () => {
                             {pm.mode === 'pieces' && (
                               <div className="space-y-4">
                                 <div className="flex items-center justify-between">
-                                  <h5 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-indigo-500"><Scissors size={14} /> Trazado de Piezas</h5>
-                                  <Button size="sm" variant="secondary" onClick={() => addPiece(idx)} className="text-[11px] h-7 px-2">Añadir Pieza</Button>
+                                  <h5 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-indigo-500"><Ruler size={14} aria-hidden="true" /> Trazado de Piezas</h5>
+                                  <Button variant="secondary" onClick={() => addPiece(idx)} className="text-[11px] h-7 px-2">Añadir Pieza</Button>
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                   {(pm.pieces || []).map((piece: any, pIdx: number) => (
                                     <div key={pIdx} className="flex items-center gap-2 rounded-lg border border-indigo-100 bg-indigo-50/30 p-2 shadow-sm">
                                       <div className="flex-1">
-                                        <label className="text-[9px] font-bold uppercase text-indigo-400 block mb-0.5">Largo</label>
-                                        <input type="number" step="0.1" className="w-full rounded bg-white border border-gray-200 px-2 py-1 text-sm font-bold focus:ring-1 focus:ring-indigo-300 outline-none" value={piece.length} onChange={e => updatePiece(idx, pIdx, 'length', parseFloat(e.target.value) || 0)} />
+                                        <label className="text-[11px] font-bold uppercase text-indigo-500 block mb-0.5">Largo</label>
+                                        <input type="number" step="0.1" inputMode="decimal" aria-label={`Largo pieza ${pIdx + 1}`} className="w-full rounded bg-white border border-slate-200 px-2 py-1 text-sm font-bold focus:ring-1 focus:ring-indigo-300 outline-none" value={piece.length} onChange={e => updatePiece(idx, pIdx, 'length', parseFloat(e.target.value) || 0)} onKeyDown={handleNumberInputKeyDown} />
                                       </div>
-                                      <span className="text-gray-400 mt-4">×</span>
+                                      <span className="text-slate-400 mt-4" aria-hidden="true">×</span>
                                       <div className="flex-1">
-                                        <label className="text-[9px] font-bold uppercase text-indigo-400 block mb-0.5">Ancho</label>
-                                        <input type="number" step="0.1" className="w-full rounded bg-white border border-gray-200 px-2 py-1 text-sm font-bold focus:ring-1 focus:ring-indigo-300 outline-none" value={piece.width} onChange={e => updatePiece(idx, pIdx, 'width', parseFloat(e.target.value) || 0)} />
+                                        <label className="text-[11px] font-bold uppercase text-indigo-500 block mb-0.5">Ancho</label>
+                                        <input type="number" step="0.1" inputMode="decimal" aria-label={`Ancho pieza ${pIdx + 1}`} className="w-full rounded bg-white border border-gray-200 px-2 py-1 text-sm font-bold focus:ring-1 focus:ring-indigo-300 outline-none" value={piece.width} onChange={e => updatePiece(idx, pIdx, 'width', parseFloat(e.target.value) || 0)} onKeyDown={handleNumberInputKeyDown} />
                                       </div>
-                                      <button type="button" onClick={() => removePiece(idx, pIdx)} className="text-gray-400 hover:text-red-500 mt-4 px-1"><X size={16} /></button>
+                                      <button type="button" onClick={() => removePiece(idx, pIdx)} className="text-slate-400 hover:text-red-500 mt-4 px-1" aria-label={`Eliminar pieza ${pIdx + 1}`}><X size={16} aria-hidden="true" /></button>
                                     </div>
                                   ))}
                                 </div>
@@ -525,8 +574,8 @@ const ProductBuilder = () => {
 
               {/* ── SECCIÓN 3: COSTOS & PRECIO ── */}
               <Card className="p-4 sm:p-6 shadow-sm border border-gray-100 bg-white">
-                <h2 className="text-sm font-bold uppercase tracking-widest text-gray-800 mb-4 flex items-center gap-2">
-                  <TrendingUp size={16} className="text-indigo-500" /> 3. Configuración de Precios
+                <h2 className={`${sectionTitleClasses} mb-4 flex items-center gap-2`}>
+                  <TrendingUp size={16} className="text-indigo-500" aria-hidden="true" /> 3. Configuración de Precios
                 </h2>
 
                 {/* FLOW LOCK: Hide section if recipe has no materials */}
@@ -545,47 +594,50 @@ const ProductBuilder = () => {
                   </div>
                 ) : (
                   <>
-                    <div className="grid grid-cols-2 gap-4 sm:gap-6 items-start">
-                      {/* Control Numerico Determinista (Eliminado Slider) */}
-                      <div className="space-y-2">
-                        <label className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-gray-400">Margen Objetivo (%)</label>
+                    {/* Desktop: 4 columnas en una fila | Mobile: 2x2 grid */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                      {/* Margen Objetivo */}
+                      <div className="space-y-1.5">
+                        <label className={labelClasses}>Margen Objetivo (%)</label>
                         <div className="w-full flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 focus-within:ring-2 focus-within:ring-indigo-100 focus-within:bg-white focus-within:border-indigo-400 transition-colors">
                           <input
                             type="number" step="0.1" min="0" max="100"
+                            inputMode="decimal"
                             value={formData.target_margin === 0 ? '' : formData.target_margin ?? ''}
                             onChange={e => setFormData({ ...formData, target_margin: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
                             onKeyDown={handleNumberInputKeyDown}
-                            className="w-full text-right text-base sm:text-lg font-bold outline-none bg-transparent tabular-nums text-gray-800 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            className="w-full text-right text-base font-bold outline-none bg-transparent tabular-nums text-slate-900 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                           />
-                          <span className="text-sm font-bold text-gray-400">%</span>
+                          <span className="text-sm font-bold text-slate-400">%</span>
                         </div>
                       </div>
 
-                      {/* Input Precio Final */}
-                      <div className="space-y-2">
-                        <label className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-gray-400">Precio Final</label>
+                      {/* Precio Final */}
+                      <div className="space-y-1.5">
+                        <label className={labelClasses}>Precio Final</label>
                         <div className="relative">
-                          <span className={`absolute left-4 top-1/2 -translate-y-1/2 text-base font-bold leading-none ${metrics.priceState === 'loss' ? 'text-red-500' : metrics.priceState === 'warning' ? 'text-amber-500' : 'text-gray-800'}`}>{currencySymbol}</span>
+                          <span className={`absolute left-4 top-1/2 -translate-y-1/2 text-base font-bold leading-none ${metrics.priceState === 'loss' ? 'text-red-500' : metrics.priceState === 'warning' ? 'text-amber-500' : 'text-slate-800'}`}>{currencySymbol}</span>
                           <input
                             type="number" step="0.01"
+                            inputMode="decimal"
                             value={formData.price === 0 ? '' : formData.price ?? ''}
                             onChange={e => setFormData({ ...formData, price: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
                             onKeyDown={handleNumberInputKeyDown}
-                            className={`w-full rounded-lg border py-2.5 pl-9 pr-4 text-lg font-bold tabular-nums outline-none transition-colors ${metrics.priceState === 'loss' ? 'border-red-300 bg-red-50 text-red-700 focus:border-red-400 focus:ring-red-100' : metrics.priceState === 'warning' ? 'border-amber-300 bg-amber-50 text-amber-800 focus:border-amber-400 focus:ring-amber-100' : 'border-gray-200 bg-gray-50 text-gray-800 focus:bg-white focus:border-indigo-400 focus:ring-indigo-100'} focus:ring-2`}
+                            className={`w-full rounded-lg border py-2.5 pl-9 pr-4 text-base font-bold tabular-nums outline-none transition-colors ${metrics.priceState === 'loss' ? 'border-red-300 bg-red-50 text-red-700 focus:border-red-400 focus:ring-red-100' : metrics.priceState === 'warning' ? 'border-amber-300 bg-amber-50 text-amber-800 focus:border-amber-400 focus:ring-amber-100' : 'border-gray-200 bg-gray-50 text-slate-900 focus:bg-white focus:border-indigo-400 focus:ring-indigo-100'} focus:ring-2`}
                           />
                         </div>
                       </div>
-                    </div>
 
-                    <div className="mt-6 flex flex-wrap gap-2 pt-4 border-t border-gray-100">
-                      <div className="w-full text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Precios sugeridos según costo y margen</div>
-                      <button type="button" onClick={() => setFormData({ ...formData, price: exactSuggestedPrice })} className="flex-1 rounded-xl border border-gray-200 bg-white py-2.5 px-2 text-center transition-all hover:border-indigo-300 hover:bg-indigo-50 hover:shadow-sm group flex flex-col justify-center items-center gap-1">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400 group-hover:text-indigo-500">Exacto</span>
-                        <span className="text-sm font-black leading-none tabular-nums text-gray-800 group-hover:text-indigo-700 transition-colors">Aplicar {formatCurrency(exactSuggestedPrice)}</span>
+                      {/* Sugerido Exacto */}
+                      <button type="button" onClick={() => setFormData({ ...formData, price: exactSuggestedPrice })} className="flex flex-col justify-center items-center gap-1 rounded-xl border border-gray-200 bg-white py-2.5 px-2 text-center transition-all hover:border-indigo-300 hover:bg-indigo-50 hover:shadow-sm group">
+                        <span className="text-[11px] font-bold uppercase tracking-widest text-slate-600 group-hover:text-indigo-500">Exacto</span>
+                        <span className="text-sm font-black leading-none tabular-nums text-slate-900 group-hover:text-indigo-700 transition-colors">{formatCurrency(exactSuggestedPrice)}</span>
                       </button>
-                      <button type="button" onClick={() => setFormData({ ...formData, price: commercialSuggestedPrice })} className="flex-1 rounded-xl border border-emerald-100 bg-emerald-50/50 py-2.5 px-2 text-center transition-all hover:border-emerald-300 hover:bg-emerald-100 hover:shadow-sm group flex flex-col justify-center items-center gap-1">
-                        <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-emerald-600/80 group-hover:text-emerald-600"><TrendingUp size={10} /> Redondeo Básico</span>
-                        <span className="text-sm font-black leading-none tabular-nums text-emerald-700 group-hover:text-emerald-800 transition-colors">Aplicar {formatCurrency(commercialSuggestedPrice)}</span>
+
+                      {/* Sugerido Comercial */}
+                      <button type="button" onClick={() => setFormData({ ...formData, price: commercialSuggestedPrice })} className="flex flex-col justify-center items-center gap-1 rounded-xl border border-emerald-100 bg-emerald-50/50 py-2.5 px-2 text-center transition-all hover:border-emerald-300 hover:bg-emerald-100 hover:shadow-sm group">
+                        <span className="text-[11px] font-bold uppercase tracking-widest text-emerald-600/80 group-hover:text-emerald-600">Redondeo</span>
+                        <span className="text-sm font-black leading-none tabular-nums text-emerald-700 group-hover:text-emerald-800 transition-colors">{formatCurrency(commercialSuggestedPrice)}</span>
                       </button>
                     </div>
                   </>
@@ -596,68 +648,119 @@ const ProductBuilder = () => {
 
             {/* ── SECCIÓN 4: RESUMEN FINANCIERO (SCROLL NORMAL MÓVIL / SIDEBAR DESKTOP) ── */}
             <div className="w-full lg:w-[360px] mt-6 lg:mt-0 lg:sticky lg:top-24 lg:z-10">
-              <Card className="rounded-2xl p-4 sm:p-5 lg:p-6 shadow-sm border border-gray-200 bg-white lg:bg-gray-900 lg:text-white lg:shadow-xl lg:border-gray-800">
-                <h2 className="flex text-[11px] font-bold uppercase tracking-widest text-gray-500 lg:text-gray-400 mb-4 lg:mb-6 items-center gap-2">
-                  <Layers size={14} className="text-indigo-500 lg:text-indigo-400" /> Resumen Comercial
+              <Card className="rounded-2xl p-4 sm:p-5 lg:p-6 shadow-sm border border-gray-200 bg-white">
+                <h2 className="flex text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-4 lg:mb-6 items-center gap-2">
+                  <Layers size={14} className="text-indigo-500" /> Resumen Comercial
                 </h2>
 
-                <div className="space-y-4 lg:space-y-5">
-                  <div className="flex items-center justify-between pb-0 lg:pb-3 lg:border-b lg:border-gray-700">
-                    <span className="text-xs font-bold uppercase tracking-widest text-gray-500 lg:text-gray-400">Costo Base (FIFO)</span>
-                    <span className="text-lg font-black tabular-nums text-gray-900 lg:text-gray-300">{formatCurrency(totalCurrentCost)}</span>
+                <div className="space-y-3 lg:space-y-4">
+                  {/* Costo Base */}
+                  <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
+                    <span className="text-xs font-bold uppercase tracking-widest text-slate-600">Costo Base (FIFO)</span>
+                    <span className="text-lg font-black tabular-nums text-slate-900">{formatCurrency(totalCurrentCost)}</span>
                   </div>
 
                   {/* Financial Mini-Dashboard: Visible if cost > 0 and price > 0 */}
                   {(totalCurrentCost > 0 && !!formData.price && formData.price > 0) ? (
-                    <div className="flex flex-col space-y-4 pt-1">
-
-                      {/* Margen Real % */}
-                      <div className="flex items-center justify-between mt-1">
-                        <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-gray-400">Margen real</span>
+                    <>
+                      {/* Margen Real */}
+                      <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
+                        <span className="text-xs font-bold uppercase tracking-widest text-slate-600">Margen real</span>
                         <div className="flex items-baseline gap-1.5">
-                          <span className={`text-base font-black tabular-nums leading-none ${metrics.priceState === 'loss' ? 'text-red-500 lg:text-red-400' : metrics.priceState === 'warning' ? 'text-amber-500 lg:text-amber-400' : metrics.targetStatus === 'increase_required' ? 'text-amber-500 lg:text-amber-300' : 'text-emerald-500 lg:text-emerald-400'}`}>
+                          <span className={`text-base font-black tabular-nums leading-none ${metrics.priceState === 'loss' ? 'text-red-500' : metrics.priceState === 'warning' ? 'text-amber-500' : metrics.targetStatus === 'increase_required' ? 'text-amber-500' : 'text-emerald-500'}`}>
                             {metrics.marginDisplay}
                           </span>
-                          <span className={`text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 ${metrics.priceState === 'loss' ? 'text-red-400' : metrics.priceState === 'warning' ? 'text-amber-400' : metrics.targetStatus === 'increase_required' ? 'text-amber-400' : 'text-emerald-400'}`}>
+                          <span className={`text-[11px] font-bold uppercase tracking-widest ${metrics.priceState === 'loss' ? 'text-red-400' : metrics.priceState === 'warning' ? 'text-amber-400' : metrics.targetStatus === 'increase_required' ? 'text-amber-400' : 'text-emerald-500'}`}>
                             · {metrics.priceState === 'loss' ? 'Pérdida' : metrics.priceState === 'warning' ? 'Eq.' : metrics.targetStatus === 'increase_required' ? 'Bajo' : 'Óptimo'}
                           </span>
                         </div>
                       </div>
 
-                      {/* PRECIO FINAL - PRIMARY VALUE */}
-                      <div className="pt-5 pb-2 border-t border-gray-100 lg:border-gray-700/50 flex flex-col items-center justify-center relative">
-                        <div className="absolute inset-0 bg-gradient-to-t from-indigo-50/50 to-transparent lg:from-indigo-900/10 lg:to-transparent -mx-4 sm:-mx-5 lg:-mx-6 -mb-6 pointer-events-none rounded-b-2xl"></div>
-                        <span className="text-[11px] font-bold uppercase tracking-widest text-gray-400 lg:text-gray-500 mb-1 z-10">Precio Final</span>
-                        <span className="text-[40px] lg:text-5xl font-black tabular-nums text-gray-900 lg:text-white tracking-tight z-10">
+                      {/* Precio Final */}
+                      <div className="rounded-xl bg-slate-50 px-4 py-5 flex flex-col items-center justify-center">
+                        <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1">Precio Final</span>
+                        <span className="text-4xl lg:text-5xl font-black tabular-nums tracking-tight text-slate-900">
                           {formatCurrency(formData.price || 0)}
                         </span>
-                      </div>
-
-                      {/* Disclaimer */}
-                      <div className="mt-2 flex items-start gap-2 text-gray-500 lg:text-gray-400 bg-gray-50 lg:bg-gray-800/80 p-3 rounded-xl border border-gray-100 lg:border-gray-700/80 z-10 relative">
-                        <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
-                        <span className="text-[11px] font-medium leading-snug">
-                          Este será el precio de venta al público publicado.
+                        <span className="mt-1 text-[11px] font-medium text-slate-400 flex items-center gap-1">
+                          <CheckCircle2 size={11} className="text-emerald-500" aria-hidden="true" /> Precio de venta al público
                         </span>
                       </div>
-                    </div>
+                    </>
                   ) : (
-                    <div className="hidden lg:block text-[11px] font-medium text-gray-500 pb-2 text-center border-t border-gray-700/50 pt-5">
-                      Faltan datos para calcular rentabilidad.
+                    <div className="rounded-xl bg-slate-50 px-4 py-5 text-center">
+                      <span className="text-[11px] font-medium text-slate-400">
+                        Faltan datos para calcular rentabilidad.
+                      </span>
                     </div>
                   )}
 
                   {/* ACTION BUTTONS */}
-                  <div className="flex gap-2 sm:gap-3 lg:flex-col lg:gap-3 mt-4 lg:mt-6">
-                    <Button type="button" variant="secondary" className="flex-1 lg:w-full bg-gray-100 hover:bg-gray-200 text-gray-700 lg:bg-gray-800 lg:text-gray-300 lg:hover:bg-gray-700 lg:border-gray-700 justify-center py-3.5 sm:py-4 transition-colors font-bold" onClick={() => navigate('/productos')}>
-                      Cancelar
-                    </Button>
-                    <Button type="button" className={`flex-[2] lg:w-full py-3.5 sm:py-4 text-sm sm:text-base font-bold text-white shadow-lg transition-all ${((formData.materials || []).length === 0 || totalCurrentCost <= 0) ? 'bg-indigo-400 cursor-not-allowed opacity-80' : 'bg-indigo-600 hover:bg-indigo-700'}`} onClick={saveProduct} icon={<CheckCircle2 size={18} />} disabled={(formData.materials || []).length === 0 || totalCurrentCost <= 0}>
+                  <div className="flex flex-col gap-3 pt-2">
+                    <Button
+                      type="button"
+                      variant="primary"
+                      className="w-full py-6"
+                      onClick={saveProduct}
+                      icon={<CheckCircle2 size={20} aria-hidden="true" />}
+                      disabled={(formData.materials || []).length === 0 || totalCurrentCost <= 0}
+                    >
                       {primaryActionLabel}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="w-full"
+                      onClick={() => navigate('/productos')}
+                    >
+                      Cancelar
                     </Button>
                   </div>
                 </div>
               </Card>
+
+              {/* ── PRODUCTION READINESS PANEL ── */}
+              {productionReadiness.hasMaterials && (
+                <Card className={`rounded-2xl p-4 sm:p-5 lg:p-6 shadow-sm border mt-4 transition-colors ${productionReadiness.ready
+                  ? 'border-emerald-200 bg-emerald-50'
+                  : 'border-red-200 bg-red-50'
+                  }`}>
+                  <h2 className={`flex text-[11px] font-bold uppercase tracking-widest mb-3 items-center gap-2 ${productionReadiness.ready
+                    ? 'text-emerald-600'
+                    : 'text-red-600'
+                    }`}>
+                    {productionReadiness.ready
+                      ? <><CheckCircle2 size={14} /> Listo para Producir</>
+                      : <><AlertTriangle size={14} /> Stock Insuficiente</>
+                    }
+                  </h2>
+
+                  {productionReadiness.ready ? (
+                    <p className="text-xs font-medium text-emerald-700">
+                      Todos los insumos tienen stock suficiente para producir al menos 1 unidad.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {productionReadiness.items.filter(i => !i.isCovered).map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between gap-2 rounded-lg bg-white border border-red-100 p-2.5">
+                          <div className="min-w-0 flex-1">
+                            <span className="text-xs font-bold text-red-800 truncate block">{item.name}</span>
+                            <span className="text-[11px] text-red-500">
+                              Necesitas {item.required.toFixed(2)} {item.unit} · Disponible {item.available.toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <span className="text-xs font-black text-red-600 tabular-nums">
+                              −{item.deficit.toFixed(2)}
+                            </span>
+                            <span className="text-[11px] font-bold text-red-400 block uppercase">Déficit</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              )}
             </div>
 
           </div>
@@ -679,8 +782,8 @@ const ProductBuilder = () => {
             <div className="px-5 pt-3 pb-4 lg:p-6 border-b border-gray-100 bg-white flex-shrink-0">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base lg:text-lg font-black tracking-tight text-gray-900">Buscar Insumos</h3>
-                <button onClick={() => setSelectorModal({ isOpen: false, forIndex: null })} className="p-2 rounded-full hover:bg-gray-100 text-gray-400 transition-colors">
-                  <X size={20} />
+                <button onClick={() => setSelectorModal({ isOpen: false, forIndex: null })} className="p-2 rounded-full hover:bg-slate-100 text-slate-400 transition-colors" aria-label="Cerrar buscador de insumos">
+                  <X size={20} aria-hidden="true" />
                 </button>
               </div>
               <div className="relative">
@@ -728,7 +831,7 @@ const ProductBuilder = () => {
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-bold text-gray-900 group-hover:text-indigo-700 transition-colors truncate">{m.name}</div>
                         <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
-                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded-[4px] font-bold uppercase tracking-widest text-[9px] ${totalAvailable > 0 ? 'bg-indigo-50 text-indigo-500' : 'bg-red-50 text-red-500'}`}>
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded-[4px] font-bold uppercase tracking-widest text-[11px] ${totalAvailable > 0 ? 'bg-indigo-50 text-indigo-500' : 'bg-red-50 text-red-500'}`}>
                             {totalAvailable > 0 ? `${totalAvailable.toFixed(2)} ${m.unit}` : 'Agotado'}
                           </span>
                         </div>

@@ -45,7 +45,8 @@ export interface FinancialMetrics {
 export function calculateFinancialMetrics(
     cost: number,
     currentPrice: number,
-    marginTarget: number
+    marginTarget: number,
+    currencySymbol: string = '$'
 ): FinancialMetrics {
     // ── Rentabilidad ──────────────────────────────────────────────────────────
     const profitVsCost = currentPrice - cost;
@@ -67,16 +68,16 @@ export function calculateFinancialMetrics(
     // ── Labels ────────────────────────────────────────────────────────────────
     const profitLabel =
         profitVsCost > 0
-            ? `+$${profitVsCost.toFixed(2)} sobre costo FIFO`
+            ? `+${currencySymbol}${profitVsCost.toFixed(2)} sobre costo FIFO`
             : profitVsCost < 0
-                ? `-$${Math.abs(profitVsCost).toFixed(2)} bajo costo FIFO`
+                ? `-${currencySymbol}${Math.abs(profitVsCost).toFixed(2)} bajo costo FIFO`
                 : 'Punto de equilibrio';
 
     const adjustmentLabel =
         adjustmentNeeded > 0.005
-            ? `Sube $${adjustmentNeeded.toFixed(2)} para alcanzar el margen objetivo`
+            ? `Sube ${currencySymbol}${adjustmentNeeded.toFixed(2)} para alcanzar el margen objetivo`
             : adjustmentNeeded < -0.005
-                ? `Superas el objetivo por $${Math.abs(adjustmentNeeded).toFixed(2)}`
+                ? `Superas el objetivo por ${currencySymbol}${Math.abs(adjustmentNeeded).toFixed(2)}`
                 : `Objetivo de margen alcanzado`;
 
     const targetStatus =

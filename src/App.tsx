@@ -16,6 +16,7 @@ import Settings from '@/pages/Settings';
 import MorePage from '@/pages/MorePage'; // ✅ Import agregado
 import FinishedGoods from '@/pages/FinishedGoods';
 import ProductBuilder from '@/pages/ProductBuilder';
+import ProductDetail from '@/pages/ProductDetail';
 
 // Pages (New in Src)
 import PlatformAdmin from './pages/PlatformAdmin';
@@ -118,6 +119,7 @@ const AppContent: React.FC = () => {
                 <Route path="/productos" element={<Products />} />
                 <Route path="/productos/nuevo" element={<ProductBuilder />} />
                 <Route path="/productos/editar/:id" element={<ProductBuilder />} />
+                <Route path="/productos/detalle/:id" element={<ProductDetail />} />
                 <Route path="/inventario" element={<FinishedGoods />} />
                 <Route path="/materias-primas" element={<RawMaterials />} />
                 <Route path="/equipo" element={<Team />} />

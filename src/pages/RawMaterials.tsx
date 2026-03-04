@@ -12,13 +12,18 @@ import { tokens } from '@/design/design-tokens';
 import { useCurrency } from '@/hooks/useCurrency';
 import { Badge } from '@/components/ui/Badge';
 import { translateError } from '@/utils/errorHandler';
+import { calculateBatchArea } from '@/utils/materialCalculations';
 
 const RawMaterials: React.FC = () => {
   const navigate = useNavigate();
-  const { currentCompanyId, currentUserRole, rawMaterials, products, batches, movements, addRawMaterial, deleteRawMaterial, archiveMaterial, updateRawMaterial, addBatch, deleteBatch, updateBatch } = useStore();
+  const {
+    currentCompanyId, currentUserRole,
+    rawMaterials, products, batches, movements,
+    addRawMaterial, deleteRawMaterial, archiveMaterial, updateRawMaterial,
+    addBatch, deleteBatch, updateBatch
+  } = useStore();
   const { formatCurrency, currencySymbol } = useCurrency();
 
-  // 🔹 Helpers de permisos según rol
   const allowedRoles = ['super_admin', 'admin', 'owner', 'manager'];
   const canCreate = allowedRoles.includes(currentUserRole || '');
   const canEdit = allowedRoles.includes(currentUserRole || '');
@@ -33,15 +38,8 @@ const RawMaterials: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [editingBatchData, setEditingBatchData] = useState<MaterialBatch | null>(null);
   const [formData, setFormData] = useState<any>({
-    name: '',
-    description: '',
-    type: 'Tela',
-    unit: 'metro',
-    provider: '',
-    status: 'activa',
-    initialQty: 0,
-    unitCost: 0,
-    width: 140
+    name: '', description: '', type: 'Tela', unit: 'metro',
+    provider: '', status: 'activa', initialQty: 0, unitCost: 0, width: 140
   });
   const [batchFormData, setBatchFormData] = useState<Partial<MaterialBatch>>({
     date: new Date().toISOString().split('T')[0],
@@ -60,11 +58,8 @@ const RawMaterials: React.FC = () => {
     const matBatches = batches.filter(b => b.material_id === materialId);
     const totalOriginalQty = matBatches.reduce((acc, b) => acc + b.initial_quantity, 0);
     let totalRemainingQty = matBatches.reduce((acc, b) => acc + b.remaining_quantity, 0);
-
-    // Deduct active debt from remaining qty
     const debt = getMaterialDebt(materialId, movements).pendingQty;
     totalRemainingQty -= debt;
-
     const totalValue = matBatches.reduce((acc, b) => acc + (b.unit_cost * b.initial_quantity), 0);
     const weightedAvgCost = totalOriginalQty > 0 ? totalValue / totalOriginalQty : 0;
     const totalArea = matBatches.reduce((acc, b) => acc + (b.area || 0), 0);
@@ -72,14 +67,30 @@ const RawMaterials: React.FC = () => {
     return { totalOriginalQty, totalRemainingQty, totalValue, weightedAvgCost, totalArea, avgCostPerM2 };
   };
 
+  // Memoizar stats por material — evita recalcular O(n²) en cada render
+  const batchStatsByMaterial = useMemo(() => {
+    return Object.fromEntries(rawMaterials.map(m => [m.id, getBatchStats(m.id)]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawMaterials, batches, movements]);
+
   const totalFinancialDebt = useMemo(() => {
     return calculateTotalFinancialDebt(movements, rawMaterials);
   }, [movements, rawMaterials]);
 
   const handleMasterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Guard — no escribir sin tenant activo
+    if (!currentCompanyId) {
+      alert('Error: No hay una empresa activa. Por favor recarga la sesión.');
+      return;
+    }
+
     setIsSaving(true);
+    const now = new Date().toISOString();
     const materialId = editingId || crypto.randomUUID();
+
+    // Audit trail (created_by/updated_by) gestionado internamente por el store.
     const materialData: RawMaterial = {
       id: materialId,
       name: formData.name,
@@ -88,22 +99,26 @@ const RawMaterials: React.FC = () => {
       unit: formData.unit,
       provider: formData.provider,
       status: formData.status,
-      company_id: currentCompanyId || '',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      deleted_at: null
+      company_id: currentCompanyId,
+      created_at: now,
+      updated_at: now,
+      deleted_at: null,
     };
+
     try {
       if (editingId) {
         await updateRawMaterial(materialData);
       } else {
         await addRawMaterial(materialData);
         if (formData.initialQty > 0) {
-          const area = formData.unit === 'metro' ? formData.initialQty * ((formData.width || 0) / 100) : 0;
+          const area = calculateBatchArea('rollo', {
+            initial_quantity: formData.initialQty,
+            width: formData.width || 0,
+          });
           const batch: MaterialBatch = {
             id: crypto.randomUUID(),
             material_id: materialId,
-            date: new Date().toISOString().split('T')[0],
+            date: now.split('T')[0],
             provider: formData.provider || 'Carga Inicial',
             initial_quantity: formData.initialQty,
             remaining_quantity: formData.initialQty,
@@ -113,10 +128,10 @@ const RawMaterials: React.FC = () => {
             length: 0,
             area: area,
             entry_mode: 'rollo',
-            company_id: currentCompanyId || '',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            deleted_at: null
+            company_id: currentCompanyId,
+            created_at: now,
+            updated_at: now,
+            deleted_at: null,
           };
           await addBatch(batch);
         }
@@ -124,7 +139,7 @@ const RawMaterials: React.FC = () => {
       setIsModalOpen(false);
       setEditingId(null);
     } catch (error: any) {
-      console.error("Error saving material:", error);
+      console.error('Error saving material:', error);
       alert(`Hubo un error al guardar: ${translateError(error)} `);
     } finally {
       setIsSaving(false);
@@ -134,29 +149,43 @@ const RawMaterials: React.FC = () => {
   const handleBatchSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!expandedMaterialId) return;
+
+    // Guard — no escribir sin tenant activo
+    if (!currentCompanyId) {
+      alert('Error: No hay una empresa activa. Por favor recarga la sesión.');
+      return;
+    }
+
     setIsSaving(true);
+
     try {
       const material = rawMaterials.find(m => m.id === expandedMaterialId);
       const isDimensional = material?.unit === 'metro' || material?.unit === 'cm';
-      let area = 0;
       let finalQty = batchFormData.initial_quantity || 0;
       let finalUnitCost = batchFormData.unit_cost || 0;
+      let area = 0;
 
       if (!isDimensional) {
-        area = 0;
         finalQty = batchFormData.initial_quantity || 0;
-        // User inputs total cost for std, so we divide by qty
         finalUnitCost = finalQty > 0 ? (batchFormData.unit_cost || 0) / finalQty : 0;
+        area = 0;
       } else if (entry_mode === 'rollo') {
-        area = (batchFormData.initial_quantity || 0) * ((batchFormData.width || 0) / 100);
-        finalUnitCost = batchFormData.unit_cost || 0; // Cost is per metro
+        area = calculateBatchArea('rollo', {
+          initial_quantity: batchFormData.initial_quantity || 0,
+          width: batchFormData.width || 0,
+        });
+        finalUnitCost = batchFormData.unit_cost || 0;
       } else {
-        area = ((batchFormData.length || 0) * (batchFormData.width || 0)) / 10000;
+        area = calculateBatchArea('pieza', {
+          length: batchFormData.length || 0,
+          width: batchFormData.width || 0,
+        });
         finalQty = (batchFormData.length || 0) / 100;
-        // User inputs total cost for piece
         finalUnitCost = finalQty > 0 ? (batchFormData.unit_cost || 0) / finalQty : 0;
       }
-      const data = {
+
+      // Audit trail gestionado internamente por el store (addBatch llama getActorId).
+      const data: MaterialBatch = {
         ...batchFormData,
         id: crypto.randomUUID(),
         material_id: expandedMaterialId,
@@ -165,22 +194,20 @@ const RawMaterials: React.FC = () => {
         unit_cost: finalUnitCost,
         area: area,
         entry_mode: entry_mode,
-        company_id: currentCompanyId || '',
+        company_id: currentCompanyId,
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       } as MaterialBatch;
+
       await addBatch(data);
+
       setBatchFormData({
         date: new Date().toISOString().split('T')[0],
         provider: material?.provider || '',
-        initial_quantity: 0,
-        unit_cost: 0,
-        reference: '',
-        width: 140,
-        length: 0
+        initial_quantity: 0, unit_cost: 0, reference: '', width: 140, length: 0
       });
     } catch (error: any) {
-      console.error("Error saving batch:", error);
+      console.error('Error saving batch:', error);
       alert(`No se pudo agregar el ingreso físico: ${translateError(error)} `);
     } finally {
       setIsSaving(false);
@@ -189,43 +216,69 @@ const RawMaterials: React.FC = () => {
 
   const handleEditBatchSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingBatchData) {
-      setIsSaving(true);
-      try {
-        const original = batches.find(b => b.id === editingBatchData.id);
-        if (original && original.remaining_quantity < original.initial_quantity) {
-          await updateBatch({
-            ...editingBatchData,
-            initial_quantity: original.initial_quantity,
-            unit_cost: original.unit_cost
-          });
-        } else {
-          let area = 0;
-          let finalQty = editingBatchData.initial_quantity;
-          let finalUnitCost = editingBatchData.unit_cost;
-          if (editingBatchData.entry_mode === 'rollo') {
-            area = editingBatchData.initial_quantity * ((editingBatchData.width || 0) / 100);
-            finalUnitCost = editingBatchData.unit_cost;
-          } else {
-            area = ((editingBatchData.length || 0) * (editingBatchData.width || 0)) / 10000;
-            finalQty = (editingBatchData.length || 0) / 100;
-            finalUnitCost = (editingBatchData.unit_cost || 0) / finalQty;
-          }
-          await updateBatch({
-            ...editingBatchData,
-            initial_quantity: finalQty,
-            unit_cost: finalUnitCost,
-            area: area,
-            remaining_quantity: finalQty
-          });
-        }
+    if (!editingBatchData) return;
+
+    // Guard — no escribir sin tenant activo
+    if (!currentCompanyId) {
+      alert('Error: No hay una empresa activa. Por favor recarga la sesión.');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const original = batches.find(b => b.id === editingBatchData.id);
+
+      // Protección FIFO — lote parcialmente consumido: solo metadatos editables
+      if (original && original.remaining_quantity < original.initial_quantity) {
+        await updateBatch({
+          ...editingBatchData,
+          initial_quantity: original.initial_quantity,
+          remaining_quantity: original.remaining_quantity,
+          unit_cost: original.unit_cost,
+          area: original.area,
+          length: original.length,
+          width: original.width,
+        });
         setEditingBatchData(null);
-      } catch (error: any) {
-        console.error("Error editing batch:", error);
-        alert(`Fallo al actualizar el lote: ${translateError(error)} `);
-      } finally {
-        setIsSaving(false);
+        return;
       }
+
+      // Lote intacto: edición completa con recálculo dimensional
+      let area = 0;
+      let finalQty = editingBatchData.initial_quantity;
+      let finalUnitCost = editingBatchData.unit_cost;
+
+      if (editingBatchData.entry_mode === 'rollo') {
+        area = calculateBatchArea('rollo', {
+          initial_quantity: editingBatchData.initial_quantity,
+          width: editingBatchData.width || 0,
+        });
+        finalUnitCost = editingBatchData.unit_cost;
+      } else {
+        area = calculateBatchArea('pieza', {
+          length: editingBatchData.length || 0,
+          width: editingBatchData.width || 0,
+        });
+        finalQty = (editingBatchData.length || 0) / 100;
+        finalUnitCost = (editingBatchData.unit_cost || 0) / finalQty;
+      }
+
+      // Audit trail (updated_by) gestionado internamente por el store (updateBatch llama getActorId).
+      await updateBatch({
+        ...editingBatchData,
+        initial_quantity: finalQty,
+        unit_cost: finalUnitCost,
+        area: area,
+        remaining_quantity: finalQty,
+      });
+
+      setEditingBatchData(null);
+    } catch (error: any) {
+      console.error('Error editing batch:', error);
+      alert(`Fallo al actualizar el lote: ${translateError(error)} `);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -247,9 +300,7 @@ const RawMaterials: React.FC = () => {
     }
   }, [entry_mode, batchFormData.unit_cost, batchFormData.initial_quantity, calculatedArea]);
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const handlePrint = () => { window.print(); };
 
   const expandedMaterial = rawMaterials.find(m => m.id === expandedMaterialId);
 
@@ -272,11 +323,7 @@ const RawMaterials: React.FC = () => {
         </div>
         {canCreate && (
           <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              onClick={() => navigate('/productos')}
-              className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-none px-3"
-            >
+            <Button variant="secondary" onClick={() => navigate('/productos')} className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-none px-3">
               Nuevo Producto
             </Button>
             <Button
@@ -293,8 +340,6 @@ const RawMaterials: React.FC = () => {
           </div>
         )}
       </div>
-
-
 
       {/* Financial Governance Banner */}
       {totalFinancialDebt > 0 && (
@@ -313,7 +358,6 @@ const RawMaterials: React.FC = () => {
         </div>
       )}
 
-
       {/* ========== MOBILE: Cards ========== */}
       <div className="space-y-3 md:hidden">
         {filteredMaterials.length === 0 ? (
@@ -323,10 +367,9 @@ const RawMaterials: React.FC = () => {
           </div>
         ) : (
           filteredMaterials.map((m) => {
-            const { totalRemainingQty, weightedAvgCost } = getBatchStats(m.id);
+            const { totalRemainingQty, weightedAvgCost } = batchStatsByMaterial[m.id] ?? getBatchStats(m.id);
             return (
               <div key={m.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                {/* Top: Name + badge */}
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <h3 className="font-bold text-slate-900 truncate">{m.name}</h3>
@@ -334,11 +377,10 @@ const RawMaterials: React.FC = () => {
                   </div>
                   <Badge variant="secondary" className="flex-shrink-0">{m.type}</Badge>
                 </div>
-                {/* Stats row */}
                 <div className="flex items-center gap-4 mt-3">
                   <div>
                     <p className="text-[10px] font-bold uppercase text-slate-400">Stock</p>
-                    <p className={`text - sm font - bold ${totalRemainingQty <= 0 ? 'text-red-500' : 'text-slate-900'} `}>
+                    <p className={`text-sm font-bold ${totalRemainingQty <= 0 ? 'text-red-500' : 'text-slate-900'}`}>
                       {totalRemainingQty.toFixed(2)} <span className="text-xs font-normal text-slate-400">{m.unit}s</span>
                     </p>
                   </div>
@@ -348,7 +390,6 @@ const RawMaterials: React.FC = () => {
                     <p className="text-sm font-bold text-slate-700">{formatCurrency(weightedAvgCost)}</p>
                   </div>
                 </div>
-                {/* Actions */}
                 <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100">
                   <button
                     onClick={() => setExpandedMaterialId(expandedMaterialId === m.id ? null : m.id)}
@@ -360,7 +401,7 @@ const RawMaterials: React.FC = () => {
                   {canEdit && (
                     <button
                       onClick={() => {
-                        const stats = getBatchStats(m.id);
+                        const stats = batchStatsByMaterial[m.id] ?? getBatchStats(m.id);
                         setEditingId(m.id);
                         setFormData({ ...m, initialQty: stats.totalRemainingQty, unitCost: stats.weightedAvgCost });
                         setIsModalOpen(true);
@@ -371,14 +412,10 @@ const RawMaterials: React.FC = () => {
                     </button>
                   )}
                   {canDelete && (() => {
-                    const hasLinkedProducts = products.some(p =>
-                      (p.materials ?? []).some(pm => pm.material_id === m.id)
-                    );
-                    const remainingStock = getBatchStats(m.id).totalRemainingQty;
+                    const hasLinkedProducts = products.some(p => (p.materials ?? []).some(pm => pm.material_id === m.id));
+                    const remainingStock = batchStatsByMaterial[m.id].totalRemainingQty;
                     const mustArchive = hasLinkedProducts || remainingStock > 0;
-                    const archiveReason = hasLinkedProducts
-                      ? 'Vinculada a productos activos'
-                      : 'Tiene stock físico con valor en libro';
+                    const archiveReason = hasLinkedProducts ? 'Vinculada a productos activos' : 'Tiene stock físico con valor en libro';
                     return mustArchive ? (
                       <button
                         onClick={async () => {
@@ -408,8 +445,6 @@ const RawMaterials: React.FC = () => {
                     );
                   })()}
                 </div>
-
-                {/* ACCORDION MOBILE */}
                 {expandedMaterialId === m.id && (
                   <div className="mt-3 pt-3 border-t border-slate-100 animate-in fade-in slide-in-from-top-2">
                     <div className="text-center text-xs text-slate-500 py-4 bg-slate-50 rounded-xl">
@@ -439,15 +474,10 @@ const RawMaterials: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredMaterials.map((m) => {
-                const { totalRemainingQty, weightedAvgCost } = getBatchStats(m.id);
+                const { totalRemainingQty, weightedAvgCost } = batchStatsByMaterial[m.id] ?? getBatchStats(m.id);
                 const debtInfo = getMaterialDebt(m.id, movements);
-                const hasDebt = debtInfo.pendingQty > 0;
                 const isDimensional = m.unit === 'metro' || m.unit === 'cm';
-
-                // Real stock representation based on Single Ledger
                 const displayStock = totalRemainingQty;
-
-                // Financial valuation (Stock * Cost), projecting negative if debt
                 const valuation = displayStock * weightedAvgCost;
 
                 return (
@@ -460,9 +490,7 @@ const RawMaterials: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-4 py-4 truncate">
-                        <Badge variant="secondary" className="font-medium bg-gray-100 text-gray-700" title={m.type}>
-                          {m.type}
-                        </Badge>
+                        <Badge variant="secondary" className="font-medium bg-gray-100 text-gray-700" title={m.type}>{m.type}</Badge>
                       </td>
                       <td className="px-4 py-4 truncate text-right">
                         <div className="flex justify-end items-center" title={`Stock Actual: ${displayStock.toFixed(2)} ${m.unit}s`}>
@@ -487,14 +515,14 @@ const RawMaterials: React.FC = () => {
                           <button
                             onClick={() => setExpandedMaterialId(expandedMaterialId === m.id ? null : m.id)}
                             className={`rounded-lg p-1.5 transition-colors border ${expandedMaterialId === m.id ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'border-transparent bg-gray-50 text-indigo-600 hover:border-gray-200 hover:bg-white hover:text-indigo-700'}`}
-                            title={expandedMaterialId === m.id ? "Cerrar Detalles" : "Ver Lotes (Histórico)"}
+                            title={expandedMaterialId === m.id ? 'Cerrar Detalles' : 'Ver Lotes (Histórico)'}
                           >
                             <History size={16} />
                           </button>
                           {canEdit && (
                             <button
                               onClick={() => {
-                                const stats = getBatchStats(m.id);
+                                const stats = batchStatsByMaterial[m.id] ?? getBatchStats(m.id);
                                 setEditingId(m.id);
                                 setFormData({ ...m, initialQty: stats.totalRemainingQty, unitCost: stats.weightedAvgCost });
                                 setIsModalOpen(true);
@@ -506,14 +534,10 @@ const RawMaterials: React.FC = () => {
                             </button>
                           )}
                           {canDelete && (() => {
-                            const hasLinkedProducts = products.some(p =>
-                              (p.materials ?? []).some(pm => pm.material_id === m.id)
-                            );
-                            const remainingStock = getBatchStats(m.id).totalRemainingQty;
+                            const hasLinkedProducts = products.some(p => (p.materials ?? []).some(pm => pm.material_id === m.id));
+                            const remainingStock = batchStatsByMaterial[m.id].totalRemainingQty;
                             const mustArchive = hasLinkedProducts || remainingStock > 0;
-                            const archiveReason = hasLinkedProducts
-                              ? 'Vinculada a productos activos'
-                              : 'Tiene stock físico con valor en libro';
+                            const archiveReason = hasLinkedProducts ? 'Vinculada a productos activos' : 'Tiene stock físico con valor en libro';
                             return mustArchive ? (
                               <button
                                 className="rounded-lg p-1.5 transition-colors border border-transparent bg-amber-50 text-amber-500 hover:border-amber-200 hover:bg-amber-100"
@@ -567,30 +591,27 @@ const RawMaterials: React.FC = () => {
                                   </div>
                                 )}
                               </div>
-
                               {canCreate && (
                                 <form onSubmit={handleBatchSubmit} className="space-y-4">
                                   <div className="flex items-end gap-3 flex-wrap">
                                     <div className="w-32"><Input type="date" label="Fecha" value={batchFormData.date} onChange={e => setBatchFormData({ ...batchFormData, date: e.target.value })} required /></div>
                                     <div className="flex-1 min-w-[150px]"><Input label="Proveedor / Ref." value={batchFormData.provider} onChange={e => setBatchFormData({ ...batchFormData, provider: e.target.value })} /></div>
-
                                     {isDimensional ? (
                                       <>
                                         {entry_mode === 'rollo' ? (
-                                          <div className="w-24"><Input label={`M. Lineales`} type="number" step="0.01" value={batchFormData.initial_quantity || ''} onChange={e => setBatchFormData({ ...batchFormData, initial_quantity: parseFloat(e.target.value) })} required /></div>
+                                          <div className="w-24"><Input label="M. Lineales" type="number" step="0.01" value={batchFormData.initial_quantity || ''} onChange={e => setBatchFormData({ ...batchFormData, initial_quantity: parseFloat(e.target.value) })} required /></div>
                                         ) : (
                                           <div className="w-24"><Input label="Largo (cm)" type="number" step="0.01" value={batchFormData.length || ''} onChange={e => setBatchFormData({ ...batchFormData, length: parseFloat(e.target.value) })} required /></div>
                                         )}
                                         <div className="w-24"><Input label="Ancho (cm)" type="number" step="1" value={batchFormData.width || ''} onChange={e => setBatchFormData({ ...batchFormData, width: parseInt(e.target.value) })} required className="text-emerald-700" /></div>
-                                        <div className="w-32"><Input label={entry_mode === 'rollo' ? `Costo / Metro` : `Costo Total`} type="number" step="0.01" value={batchFormData.unit_cost || ''} onChange={e => setBatchFormData({ ...batchFormData, unit_cost: parseFloat(e.target.value) })} required /></div>
+                                        <div className="w-32"><Input label={entry_mode === 'rollo' ? 'Costo / Metro' : 'Costo Total'} type="number" step="0.01" value={batchFormData.unit_cost || ''} onChange={e => setBatchFormData({ ...batchFormData, unit_cost: parseFloat(e.target.value) })} required /></div>
                                       </>
                                     ) : (
                                       <>
                                         <div className="w-32"><Input label={`Cantidad (${m.unit})`} type="number" step="0.01" value={batchFormData.initial_quantity || ''} onChange={e => setBatchFormData({ ...batchFormData, initial_quantity: parseFloat(e.target.value) })} required /></div>
-                                        <div className="w-32"><Input label={`Costo Total (€)`} type="number" step="0.01" value={batchFormData.unit_cost || ''} onChange={e => setBatchFormData({ ...batchFormData, unit_cost: parseFloat(e.target.value) })} required /></div>
+                                        <div className="w-32"><Input label="Costo Total (€)" type="number" step="0.01" value={batchFormData.unit_cost || ''} onChange={e => setBatchFormData({ ...batchFormData, unit_cost: parseFloat(e.target.value) })} required /></div>
                                       </>
                                     )}
-
                                     <Button type="submit" variant="primary" icon={<Plus size={16} />} className="mb-0.5 h-10 w-full sm:w-auto shadow-md">Añadir Lote</Button>
                                   </div>
                                 </form>
@@ -620,7 +641,9 @@ const RawMaterials: React.FC = () => {
                                   </thead>
                                   <tbody className="divide-y divide-slate-100 text-slate-600">
                                     {batches.filter(b => b.material_id === m.id).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map(batch => {
-                                      const currentTotalPurchaseCost = isDimensional ? (batch.entry_mode === 'pieza' ? batch.unit_cost : (batch.unit_cost * batch.initial_quantity)) : (batch.unit_cost * batch.initial_quantity);
+                                      const currentTotalPurchaseCost = isDimensional
+                                        ? (batch.entry_mode === 'pieza' ? batch.unit_cost : (batch.unit_cost * batch.initial_quantity))
+                                        : (batch.unit_cost * batch.initial_quantity);
                                       const currentCostPerM2 = isDimensional && batch.area && batch.area > 0 ? currentTotalPurchaseCost / batch.area : 0;
                                       return (
                                         <tr key={batch.id} className="hover:bg-slate-50 transition-colors">
@@ -665,23 +688,24 @@ const RawMaterials: React.FC = () => {
                                               )}
                                               {canDelete && (
                                                 <button onClick={async () => {
+                                                  if (!window.confirm('¿Eliminar este lote? Afectará el costeo FIFO. Esta acción no se puede deshacer.')) return;
                                                   try { await deleteBatch(batch.id); } catch (err: any) { alert(`Error: ${translateError(err)}`); }
-                                                }} className="p-1 hover:text-red-600" title="Eliminar Lote">
+                                                }} className="p-1 hover:text-red-600" title="Eliminar Lote" aria-label={`Eliminar lote del ${batch.date}`}>
                                                   <Trash2 size={12} />
                                                 </button>
                                               )}
                                             </div>
                                           </td>
                                         </tr>
-                                      )
+                                      );
                                     })}
                                     {/* Totals Row */}
                                     <tr className="bg-slate-50 font-bold border-t-2 border-slate-200">
                                       <td colSpan={3} className="px-4 py-3 uppercase text-[10px] text-slate-800 text-right">Totales Acumulados</td>
                                       <td className="px-4 py-3 text-right font-mono text-[10px] text-slate-500">{isDimensional ? `${totalRemainingQty.toFixed(2)} m` : '---'}</td>
-                                      <td className="px-4 py-3 text-right font-mono text-[10px] text-emerald-600">{isDimensional ? `${getBatchStats(m.id).totalArea.toFixed(2)} m²` : '---'}</td>
-                                      <td className="px-4 py-3 text-right font-mono text-[11px] text-slate-700">{formatCurrency(getBatchStats(m.id).totalValue)}</td>
-                                      <td className="px-4 py-3 text-right font-mono text-[11px] text-indigo-600">{isDimensional ? formatCurrency(getBatchStats(m.id).avgCostPerM2) : '---'}</td>
+                                      <td className="px-4 py-3 text-right font-mono text-[10px] text-emerald-600">{isDimensional ? `${batchStatsByMaterial[m.id].totalArea.toFixed(2)} m²` : '---'}</td>
+                                      <td className="px-4 py-3 text-right font-mono text-[11px] text-slate-700">{formatCurrency(batchStatsByMaterial[m.id].totalValue)}</td>
+                                      <td className="px-4 py-3 text-right font-mono text-[11px] text-indigo-600">{isDimensional ? formatCurrency(batchStatsByMaterial[m.id].avgCostPerM2) : '---'}</td>
                                       <td className="px-4 py-3 text-right font-mono text-[10px] text-emerald-600">{totalRemainingQty.toFixed(2)}</td>
                                       <td></td>
                                     </tr>
@@ -689,7 +713,6 @@ const RawMaterials: React.FC = () => {
                                 </table>
                               </div>
                             </div>
-
                           </div>
                         </td>
                       </tr>
@@ -702,219 +725,119 @@ const RawMaterials: React.FC = () => {
         </div>
       </div>
 
-      {/* ============================================ */}
-      {/* MODALS — unchanged logic, kept as-is         */}
-      {/* ============================================ */}
-      {
-        isModalOpen && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
-            style={{ backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)' }}
-          >
-            <Card className="my-4 w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 sm:p-8">
-              <h3 className="mb-6 sm:mb-8 text-xl sm:text-2xl font-bold">
-                {editingId ? 'Editar' : 'Nueva'} Materia Prima
-              </h3>
-              <form onSubmit={handleMasterSubmit} className="space-y-4 sm:space-y-5">
-                <Input
-                  label="Nombre"
-                  value={formData.name}
-                  onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Ej. Tela de Corazón"
-                  required
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <Select
-                    label="Tipo / Categoría"
-                    value={formData.type}
-                    onChange={e => setFormData({ ...formData, type: e.target.value })}
+      {/* MODAL — Nueva / Editar Materia Prima */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" style={{ backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)' }}>
+          <Card className="my-4 w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 sm:p-8">
+            <h3 className="mb-6 sm:mb-8 text-xl sm:text-2xl font-bold">
+              {editingId ? 'Editar' : 'Nueva'} Materia Prima
+            </h3>
+            <form onSubmit={handleMasterSubmit} className="space-y-4 sm:space-y-5">
+              <Input label="Nombre" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Ej. Tela de Corazón" required />
+              <div className="grid grid-cols-2 gap-3">
+                <Select label="Tipo / Categoría" value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })}>
+                  <option value="Tela">Tela</option>
+                  <option value="Hilo">Hilo</option>
+                  <option value="Herrajes">Herrajes</option>
+                  <option value="Accesorios">Accesorios</option>
+                  <option value="Otros">Otros</option>
+                </Select>
+                <Input label="Proveedor" value={formData.provider} onChange={e => setFormData({ ...formData, provider: e.target.value })} placeholder="Ej. Textiles Premium" />
+              </div>
+              <Input label="Descripción" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Detalles de la materia prima..." />
+              <div className="grid grid-cols-2 gap-3">
+                <Select label="Unidad de Medida" value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value as Unit })}>
+                  <option value="metro">Metro (m)</option>
+                  <option value="cm">Centímetro (cm)</option>
+                  <option value="kg">Kilogramo (kg)</option>
+                  <option value="gramo">Gramo (g)</option>
+                  <option value="unidad">Unidad (u)</option>
+                  <option value="bobina">Bobina</option>
+                  <option value="litro">Litro (L)</option>
+                </Select>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-500">Costo/{formData.unit}</label>
+                  <Input type="number" step="0.01" value={formData.unitCost || ''} onChange={e => setFormData({ ...formData, unitCost: parseFloat(e.target.value) })} placeholder="0" disabled={!!editingId} />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3 items-end">
+                {formData.unit === 'metro' ? (
+                  <div>
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-emerald-500">Ancho (cm)</label>
+                    <Input type="number" step="1" value={formData.width || ''} onChange={e => setFormData({ ...formData, width: parseInt(e.target.value) })} placeholder="140" />
+                  </div>
+                ) : <div />}
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-500">Cantidad</label>
+                  <Input type="number" step="0.01" value={formData.initialQty || ''} onChange={e => setFormData({ ...formData, initialQty: parseFloat(e.target.value) })} placeholder="0" disabled={!!editingId} />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-500">Estado</label>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, status: formData.status === 'activa' ? 'inactiva' : 'activa' })}
+                    className={`w-full flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold transition-all active:scale-95 ${formData.status === 'activa' ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-gray-100 text-gray-400 ring-1 ring-gray-200'}`}
                   >
-                    <option value="Tela">Tela</option>
-                    <option value="Hilo">Hilo</option>
-                    <option value="Herrajes">Herrajes</option>
-                    <option value="Accesorios">Accesorios</option>
-                    <option value="Otros">Otros</option>
-                  </Select>
-                  <Input
-                    label="Proveedor"
-                    value={formData.provider}
-                    onChange={e => setFormData({ ...formData, provider: e.target.value })}
-                    placeholder="Ej. Textiles Premium"
-                  />
+                    <div className={`size-2.5 rounded-full transition-colors ${formData.status === 'activa' ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                    {formData.status === 'activa' ? 'Activa' : 'Inactiva'}
+                  </button>
                 </div>
-                <Input
-                  label="Descripción"
-                  value={formData.description}
-                  onChange={e => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Detalles de la materia prima..."
-                />
-                {/* Unidad + Costo en una línea */}
+              </div>
+              <div className="flex gap-3 pt-2">
+                <Button variant="ghost" className="flex-1" onClick={() => setIsModalOpen(false)} disabled={isSaving}>Cancelar</Button>
+                <Button type="submit" className="flex-1" variant="primary" disabled={isSaving}>
+                  {isSaving ? 'Guardando...' : 'Guardar Material'}
+                </Button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
+
+      {/* MODAL — Editar Lote */}
+      {editingBatchData && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6" style={{ backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>
+          <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto p-6 sm:p-8">
+            <h4 className="mb-6 flex items-center gap-2 text-lg font-bold">
+              <Pencil size={18} className="text-indigo-500" /> Editar Registro
+            </h4>
+            <form onSubmit={handleEditBatchSubmit} className="space-y-4">
+              {editingBatchData.remaining_quantity < editingBatchData.initial_quantity && (
+                <div className="flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50 p-4">
+                  <AlertCircle size={20} className="mt-0.5 shrink-0 text-amber-500" />
+                  <p className="text-xs font-bold leading-tight text-amber-700">
+                    ESTE LOTE YA SE HA USADO. La cantidad, costo y dimensiones no son editables para mantener la coherencia FIFO.
+                  </p>
+                </div>
+              )}
+              <Input label="Fecha" type="date" value={editingBatchData.date} onChange={e => setEditingBatchData({ ...editingBatchData, date: e.target.value })} required />
+              <Input label="Proveedor / Referencia" value={editingBatchData.provider} onChange={e => setEditingBatchData({ ...editingBatchData, provider: e.target.value })} />
+              {editingBatchData.entry_mode === 'pieza' ? (
                 <div className="grid grid-cols-2 gap-3">
-                  <Select
-                    label="Unidad de Medida"
-                    value={formData.unit}
-                    onChange={e => setFormData({ ...formData, unit: e.target.value as Unit })}
-                  >
-                    <option value="metro">Metro (m)</option>
-                    <option value="cm">Centímetro (cm)</option>
-                    <option value="kg">Kilogramo (kg)</option>
-                    <option value="gramo">Gramo (g)</option>
-                    <option value="unidad">Unidad (u)</option>
-                    <option value="bobina">Bobina</option>
-                    <option value="litro">Litro (L)</option>
-                  </Select>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-500">Costo/{formData.unit}</label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.unitCost || ''}
-                      onChange={e => setFormData({ ...formData, unitCost: parseFloat(e.target.value) })}
-                      placeholder="0"
-                      disabled={!!editingId}
-                    />
-                  </div>
+                  <Input label="Largo (cm)" type="number" step="0.01" disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity} value={editingBatchData.length || ''} onChange={e => setEditingBatchData({ ...editingBatchData, length: parseFloat(e.target.value) })} />
+                  <Input label="Ancho (cm)" type="number" step="1" disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity} value={editingBatchData.width || ''} onChange={e => setEditingBatchData({ ...editingBatchData, width: parseInt(e.target.value) })} />
                 </div>
-                {/* Ancho + Cantidad + Estado toggle en una línea */}
-                <div className="grid grid-cols-3 gap-3 items-end">
-                  {formData.unit === 'metro' ? (
-                    <div>
-                      <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-emerald-500">Ancho (cm)</label>
-                      <Input
-                        type="number"
-                        step="1"
-                        value={formData.width || ''}
-                        onChange={e => setFormData({ ...formData, width: parseInt(e.target.value) })}
-                        placeholder="140"
-                      />
-                    </div>
-                  ) : (
-                    <div />
-                  )}
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-500">Cantidad</label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.initialQty || ''}
-                      onChange={e => setFormData({ ...formData, initialQty: parseFloat(e.target.value) })}
-                      placeholder="0"
-                      disabled={!!editingId}
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-500">Estado</label>
-                    <button
-                      type="button"
-                      onClick={() => setFormData({ ...formData, status: formData.status === 'activa' ? 'inactiva' : 'activa' })}
-                      className={`
-w - full flex items - center justify - center gap - 2 rounded - xl px - 3 py - 2.5 text - sm font - bold transition - all active: scale - 95
-                      ${formData.status === 'activa'
-                          ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-                          : 'bg-gray-100 text-gray-400 ring-1 ring-gray-200'
-                        }
-`}
-                    >
-                      <div className={`size - 2.5 rounded - full transition - colors ${formData.status === 'activa' ? 'bg-emerald-500' : 'bg-gray-300'} `} />
-                      {formData.status === 'activa' ? 'Activa' : 'Inactiva'}
-                    </button>
-                  </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <Input label="M. Lineales" type="number" step="0.01" disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity} value={editingBatchData.initial_quantity} onChange={e => setEditingBatchData({ ...editingBatchData, initial_quantity: parseFloat(e.target.value) })} />
+                  <Input label="Ancho (cm)" type="number" step="1" disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity} value={editingBatchData.width || ''} onChange={e => setEditingBatchData({ ...editingBatchData, width: parseInt(e.target.value) })} />
                 </div>
-                <div className="flex gap-3 pt-2">
-                  <Button variant="ghost" className="flex-1" onClick={() => setIsModalOpen(false)} disabled={isSaving}>Cancelar</Button>
-                  <Button type="submit" className="flex-1" variant="primary" disabled={isSaving}>
-                    {isSaving ? 'Guardando...' : 'Guardar Material'}
-                  </Button>
-                </div>
-              </form>
-            </Card>
-          </div>
-        )
-      }
-
-
-
-      {
-        editingBatchData && (
-          <div
-            className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6"
-            style={{ backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}
-          >
-            <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto p-6 sm:p-8">
-              <h4 className="mb-6 flex items-center gap-2 text-lg font-bold">
-                <Pencil size={18} className="text-indigo-500" /> Editar Registro
-              </h4>
-              <form onSubmit={handleEditBatchSubmit} className="space-y-4">
-                {editingBatchData.remaining_quantity < editingBatchData.initial_quantity && (
-                  <div className="flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50 p-4">
-                    <AlertCircle size={20} className="mt-0.5 shrink-0 text-amber-500" />
-                    <p className="text-xs font-bold leading-tight text-amber-700">
-                      ESTE LOTE YA SE HA USADO. La cantidad, costo y dimensiones no son editables para mantener la coherencia FIFO.
-                    </p>
-                  </div>
-                )}
-                <Input
-                  label="Fecha"
-                  type="date"
-                  value={editingBatchData.date}
-                  onChange={e => setEditingBatchData({ ...editingBatchData, date: e.target.value })}
-                  required
-                />
-                <Input
-                  label="Proveedor / Referencia"
-                  value={editingBatchData.provider}
-                  onChange={e => setEditingBatchData({ ...editingBatchData, provider: e.target.value })}
-                />
-                {editingBatchData.entry_mode === 'pieza' ? (
-                  <div className="grid grid-cols-2 gap-3">
-                    <Input
-                      label="Largo (cm)"
-                      type="number" step="0.01"
-                      disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity}
-                      value={editingBatchData.length || ''}
-                      onChange={e => setEditingBatchData({ ...editingBatchData, length: parseFloat(e.target.value) })}
-                    />
-                    <Input
-                      label="Ancho (cm)"
-                      type="number" step="1"
-                      disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity}
-                      value={editingBatchData.width || ''}
-                      onChange={e => setEditingBatchData({ ...editingBatchData, width: parseInt(e.target.value) })}
-                    />
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-3">
-                    <Input
-                      label="M. Lineales"
-                      type="number" step="0.01"
-                      disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity}
-                      value={editingBatchData.initial_quantity}
-                      onChange={e => setEditingBatchData({ ...editingBatchData, initial_quantity: parseFloat(e.target.value) })}
-                    />
-                    <Input
-                      label="Ancho (cm)"
-                      type="number" step="1"
-                      disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity}
-                      value={editingBatchData.width || ''}
-                      onChange={e => setEditingBatchData({ ...editingBatchData, width: parseInt(e.target.value) })}
-                    />
-                  </div>
-                )}
-                <Input
-                  label={editingBatchData.entry_mode === 'pieza' ? 'Costo Total (€)' : 'Costo Unitario (€/m)'}
-                  type="number" step="0.01"
-                  disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity}
-                  value={editingBatchData.unit_cost}
-                  onChange={e => setEditingBatchData({ ...editingBatchData, unit_cost: parseFloat(e.target.value) })}
-                />
-                <div className="flex gap-3 pt-4">
-                  <Button variant="ghost" className="flex-1" onClick={() => setEditingBatchData(null)}>Cancelar</Button>
-                  <Button type="submit" className="flex-1" variant="primary">Guardar</Button>
-                </div>
-              </form>
-            </Card>
-          </div>
-        )}
+              )}
+              <Input
+                label={editingBatchData.entry_mode === 'pieza' ? 'Costo Total (€)' : 'Costo Unitario (€/m)'}
+                type="number" step="0.01"
+                disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity}
+                value={editingBatchData.unit_cost}
+                onChange={e => setEditingBatchData({ ...editingBatchData, unit_cost: parseFloat(e.target.value) })}
+              />
+              <div className="flex gap-3 pt-4">
+                <Button variant="ghost" className="flex-1" onClick={() => setEditingBatchData(null)}>Cancelar</Button>
+                <Button type="submit" className="flex-1" variant="primary">Guardar</Button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
