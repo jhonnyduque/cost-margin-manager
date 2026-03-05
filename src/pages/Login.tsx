@@ -5,7 +5,7 @@ import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { tokens } from '@/design/design-tokens';
+import { colors, typography, spacing, radius, shadows, tokens } from '@/design/design-tokens';
 import { Card } from '@/components/ui/Card';
 
 const Login: React.FC = () => {
@@ -20,8 +20,8 @@ const Login: React.FC = () => {
     // Loading sesión
     if (authLoading) {
         return (
-            <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: tokens.colors.bg }}>
-                <div className="animate-spin text-blue-600 text-4xl">⟳</div>
+            <div className={`flex min-h-screen items-center justify-center ${colors.bgMain}`}>
+                <div className={`animate-spin ${colors.statusInfo} ${typography.sectionTitle}`}>⟳</div>
             </div>
         );
     }
@@ -59,41 +59,21 @@ const Login: React.FC = () => {
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center p-6" style={{ backgroundColor: tokens.colors.bg }}>
+        <div className={`flex min-h-screen items-center justify-center p-6 ${colors.bgMain}`}>
             <div className="w-full max-w-md">
-                <Card className="p-10 text-center">
+                <Card className={`${spacing.pLg} text-center ${radius.xl} ${shadows.xl} border ${colors.borderStandard} ${colors.bgSurface}`}>
 
                     <div className="mb-8 inline-flex items-center justify-center">
-                        <div
-                            style={{
-                                width: '56px',
-                                height: '56px',
-                                backgroundColor: tokens.colors.brand,
-                                borderRadius: tokens.radius.md,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: tokens.colors.surface
-                            }}
-                        >
-                            <Calculator size={28} />
+                        <div className={`size-14 ${colors.bgBrand} ${radius.lg} flex items-center justify-center text-white`}>
+                            <Calculator size={32} />
                         </div>
                     </div>
 
-                    <h1 style={{
-                        fontSize: tokens.typography.h1.fontSize,
-                        fontWeight: tokens.typography.h1.fontWeight,
-                        color: tokens.colors.text.primary,
-                        marginBottom: tokens.spacing.xs
-                    }}>
+                    <h1 className={`${typography.sectionTitle} font-bold mb-2 ${colors.textPrimary}`}>
                         Bienvenido de nuevo
                     </h1>
 
-                    <p style={{
-                        fontSize: tokens.typography.body.fontSize,
-                        color: tokens.colors.text.secondary,
-                        marginBottom: tokens.spacing.xl
-                    }}>
+                    <p className={`${typography.body} mb-8 ${colors.textSecondary}`}>
                         Ingresa tus credenciales para continuar
                     </p>
 
@@ -120,21 +100,9 @@ const Login: React.FC = () => {
                         />
 
                         {error && (
-                            <div style={{
-                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                                border: `1px solid ${tokens.colors.error}`,
-                                padding: tokens.spacing.md,
-                                borderRadius: tokens.radius.md,
-                                display: 'flex',
-                                alignItems: 'start',
-                                gap: tokens.spacing.sm
-                            }}>
-                                <AlertCircle size={16} color={tokens.colors.error} style={{ marginTop: '2px' }} />
-                                <p style={{
-                                    fontSize: tokens.typography.caption.fontSize,
-                                    fontWeight: 700,
-                                    color: '#DC2626'
-                                }}>
+                            <div className={`${colors.bgDanger} border border-red-200 ${spacing.pMd} ${radius.lg} flex items-start gap-3`}>
+                                <AlertCircle size={18} className={`${colors.statusDanger} mt-0.5`} />
+                                <p className={`${typography.caption} font-bold ${colors.statusDanger}`}>
                                     {error}
                                 </p>
                             </div>
@@ -142,10 +110,10 @@ const Login: React.FC = () => {
 
                         <Button
                             type="submit"
-                            className="w-full justify-center"
+                            className={`w-full justify-center ${typography.text.body}`}
                             isLoading={loading}
                             icon={<LogIn size={18} />}
-                            style={{ height: '48px', fontSize: '1rem' }}
+                            style={{ height: '48px' }}
                         >
                             Iniciar Sesión
                         </Button>
@@ -153,20 +121,10 @@ const Login: React.FC = () => {
                     </form>
                 </Card>
 
-                <p
-                    className="mt-8 text-center"
-                    style={{
-                        fontSize: tokens.typography.body.fontSize,
-                        color: tokens.colors.text.secondary
-                    }}
-                >
+                <p className={`mt-8 text-center ${typography.body} ${colors.textSecondary}`}>
                     ¿No tienes una cuenta?
-                    <span style={{
-                        color: tokens.colors.brand,
-                        fontWeight: 700,
-                        cursor: 'pointer'
-                    }}>
-                        {' '}Contacta a tu administrador
+                    <span className={`ml-1 cursor-pointer font-bold ${colors.statusInfo}`}>
+                        Contacta a tu administrador
                     </span>
                 </p>
 

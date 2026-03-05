@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { MRRWaterfallPoint } from '@/services/adminStatsService';
+import { typography } from '@/design/typography';
 
 interface MRRWaterfallChartProps {
     data: MRRWaterfallPoint[];
@@ -26,12 +27,12 @@ export function MRRWaterfallChart({ data }: MRRWaterfallChartProps) {
         if (active && payload && payload.length) {
             return (
                 <div className="rounded-2xl border border-slate-100 bg-white/90 p-4 shadow-2xl backdrop-blur-md">
-                    <p className="mb-2 text-xs font-black uppercase text-slate-400 tracking-widest">{label}</p>
+                    <p className={`mb-2 ${typography.uiLabel} uppercase text-slate-500 tracking-widest`}>{label}</p>
                     <div className="space-y-1.5">
                         {payload.map((entry: any, index: number) => (
                             <div key={index} className="flex items-center justify-between gap-8">
-                                <span className="text-[11px] font-bold text-slate-600">{entry.name}</span>
-                                <span className={`text-[11px] font-black ${entry.value >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                <span className={`${typography.uiLabel} text-slate-600`}>{entry.name}</span>
+                                <span className={`${typography.uiLabel} ${entry.value >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                                     {entry.value >= 0 ? '+' : ''}${Math.abs(entry.value).toLocaleString()}
                                 </span>
                             </div>
@@ -47,8 +48,8 @@ export function MRRWaterfallChart({ data }: MRRWaterfallChartProps) {
         <div className="h-full w-full rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
             <div className="mb-6 flex items-center justify-between">
                 <div>
-                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Cascada de MRR</h3>
-                    <p className="text-xs text-slate-500">Desglose mensual de crecimiento y pérdida de ingresos.</p>
+                    <h3 className={`${typography.uiLabel} text-slate-900 uppercase tracking-tight`}>Cascada de MRR</h3>
+                    <p className={`${typography.caption} text-slate-500`}>Desglose mensual de crecimiento y pérdida de ingresos.</p>
                 </div>
             </div>
 
@@ -88,15 +89,15 @@ export function MRRWaterfallChart({ data }: MRRWaterfallChartProps) {
             <div className="mt-6 flex flex-wrap gap-4 pt-4 border-t border-slate-50">
                 <div className="flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-indigo-600" />
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Nuevo</span>
+                    <span className={`${typography.uiLabel} text-slate-500 uppercase tracking-wider`}>Nuevo</span>
                 </div>
                 <div className="flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-indigo-400" />
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Expansión</span>
+                    <span className={`${typography.uiLabel} text-slate-500 uppercase tracking-wider`}>Expansión</span>
                 </div>
                 <div className="flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-rose-500" />
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Churn</span>
+                    <span className={`${typography.uiLabel} text-slate-500 uppercase tracking-wider`}>Churn</span>
                 </div>
             </div>
         </div>

@@ -56,7 +56,7 @@ export function LimitIndicator({ manualData }: { manualData?: { currentUsers: nu
             )}
 
             {!isNearLimit && (
-                <div className="mt-1 text-xs text-gray-400">
+                <div className="mt-1 text-xs text-slate-500">
                     Plan activo y saludable.
                 </div>
             )}

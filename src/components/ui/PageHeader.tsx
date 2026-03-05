@@ -1,4 +1,5 @@
 import React from 'react';
+import { typography } from '@/design/typography';
 
 interface PageHeaderProps {
     title: string;
@@ -10,11 +11,11 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, description, acti
     return (
         <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:pb-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
-                <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">
+                <h1 className={`${typography.pageTitle} text-slate-900`}>
                     {title}
                 </h1>
                 {description && (
-                    <p className="mt-1 text-sm lg:text-base text-slate-500">
+                    <p className={`mt-1 ${typography.body} text-slate-500`}>
                         {description}
                     </p>
                 )}

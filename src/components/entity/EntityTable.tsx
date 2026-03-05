@@ -1,6 +1,7 @@
 import React from 'react';
 import { EntityConfig } from './types';
 import { Building2 } from 'lucide-react';
+import { colors, typography, spacing, radius, shadows } from '@/design/design-tokens';
 
 interface EntityTableProps<T> {
     config: EntityConfig<T>;
@@ -24,16 +25,16 @@ export function EntityTable<T>({ config, items, selectionProps }: EntityTablePro
                     return (
                         <div
                             key={id}
-                            className={`rounded-xl border p-4 transition-all ${isSelected ? 'border-indigo-300 bg-indigo-50/30' : 'border-gray-200 bg-white'}`}
+                            className={`${radius.xl} border ${spacing.pLg} transition-all ${isSelected ? `${colors.borderBrand} ${colors.bgBrandSubtle}/30` : `${colors.borderStandard} ${colors.bgSurface}`}`}
                         >
                             {/* Header: Checkbox + Acciones */}
-                            <div className="flex items-center justify-between mb-3">
+                            <div className={`flex items-center justify-between ${spacing.sm}`}>
                                 {selectionProps && (
                                     <input
                                         type="checkbox"
                                         checked={isSelected}
                                         onChange={() => selectionProps.onSelect(id)}
-                                        className="size-5 cursor-pointer rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                        className={`size-5 cursor-pointer ${radius.sm} border-gray-300 text-indigo-600 focus:ring-indigo-500`}
                                     />
                                 )}
                                 <div className="flex gap-1.5">
@@ -47,7 +48,7 @@ export function EntityTable<T>({ config, items, selectionProps }: EntityTablePro
                                                 <button
                                                     key={action.id}
                                                     onClick={() => action.onClick(item)}
-                                                    className={`rounded-lg p-2 transition-colors ${action.color || 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+                                                    className={`${radius.lg} p-2 transition-colors ${action.color || `${colors.bgMain} ${colors.textSecondary} hover:bg-slate-100`}`}
                                                 >
                                                     {iconToRender}
                                                 </button>
@@ -89,13 +90,13 @@ export function EntityTable<T>({ config, items, selectionProps }: EntityTablePro
 
                                 {/* Línea 3: Fechas */}
                                 {config.fields.filter(f => f.type === 'date').length > 0 && (
-                                    <div className="flex flex-wrap gap-x-4 gap-y-1 pt-2 border-t border-gray-100">
+                                    <div className={`flex flex-wrap gap-x-4 gap-y-1 pt-2 border-t ${colors.borderSubtle}`}>
                                         {config.fields.filter(f => f.type === 'date').map((dateField, idx) => (
                                             <div key={idx} className="flex flex-col">
-                                                <span className="text-[10px] font-semibold uppercase text-gray-400">
+                                                <span className={`${typography.text.caption} font-semibold uppercase ${colors.textMuted}`}>
                                                     {dateField.label}
                                                 </span>
-                                                <span className="text-xs font-medium text-gray-700">
+                                                <span className={`${typography.text.caption} font-medium ${colors.textSecondary}`}>
                                                     {dateField.render ? dateField.render(item) : (item as any)[dateField.key]}
                                                 </span>
                                             </div>
@@ -110,9 +111,9 @@ export function EntityTable<T>({ config, items, selectionProps }: EntityTablePro
 
             {/* ✅ ESCRITORIO - Tabla normal */}
             <div className="hidden md:block overflow-x-auto">
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className={`${colors.bgSurface} ${radius.xl} ${shadows.sm} border ${colors.borderStandard} overflow-hidden`}>
                     <table className="w-full border-collapse text-left table-fixed">
-                        <thead className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50/50 text-xs font-semibold uppercase tracking-wider text-gray-500 backdrop-blur-sm">
+                        <thead className={`sticky top-0 z-10 border-b ${colors.borderStandard} ${colors.bgMain}/80 ${typography.uiLabel} font-semibold uppercase tracking-wider ${colors.textSecondary} backdrop-blur-sm`}>
                             <tr>
                                 {selectionProps && (
                                     <th className="w-[5%] px-4 py-3">
@@ -120,20 +121,20 @@ export function EntityTable<T>({ config, items, selectionProps }: EntityTablePro
                                             type="checkbox"
                                             checked={selectionProps.selectedIds.length === items.length && items.length > 0}
                                             onChange={selectionProps.onSelectAll}
-                                            className="size-4 cursor-pointer rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                            className={`size-4 cursor-pointer ${radius.sm} border-gray-300 text-indigo-600 focus:ring-indigo-500`}
                                             title="Seleccionar Todos"
                                         />
                                     </th>
                                 )}
                                 {config.fields.filter(f => !f.hidden).map((field, idx) => (
-                                    <th key={idx} className="px-4 py-3 truncate" title={field.label}>
+                                    <th key={idx} className={`${spacing.pxLg} py-3 truncate`} title={field.label}>
                                         {field.label}
                                     </th>
                                 ))}
-                                <th className="w-[10%] min-w-[120px] px-4 py-3 text-right">Acciones</th>
+                                <th className="w-[10%] min-w-[120px] ${spacing.pxLg} py-3 text-right">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100">
+                        <tbody className={`divide-y ${colors.borderSubtle}`}>
                             {items.map((item) => {
                                 const id = String(item[config.rowIdKey]);
                                 const isSelected = selectionProps?.selectedIds.includes(id) || false;
@@ -141,15 +142,15 @@ export function EntityTable<T>({ config, items, selectionProps }: EntityTablePro
                                 return (
                                     <tr
                                         key={id}
-                                        className={`group transition-all hover:bg-slate-50 ${isSelected ? 'bg-indigo-50/50' : 'bg-white'}`}
+                                        className={`group transition-all hover:${colors.bgMain} ${isSelected ? `${colors.bgBrandSubtle}/50` : colors.bgSurface}`}
                                     >
                                         {selectionProps && (
-                                            <td className="px-4 py-3">
+                                            <td className={`${spacing.pxLg} py-3`}>
                                                 <input
                                                     type="checkbox"
                                                     checked={isSelected}
                                                     onChange={() => selectionProps.onSelect(id)}
-                                                    className="size-4 cursor-pointer rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                                    className={`size-4 cursor-pointer ${radius.sm} border-gray-300 text-indigo-600 focus:ring-indigo-500`}
                                                 />
                                             </td>
                                         )}
@@ -165,14 +166,14 @@ export function EntityTable<T>({ config, items, selectionProps }: EntityTablePro
                                                 </td>
                                             );
                                         })}
-                                        <td className="w-[10%] min-w-[120px] px-4 py-3 text-right">
+                                        <td className={`w-[10%] min-w-[120px] ${spacing.pxLg} py-3 text-right`}>
                                             <div className="flex justify-end gap-1.5 opacity-70 transition-opacity group-hover:opacity-100">
                                                 {config.actions.map(action => (
                                                     (!action.isVisible || action.isVisible(item)) && (
                                                         <button
                                                             key={action.id}
                                                             onClick={() => action.onClick(item)}
-                                                            className={`rounded-lg p-1.5 transition-colors ${action.color || 'border border-transparent bg-gray-50 text-gray-400 hover:border-gray-200 hover:bg-white hover:text-gray-600'}`}
+                                                            className={`${radius.lg} p-1.5 transition-colors ${action.color || `border border-transparent ${colors.bgMain} ${colors.textSecondary} hover:${colors.borderStandard} hover:${colors.bgSurface} hover:${colors.textPrimary}`}`}
                                                             title={action.label}
                                                         >
                                                             {action.icon}

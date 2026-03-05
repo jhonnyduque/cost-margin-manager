@@ -109,7 +109,7 @@ export const CreateTenantModal: React.FC<CreateTenantModalProps> = ({ isOpen, on
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
                     <h2 className="text-lg font-semibold text-slate-800">Provision New Environment</h2>
-                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+                    <button onClick={onClose} className="text-slate-500 hover:text-slate-600">
                         <X size={20} />
                     </button>
                 </div>

@@ -14,6 +14,7 @@ import {
     Shield,
     LucideIcon
 } from 'lucide-react';
+import { colors, typography, spacing, radius, shadows } from '@/design/design-tokens';
 
 interface MenuItem {
     label: string;
@@ -130,17 +131,17 @@ export default function MorePage() {
     });
 
     return (
-        <div className="animate-in fade-in space-y-6 duration-500">
+        <div className={`animate-in fade-in space-y-6 duration-500 pb-12 ${colors.bgMain}`}>
             {/* User card */}
-            <div className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
-                <div className="flex size-12 items-center justify-center rounded-full bg-indigo-600 text-white font-bold text-lg flex-shrink-0">
+            <div className={`flex items-center gap-3 ${radius.xl} ${colors.bgSurface} ${spacing.pMd} ${shadows.sm} border ${colors.borderStandard}`}>
+                <div className={`flex size-12 items-center justify-center ${radius.pill} bg-indigo-600 text-white font-bold text-lg flex-shrink-0`}>
                     {userName.charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
-                    <p className="font-bold text-slate-900 truncate">{userName}</p>
-                    <p className="text-xs text-slate-500 truncate">{userEmail}</p>
+                    <p className={`${typography.body} font-bold ${colors.textPrimary} truncate`}>{userName}</p>
+                    <p className={`${typography.caption} ${colors.textSecondary} truncate`}>{userEmail}</p>
                     {isSuperAdmin && (
-                        <span className="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700 mt-1">
+                        <span className={`inline-flex items-center ${radius.pill} ${colors.bgMain} px-2 py-0.5 ${typography.caption} font-bold text-indigo-700 mt-1 border ${colors.borderStandard}`}>
                             Super Admin
                         </span>
                     )}
@@ -149,11 +150,11 @@ export default function MorePage() {
 
             {/* Sections */}
             {sections.map((section) => (
-                <div key={section.title}>
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">
+                <div key={section.title} className="space-y-2">
+                    <h2 className={`${typography.uiLabel} ${colors.textSecondary} px-1`}>
                         {section.title}
                     </h2>
-                    <div className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 overflow-hidden divide-y divide-slate-100">
+                    <div className={`${radius.xl} ${colors.bgSurface} ${shadows.sm} border ${colors.borderStandard} overflow-hidden divide-y ${colors.borderSubtle}`}>
                         {section.items.map((item) => (
                             <button
                                 key={item.label}
@@ -161,25 +162,25 @@ export default function MorePage() {
                                     if (item.onClick) item.onClick();
                                     else if (item.path) navigate(item.path);
                                 }}
-                                className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-slate-50 active:bg-slate-100 transition-colors"
+                                className={`w-full flex items-center gap-3 ${spacing.pxMd} py-3.5 text-left hover:${colors.bgMain} active:opacity-80 transition-colors`}
                             >
-                                <div className={`flex size-9 items-center justify-center rounded-xl ${item.iconBg} ${item.iconColor} flex-shrink-0`}>
+                                <div className={`flex size-9 items-center justify-center ${radius.lg} ${item.iconBg} ${item.iconColor} flex-shrink-0`}>
                                     <item.icon size={18} />
                                 </div>
                                 <div className="min-w-0 flex-1">
                                     <div className="flex items-center gap-2">
-                                        <p className="text-sm font-semibold text-slate-900">{item.label}</p>
+                                        <p className={`${typography.body} font-semibold ${colors.textPrimary}`}>{item.label}</p>
                                         {item.badge && (
-                                            <span className="inline-flex rounded-full bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-600">
+                                            <span className={`inline-flex ${radius.pill} bg-indigo-50 px-1.5 py-0.5 ${typography.caption} font-bold text-indigo-600`}>
                                                 {item.badge}
                                             </span>
                                         )}
                                     </div>
                                     {item.description && (
-                                        <p className="text-xs text-slate-400">{item.description}</p>
+                                        <p className={`${typography.caption} ${colors.textSecondary}`}>{item.description}</p>
                                     )}
                                 </div>
-                                <ChevronRight size={16} className="text-slate-300 flex-shrink-0" />
+                                <ChevronRight size={16} className={`${colors.textMuted} flex-shrink-0`} />
                             </button>
                         ))}
                     </div>
@@ -187,15 +188,15 @@ export default function MorePage() {
             ))}
 
             {/* Logout */}
-            <div className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 overflow-hidden">
+            <div className={`${radius.xl} ${colors.bgSurface} ${shadows.sm} border ${colors.borderStandard} overflow-hidden`}>
                 <button
                     onClick={handleLogout}
-                    className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-red-50 active:bg-red-100 transition-colors"
+                    className={`w-full flex items-center gap-3 ${spacing.pxMd} py-3.5 text-left hover:${colors.bgDanger} hover:${colors.statusDanger} active:opacity-80 transition-colors group`}
                 >
-                    <div className="flex size-9 items-center justify-center rounded-xl bg-red-50 text-red-500 flex-shrink-0">
+                    <div className={`flex size-9 items-center justify-center ${radius.lg} ${colors.bgDanger} ${colors.statusDanger} flex-shrink-0 group-hover:bg-white`}>
                         <LogOut size={18} />
                     </div>
-                    <p className="text-sm font-semibold text-red-600">Cerrar Sesión</p>
+                    <p className={`${typography.body} font-semibold ${colors.statusDanger} group-hover:text-red-700`}>Cerrar Sesión</p>
                 </button>
             </div>
 

@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, ReactNode } from 'react';
 import { X, Pencil, Plus, AlertTriangle, Settings } from 'lucide-react';
+import { typography } from '@/design/typography';
+import { Button } from './Button';
 
 // ─── Decision Tier System (UX Plan v1.2) ─────────────────────────────────────
 // T1 — Micro:       No modal. Feedback inline. (filtros, toggles)
@@ -55,11 +57,18 @@ const tierDefaultIcons: Record<ModalTier, ReactNode> = {
 };
 
 const tierIconBg: Record<ModalTier, string> = {
-    2: 'bg-indigo-50 text-indigo-600',
-    3: 'bg-amber-50 text-amber-600',
-    4: 'bg-slate-100 text-slate-600',
+    2: 'bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100',
+    3: 'bg-amber-50 text-amber-600 ring-1 ring-amber-100',
+    4: 'bg-slate-100 text-slate-600 ring-1 ring-slate-200',
 };
 
+const tierSaveVariant: Record<ModalTier, any> = {
+    2: 'primary',
+    3: 'warning', // Assuming I might add 'warning' to Button later, or just style accordingly
+    4: 'secondary',
+};
+
+// Map tiers to custom classes if needed for special colors
 const tierSaveBg: Record<ModalTier, string> = {
     2: 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100',
     3: 'bg-amber-600 hover:bg-amber-700 shadow-amber-100',
@@ -152,15 +161,15 @@ export function AppModal({
                     </div>
 
                     <div className="min-w-0 flex-1">
-                        <h3 className="truncate text-base font-bold text-slate-900">{title}</h3>
+                        <h3 className={`truncate ${typography.cardTitle} text-slate-900`}>{title}</h3>
                         {description && (
-                            <p className="truncate text-xs text-slate-400">{description}</p>
+                            <p className={`truncate ${typography.caption} text-slate-500`}>{description}</p>
                         )}
                     </div>
 
                     {/* Tier badge — solo T3+ */}
                     {tier >= 3 && (
-                        <span className={`hidden sm:inline-flex items-center rounded-lg px-2 py-0.5 text-[10px] font-black uppercase tracking-wider
+                        <span className={`hidden sm:inline-flex items-center rounded-lg px-2 py-0.5 ${typography.uiLabel} font-black 
               ${tier === 3 ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-500'}`}>
                             {tier === 3 ? 'Alto Impacto' : 'Sistema'}
                         </span>
@@ -169,7 +178,7 @@ export function AppModal({
                     <button
                         onClick={handleClose}
                         aria-label="Cerrar"
-                        className="flex size-9 min-h-[36px] min-w-[36px] flex-shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+                        className="flex size-9 min-h-[36px] min-w-[36px] flex-shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-600"
                     >
                         <X size={18} />
                     </button>
@@ -185,33 +194,23 @@ export function AppModal({
                     <div className="flex flex-shrink-0 items-center gap-3 border-t border-slate-100 bg-white px-4 py-3 sm:px-6 sm:py-4">
                         {footer ? footer : (
                             <>
-                                <button
-                                    type="button"
+                                <Button
+                                    variant="secondary"
                                     onClick={handleClose}
-                                    className="flex-1 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500 transition-all hover:bg-slate-50 active:scale-[0.98]"
+                                    className="flex-1"
                                 >
                                     {cancelLabel}
-                                </button>
+                                </Button>
 
                                 {onSave && (
-                                    <button
-                                        type="button"
+                                    <Button
                                         onClick={() => onSave()}
-                                        disabled={loading}
-                                        className={`flex flex-[1.5] items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 ${tierSaveBg[tier]}`}
+                                        isLoading={loading}
+                                        className={`flex-[1.5] ${tierSaveBg[tier]}`}
                                     >
-                                        {loading ? (
-                                            <>
-                                                <div className="size-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />
-                                                <span>Procesando...</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                {tier === 2 ? <Pencil size={14} /> : tier === 3 ? <AlertTriangle size={14} /> : <Settings size={14} />}
-                                                <span>{saveLabel}</span>
-                                            </>
-                                        )}
-                                    </button>
+                                        {!loading && (tier === 2 ? <Pencil size={14} /> : tier === 3 ? <AlertTriangle size={14} /> : <Settings size={14} />)}
+                                        {saveLabel}
+                                    </Button>
                                 )}
                             </>
                         )}

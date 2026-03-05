@@ -5,6 +5,7 @@ import {
     Search, Layers, Users, CreditCard,
     Zap, Activity, LayoutDashboard, Settings
 } from 'lucide-react';
+import { typography } from '@/design/typography';
 
 export function CommandPalette() {
     const [open, setOpen] = useState(false);
@@ -32,11 +33,11 @@ export function CommandPalette() {
         <>
             <button
                 onClick={() => setOpen(true)}
-                className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-100 text-slate-400 hover:bg-slate-100 transition-all group"
+                className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-100 text-slate-500 hover:bg-slate-100 transition-all group"
             >
                 <Search size={14} className="group-hover:text-slate-600" />
-                <span className="text-xs font-medium group-hover:text-slate-600">Buscar o ejecutar...</span>
-                <kbd className="text-[10px] font-bold bg-white px-1.5 py-0.5 rounded border border-slate-200">⌘K</kbd>
+                <span className={`${typography.caption} font-medium group-hover:text-slate-600`}>Buscar o ejecutar...</span>
+                <kbd className={`${typography.caption} font-bold bg-white px-1.5 py-0.5 rounded border border-slate-200`}>⌘K</kbd>
             </button>
 
             <Command.Dialog
@@ -47,10 +48,10 @@ export function CommandPalette() {
             >
                 <div className="w-full max-w-xl bg-white rounded-2xl border border-slate-100 shadow-2xl overflow-hidden animate-in slide-in-from-top-4 duration-300">
                     <div className="flex items-center border-b border-slate-50 px-4">
-                        <Search size={18} className="text-slate-400" />
+                        <Search size={18} className="text-slate-500" />
                         <Command.Input
                             placeholder="¿Qué necesitas hacer hoy?"
-                            className="w-full h-14 bg-transparent outline-none text-sm text-slate-900 placeholder:text-slate-400 px-3"
+                            className="w-full h-14 bg-transparent outline-none text-sm text-slate-900 placeholder:text-slate-500 px-3"
                         />
                     </div>
 
@@ -59,7 +60,7 @@ export function CommandPalette() {
                             No se encontraron resultados.
                         </Command.Empty>
 
-                        <Command.Group heading="Navegación" className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        <Command.Group heading="Navegación" className={`px-2 py-1 ${typography.uiLabel} text-slate-500 uppercase tracking-wider`}>
                             <Item
                                 icon={<LayoutDashboard size={16} />}
                                 onSelect={() => runCommand(() => navigate('/dashboard'))}
@@ -86,7 +87,7 @@ export function CommandPalette() {
                             </Item>
                         </Command.Group>
 
-                        <Command.Group heading="Operaciones" className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-4">
+                        <Command.Group heading="Operaciones" className={`px-2 py-1 ${typography.uiLabel} text-slate-500 uppercase tracking-wider mt-4`}>
                             <Item
                                 icon={<Zap size={16} />}
                                 onSelect={() => runCommand(() => { })}
@@ -110,14 +111,14 @@ export function CommandPalette() {
 
                     <div className="border-t border-slate-50 p-3 bg-slate-50/50 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-medium">
+                            <div className={`flex items-center gap-1.5 ${typography.caption} text-slate-500 font-medium`}>
                                 <kbd className="bg-white px-1 py-0.5 rounded border border-slate-200">ENTER</kbd> Seleccionar
                             </div>
-                            <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-medium">
+                            <div className={`flex items-center gap-1.5 ${typography.caption} text-slate-500 font-medium`}>
                                 <kbd className="bg-white px-1 py-0.5 rounded border border-slate-200">ESC</kbd> Cerrar
                             </div>
                         </div>
-                        <span className="text-[10px] font-bold text-slate-300">BETO OS CMD v1.0</span>
+                        <span className={`${typography.caption} font-bold text-slate-300`}>BETO OS CMD v1.0</span>
                     </div>
                 </div>
             </Command.Dialog>

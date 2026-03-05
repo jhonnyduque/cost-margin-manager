@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "db:reset": "supabase db reset",
-    "db:start": "supabase start"
+    "db:start": "supabase start",
+    "audit:design": "node scripts/audit-governance.js"
   },
   "dependencies": {
     "@google/genai": "^1.39.0",

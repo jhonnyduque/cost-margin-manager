@@ -3,16 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Edit2, Search, PlayCircle, Info, Layers, TrendingUp, CheckCircle2, X, ChevronRight, AlertTriangle, RotateCcw, Ruler, History, Copy, Package, PackageSearch, Printer, Archive, MoreVertical } from 'lucide-react';
 import { useStore, calculateProductCost, calculateFifoCost, getFifoBreakdown, hasProductGeneratedActiveDebt } from '../store';
 import { calculateFinancialMetrics } from '@/core/financialMetricsEngine';
-import { Product, ProductMaterial, Status, Unit, RawMaterial, MaterialBatch } from '@/types';
-import { PageHeader } from '@/components/ui/PageHeader';
+import { Product, Unit, RawMaterial, MaterialBatch } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
-import { tokens } from '@/design/design-tokens';
+import { colors, typography, spacing, radius, shadows } from '@/design/design-tokens';
 import { useCurrency } from '@/hooks/useCurrency';
 import { translateError } from '@/utils/errorHandler';
+import { PageContainer, SectionBlock } from '@/components/ui/LayoutPrimitives';
 
 const Products: React.FC = () => {
   const navigate = useNavigate();
@@ -192,7 +192,7 @@ const Products: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <PageContainer>
       <style>{`
       @media print {
         body * { visibility: hidden; }
@@ -202,71 +202,65 @@ const Products: React.FC = () => {
       }
       `}</style>
 
-      <PageHeader
-        title="Catálogo de Productos"
-        description="Gestión de Escandallos (Costos FIFO)"
-        actions={
-          canCreate ? (
-            <div className="flex items-center gap-2">
+      <SectionBlock>
+        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+          <div className="space-y-1">
+            <h1 className={`${typography.text.title} ${colors.textPrimary} tracking-tight`}>Catálogo de Productos</h1>
+            <p className={`${typography.text.body} ${colors.textSecondary}`}>Gestión de Escandallos (Costos FIFO)</p>
+          </div>
+          {canCreate && (
+            <div className="flex items-center gap-3">
               <Button
                 variant="secondary"
                 onClick={() => navigate('/materias-primas')}
               >
-                Nuevo Insumo
+                NUEVO INSUMO
               </Button>
               <Button
                 variant="primary"
                 onClick={() => navigate('/productos/nuevo')}
-                icon={<Plus size={18} />}
+                icon={<Plus />}
               >
-                Nuevo Producto
+                NUEVO PRODUCTO
               </Button>
             </div>
-          ) : undefined
-        }
-      />
-
-      {/* UNIFIED TOOLBAR */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-slate-200 no-print">
-        <div className="relative flex-1 w-full max-w-md group">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors pointer-events-none" size={18} />
-          <Input
-            placeholder="Buscar por nombre o SKU..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 pr-10 py-2.5 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm w-full"
-          />
-          {searchTerm && (
-            <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
-              <X size={16} />
-            </button>
           )}
-        </div>
+        </header>
 
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider hidden sm:inline-block">Estado:</span>
-            <select
-              title="Filtro de estado"
+        {/* UNIFIED TOOLBAR */}
+        <div className="flex flex-wrap items-center gap-4 pt-6 mt-6 border-t border-slate-100 no-print">
+          <div className="relative flex-1 min-w-[300px]">
+            <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 ${colors.textMuted}`} />
+            <input
+              type="text"
+              placeholder="Buscar por nombre o SKU..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={`w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl ${typography.text.body} transition-all focus:ring-2 focus:ring-indigo-500 focus:bg-white`}
+            />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Select
+              className="w-48"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="bg-transparent text-sm font-semibold text-slate-700 py-1.5 focus:outline-none border-none cursor-pointer"
             >
               <option value="activa">Solo Activos</option>
               <option value="inactiva">Discontinuados</option>
               <option value="todos">Todos los productos</option>
-            </select>
+            </Select>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={colors.textSecondary}
+              onClick={handlePrint}
+              title="Imprimir Catálogo"
+              icon={<Printer size={20} />}
+            />
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-slate-500"
-            onClick={handlePrint}
-            title="Imprimir Catálogo"
-            icon={<Printer size={20} />}
-          />
         </div>
-      </div>
+      </SectionBlock>
 
       <div className="space-y-4">
         {/* ✅ MÓVIL - Layout Cards */}
@@ -275,120 +269,124 @@ const Products: React.FC = () => {
             const cost = calculateProductCost(p, batches, rawMaterials);
             const metrics = calculateFinancialMetrics(cost, p.price, p.target_margin || 0.3);
             return (
-              <div key={p.id} className="surface-card p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-start gap-3 flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/productos/detalle/${p.id}`)}>
+              <Card key={p.id} className="border border-slate-200">
+                <Card.Header className="mb-4">
+                  <div className="flex items-start gap-3 flex-1 min-w-0" onClick={() => navigate(`/productos/detalle/${p.id}`)}>
                     <input
                       type="checkbox"
                       checked={selectedIds.has(p.id)}
                       onChange={(e) => { e.stopPropagation(); toggleSelect(p.id); }}
                       onClick={(e) => e.stopPropagation()}
-                      className="mt-1 h-4 w-4 rounded accent-brand shrink-0"
+                      className={`mt-1 h-4 w-4 rounded-md accent-indigo-600 shrink-0`}
                       aria-label={`Seleccionar ${p.name}`}
                     />
-                    <div className="min-w-0 group/mobile-name">
-                      <h3 className="text-body font-bold text-text-primary truncate group-hover/mobile-name:underline decoration-brand/30">{p.name}</h3>
-                      <p className="text-sm text-text-secondary mt-0.5">{p.reference || 'Sin Ref'}</p>
+                    <div className="min-w-0">
+                      <h3 className={`${typography.text.section} ${colors.textPrimary} truncate`}>{p.name}</h3>
+                      <p className={`${typography.text.caption} ${colors.textSecondary} mt-0.5`}>{p.reference || 'SIN REF'}</p>
                     </div>
                   </div>
                   <Badge variant={metrics.realMargin >= (p.target_margin || 0.3) ? 'success' : 'warning'}>
                     {(metrics.realMargin * 100).toFixed(1)}%
                   </Badge>
-                </div>
+                </Card.Header>
 
-                <div className="grid grid-cols-2 gap-4 mb-4 rounded-sm bg-bg-page border border-border/50 p-3">
+                <Card.Content className="grid grid-cols-2 gap-4 bg-slate-50/50 rounded-xl p-4 border border-slate-100">
                   <div className="flex flex-col">
-                    <span className="text-label text-text-secondary uppercase">Costo (FIFO)</span>
-                    <span className="text-lg font-extrabold tabular-nums text-text-primary">{formatCurrency(cost)}</span>
+                    <span className={`${typography.text.caption} text-slate-500 font-bold uppercase`}>Costo (FIFO)</span>
+                    <span className={`${typography.text.body} font-bold ${colors.textPrimary}`}>{formatCurrency(cost)}</span>
                   </div>
                   <div className="flex flex-col items-end text-right">
-                    <span className="text-label text-text-secondary uppercase">Precio Venta</span>
-                    <span className="text-lg font-extrabold tabular-nums text-brand">{formatCurrency(p.price)}</span>
+                    <span className={`${typography.text.caption} text-slate-500 font-bold uppercase`}>Precio Venta</span>
+                    <span className={`${typography.text.body} font-black text-indigo-600`}>{formatCurrency(p.price)}</span>
                   </div>
-                </div>
+                </Card.Content>
 
-                <div className="flex justify-end border-t border-gray-100 pt-2 pb-1 pr-1">
+                <Card.Footer className="mt-4 pt-4 flex justify-end">
                   <div className="relative">
                     <button
                       data-kebab-trigger
-                      className="rounded-lg p-1.5 transition-colors hover:bg-slate-100 text-slate-500"
+                      className="rounded-lg p-2 transition-colors hover:bg-slate-100 text-slate-400"
                       onClick={(e) => openMenu(p.id, e)}
                       aria-label="Más opciones"
                     >
-                      <MoreVertical size={16} />
+                      <MoreVertical size={18} />
                     </button>
                   </div>
-                </div>
-              </div>
+                </Card.Footer>
+              </Card>
             );
           })}
         </div>
 
         {/* ✅ ESCRITORIO - Tabla normal */}
         <div id="print-area" className="hidden md:block">
-          <div className="table-container">
+          <div className={`table-container rounded-2xl ${colors.bgSurface} border ${colors.borderStandard} overflow-hidden ${shadows.sm}`}>
             <table className="w-full text-left table-fixed">
-              <thead className="table-header">
+              <thead className={`${colors.bgMain} border-b ${colors.borderStandard}`}>
                 <tr>
-                  <th className="w-[40px] px-4 py-3">
+                  <th className={`w-[48px] ${spacing.pxLg} py-4`}>
                     <input
                       type="checkbox"
                       checked={filteredProducts.length > 0 && selectedIds.size === filteredProducts.length}
                       onChange={toggleSelectAll}
-                      className="h-4 w-4 rounded accent-brand"
+                      className={`h-4 w-4 rounded accent-indigo-600`}
                       aria-label="Seleccionar todos"
                     />
                   </th>
-                  <th className="w-[28%] px-4 py-3 truncate table-header-cell">Producto</th>
-                  <th className="w-[18%] px-4 py-3 truncate table-header-cell">Referencia / SKU</th>
-                  <th className="w-[14%] px-4 py-3 text-right truncate table-header-cell">Costo (FIFO)</th>
-                  <th className="w-[14%] px-4 py-3 text-right truncate table-header-cell">Precio Venta</th>
-                  <th className="w-[10%] px-4 py-3 text-center truncate table-header-cell">Margen</th>
-                  <th className="w-[16%] min-w-[120px] px-4 py-3 text-center table-header-cell">Acciones</th>
+                  <th className={`w-[28%] ${spacing.pxLg} py-4 truncate ${typography.text.caption} text-slate-500 font-bold uppercase`}>Producto</th>
+                  <th className={`w-[18%] ${spacing.pxLg} py-4 truncate ${typography.text.caption} text-slate-500 font-bold uppercase`}>Referencia / SKU</th>
+                  <th className={`w-[14%] ${spacing.pxLg} py-4 text-right truncate ${typography.text.caption} text-slate-500 font-bold uppercase`}>Costo (FIFO)</th>
+                  <th className={`w-[14%] ${spacing.pxLg} py-4 text-right truncate ${typography.text.caption} text-slate-500 font-bold uppercase`}>Precio Venta</th>
+                  <th className={`w-[10%] ${spacing.pxLg} py-4 text-center truncate ${typography.text.caption} text-slate-500 font-bold uppercase`}>Margen</th>
+                  <th className={`w-[16%] min-w-[120px] ${spacing.pxLg} py-4 text-center ${typography.text.caption} text-slate-500 font-bold uppercase`}>Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/50">
+              <tbody className="divide-y divide-slate-100">
                 {filteredProducts.map((p) => {
                   const cost = calculateProductCost(p, batches, rawMaterials);
                   const metrics = calculateFinancialMetrics(cost, p.price, p.target_margin || 0.3);
                   return (
-                    <tr key={p.id} className="table-row">
-                      <td className="px-4 py-3">
+                    <tr key={p.id} className={`group transition-all hover:bg-slate-50/50 ${selectedIds.has(p.id) ? `bg-indigo-50/30` : colors.bgSurface}`}>
+                      <td className={`${spacing.pxLg} py-4`}>
                         <input
                           type="checkbox"
                           checked={selectedIds.has(p.id)}
                           onChange={() => toggleSelect(p.id)}
-                          className="h-4 w-4 rounded accent-brand"
+                          className={`h-4 w-4 rounded accent-indigo-600`}
                           aria-label={`Seleccionar ${p.name}`}
                         />
                       </td>
                       <td
-                        className="px-4 py-3 text-body font-bold text-text-primary truncate cursor-pointer hover:text-brand hover:underline decoration-brand/30 transition-colors"
+                        className={`${spacing.pxLg} py-4 ${typography.text.body} font-black ${colors.textPrimary} truncate cursor-pointer hover:text-indigo-600 transition-colors capitalize`}
                         title={p.name}
                         onClick={() => navigate(`/productos/detalle/${p.id}`)}
                       >
                         {p.name}
                       </td>
-                      <td className="px-4 py-3 text-sm text-text-secondary truncate" title={p.reference || '---'}>{p.reference || '---'}</td>
-                      <td className="px-4 py-3 text-right text-body font-medium tabular-nums text-text-primary truncate">{formatCurrency(cost)}</td>
-                      <td className="px-4 py-3 text-right text-lg font-extrabold tabular-nums text-brand truncate">{formatCurrency(p.price)}</td>
-                      <td className="px-4 py-3 text-center">
-                        <Badge variant={metrics.realMargin >= (p.target_margin || 0.3) ? 'success' : 'warning'}>
+                      <td className={`${spacing.pxLg} py-4 ${typography.text.secondary} text-slate-500 truncate font-medium`} title={p.reference || '---'}>
+                        {p.reference || '---'}
+                      </td>
+                      <td className={`${spacing.pxLg} py-4 text-right ${typography.text.body} font-bold ${colors.textPrimary} truncate tabular-nums`}>
+                        {formatCurrency(cost)}
+                      </td>
+                      <td className={`${spacing.pxLg} py-4 text-right ${typography.text.body} font-black text-indigo-600 truncate tabular-nums`}>
+                        {formatCurrency(p.price)}
+                      </td>
+                      <td className={`${spacing.pxLg} py-4 text-center`}>
+                        <Badge variant={metrics.realMargin >= (p.target_margin || 0.3) ? 'success' : 'warning'} className="font-black">
                           {(metrics.realMargin * 100).toFixed(1)}%
                         </Badge>
                       </td>
-                      <td className="px-4 py-4">
+                      <td className={`${spacing.pxLg} py-4`}>
                         <div className="flex justify-center items-center">
-                          <div className="relative">
-                            <button
-                              data-kebab-trigger
-                              className={`rounded-lg p-1.5 transition-colors border border-transparent ${menuState?.productId === p.id ? 'bg-slate-200 text-slate-700' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}
-                              onClick={(e) => openMenu(p.id, e)}
-                              aria-label="Más opciones"
-                            >
-                              <MoreVertical size={16} />
-                            </button>
-                          </div>
+                          <button
+                            data-kebab-trigger
+                            className={`rounded-lg p-2 transition-all border border-transparent ${menuState?.productId === p.id ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}
+                            onClick={(e) => openMenu(p.id, e)}
+                            aria-label="Más opciones"
+                          >
+                            <MoreVertical size={18} />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -416,29 +414,29 @@ const Products: React.FC = () => {
             ...(openUpward ? { bottom: window.innerHeight - rect.top + 4 } : { top: rect.bottom + 4 }),
           };
           return (
-            <div ref={menuRef} className="w-40 rounded-xl border border-slate-200 bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] py-1.5" style={style}>
-              <button className="w-full flex items-center gap-2 px-3 py-1.5 text-[13px] font-medium text-slate-600 hover:bg-slate-50 transition-colors" onClick={() => { setMenuState(null); navigate(`/productos/detalle/${product.id}`); }}>
-                <History size={14} className="text-slate-400" /> Ver Historial
+            <div ref={menuRef} className={`${radius.xl} border ${colors.borderStandard} ${colors.bgSurface} ${shadows.xl} py-1.5`} style={style}>
+              <button className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.textSecondary} hover:${colors.bgMain} transition-colors`} onClick={() => { setMenuState(null); navigate(`/productos/detalle/${product.id}`); }}>
+                <History size={14} className={colors.textMuted} /> Ver Historial
               </button>
-              <div className="border-t border-slate-100 my-1.5" />
-              <button className="w-full flex items-center gap-2 px-3 py-1.5 text-[13px] font-medium text-emerald-600 hover:bg-emerald-50 transition-colors" onClick={() => { setMenuState(null); setProductionModal({ isOpen: true, productId: product.id, productName: product.name, quantity: 1, targetPrice: product.price, cost }); }}>
+              <div className={`border-t ${colors.borderSubtle} my-1.5`} />
+              <button className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.statusSuccess} hover:${colors.bgSuccess} transition-colors`} onClick={() => { setMenuState(null); setProductionModal({ isOpen: true, productId: product.id, productName: product.name, quantity: 1, targetPrice: product.price, cost }); }}>
                 <PlayCircle size={14} /> Producir
               </button>
-              <button className="w-full flex items-center gap-2 px-3 py-1.5 text-[13px] font-medium text-slate-600 hover:bg-slate-50 transition-colors" onClick={() => { setMenuState(null); navigate(`/productos/editar/${product.id}`); }}>
-                <Edit2 size={14} className="text-slate-400" /> Editar
+              <button className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.textSecondary} hover:${colors.bgMain} transition-colors`} onClick={() => { setMenuState(null); navigate(`/productos/editar/${product.id}`); }}>
+                <Edit2 size={14} className={colors.textMuted} /> Editar
               </button>
               {canCreate && (
-                <button className="w-full flex items-center gap-2 px-3 py-1.5 text-[13px] font-medium text-slate-600 hover:bg-slate-50 transition-colors" onClick={() => { setMenuState(null); handleDuplicate(product); }}>
-                  <Copy size={14} className="text-slate-400" /> Duplicar
+                <button className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.textSecondary} hover:${colors.bgMain} transition-colors`} onClick={() => { setMenuState(null); handleDuplicate(product); }}>
+                  <Copy size={14} className={colors.textMuted} /> Duplicar
                 </button>
               )}
               {product.status === 'activa' && (
-                <button className="w-full flex items-center gap-2 px-3 py-1.5 text-[13px] font-medium text-slate-600 hover:bg-slate-50 transition-colors" onClick={() => handleDiscontinue(product.id)}>
-                  <Archive size={14} className="text-slate-400" /> Discontinuar
+                <button className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.textSecondary} hover:${colors.bgMain} transition-colors`} onClick={() => handleDiscontinue(product.id)}>
+                  <Archive size={14} className={colors.textMuted} /> Discontinuar
                 </button>
               )}
-              <div className="border-t border-slate-100 my-1.5" />
-              <button className="w-full flex items-center gap-2 px-3 py-1.5 text-[13px] font-medium text-red-600 hover:bg-red-50 transition-colors" onClick={() => handleDelete(product.id)}>
+              <div className={`border-t ${colors.borderSubtle} my-1.5`} />
+              <button className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.statusDanger} hover:${colors.bgDanger} transition-colors`} onClick={() => handleDelete(product.id)}>
                 <Trash2 size={14} /> Eliminar
               </button>
             </div>
@@ -449,21 +447,21 @@ const Products: React.FC = () => {
       {/* ── BATCH TOOLBAR ── */}
       {
         selectedIds.size > 0 && (
-          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.08)] no-print">
-            <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+          <div className={`fixed bottom-0 left-0 right-0 z-50 border-t ${colors.borderStandard} ${colors.bgSurface} ${shadows.xl} no-print`}>
+            <div className={`max-w-7xl mx-auto ${spacing.pxLg} py-3 flex items-center justify-between`}>
               <div className="flex items-center gap-3">
-                <input type="checkbox" checked readOnly className="h-4 w-4 rounded accent-indigo-600" />
-                <span className="text-sm font-semibold text-slate-900">{selectedIds.size} seleccionado{selectedIds.size > 1 ? 's' : ''}</span>
+                <input type="checkbox" checked readOnly className={`h-4 w-4 ${radius.sm} accent-indigo-600`} />
+                <span className={`${typography.body} font-semibold ${colors.textPrimary}`}>{selectedIds.size} seleccionado{selectedIds.size > 1 ? 's' : ''}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="secondary" size="sm" onClick={handleBatchDiscontinue} className="text-sm">
+                <Button variant="secondary" size="sm" onClick={handleBatchDiscontinue} className={typography.bodySm}>
                   <Archive size={15} className="mr-1.5" /> Discontinuar
                 </Button>
-                <Button variant="ghost" size="icon" onClick={handlePrint} className="text-slate-500" title="Imprimir"><Printer size={18} /></Button>
-                <Button variant="secondary" size="sm" onClick={handleBatchDelete} className="text-sm text-red-600 hover:bg-red-50 border-red-200">
+                <Button variant="ghost" size="icon" onClick={handlePrint} className={colors.textSecondary} title="Imprimir"><Printer size={18} /></Button>
+                <Button variant="secondary" size="sm" onClick={handleBatchDelete} className={`${typography.bodySm} ${colors.statusDanger} hover:${colors.bgDanger} border-red-200`}>
                   <Trash2 size={15} className="mr-1.5" /> Eliminar
                 </Button>
-                <button className="ml-2 p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors" onClick={() => setSelectedIds(new Set())} aria-label="Deseleccionar">
+                <button className={`ml-2 p-1.5 ${radius.lg} hover:${colors.bgMain} ${colors.textMuted} transition-colors`} onClick={() => setSelectedIds(new Set())} aria-label="Deseleccionar">
                   <X size={16} />
                 </button>
               </div>
@@ -476,8 +474,8 @@ const Products: React.FC = () => {
         (missingStockModal.isOpen || productionModal.isOpen || (successModal && successModal.isOpen)) && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-6" style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}>
             {productionModal.isOpen && (
-              <Card className="w-full max-w-md p-6 shadow-2xl border border-gray-200 bg-white">
-                <h3 className="text-xl font-black mb-6">Nuevo Lote de {productionModal.productName}</h3>
+              <Card className={`w-full max-w-md ${spacing.pLg} ${shadows.xl} border ${colors.borderStandard} ${colors.bgSurface}`}>
+                <h3 className={`${typography.sectionTitle} ${colors.textPrimary} mb-6`}>Nuevo Lote de {productionModal.productName}</h3>
                 <div className="space-y-4">
                   <Input label="Cantidad a fabricar" type="number" value={productionModal.quantity} onChange={e => setProductionModal({ ...productionModal, quantity: Number(e.target.value) || 1 })} />
                   <Input label="Precio Venta (Unid.)" type="number" value={productionModal.targetPrice} onChange={e => setProductionModal({ ...productionModal, targetPrice: Number(e.target.value) || 1 })} />
@@ -488,15 +486,15 @@ const Products: React.FC = () => {
             )}
 
             {missingStockModal.isOpen && (
-              <Card className="w-full max-w-xl p-8 shadow-2xl space-y-6 border-red-200">
-                <div className="flex items-center gap-4 text-red-600">
+              <Card className={`w-full max-w-xl ${spacing.pLg} ${shadows.xl} border border-red-200 ${colors.bgSurface} space-y-6`}>
+                <div className={`flex items-center gap-4 ${colors.statusDanger}`}>
                   <AlertTriangle size={28} />
-                  <h3 className="text-xl font-black">Faltante de Inventario</h3>
+                  <h3 className={`${typography.sectionTitle}`}>Faltante de Inventario</h3>
                 </div>
-                <p className="text-gray-600">No tienes stock suficiente de algunos insumos. Se registrará una deuda de inventario.</p>
+                <p className={`${typography.body} ${colors.textSecondary}`}>No tienes stock suficiente de algunos insumos. Se registrará una deuda de inventario.</p>
                 <div className="flex gap-4 pt-4">
                   <Button variant="ghost" className="flex-1" onClick={() => setMissingStockModal({ ...missingStockModal, isOpen: false })}>Cancelar</Button>
-                  <Button className="flex-1 bg-red-600 text-white" onClick={() => {
+                  <Button className={`flex-1 ${colors.bgDanger} text-white`} onClick={() => {
                     consumeStockBatch(missingStockModal.productId, missingStockModal.quantity, missingStockModal.targetPrice).then(() => {
                       const product = products.find(p => p.id === missingStockModal.productId);
                       const baseCost = calculateProductCost(product!, batches, rawMaterials);
@@ -511,15 +509,15 @@ const Products: React.FC = () => {
             {successModal && successModal.isOpen && (
               <Card className="w-full max-w-sm p-8 text-center space-y-6">
                 <CheckCircle2 size={48} className="mx-auto text-emerald-500" />
-                <h3 className="text-xl font-black">¡Producción Exitosa!</h3>
-                <p className="text-gray-600">El lote ha sido ingresado al inventario.</p>
+                <h3 className={typography.sectionTitle}>¡Producción Exitosa!</h3>
+                <p className={`${typography.body} text-gray-600`}>El lote ha sido ingresado al inventario.</p>
                 <Button className="w-full" onClick={() => setSuccessModal(null)}>Entendido</Button>
               </Card>
             )}
           </div>
         )
       }
-    </div >
+    </PageContainer>
   );
 };
 

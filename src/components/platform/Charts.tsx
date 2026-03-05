@@ -3,6 +3,7 @@ import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     BarChart, Bar
 } from 'recharts';
+import { typography } from '@/design/typography';
 
 interface GrowthChartProps {
     data: any[];
@@ -79,7 +80,7 @@ export function PlanDonutChart({ data }: { data: any[] }) {
                 <div className="w-full space-y-3">
                     {data.map((item, index) => (
                         <div key={item.name} className="space-y-1">
-                            <div className="flex justify-between text-xs font-bold">
+                            <div className={`flex justify-between ${typography.uiLabel}`}>
                                 <span className="text-slate-500 capitalize">{item.name}</span>
                                 <span className="text-slate-800">{item.value} companies</span>
                             </div>

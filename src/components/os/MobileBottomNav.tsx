@@ -103,7 +103,7 @@ export const MobileBottomNav: React.FC = () => {
                                 transition-colors duration-200
                                 ${isActive
                                     ? 'text-indigo-600'
-                                    : 'text-slate-400 active:text-slate-600'
+                                    : 'text-slate-500 active:text-slate-600'
                                 }
                             `}
                         >
@@ -116,8 +116,8 @@ export const MobileBottomNav: React.FC = () => {
                             />
                             <span
                                 className={`
-                                    text-[11px] mt-1 font-medium leading-none
-                                    ${isActive ? 'text-indigo-600' : 'text-slate-400'}
+                                    text-xs mt-1 font-medium leading-none
+                                    ${isActive ? 'text-indigo-600' : 'text-slate-500'}
                                 `}
                             >
                                 {item.label}

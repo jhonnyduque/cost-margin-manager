@@ -1,4 +1,4 @@
-import { supabaseAdmin } from "../supabaseAdmin"
+import { supabaseAdmin } from "./supabaseAdmin"
 
 export async function enforceSeatLimit(companyId: string) {
 

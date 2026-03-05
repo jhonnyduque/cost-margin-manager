@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Hexagon } from 'lucide-react';
 import { MODULES } from '../../platform/modules.registry';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '../../platform/useSubscription';
+import { colors, typography, spacing, radius, shadows } from '@/design/design-tokens';
 
 interface SidebarProps {
     collapsed: boolean;
@@ -41,17 +42,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
     return (
         <aside
             className={`
-                fixed left-0 top-0 z-40 h-screen bg-white text-slate-600 transition-all duration-300 border-r border-slate-200
+                fixed left-0 top-0 z-40 h-screen ${colors.bgSurface} ${colors.textSecondary} transition-all duration-300 border-r ${colors.borderStandard}
                 ${collapsed ? 'w-16' : 'w-64'}
             `}
             aria-label="Menú lateral de navegación"
         >
             {/* Header / Brand */}
-            <div className="flex h-16 items-center justify-between px-4 border-b border-slate-100/80">
+            <div className={`flex h-16 items-center justify-between ${spacing.pxLg} border-b ${colors.borderSubtle}`}>
                 {!collapsed && (
-                    <div className="flex items-center gap-2 font-bold text-lg tracking-tight">
-                        <Hexagon className="h-6 w-6 text-indigo-500 fill-indigo-500/20 flex-shrink-0" />
-                        <span className="truncate">BETO OS</span>
+                    <div className="flex items-center gap-2 font-bold tracking-tight">
+                        <Hexagon className="h-6 w-6 text-indigo-500 fill-indigo-500/10 flex-shrink-0" />
+                        <span className={`${typography.sectionTitle} truncate`}>BETO OS</span>
                     </div>
                 )}
                 {collapsed && (
@@ -65,10 +66,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
                     onClick={onToggle}
                     className={`
                         flex items-center justify-center
-                        p-1.5 rounded-lg
-                        bg-slate-50 hover:bg-slate-100
-                        border border-slate-200/60 hover:border-slate-300
-                        text-slate-400 hover:text-slate-900
+                        p-1.5 ${radius.md}
+                        ${colors.bgMain} hover:bg-slate-100
+                        border ${colors.borderSubtle} hover:border-slate-300
+                        ${colors.textMuted} hover:${colors.textPrimary}
                         transition-all duration-200
                         ${collapsed ? 'mx-auto' : 'ml-auto'}
                         focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
@@ -89,7 +90,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
             {/* Navigation */}
             <nav
                 id="sidebar-navigation"
-                className="p-2 space-y-1 mt-4"
+                className={`${spacing.pSm} ${spacing.sm} mt-4`}
             >
                 {Object.values(MODULES).map((module) => {
                     const mod = module as any;
@@ -114,16 +115,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
                             key={mod.id}
                             to={mod.path}
                             className={({ isActive }) => `
-                                flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200
+                                flex items-center gap-3 ${spacing.pxMd} py-2 ${radius.xl} transition-all duration-200
                                 ${isActive
-                                    ? 'bg-indigo-50 text-indigo-700 shadow-sm shadow-indigo-100/50'
-                                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}
+                                    ? `${colors.bgBrandSubtle} text-indigo-700 ${shadows.sm}`
+                                    : `${colors.textMuted} hover:${colors.bgMain} hover:${colors.textPrimary}`}
                                 ${collapsed ? 'justify-center mx-1' : ''}
                             `}
                             title={collapsed ? mod.name : undefined}
                         >
                             <Icon size={20} className="flex-shrink-0" />
-                            {!collapsed && <span className="text-sm font-medium truncate">{mod.name}</span>}
+                            {!collapsed && <span className={`${typography.body} font-medium truncate`}>{mod.name}</span>}
                         </NavLink>
                     );
                 })}
@@ -131,8 +132,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
 
             {/* Footer / Version */}
             {!collapsed && (
-                <div className="absolute bottom-4 left-0 w-full px-4 text-center">
-                    <span className="text-[10px] text-slate-300 font-bold uppercase tracking-widest">v11.0.0</span>
+                <div className={`absolute bottom-4 left-0 w-full ${spacing.pxLg} text-center`}>
+                    <span className={`${typography.uiLabel} ${colors.textMuted}`}>v11.0.0</span>
                 </div>
             )}
         </aside>

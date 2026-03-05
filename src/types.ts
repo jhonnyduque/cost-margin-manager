@@ -20,9 +20,9 @@ export type SubscriptionTier = 'demo' | 'starter' | 'growth' | 'scale' | 'enterp
 
 // We extend these to make certain fields optional in the UI/Logic if needed, 
 // but keeping them compatible with Database Row.
-export type RawMaterial = Tables<'raw_materials'>;
-export type MaterialBatch = Tables<'material_batches'>;
-export type StockMovement = Tables<'stock_movements'>;
+export type RawMaterial = Tables<'raw_materials'> & { created_by?: string; updated_by?: string; deleted_at?: string | null; };
+export type MaterialBatch = Tables<'material_batches'> & { created_by?: string; updated_by?: string; deleted_at?: string | null; };
+export type StockMovement = Tables<'stock_movements'> & { deleted_at?: string | null; };
 export type ProductMovement = Tables<'product_movements'>;
 export interface ProductMaterial {
   material_id: string;
@@ -34,6 +34,9 @@ export interface ProductMaterial {
 
 export type Product = Tables<'products'> & {
   materials: ProductMaterial[] | null;
+  created_by?: string;
+  updated_by?: string;
+  deleted_at?: string | null;
 };
 
 // Custom Type Literals (Expanded based on UI usage)

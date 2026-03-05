@@ -80,82 +80,43 @@ const EditTenantModal: React.FC<EditTenantModalProps> = ({ isOpen, company, onCl
             }}
         >
             <Card
-                className="animate-in zoom-in-95 w-full max-w-xl overflow-hidden duration-200"
-                style={{
-                    boxShadow: tokens.shadow.elevated,
-                    padding: 0 // Reset padding for custom header/body split
-                }}
+                className={`animate-in zoom-in-95 w-full max-w-xl overflow-hidden duration-200 ${tokens.shadow.modal} p-0`}
             >
                 <header
-                    style={{
-                        padding: tokens.spacing.lg,
-                        borderBottom: `1px solid ${tokens.colors.border}`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'between',
-                        backgroundColor: tokens.colors.bg
-                    }}
-                    className="flex items-center justify-between"
+                    className="flex items-center justify-between p-6 border-b border-slate-200 bg-white"
                 >
                     <div className="flex items-center gap-3">
                         <div
-                            style={{
-                                width: '40px',
-                                height: '40px',
-                                backgroundColor: tokens.colors.brand,
-                                borderRadius: tokens.radius.md,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: tokens.colors.surface
-                            }}
+                            className={`w-10 h-10 ${tokens.colors.bgBrand} rounded-lg flex items-center justify-center text-white`}
                         >
                             <Building2 size={20} />
                         </div>
                         <div>
                             <h2
-                                style={{
-                                    fontSize: tokens.typography.h1.fontSize,
-                                    fontWeight: tokens.typography.h1.fontWeight,
-                                    color: tokens.colors.text.primary
-                                }}
+                                className={`text-2xl font-bold ${tokens.colors.textPrimary}`}
                             >
                                 Editar Tenant
                             </h2>
-                            <p style={{ ...tokens.typography.caption, fontSize: '0.75rem' }}>
+                            <p className={`text-sm mt-1 ${tokens.colors.textSecondary}`}>
                                 {company.name}
                             </p>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        style={{
-                            color: tokens.colors.text.secondary,
-                            padding: tokens.spacing.xs,
-                            borderRadius: tokens.radius.full
-                        }}
-                        className="transition-colors hover:bg-gray-100"
+                        className={`text-slate-500 p-2 rounded-full transition-colors hover:bg-slate-100`}
                     >
                         <X size={20} />
                     </button>
                 </header>
 
-                <form onSubmit={handleSubmit} style={{ padding: tokens.spacing.lg }}>
+                <form onSubmit={handleSubmit} className="p-6">
                     {error && (
                         <div
-                            style={{
-                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                                border: `1px solid ${tokens.colors.error}`,
-                                padding: tokens.spacing.md,
-                                borderRadius: tokens.radius.md,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: tokens.spacing.sm,
-                                marginBottom: tokens.spacing.lg
-                            }}
+                            className="bg-red-50 border border-red-200 p-4 rounded-lg flex items-center gap-3 mb-6"
                         >
-                            <AlertCircle size={18} color={tokens.colors.error} />
-                            <span style={{ fontSize: tokens.typography.caption.fontSize, fontWeight: 700, color: '#DC2626' }}>
+                            <AlertCircle size={18} className="text-red-500" />
+                            <span className={`text-sm font-bold text-red-600`}>
                                 {error}
                             </span>
                         </div>
@@ -185,7 +146,7 @@ const EditTenantModal: React.FC<EditTenantModalProps> = ({ isOpen, company, onCl
                                     value={customPriceUSD}
                                     onChange={e => setCustomPriceUSD(e.target.value)}
                                 />
-                                <p className="text-[10px] text-slate-400">
+                                <p className="text-xs text-slate-500">
                                     Si se define, este monto **sobrescribe** el precio del plan en las finanzas.
                                     Útil para Enterprise o acuerdos especiales. Dejar vacío para usar precio de plan.
                                 </p>
@@ -215,7 +176,7 @@ const EditTenantModal: React.FC<EditTenantModalProps> = ({ isOpen, company, onCl
                                     )}
                                     <span className="capitalize">{status}</span>
                                     {company.current_period_ends_at && (
-                                        <span className="ml-auto text-xs text-slate-400">
+                                        <span className="ml-auto text-xs text-slate-500">
                                             Vence: {new Date(company.current_period_ends_at).toLocaleDateString()}
                                         </span>
                                     )}
@@ -252,7 +213,7 @@ const EditTenantModal: React.FC<EditTenantModalProps> = ({ isOpen, company, onCl
                                 <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
                                     <span className="capitalize">{tier || 'Sin Plan'}</span>
                                     {company.stripe_price_id && (
-                                        <div className="mt-1 text-[10px] text-slate-400 font-mono">
+                                        <div className="mt-1 text-xs text-slate-500 font-mono">
                                             ID: {company.stripe_price_id.slice(0, 16)}...
                                         </div>
                                     )}
@@ -279,8 +240,7 @@ const EditTenantModal: React.FC<EditTenantModalProps> = ({ isOpen, company, onCl
                     </div>
 
                     <div
-                        className="flex justify-end gap-3 pt-6"
-                        style={{ borderTop: `1px solid ${tokens.colors.border}` }}
+                        className="flex justify-end gap-3 pt-6 border-t border-slate-200"
                     >
                         <Button
                             type="button"

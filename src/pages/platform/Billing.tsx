@@ -11,6 +11,9 @@ import { Card } from '@/components/ui/Card';
 import { EntityList } from '@/components/entity/EntityList';
 import { EntityConfig } from '@/components/entity/types';
 import { getPlanDisplay, getStatusDisplay } from '@/config/subscription.config';
+import { colors, typography } from '@/design/design-tokens';
+import { PageContainer, SectionBlock } from '@/components/ui/LayoutPrimitives';
+import { Badge } from '@/components/ui/Badge';
 
 interface BillingCompany {
     id: string;
@@ -66,7 +69,6 @@ export default function Billing() {
         );
     }, [companies, searchTerm]);
 
-    // ── Bulk Actions ──────────────────────────────
     const handleBulkPrint = (ids: string[]) => {
         const selected = companies.filter(c => ids.includes(c.id));
         const printWindow = window.open('', '_blank');
@@ -76,19 +78,19 @@ export default function Billing() {
             const plan = getPlanDisplay(c.subscription_tier);
             const status = getStatusDisplay(c.subscription_status);
             return `<tr>
-                <td style="padding:8px;border-bottom:1px solid #eee">${c.name}</td>
-                <td style="padding:8px;border-bottom:1px solid #eee">${plan.label}</td>
-                <td style="padding:8px;border-bottom:1px solid #eee">${status.label}</td>
-                <td style="padding:8px;border-bottom:1px solid #eee">${c.current_period_end ? new Date(c.current_period_end).toLocaleDateString() : '—'}</td>
+                <td style="padding:12px;border-bottom:1px solid #eee;font-weight:600">${c.name}</td>
+                <td style="padding:12px;border-bottom:1px solid #eee">${plan.label}</td>
+                <td style="padding:12px;border-bottom:1px solid #eee">${status.label}</td>
+                <td style="padding:12px;border-bottom:1px solid #eee">${c.current_period_end ? new Date(c.current_period_end).toLocaleDateString() : '—'}</td>
             </tr>`;
         }).join('');
 
         printWindow.document.write(`
             <html><head><title>Facturación — BETO OS</title>
-            <style>body{font-family:system-ui;padding:2rem}table{width:100%;border-collapse:collapse}th{text-align:left;padding:8px;border-bottom:2px solid #333;font-size:12px;text-transform:uppercase}</style>
+            <style>body{font-family:system-ui;padding:2rem}table{width:100%;border-collapse:collapse}th{text-align:left;padding:12px;border-bottom:2px solid #333;text-transform:uppercase;font-size:12px;letter-spacing:1px}</style>
             </head><body>
-            <h1 style="font-size:1.5rem">Reporte de Facturación</h1>
-            <p style="color:#666">Generado: ${new Date().toLocaleString()}</p>
+            <h1>Control de Suscripciones</h1>
+            <p style="color:#666">Corte de Reporte: ${new Date().toLocaleString()}</p>
             <table><thead><tr><th>Empresa</th><th>Plan</th><th>Estado</th><th>Renovación</th></tr></thead>
             <tbody>${rows}</tbody></table>
             </body></html>
@@ -113,85 +115,71 @@ export default function Billing() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `facturacion_${new Date().toISOString().slice(0, 10)}.csv`;
+        a.download = `billing_audit_${new Date().toISOString().slice(0, 10)}.csv`;
         a.click();
         URL.revokeObjectURL(url);
     };
 
-    // ── EntityConfig ──────────────────────────────
     const billingConfig: EntityConfig<BillingCompany> = {
         name: 'Suscripción',
         pluralName: 'Suscripciones',
         rowIdKey: 'id' as keyof BillingCompany,
         fields: [
             {
-                key: 'name' as keyof BillingCompany,
+                key: 'name',
                 label: 'Empresa',
                 type: 'text',
-                render: (c) => (
+                render: (c: BillingCompany) => (
                     <div className="flex items-center gap-3">
-                        <div className="flex size-8 items-center justify-center rounded-lg bg-indigo-50 flex-shrink-0">
-                            <Building2 size={16} className="text-indigo-600" />
+                        <div className={`flex size-10 items-center justify-center rounded-xl ${colors.bgBrandSubtle} ${colors.brand} border shadow-sm`}>
+                            <Building2 size={18} />
                         </div>
                         <div className="min-w-0">
-                            <div className="font-bold text-gray-900 truncate">{c.name}</div>
-                            <div className="text-xs text-gray-500 truncate">{c.slug}</div>
+                            <div className={`${typography.text.body} font-black ${colors.textPrimary} truncate`}>{c.name}</div>
+                            <div className={`${typography.text.caption} ${colors.textMuted} truncate uppercase font-bold tracking-tight`}>{c.slug}</div>
                         </div>
                     </div>
                 )
             },
             {
-                key: 'subscription_tier' as keyof BillingCompany,
+                key: 'subscription_tier',
                 label: 'Plan',
                 type: 'badge',
-                render: (c) => {
+                render: (c: BillingCompany) => {
                     const plan = getPlanDisplay(c.subscription_tier);
-                    return (
-                        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${plan.bg} ${plan.color}`}>
-                            <Zap size={10} />
-                            {plan.label}
-                        </span>
-                    );
+                    return <Badge variant={c.subscription_tier === 'pro' ? 'info' : 'neutral'}>{plan.label.toUpperCase()}</Badge>;
                 }
             },
             {
-                key: 'subscription_status' as keyof BillingCompany,
+                key: 'subscription_status',
                 label: 'Estado',
                 type: 'badge',
-                render: (c) => {
+                render: (c: BillingCompany) => {
                     const status = getStatusDisplay(c.subscription_status);
                     return (
-                        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold ${status.color}`}>
-                            <span className={`size-1.5 rounded-full ${status.dot}`} />
-                            {status.label}
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <div className={`size-2 rounded-full ${status.dot.replace('bg-', 'bg-')}`} />
+                            <span className={`${typography.text.caption} font-black ${status.color.replace('text-', 'text-')}`}>
+                                {status.label.toUpperCase()}
+                            </span>
+                        </div>
                     );
                 }
             },
             {
-                key: 'current_period_end' as keyof BillingCompany,
-                label: 'Renovación',
+                key: 'current_period_end',
+                label: 'Vencimiento',
                 type: 'date',
-                render: (c) => (
-                    <span className="text-sm text-gray-600">
-                        {c.current_period_end ? new Date(c.current_period_end).toLocaleDateString() : '—'}
+                render: (c: BillingCompany) => (
+                    <span className={`${typography.text.caption} font-bold ${colors.textSecondary}`}>
+                        {c.current_period_end ? new Date(c.current_period_end).toLocaleDateString() : 'SIN FECHA'}
                     </span>
                 )
             }
         ],
         actions: [
-            {
-                id: 'manage',
-                label: 'Gestionar',
-                icon: <ArrowRight size={18} />,
-                onClick: (c) => navigate(`/platform/billing/checkout?company=${c.id}`)
-            },
-            {
-                id: 'view',
-                label: 'Ver Detalles',
-                icon: <Eye size={18} />,
-                onClick: (c) => navigate(`/platform/billing/checkout?company=${c.id}`)
-            }
+            { id: 'manage', label: 'Gestionar', icon: <ArrowRight size={18} />, onClick: (c: any) => navigate(`/platform/billing/checkout?company=${c.id}`) },
+            { id: 'view', label: 'Audit', icon: <Eye size={18} />, onClick: (c: any) => navigate(`/platform/billing/checkout?company=${c.id}`) }
         ],
         bulkActions: [
             { label: 'Imprimir', onClick: handleBulkPrint },
@@ -201,122 +189,131 @@ export default function Billing() {
 
     if (loading) {
         return (
-            <div className="flex h-96 items-center justify-center">
-                <div className="size-10 animate-spin rounded-full border-4 border-indigo-500/20 border-t-indigo-500" />
-                <span className="ml-3 text-gray-600">Cargando...</span>
-            </div>
+            <PageContainer>
+                <div className="flex h-96 items-center justify-center">
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="size-12 animate-spin rounded-full border-4 border-indigo-500/20 border-t-indigo-500" />
+                        <span className={`${typography.text.body} ${colors.textMuted} font-bold animate-pulse`}>SINCRONIZANDO FACTURACIÓN...</span>
+                    </div>
+                </div>
+            </PageContainer>
         );
     }
 
-    // ── SUPER ADMIN VIEW ──────────────────────────
-    if (user?.is_super_admin) {
-        return (
-            <div className="animate-in fade-in space-y-6 lg:space-y-8 duration-700">
-                <header className="space-y-4">
-                    <div>
-                        <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-gray-900">Facturación</h1>
-                        <p className="mt-1 text-sm lg:text-base font-medium text-gray-500">
-                            Gestión de suscripciones de todas las empresas · {filteredCompanies.length} registros
+    return (
+        <PageContainer>
+            <SectionBlock>
+                <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div className="space-y-1">
+                        <h1 className={`${typography.text.title} ${colors.textPrimary} tracking-tight`}>
+                            {user?.is_super_admin ? 'Gobernanza de Cuentas' : 'Facturación y Suscripción'}
+                        </h1>
+                        <p className={`${typography.text.body} ${colors.textSecondary} max-w-lg`}>
+                            {user?.is_super_admin
+                                ? `Supervisión de suscripciones de todas las organizaciones activas.`
+                                : 'Gestiona tu plan comercial y métodos de pago corporativos.'}
                         </p>
-                    </div>
-
-                    {/* Search + Quick Actions */}
-                    <div className="flex items-center gap-2">
-                        <div className="relative flex-1 min-w-0">
-                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                            <input
-                                type="text"
-                                placeholder="Buscar empresa, plan, estado..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full rounded-xl bg-white pl-10 pr-3 py-2.5 text-sm text-slate-700 ring-1 ring-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
-                            />
-                        </div>
-                        <button
-                            onClick={() => handleBulkPrint(filteredCompanies.map(c => c.id))}
-                            className="flex items-center justify-center rounded-xl bg-white ring-1 ring-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-all h-10 w-10 flex-shrink-0"
-                            title="Imprimir todo"
-                        >
-                            <Printer size={18} />
-                        </button>
-                        <button
-                            onClick={() => handleBulkExport(filteredCompanies.map(c => c.id))}
-                            className="flex items-center justify-center rounded-xl bg-white ring-1 ring-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-all h-10 w-10 flex-shrink-0"
-                            title="Exportar CSV"
-                        >
-                            <Download size={18} />
-                        </button>
                     </div>
                 </header>
 
-                <EntityList
-                    config={billingConfig}
-                    items={filteredCompanies}
-                    loading={loading}
-                    emptyMessage="No hay empresas registradas"
-                />
-            </div>
-        );
-    }
-
-    // ── TENANT VIEW ───────────────────────────────
-    const planDisplay = getPlanDisplay(subscription?.subscription_tier);
-
-    return (
-        <div className="animate-in fade-in space-y-6 lg:space-y-8 duration-700">
-            <header>
-                <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-gray-900">
-                    Facturación y Suscripción
-                </h1>
-                <p className="mt-1 text-sm lg:text-base font-medium text-gray-500">
-                    Gestiona tu plan y métodos de pago
-                </p>
-            </header>
-
-            <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
-                <Card className="p-5 sm:p-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h3 className="text-base sm:text-lg font-bold text-gray-900">Plan Actual</h3>
-                            <p className="mt-1 text-sm text-gray-500">
-                                {subscription?.subscription_tier ? planDisplay.label : 'Sin plan activo'}
-                            </p>
-                            {subscription?.current_period_end && (
-                                <p className="mt-2 text-xs text-gray-400">
-                                    Renueva: {new Date(subscription.current_period_end).toLocaleDateString()}
-                                </p>
-                            )}
+                {user?.is_super_admin ? (
+                    <>
+                        <div className="flex flex-wrap items-center gap-3 pt-6 border-t border-slate-100">
+                            <div className="relative flex-1 min-w-[300px]">
+                                <Search size={16} className={`absolute left-4 top-1/2 -translate-y-1/2 ${colors.textMuted}`} />
+                                <input
+                                    type="text"
+                                    placeholder="Buscar empresa, plan, estado..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className={`w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl ${typography.text.body} transition-all focus:ring-2 focus:ring-indigo-500 focus:bg-white`}
+                                />
+                            </div>
+                            <Button variant="secondary" onClick={() => handleBulkPrint(filteredCompanies.map(c => c.id))} icon={<Printer />}>
+                                REPORTAR
+                            </Button>
+                            <Button variant="secondary" onClick={() => handleBulkExport(filteredCompanies.map(c => c.id))} icon={<Download />}>
+                                EXPORTAR
+                            </Button>
                         </div>
-                        <div className="flex size-12 items-center justify-center rounded-full bg-emerald-100">
-                            <CheckCircle size={24} className="text-emerald-600" />
-                        </div>
-                    </div>
-                    <div className="mt-5 sm:mt-6">
-                        <Button onClick={() => navigate('/platform/billing/checkout')} variant="outline" className="w-full" icon={<ArrowRight size={18} />}>
-                            Cambiar Plan
-                        </Button>
-                    </div>
-                </Card>
+                        <Card noPadding className="overflow-hidden">
+                            <EntityList
+                                config={billingConfig as any}
+                                items={filteredCompanies}
+                                loading={loading}
+                                emptyMessage="No hay registros de facturación"
+                            />
+                        </Card>
+                    </>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-slate-100">
+                        {/* TENANT PLAN CARD */}
+                        <Card>
+                            <Card.Header
+                                title="Plan Activo"
+                                description="Tu nivel de servicio actual en BETO OS."
+                                icon={<Zap className="text-indigo-600" size={20} />}
+                            />
+                            <Card.Content className="pt-4">
+                                <div className="flex items-center gap-4 p-4 bg-indigo-50 rounded-2xl border border-indigo-100">
+                                    <div className="size-12 rounded-xl bg-white flex items-center justify-center shadow-sm">
+                                        <Zap className="text-indigo-600" />
+                                    </div>
+                                    <div>
+                                        <div className={`${typography.text.title} text-indigo-900 leading-none`}>
+                                            {getPlanDisplay(subscription?.subscription_tier).label.toUpperCase()}
+                                        </div>
+                                        <div className={`${typography.text.caption} text-indigo-600 font-bold mt-1`}>
+                                            {subscription?.current_period_end
+                                                ? `RENOVACIÓN: ${new Date(subscription.current_period_end).toLocaleDateString()}`
+                                                : 'SINSCRIPCIÓN ACTIVA'}
+                                        </div>
+                                    </div>
+                                    <div className="ml-auto">
+                                        <div className="size-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                                            <CheckCircle className="text-emerald-600 size-5" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </Card.Content>
+                            <Card.Footer className="bg-slate-50/50">
+                                <Button className="w-full" variant="primary" onClick={() => navigate('/platform/billing/checkout')} icon={<ArrowRight />}>
+                                    UPGRADE / CAMBIAR PLAN
+                                </Button>
+                            </Card.Footer>
+                        </Card>
 
-                <Card className="p-5 sm:p-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h3 className="text-base sm:text-lg font-bold text-gray-900">Método de Pago</h3>
-                            <p className="mt-1 text-sm text-gray-500">
-                                {subscription?.stripe_subscription_id ? 'Tarjeta registrada' : 'No registrada'}
-                            </p>
-                        </div>
-                        <div className="flex size-12 items-center justify-center rounded-full bg-indigo-100">
-                            <CreditCard size={24} className="text-indigo-600" />
-                        </div>
+                        {/* PAYMENT METHOD CARD */}
+                        <Card>
+                            <Card.Header
+                                title="Método de Pago"
+                                description="Tarjeta vinculada para cargos recurrentes."
+                                icon={<CreditCard className="text-indigo-600" size={20} />}
+                            />
+                            <Card.Content className="pt-4">
+                                <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                                    <div className="size-12 rounded-xl bg-white flex items-center justify-center shadow-sm border border-slate-100">
+                                        <CreditCard className="text-slate-600" />
+                                    </div>
+                                    <div>
+                                        <div className={`${typography.text.body} font-black text-slate-800`}>
+                                            {subscription?.stripe_subscription_id ? 'TARJETA REGISTRADA' : 'SIN MÉTODO DE PAGO'}
+                                        </div>
+                                        <div className={`${typography.text.caption} text-slate-400 font-bold`}>
+                                            SISTEMA DE PAGOS STRIPE
+                                        </div>
+                                    </div>
+                                </div>
+                            </Card.Content>
+                            <Card.Footer className="bg-slate-50/50">
+                                <Button className="w-full" variant="secondary" onClick={() => navigate('/platform/billing/portal')}>
+                                    GESTIONAR EN STRIPE PORTAL
+                                </Button>
+                            </Card.Footer>
+                        </Card>
                     </div>
-                    <div className="mt-5 sm:mt-6">
-                        <Button onClick={() => navigate('/platform/billing/portal')} variant="outline" className="w-full">
-                            Gestionar Pago
-                        </Button>
-                    </div>
-                </Card>
-            </div>
-        </div>
+                )}
+            </SectionBlock>
+        </PageContainer>
     );
 }

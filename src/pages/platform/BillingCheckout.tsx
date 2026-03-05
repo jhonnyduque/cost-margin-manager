@@ -4,6 +4,7 @@ import { supabase } from '../../services/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { subscriptionConfig, PlanKey } from '@/platform/subscription.config';
 import { Check, Loader2, ArrowRight, Building2, Users, Zap, BadgeCheck } from 'lucide-react';
+import { typography } from '@/design/typography';
 
 // ✅ Mapa inverso planKey → priceId, construido una sola vez fuera del componente
 const planToPriceId = Object.entries(subscriptionConfig.priceToPlan).reduce(
@@ -235,10 +236,10 @@ export default function BillingCheckout() {
         <div className="animate-in fade-in space-y-8 duration-700">
             {/* Header */}
             <header>
-                <h1 className="text-3xl font-black tracking-tight text-gray-900">
+                <h1 className={`${typography.pageTitle} text-gray-900`}>
                     Planes y Suscripción
                 </h1>
-                <p className="mt-1 font-medium text-gray-500">
+                <p className={`mt-1 ${typography.body} font-medium text-gray-500`}>
                     {currentPlanKey
                         ? `Estás en el plan ${plans.find(p => p.key === currentPlanKey)?.name ?? currentPlanKey}. Puedes cambiarlo cuando quieras.`
                         : 'Elige el plan que mejor se adapte a tu equipo.'}
@@ -253,7 +254,7 @@ export default function BillingCheckout() {
                     </div>
                     <div className="flex-1">
                         <p className="font-bold">¡Éxito!</p>
-                        <p className="text-sm">{successMessage}</p>
+                        <p className={`${typography.bodySm}`}>{successMessage}</p>
                     </div>
                     <button
                         onClick={() => setSuccessMessage(null)}
@@ -271,7 +272,7 @@ export default function BillingCheckout() {
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-red-100 font-bold">!</div>
                     <div className="flex-1">
                         <p className="font-bold">Error al procesar</p>
-                        <p className="text-sm">{error}</p>
+                        <p className={`${typography.bodySm}`}>{error}</p>
                     </div>
                     <button
                         onClick={() => setError(null)}
@@ -301,7 +302,7 @@ export default function BillingCheckout() {
                         >
                             {isCurrent && (
                                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1 text-xs font-bold text-white">
+                                    <span className={`inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1 ${typography.uiLabel} text-white`}>
                                         <BadgeCheck size={12} />
                                         Tu plan actual
                                     </span>
@@ -310,7 +311,7 @@ export default function BillingCheckout() {
 
                             {plan.recommended && !isCurrent && (
                                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                                    <span className="rounded-full bg-indigo-600 px-3 py-1 text-xs font-bold text-white">
+                                    <span className={`rounded-full bg-indigo-600 px-3 py-1 ${typography.uiLabel} text-white`}>
                                         Más Popular
                                     </span>
                                 </div>
@@ -318,23 +319,23 @@ export default function BillingCheckout() {
 
                             {/* Plan Header */}
                             <div className="p-6">
-                                <h3 className="text-xl font-black text-gray-900">{plan.name}</h3>
-                                <p className="mt-1 text-sm text-gray-500">{plan.description}</p>
+                                <h3 className={`${typography.sectionTitle} text-gray-900`}>{plan.name}</h3>
+                                <p className={`mt-1 ${typography.caption} text-gray-500`}>{plan.description}</p>
 
                                 <div className="mt-4 flex items-baseline gap-1">
                                     {plan.price === null ? (
-                                        <span className="text-2xl font-black text-gray-900">A medida</span>
+                                        <span className={`${typography.metric} text-gray-900`}>A medida</span>
                                     ) : plan.price === 0 ? (
-                                        <span className="text-4xl font-black text-gray-900">Gratis</span>
+                                        <span className={`${typography.metric} text-gray-900`}>Gratis</span>
                                     ) : (
                                         <>
-                                            <span className="text-4xl font-black text-gray-900">€{plan.price}</span>
+                                            <span className={`${typography.metric} text-gray-900`}>€{plan.price}</span>
                                             <span className="text-gray-500">/mes</span>
                                         </>
                                     )}
                                 </div>
 
-                                <div className="mt-3 flex items-center gap-2 text-sm text-gray-600">
+                                <div className={`mt-3 flex items-center gap-2 ${typography.caption} text-gray-600`}>
                                     <Users size={14} />
                                     <span>
                                         {plan.seatLimit >= 999
@@ -348,7 +349,7 @@ export default function BillingCheckout() {
                             <div className="flex-1 border-t border-gray-100 px-6 py-4">
                                 <ul className="space-y-2.5">
                                     {plan.features.map((feature, index) => (
-                                        <li key={index} className="flex items-start gap-2 text-sm text-gray-600">
+                                        <li key={index} className={`flex items-start gap-2 ${typography.caption} text-gray-600`}>
                                             <Check size={14} className="mt-0.5 shrink-0 text-green-600" />
                                             <span>{feature}</span>
                                         </li>
@@ -418,7 +419,7 @@ export default function BillingCheckout() {
                     </div>
                     <div>
                         <p className="font-bold text-gray-900">Setup Instantáneo</p>
-                        <p className="text-xs text-gray-500">Comienza en menos de 5 minutos</p>
+                        <p className={`${typography.caption} text-gray-500`}>Comienza en menos de 5 minutos</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -427,7 +428,7 @@ export default function BillingCheckout() {
                     </div>
                     <div>
                         <p className="font-bold text-gray-900">Sin Tarjeta Requerida</p>
-                        <p className="text-xs text-gray-500">Prueba gratis sin compromiso</p>
+                        <p className={`${typography.caption} text-gray-500`}>Prueba gratis sin compromiso</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -436,7 +437,7 @@ export default function BillingCheckout() {
                     </div>
                     <div>
                         <p className="font-bold text-gray-900">Soporte Dedicado</p>
-                        <p className="text-xs text-gray-500">Estamos aquí para ayudarte</p>
+                        <p className={`${typography.caption} text-gray-500`}>Estamos aquí para ayudarte</p>
                     </div>
                 </div>
             </div>

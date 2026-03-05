@@ -192,7 +192,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 if (targetCompany && membership) {
                     const role = membership.role as UserRole;
                     const level = getSuspensionLevel(
-                        targetCompany.subscription_status,
+                        targetCompany.subscription_status as any,
                         targetCompany.grace_period_ends_at
                     );
 
@@ -378,7 +378,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const role = membership.role as UserRole;
         const level = getSuspensionLevel(
-            target.subscription_status,
+            target.subscription_status as any,
             target.grace_period_ends_at
         );
 

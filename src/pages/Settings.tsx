@@ -1,14 +1,17 @@
-
 import React, { useState, useEffect } from 'react';
 import { LimitIndicator } from '../components/LimitIndicator';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../services/supabase';
-import { Card } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 import {
     CreditCard, User, Building2, Lock, Palette, Layers,
-    Save, Eye, EyeOff, Smartphone, Globe, Bell, ChevronRight
+    Save, Eye, EyeOff, Smartphone, Globe, Bell, ChevronRight, Users
 } from 'lucide-react';
+import { colors, typography } from '@/design/design-tokens';
+import { PageContainer, SectionBlock } from '@/components/ui/LayoutPrimitives';
+import { Badge } from '@/components/ui/Badge';
 
 export default function Settings() {
     const { user, currentCompany, userRole } = useAuth();
@@ -55,164 +58,153 @@ export default function Settings() {
     };
 
     return (
-        <div className="animate-in fade-in space-y-5 lg:space-y-6 duration-700">
-            {/* Header — same as Environments/Billing/Team */}
-            <header>
-                <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-slate-900">
-                    Configuración
-                </h1>
-                <p className="mt-1 text-sm lg:text-base font-medium text-slate-500">
-                    {isSuperAdmin
-                        ? 'Configuración de la plataforma y tu cuenta de administrador.'
-                        : 'Gestiona tu perfil, plan y preferencias de la plataforma.'}
-                </p>
-            </header>
+        <PageContainer>
+            <SectionBlock>
+                <header>
+                    <h1 className={`${typography.text.title} ${colors.textPrimary} tracking-tight`}>
+                        Configuración del Sistema
+                    </h1>
+                    <p className={`${typography.text.body} ${colors.textSecondary} max-w-2xl`}>
+                        {isSuperAdmin
+                            ? 'Administración global de la plataforma y preferencias de tu cuenta maestra.'
+                            : 'Personaliza tu experiencia, gestiona tu suscripción y asegura tu cuenta.'}
+                    </p>
+                </header>
 
-            {/* ── 1. MI PERFIL ─────────────────────────────── */}
-            <Card className="p-5 sm:p-6">
-                <div className="flex items-center gap-3 mb-5">
-                    <div className="flex size-10 items-center justify-center rounded-xl bg-indigo-50 flex-shrink-0">
-                        <User size={20} className="text-indigo-600" />
-                    </div>
-                    <div>
-                        <h2 className="text-base sm:text-lg font-bold text-gray-900">Mi Perfil</h2>
-                        <p className="text-sm text-gray-500">Información personal y credenciales de acceso.</p>
-                    </div>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                        <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 ml-1">Nombre Completo</label>
-                        <input
-                            type="text"
-                            value={fullName}
-                            onChange={(e) => setFullName(e.target.value)}
-                            placeholder="Tu nombre"
-                            className="w-full rounded-xl bg-white px-4 py-2.5 text-sm text-slate-700 ring-1 ring-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
-                        />
-                    </div>
-                    <div className="space-y-1.5">
-                        <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 ml-1">Correo Electrónico</label>
-                        <input
-                            type="email"
-                            value={user?.email || ''}
-                            disabled
-                            className="w-full rounded-xl bg-gray-50 px-4 py-2.5 text-sm text-gray-400 ring-1 ring-slate-200 cursor-not-allowed"
-                        />
-                    </div>
-                    <div className="space-y-1.5 sm:col-span-2">
-                        <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 ml-1">Nueva Contraseña</label>
-                        <div className="relative">
-                            <input
-                                type={showPassword ? 'text' : 'password'}
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                                placeholder="Dejar vacío para mantener la actual"
-                                className="w-full rounded-xl bg-white px-4 py-2.5 pr-12 text-sm text-slate-700 ring-1 ring-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Panel Izquierdo: Cuenta y Seguridad */}
+                    <div className="lg:col-span-2 space-y-6">
+                        {/* MI PERFIL */}
+                        <Card>
+                            <Card.Header
+                                title="Información Personal"
+                                description="Datos públicos y credenciales de acceso."
+                                icon={<User className="text-indigo-600" size={20} />}
                             />
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                            >
-                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                            </button>
-                        </div>
+                            <Card.Content className="space-y-6 pt-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className={`${typography.text.caption} font-black ${colors.textSecondary} uppercase px-1`}>Nombre Completo</label>
+                                        <Input
+                                            value={fullName}
+                                            onChange={(e) => setFullName(e.target.value)}
+                                            placeholder="Ej. Juan Pérez"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className={`${typography.text.caption} font-black ${colors.textSecondary} uppercase px-1`}>Email (No Editable)</label>
+                                        <Input
+                                            value={user?.email || ''}
+                                            disabled
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className={`${typography.text.caption} font-black ${colors.textSecondary} uppercase px-1`}>Nueva Contraseña</label>
+                                    <div className="relative">
+                                        <Input
+                                            type={showPassword ? 'text' : 'password'}
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                            placeholder="Dejar vacío para mantener contraseña actual"
+                                        />
+                                        <button
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                        >
+                                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {profileMessage && (
+                                    <div className={`p-4 rounded-xl font-bold text-sm ${profileMessage.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'}`}>
+                                        {profileMessage.type === 'success' ? '✓ ' : '! '}{profileMessage.text}
+                                    </div>
+                                )}
+                            </Card.Content>
+                            <Card.Footer className="flex justify-end bg-slate-50/50">
+                                <Button
+                                    variant="primary"
+                                    onClick={handleSaveProfile}
+                                    isLoading={profileSaving}
+                                    icon={<Save />}
+                                >
+                                    GUARDAR PERFIL
+                                </Button>
+                            </Card.Footer>
+                        </Card>
+
+                        {/* PLAN Y USO */}
+                        {!isSuperAdmin && (
+                            <Card>
+                                <Card.Header
+                                    title="Suscripción y Límites"
+                                    description="Estado actual de tu plan y consumo de recursos."
+                                    icon={<CreditCard className="text-indigo-600" size={20} />}
+                                />
+                                <Card.Content className="pt-4">
+                                    <LimitIndicator />
+                                </Card.Content>
+                            </Card>
+                        )}
+
+                        {/* NOTIFICACIONES */}
+                        <NotificationSettings />
+                    </div>
+
+                    {/* Panel Derecho: Otros Ajustes o Placeholders */}
+                    <div className="space-y-6">
+                        {/* SEGURIDAD Placeholder */}
+                        <SectionPlaceholder
+                            icon={<Lock size={20} className="text-indigo-600" />}
+                            title="Seguridad Avanzada"
+                            description="2FA y control de dispositivos."
+                            items={[
+                                { icon: <Smartphone size={16} />, label: 'Autenticación en 2 pasos' },
+                                { icon: <Lock size={16} />, label: 'Historial de sesiones' },
+                            ]}
+                        />
+
+                        {/* BRANDING (Super Admin) or COMPANY PROFILE */}
+                        {isSuperAdmin ? (
+                            <SectionPlaceholder
+                                icon={<Palette size={20} className="text-indigo-600" />}
+                                title="Identidad Visual"
+                                description="Logo y colores globales."
+                                items={[
+                                    { icon: <Palette size={16} />, label: 'Paleta de colores' },
+                                    { icon: <Layers size={16} />, label: 'Logo y Favicon' },
+                                ]}
+                            />
+                        ) : isOwnerOrManager && (
+                            <SectionPlaceholder
+                                icon={<Building2 size={20} className="text-indigo-600" />}
+                                title="Empresa"
+                                description="Ajustes organizacionales."
+                                items={[
+                                    { icon: <Globe size={16} />, label: 'Zona horaria y Moneda' },
+                                    { icon: <Building2 size={16} />, label: 'Logo de empresa' },
+                                ]}
+                            />
+                        )}
+
+                        {isSuperAdmin && (
+                            <SectionPlaceholder
+                                icon={<Layers size={20} className="text-indigo-600" />}
+                                title="Configuración de Planes"
+                                description="Estructura de precios y límites."
+                                items={[
+                                    { icon: <CreditCard size={16} />, label: 'Editar Catálogo de Planes' },
+                                    { icon: <Users size={16} />, label: 'Control de Seats' },
+                                ]}
+                            />
+                        )}
                     </div>
                 </div>
-
-                {profileMessage && (
-                    <div className={`mt-4 rounded-xl px-4 py-3 text-sm font-semibold ${profileMessage.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
-                        {profileMessage.type === 'success' ? '✓' : '!'} {profileMessage.text}
-                    </div>
-                )}
-
-                <div className="mt-5 flex justify-end">
-                    <Button
-                        variant="primary"
-                        onClick={handleSaveProfile}
-                        disabled={profileSaving}
-                        isLoading={profileSaving}
-                        icon={<Save size={16} />}
-                    >
-                        Guardar Cambios
-                    </Button>
-                </div>
-            </Card>
-
-            {/* ── 2. PLAN Y USO — solo empresa ────────────── */}
-            {!isSuperAdmin && (
-                <Card className="p-5 sm:p-6">
-                    <div className="flex items-center gap-3 mb-5">
-                        <div className="flex size-10 items-center justify-center rounded-xl bg-indigo-50 flex-shrink-0">
-                            <CreditCard size={20} className="text-indigo-600" />
-                        </div>
-                        <div>
-                            <h2 className="text-base sm:text-lg font-bold text-gray-900">Plan y Uso</h2>
-                            <p className="text-sm text-gray-500">Información sobre tu suscripción actual y límites de consumo.</p>
-                        </div>
-                    </div>
-                    <div className="max-w-md">
-                        <LimitIndicator />
-                    </div>
-                </Card>
-            )}
-
-            {/* ── 3. PERFIL DE EMPRESA — Owner/Manager ────── */}
-            {!isSuperAdmin && isOwnerOrManager && (
-                <SectionPlaceholder
-                    icon={<Building2 size={20} className="text-indigo-600" />}
-                    title="Perfil de Empresa"
-                    description="Configuración de tu organización."
-                    items={[
-                        { icon: <Building2 size={16} />, label: 'Nombre y logo de la empresa' },
-                        { icon: <Globe size={16} />, label: 'Timezone y moneda predeterminada' },
-                        { icon: <Layers size={16} />, label: 'Slug y dominio personalizado' },
-                    ]}
-                />
-            )}
-
-            {/* ── 4. SEGURIDAD — todos ────────────────────── */}
-            <SectionPlaceholder
-                icon={<Lock size={20} className="text-indigo-600" />}
-                title="Seguridad"
-                description="Protege tu cuenta con autenticación reforzada."
-                items={[
-                    { icon: <Smartphone size={16} />, label: 'Autenticación de dos factores (2FA)' },
-                    { icon: <Lock size={16} />, label: 'Sesiones activas y dispositivos' },
-                ]}
-            />
-
-            {/* ── 5. NOTIFICACIONES — todos ───────────────── */}
-            <NotificationSettings />
-
-            {/* ── 6. BRANDING — Super Admin ───────────────── */}
-            {isSuperAdmin && (
-                <SectionPlaceholder
-                    icon={<Palette size={20} className="text-indigo-600" />}
-                    title="Branding de la Plataforma"
-                    description="Personaliza la apariencia de tu plataforma SaaS."
-                    items={[
-                        { icon: <Palette size={16} />, label: 'Logo y favicon de la plataforma' },
-                        { icon: <Globe size={16} />, label: 'Nombre del producto y dominio' },
-                        { icon: <Layers size={16} />, label: 'Paleta de colores y tema' },
-                    ]}
-                />
-            )}
-
-            {/* ── 7. GESTIÓN DE PLANES — Super Admin ──────── */}
-            {isSuperAdmin && (
-                <SectionPlaceholder
-                    icon={<Layers size={20} className="text-indigo-600" />}
-                    title="Gestión de Planes"
-                    description="Configura los planes de suscripción disponibles."
-                    items={[
-                        { icon: <CreditCard size={16} />, label: 'Editar límites por plan (usuarios, productos, storage)' },
-                        { icon: <Layers size={16} />, label: 'Precios mensuales y anuales' },
-                    ]}
-                />
-            )}
-        </div>
+            </SectionBlock>
+        </PageContainer>
     );
 }
 
@@ -223,11 +215,11 @@ function NotificationSettings() {
     const [loading, setLoading] = useState(true);
 
     const eventLabels: Record<string, string> = {
-        'LOW_STOCK': 'Stock Bajo',
+        'LOW_STOCK': 'Stock Crítico',
         'COST_DEVIATION': 'Desviación de Costos',
         'USER_INVITED': 'Invitaciones de Equipo',
-        'PAYMENT_FAILED': 'Errores de Facturación',
-        'INVOICE_READY': 'Facturas Disponibles',
+        'PAYMENT_FAILED': 'Errores de Cobro',
+        'INVOICE_READY': 'Facturación Lista',
     };
 
     useEffect(() => {
@@ -264,55 +256,50 @@ function NotificationSettings() {
         }
     };
 
-    if (loading) return <Card className="p-6 animate-pulse"><div className="h-20 bg-slate-50 rounded-xl" /></Card>;
+    if (loading) return <Card className="animate-pulse"><Card.Content><div className="h-32 bg-slate-50 rounded-xl" /></Card.Content></Card>;
 
     return (
-        <Card className="p-5 sm:p-6">
-            <div className="flex items-center gap-3 mb-5">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-indigo-50 flex-shrink-0">
-                    <Bell size={20} className="text-indigo-600" />
-                </div>
-                <div>
-                    <h2 className="text-base sm:text-lg font-bold text-gray-900">Notificaciones</h2>
-                    <p className="text-sm text-gray-500">Configura qué alertas deseas recibir en la plataforma y por email.</p>
-                </div>
-            </div>
-
-            <div className="space-y-3">
+        <Card>
+            <Card.Header
+                title="Canales de Notificación"
+                description="Controla dónde quieres recibir las alertas críticas."
+                icon={<Bell className="text-indigo-600" size={20} />}
+            />
+            <Card.Content className="space-y-2 pt-4">
                 {Object.entries(eventLabels).map(([key, label]) => {
                     const pref = preferences.find(p => p.event_key === key) || { in_app_enabled: true, email_enabled: false };
                     return (
-                        <div key={key} className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-100">
+                        <div key={key} className={`flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-2xl transition-all hover:bg-white hover:shadow-sm`}>
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-white rounded-lg shadow-sm">
+                                <div className="p-2 bg-white rounded-xl shadow-sm border border-slate-100">
                                     <Bell size={16} className="text-slate-400" />
                                 </div>
-                                <span className="text-sm font-semibold text-slate-700">{label}</span>
+                                <span className={`${typography.text.body} font-black text-slate-700`}>{label}</span>
                             </div>
-                            <div className="flex items-center gap-6">
+                            <div className="flex items-center gap-4">
                                 <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">App</span>
+                                    <span className={`${typography.text.caption} font-bold text-slate-400`}>PLATAFORMA</span>
                                     <button
                                         onClick={() => togglePreference(key, 'in_app_enabled', pref.in_app_enabled)}
-                                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${pref.in_app_enabled ? 'bg-indigo-600' : 'bg-slate-200'}`}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${pref.in_app_enabled ? 'bg-indigo-600' : 'bg-slate-200 shadow-inner'}`}
                                     >
-                                        <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${pref.in_app_enabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${pref.in_app_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
                                     </button>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Email</span>
+                                <div className="flex items-center gap-2 border-l border-slate-200 pl-4">
+                                    <span className={`${typography.text.caption} font-bold text-slate-400`}>EMAIL</span>
                                     <button
                                         onClick={() => togglePreference(key, 'email_enabled', pref.email_enabled)}
-                                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${pref.email_enabled ? 'bg-indigo-600' : 'bg-slate-200'}`}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${pref.email_enabled ? 'bg-indigo-600' : 'bg-slate-200 shadow-inner'}`}
                                     >
-                                        <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${pref.email_enabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${pref.email_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
                                     </button>
                                 </div>
                             </div>
                         </div>
                     );
                 })}
-            </div>
+            </Card.Content>
         </Card>
     );
 }
@@ -330,33 +317,29 @@ function SectionPlaceholder({
     items: { icon: React.ReactNode; label: string }[];
 }) {
     return (
-        <Card className="p-5 sm:p-6">
-            <div className="flex items-center gap-3 mb-4">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-indigo-50 flex-shrink-0">
-                    {icon}
-                </div>
-                <div className="flex-1 min-w-0">
+        <Card className="opacity-80 grayscale-[0.5] hover:grayscale-0 transition-all border-dashed">
+            <Card.Header
+                icon={icon}
+                title={
                     <div className="flex items-center gap-2">
-                        <h2 className="text-base sm:text-lg font-bold text-gray-900">{title}</h2>
-                        <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-600 ring-1 ring-amber-200">
-                            Próximamente
-                        </span>
+                        <span>{title}</span>
+                        <Badge variant="neutral" className="text-[10px] py-0 h-4">PRÓXIMAMENTE</Badge>
                     </div>
-                    <p className="text-sm text-gray-500">{description}</p>
-                </div>
-            </div>
-            <div className="space-y-2 opacity-60">
+                }
+                description={description}
+            />
+            <Card.Content className="space-y-2 pt-4">
                 {items.map((item, i) => (
                     <div
                         key={i}
-                        className="flex items-center gap-3 rounded-xl bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500"
+                        className={`flex items-center gap-3 px-4 py-3 bg-slate-50/50 rounded-xl ${typography.text.caption} font-bold text-slate-400 border border-slate-100`}
                     >
-                        <span className="text-gray-400">{item.icon}</span>
+                        {item.icon}
                         <span className="flex-1">{item.label}</span>
-                        <ChevronRight size={14} className="text-gray-300" />
+                        <ChevronRight size={14} className="opacity-30" />
                     </div>
                 ))}
-            </div>
+            </Card.Content>
         </Card>
     );
 }

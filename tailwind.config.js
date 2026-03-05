@@ -5,22 +5,16 @@ export default {
         "./src/**/*.{js,ts,jsx,tsx}"
     ],
     theme: {
-        // We do NOT use 'extend' for spacing and fontSize. 
-        // We override them to FORBID the use of unauthorized sizes like text-[9px] or p-7.
+        // Governance Rule: GOV-TYPE-001 (Strict Typography Scale)
         fontSize: {
-            'display': ['32px', { lineHeight: '1.2', fontWeight: '800' }],
-            'h1': ['24px', { lineHeight: '1.3', fontWeight: '700' }],
-            'h2': ['13px', { letterSpacing: '0.04em', fontWeight: '700' }],
-            'body': ['14px', { lineHeight: '1.5', fontWeight: '500' }],
-            'label': ['12px', { letterSpacing: '0.02em', fontWeight: '600' }],
-            'caption': ['11px', { fontWeight: '500' }],
-            // Standard Tailwind utilities mapped to design tokens
-            'xs': ['12px', { lineHeight: '1rem' }],
-            'sm': ['13px', { lineHeight: '1.25rem' }],
-            'base': ['14px', { lineHeight: '1.5rem' }],
-            'lg': ['16px', { lineHeight: '1.75rem' }],
-            'xl': ['24px', { lineHeight: '2rem' }],
-            '2xl': ['32px', { lineHeight: '2.5rem' }],
+            'xs': '12px',
+            'sm': '14px',
+            'base': '16px',
+            'lg': '18px',
+            'xl': '20px',
+            '2xl': '24px',
+            '3xl': '30px',
+            '4xl': '36px',
         },
         spacing: {
             '0': '0px',
@@ -46,11 +40,14 @@ export default {
             screen: '100vw',
         },
         extend: {
+            fontFamily: {
+                sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+            },
             colors: {
                 text: {
                     primary: '#0F172A',
                     secondary: '#475569',
-                    muted: '#94A3B8'
+                    muted: '#64748B'
                 },
                 brand: '#2563EB',
                 bg: {

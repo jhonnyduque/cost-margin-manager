@@ -1,8 +1,10 @@
 import React from 'react';
-import { ArrowUpRight, ArrowDownRight, Info } from 'lucide-react';
-import { ResponsiveContainer, AreaChart, Area, Tooltip } from 'recharts';
+import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
+import { Info, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { colors, typography, spacing, radius, shadows } from '@/design/design-tokens';
+import { Card } from '@/components/ui/Card';
 
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
@@ -25,7 +27,7 @@ interface MetricCardProps {
     loading?: boolean;
 }
 
-export function MetricCard({
+export const MetricCard: React.FC<MetricCardProps> = ({
     title,
     value,
     trend,
@@ -36,7 +38,7 @@ export function MetricCard({
     size = 'md',
     visualType = 'chart',
     loading = false
-}: MetricCardProps) {
+}) => {
     const [isMounted, setIsMounted] = React.useState(false);
 
     React.useEffect(() => {
@@ -45,69 +47,67 @@ export function MetricCard({
 
     if (loading) {
         return (
-            <div className={cn(
-                "rounded-3xl border border-slate-100 bg-white p-6 shadow-sm animate-pulse",
-                size === 'lg' ? "md:col-span-2" : ""
-            )}>
+            <Card className={cn("animate-pulse", size === 'lg' ? "md:col-span-2" : "")}>
                 <div className="flex justify-between items-start mb-4">
-                    <div className="w-24 h-4 bg-slate-100 rounded" />
-                    <div className="w-8 h-8 rounded-full bg-slate-50" />
+                    <div className={`w-24 h-4 ${colors.surfaceMuted} ${radius.sm}`} />
+                    <div className={`w-8 h-8 ${radius.pill} ${colors.surfaceMuted}`} />
                 </div>
-                <div className="w-32 h-8 bg-slate-100 rounded mb-4" />
-                <div className="w-full h-12 bg-slate-50 rounded" />
-            </div>
+                <div className={`w-32 h-8 ${colors.surfaceMuted} ${radius.sm} mb-4`} />
+                <div className={`w-full h-12 ${colors.surfaceMuted} ${radius.sm}`} />
+            </Card>
         );
     }
 
     const colorClasses = {
-        default: 'text-slate-800',
-        primary: 'text-indigo-600',
-        success: 'text-emerald-600',
-        warning: 'text-amber-600',
-        error: 'text-red-600'
+        default: colors.textPrimary,
+        primary: colors.info,
+        success: colors.success,
+        warning: colors.warning,
+        error: colors.danger
     };
 
-    const valueSize = {
-        sm: 'text-xl',
-        md: 'text-2xl lg:text-3xl',
-        lg: 'text-4xl md:text-5xl lg:text-6xl'
+    const valueSizeMapping = {
+        sm: typography.text.section,
+        md: typography.text.title,
+        lg: typography.text.display
     };
 
     const slugId = `gr-${title.replace(/[^a-z0-1]/gi, '-').toLowerCase()}`;
 
     return (
-        <div className={cn(
-            "group rounded-[32px] border border-slate-100 bg-white p-8 transition-all hover:shadow-2xl hover:border-slate-200",
-            size === 'lg' ? "md:col-span-2 shadow-lg shadow-slate-100" : "shadow-sm"
+        <Card className={cn(
+            "group transition-all hover:brightness-[0.98] cursor-default",
+            size === 'lg' ? `md:col-span-2 ${shadows.lg}` : ""
         )}>
             <div className="flex justify-between items-start mb-2">
                 <div className="flex items-center gap-2 group/title">
-                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest">{title}</span>
+                    <span className={`${typography.text.caption} ${colors.textSecondary} font-bold`}>{title}</span>
                     {description && (
                         <div className="relative group/desc">
-                            <Info size={12} className="text-slate-300 hover:text-indigo-500 cursor-help transition-colors" />
-                            <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-slate-900/95 backdrop-blur-md text-[11px] text-slate-200 rounded-2xl shadow-2xl border border-white/10 opacity-0 group-hover/desc:opacity-100 pointer-events-none transition-all duration-300 translate-y-2 group-hover/desc:translate-y-0 z-[100] font-sans">
-                                <div className="absolute -top-1 left-1.5 w-2 h-2 bg-slate-900 rotate-45 border-l border-t border-white/10" />
+                            <Info size={typography.icon.xs} className={`${colors.textMuted} hover:${colors.info} cursor-help transition-colors`} />
+                            <div className={`absolute left-0 top-full mt-2 w-64 ${spacing.pMd} bg-slate-900/95 backdrop-blur-md ${typography.text.secondary} text-slate-200 ${radius.md} ${shadows.modal} border border-white/10 opacity-0 group-hover/desc:opacity-100 pointer-events-none transition-all duration-300 translate-y-2 group-hover/desc:translate-y-0 z-[100]`}>
                                 {description}
                             </div>
                         </div>
                     )}
                 </div>
                 {icon && (
-                    <div className="rounded-2xl bg-slate-50 p-2.5 text-slate-300 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-all">
-                        {icon}
+                    <div className={`${radius.md} ${colors.surfaceMuted} p-2 ${colors.textMuted} group-hover:${colors.bgBrandSubtle} group-hover:${colors.brand} transition-all`}>
+                        {React.cloneElement(icon as React.ReactElement, { size: typography.icon.md })}
                     </div>
                 )}
             </div>
 
             <div className="flex items-baseline gap-3 mb-6">
-                <h3 className={cn("font-black tracking-tighter", valueSize[size], colorClasses[variant])}>
+                <h3 className={cn(valueSizeMapping[size], colorClasses[variant], "tracking-tighter")}>
                     {value}
                 </h3>
                 {trend && (
                     <span className={cn(
-                        "flex items-center text-xs font-black px-2 py-1 rounded-xl shadow-sm",
-                        trend.isPositive ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
+                        `flex items-center ${typography.text.caption} font-bold ${spacing.pxSm} py-1 ${radius.pill} ${shadows.sm} border`,
+                        trend.isPositive
+                            ? `${colors.bgSuccess} ${colors.success} ${colors.borderSuccess}`
+                            : `${colors.bgDanger} ${colors.danger} ${colors.borderDanger}`
                     )}>
                         {trend.isPositive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
                         {trend.value}%
@@ -116,7 +116,7 @@ export function MetricCard({
             </div>
 
             {visualType === 'chart' && sparklineData && (
-                <div className="h-16 w-full mt-auto opacity-40 group-hover:opacity-100 transition-opacity overflow-hidden relative">
+                <div className="h-16 w-full mt-auto opacity-30 group-hover:opacity-100 transition-all overflow-hidden relative">
                     <ResponsiveContainer width="99%" height={64}>
                         <AreaChart data={sparklineData}>
                             <Tooltip
@@ -124,7 +124,7 @@ export function MetricCard({
                                 content={({ active, payload }) => {
                                     if (active && payload && payload.length) {
                                         return (
-                                            <div className="bg-white px-2 py-1 rounded-lg shadow-xl border border-slate-50 text-[10px] font-black text-slate-600">
+                                            <div className={`${colors.surface} ${spacing.pxSm} py-1 ${radius.sm} ${shadows.modal} border ${colors.borderSubtle} ${typography.text.caption} font-black ${colors.textSecondary}`}>
                                                 {payload[0].value}
                                             </div>
                                         );
@@ -142,7 +142,7 @@ export function MetricCard({
                                 type="monotone"
                                 dataKey="value"
                                 stroke={variant === 'success' || trend?.isPositive ? "#10b981" : "#6366f1"}
-                                strokeWidth={3}
+                                strokeWidth={2}
                                 fillOpacity={1}
                                 fill={`url(#${slugId})`}
                             />
@@ -152,17 +152,17 @@ export function MetricCard({
             )}
 
             {visualType === 'gauge' && (
-                <div className="relative h-4 w-full bg-slate-100 rounded-full overflow-hidden mt-4">
+                <div className={`relative h-2 w-full ${colors.surfaceMuted} ${radius.pill} overflow-hidden mt-4`}>
                     <div
                         className={cn(
                             "h-full rounded-full transition-all duration-1000",
-                            parseFloat(value.toString()) < 3 ? "bg-emerald-500 shadow-[0_0_10px_#10b981]" :
+                            parseFloat(value.toString()) < 3 ? "bg-emerald-500" :
                                 parseFloat(value.toString()) < 5 ? "bg-amber-500" : "bg-red-500"
                         )}
                         style={{ width: `${Math.min(100, (parseFloat(value.toString()) / 10) * 100)}%` }}
                     />
                 </div>
             )}
-        </div>
+        </Card>
     );
 }

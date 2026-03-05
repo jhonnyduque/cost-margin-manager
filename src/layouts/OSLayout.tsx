@@ -4,6 +4,7 @@ import { MobileBottomNav } from '../components/os/MobileBottomNav';
 import { Topbar } from '../components/os/Topbar';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
+import { colors, typography, spacing } from '@/design/design-tokens';
 
 interface OSLayoutProps {
     children: React.ReactNode;
@@ -32,8 +33,8 @@ export const OSLayout: React.FC<OSLayoutProps> = ({ children }) => {
     // BOOT SAFETY GUARD
     if (authLoading) {
         return (
-            <div className="flex h-screen w-full flex-col items-center justify-center bg-slate-50 text-slate-500">
-                <Loader2 className="h-10 w-10 animate-spin text-indigo-600 mb-4" />
+            <div className={`flex h-screen w-full flex-col items-center justify-center ${colors.bgMain} ${colors.textMuted}`}>
+                <Loader2 className={`h-10 w-10 animate-spin ${colors.statusInfo} mb-4`} />
                 <p className="font-medium">Initializing BETO OS...</p>
             </div>
         );
@@ -44,7 +45,7 @@ export const OSLayout: React.FC<OSLayoutProps> = ({ children }) => {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className={`min-h-screen ${colors.bgMain}`}>
             {/* Desktop Sidebar - hidden on mobile */}
             <div className="hidden lg:block">
                 <Sidebar
@@ -60,9 +61,7 @@ export const OSLayout: React.FC<OSLayoutProps> = ({ children }) => {
             <main
                 className={`
                     relative z-0
-                    pt-20 px-4 pb-12
-                    sm:px-6
-                    lg:pt-20 lg:px-6 lg:pb-12
+                    pt-20 ${spacing.pxLg} pb-12
                     transition-all duration-300
                     ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'}
                     min-h-[calc(100vh-4rem)]

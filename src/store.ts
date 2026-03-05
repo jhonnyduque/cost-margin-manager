@@ -467,7 +467,8 @@ export const useStore = create<AppState>()(
             quantity: qtyToCompensate,
             unit_cost: batch.unit_cost,
             reference: 'Compensación Automática (Auto-Clearing)',
-            created_at: now
+            created_at: now,
+            deleted_at: null
           });
         }
 
@@ -483,7 +484,8 @@ export const useStore = create<AppState>()(
           quantity: batch.initial_quantity,
           unit_cost: batch.unit_cost,
           reference: batch.provider,
-          created_at: now
+          created_at: now,
+          deleted_at: null
         };
         syncMovements.unshift(mainMovement);
 
@@ -782,7 +784,8 @@ export const useStore = create<AppState>()(
           quantity: quantity,
           unit_cost: avgCost,
           reference: reference,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          produced_with_debt: false
         };
 
         const { error } = await supabase.from('product_movements').insert([newMovement]);

@@ -2,17 +2,17 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Edit2, Search, X, History, ShoppingCart, ArrowDownToLine, Printer, Pencil, AlertCircle, Maximize2, Scissors, RotateCcw, Package, Archive } from 'lucide-react';
 import { useStore, getMaterialDebt, calculateTotalFinancialDebt } from '../store';
-import { RawMaterial, Status, Unit, MaterialBatch } from '@/types';
-import { PageHeader } from '@/components/ui/PageHeader';
+import { RawMaterial, Unit, MaterialBatch } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Card } from '@/components/ui/Card';
-import { tokens } from '@/design/design-tokens';
+import { colors, typography, spacing, radius, shadows } from '@/design/design-tokens';
 import { useCurrency } from '@/hooks/useCurrency';
 import { Badge } from '@/components/ui/Badge';
 import { translateError } from '@/utils/errorHandler';
 import { calculateBatchArea } from '@/utils/materialCalculations';
+import { PageContainer, SectionBlock } from '@/components/ui/LayoutPrimitives';
 
 const RawMaterials: React.FC = () => {
   const navigate = useNavigate();
@@ -309,7 +309,7 @@ const RawMaterials: React.FC = () => {
   const expandedMaterial = rawMaterials.find(m => m.id === expandedMaterialId);
 
   return (
-    <div className="space-y-5 lg:space-y-6">
+    <PageContainer>
       <style>{`
       @media print {
         body * { visibility: hidden; }
@@ -319,85 +319,117 @@ const RawMaterials: React.FC = () => {
       }
       `}</style>
 
-      {/* Responsive Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-display text-text-primary leading-tight">Materias Primas</h1>
-          <p className="mt-1 text-body text-text-secondary">Inventario Maestro y Gestión FIFO</p> lập tức
-        </div>
-        {canCreate && (
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" onClick={() => navigate('/productos')}>
-              Nuevo Producto
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => {
-                setEditingId(null);
-                setFormData({ name: '', description: '', type: 'Tela', unit: 'metro', provider: '', status: 'activa', initialQty: 0, unitCost: 0, width: 140 });
-                setIsModalOpen(true);
-              }}
-              icon={<Plus size={18} />}
-            >
-              Nuevo Material
-            </Button>
+      <SectionBlock>
+        {/* Responsive Header */}
+        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+          <div className="space-y-1">
+            <h1 className={`${typography.text.title} ${colors.textPrimary} tracking-tight`}>Materias Primas</h1>
+            <p className={`${typography.text.body} ${colors.textSecondary}`}>Inventario Maestro y Gestión FIFO</p>
+          </div>
+          {canCreate && (
+            <div className="flex items-center gap-3">
+              <Button variant="secondary" onClick={() => navigate('/productos')}>
+                PRODUCTOS
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setEditingId(null);
+                  setFormData({ name: '', description: '', type: 'Tela', unit: 'metro', provider: '', status: 'activa', initialQty: 0, unitCost: 0, width: 140 });
+                  setIsModalOpen(true);
+                }}
+                icon={<Plus />}
+              >
+                NUEVO MATERIAL
+              </Button>
+            </div>
+          )}
+        </header>
+
+        {/* Financial Governance Banner */}
+        {totalFinancialDebt > 0 && (
+          <div className="mt-6">
+            <Card className="bg-rose-50 border-rose-100">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="size-12 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600 shadow-sm">
+                    <AlertCircle size={24} />
+                  </div>
+                  <div>
+                    <h3 className={`${typography.text.body} font-black text-rose-900`}>Deuda de Inventario Detectada</h3>
+                    <p className={`${typography.text.caption} text-rose-600 font-bold uppercase tracking-tight`}>
+                      Producciones realizadas sin respaldo físico. Regularice para integridad contable.
+                    </p>
+                  </div>
+                </div>
+                <div className="hidden sm:flex flex-col items-end">
+                  <span className={`${typography.text.caption} text-rose-500 font-black`}>VALORIZACIÓN ESTIMADA</span>
+                  <span className={`${typography.text.title} text-rose-700 font-black`}>{formatCurrency(totalFinancialDebt)}</span>
+                </div>
+              </div>
+            </Card>
           </div>
         )}
-      </div>
 
-      {/* Financial Governance Banner */}
-      {totalFinancialDebt > 0 && (
-        <div className="flex items-center justify-between rounded-md border border-error/20 bg-error/5 p-4 shadow-subtle">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="h-6 w-6 text-error shrink-0" />
-            <div>
-              <h3 className="text-body font-bold text-error">Producciones realizadas sin respaldo de inventario</h3>
-              <p className="text-sm font-medium text-error/80">Compre e ingrese Lotes Físicos de material para regularizar la integridad contable.</p>
-            </div>
+        <div className="flex flex-wrap items-center gap-3 pt-6 border-t border-slate-100">
+          <div className="relative flex-1 min-w-[300px]">
+            <Search size={16} className={`absolute left-4 top-1/2 -translate-y-1/2 ${colors.textMuted}`} />
+            <input
+              type="text"
+              placeholder="Buscar por nombre o proveedor..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={`w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl ${typography.text.body} transition-all focus:ring-2 focus:ring-indigo-500 focus:bg-white`}
+            />
           </div>
-          <div className="flex flex-col items-end">
-            <span className="text-label text-error/80 uppercase tracking-widest">Deuda Valorizada Estimada</span>
-            <span className="text-lg font-extrabold text-error tabular-nums">{formatCurrency(totalFinancialDebt)}</span>
-          </div>
+          <Select
+            className="w-48"
+            value={unitFilter}
+            onChange={(e) => setUnitFilter(e.target.value as any)}
+          >
+            <option value="todos">Todas las unidades</option>
+            <option value="metro">Metros</option>
+            <option value="unidad">Unidades</option>
+            <option value="kg">Kilogramos</option>
+          </Select>
         </div>
-      )}
+      </SectionBlock>
 
-      {/* ========== MOBILE: Cards ========== */}
-      <div className="space-y-3 md:hidden">
+      <div className={`space-y-3 md:hidden`}>
         {filteredMaterials.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-12 text-center">
-            <Package size={48} className="mx-auto mb-3 text-slate-300" />
-            <p className="font-medium text-slate-500">No hay materias primas registradas.</p>
+          <div className={`${radius.xl} border border-dashed ${colors.borderStandard} ${colors.bgSurface} ${spacing.pLg} text-center`}>
+            <Package size={48} className={`mx-auto mb-3 ${colors.textMuted}`} />
+            <p className={`font-medium ${colors.textSecondary}`}>No hay materias primas registradas.</p>
           </div>
         ) : (
           filteredMaterials.map((m) => {
             const { totalRemainingQty, weightedAvgCost } = batchStatsByMaterial[m.id] ?? getBatchStats(m.id);
             return (
-              <div key={m.id} className="surface-card p-4">
+              <div key={m.id} className={`${colors.bgSurface} ${radius.xl} ${spacing.pMd} ${colors.borderStandard} border ${shadows.sm}`}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <h3 className="text-body font-bold text-text-primary truncate">{m.name}</h3>
-                    <p className="text-sm text-text-secondary mt-0.5">{m.provider || 'Varios'}</p>
+                    <h3 className={`${typography.body} font-bold ${colors.textPrimary} truncate`}>{m.name}</h3>
+                    <p className={`${typography.caption} ${colors.textSecondary} mt-0.5`}>{m.provider || 'Varios'}</p>
                   </div>
                   <Badge variant="secondary" className="flex-shrink-0">{m.type}</Badge>
                 </div>
-                <div className="grid grid-cols-2 gap-4 mt-4 mb-4 rounded-sm bg-bg-page p-3 border border-border/50">
+                <div className={`grid grid-cols-2 gap-4 mt-4 mb-4 ${radius.lg} ${colors.bgMain} ${spacing.pMd} border ${colors.borderSubtle}`}>
                   <div className="flex flex-col">
-                    <span className="text-label text-text-secondary uppercase">Stock</span>
-                    <span className={`text-lg font-extrabold tabular-nums ${totalRemainingQty <= 0 ? 'text-error' : 'text-text-primary'}`}>
-                      {totalRemainingQty.toFixed(2)} <span className="text-sm font-medium text-text-secondary">{m.unit}s</span>
+                    <span className={`${typography.uiLabel} ${colors.textSecondary}`}>Stock</span>
+                    <span className={`${typography.body} font-medium ${totalRemainingQty <= 0 ? colors.statusDanger : colors.textPrimary}`}>
+                      {totalRemainingQty.toFixed(2)} <span className={`${typography.caption} ${colors.textSecondary}`}>{m.unit}s</span>
                     </span>
                   </div>
                   <div className="flex flex-col items-end text-right">
-                    <span className="text-label text-text-secondary uppercase">Costo Prom.</span>
-                    <span className="text-lg font-extrabold tabular-nums text-text-primary">{formatCurrency(weightedAvgCost)}</span>
+                    <span className={`${typography.uiLabel} ${colors.textSecondary}`}>Costo Prom.</span>
+                    <span className={`${typography.body} font-medium ${colors.textPrimary}`}>{formatCurrency(weightedAvgCost)}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                <div className={`flex items-center gap-2 pt-2 border-t ${colors.borderSubtle}`}>
                   <Button
                     variant="secondary"
                     onClick={() => setExpandedMaterialId(expandedMaterialId === m.id ? null : m.id)}
-                    className={`h-8 px-3 text-xs ${expandedMaterialId === m.id ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}
+                    className={`h-8 px-3 text-xs ${expandedMaterialId === m.id ? `${colors.bgBrandSubtle} text-indigo-700` : `${colors.bgBrandSubtle}/50 text-indigo-600 hover:${colors.bgBrandSubtle}`}`}
                     icon={<History size={13} />}
                   >
                     {expandedMaterialId === m.id ? 'Cerrar' : 'Lotes'}
@@ -411,7 +443,7 @@ const RawMaterials: React.FC = () => {
                         setFormData({ ...m, initialQty: stats.totalRemainingQty, unitCost: stats.weightedAvgCost });
                         setIsModalOpen(true);
                       }}
-                      className="h-8 w-8 p-0 border border-slate-200 bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                      className={`h-8 w-8 p-0 border ${colors.borderStandard} ${colors.bgMain} ${colors.textSecondary} hover:${colors.bgSurface} hover:${colors.textPrimary}`}
                       icon={<Edit2 size={15} />}
                     />
                   )}
@@ -429,7 +461,7 @@ const RawMaterials: React.FC = () => {
                             catch (err: any) { alert(`Error: ${translateError(err)}`); }
                           }
                         }}
-                        className="h-8 w-8 p-0 border border-slate-200 bg-slate-50 text-amber-500 hover:bg-amber-50 hover:text-amber-600"
+                        className={`h-8 w-8 p-0 border ${colors.borderStandard} ${colors.bgWarning} ${colors.statusWarning} hover:opacity-80`}
                         title={`Archivar (${archiveReason})`}
                         icon={<Archive size={15} />}
                       />
@@ -442,7 +474,7 @@ const RawMaterials: React.FC = () => {
                             catch (err: any) { alert(`No se pudo eliminar: ${translateError(err)}`); }
                           }
                         }}
-                        className="h-8 w-8 p-0 border border-slate-200 bg-slate-50 text-red-400 hover:bg-red-50 hover:text-red-600"
+                        className={`h-8 w-8 p-0 border ${colors.borderStandard} ${colors.bgDanger} ${colors.statusDanger} hover:opacity-80`}
                         title="Eliminar (sin stock ni productos vinculados)"
                         icon={<Trash2 size={15} />}
                       />
@@ -450,8 +482,8 @@ const RawMaterials: React.FC = () => {
                   })()}
                 </div>
                 {expandedMaterialId === m.id && (
-                  <div className="mt-3 pt-3 border-t border-slate-100 animate-in fade-in slide-in-from-top-2">
-                    <div className="text-center text-xs text-slate-500 py-4 bg-slate-50 rounded-xl">
+                  <div className={`mt-3 pt-3 border-t ${colors.borderSubtle} animate-in fade-in hide-in-from-top-2`}>
+                    <div className={`text-center ${typography.caption} ${colors.textSecondary} py-4 ${colors.bgMain} ${radius.xl}`}>
                       Vista detallada de Kardex y Entradas. <br />(Disponible en versión horizontal/Desktop)
                     </div>
                   </div>
@@ -464,16 +496,16 @@ const RawMaterials: React.FC = () => {
 
       {/* ========== DESKTOP: Table ========== */}
       <div className="hidden md:block">
-        <div className="table-container">
+        <div className={`table-container ${radius.xl} border ${colors.borderStandard} overflow-hidden ${shadows.sm}`}>
           <table className="w-full text-left table-fixed">
-            <thead className="table-header">
+            <thead className={`${colors.bgMain} border-b ${colors.borderStandard}`}>
               <tr>
-                <th className="w-[30%] px-4 py-3 truncate">Materia Prima</th>
-                <th className="w-[12%] px-4 py-3 truncate">Categoría</th>
-                <th className="w-[18%] px-4 py-3 truncate text-right">Disponible / Deuda</th>
-                <th className="w-[15%] px-4 py-3 truncate text-right">Valor en Bodega</th>
-                <th className="w-[15%] px-4 py-3 truncate text-right">Costo Promedio</th>
-                <th className="w-[10%] px-4 py-3 text-right">Acciones</th>
+                <th className={`w-[30%] ${spacing.pxLg} py-3 ${typography.uiLabel} ${colors.textSecondary} truncate`}>Materia Prima</th>
+                <th className={`w-[12%] ${spacing.pxLg} py-3 ${typography.uiLabel} ${colors.textSecondary} truncate`}>Categoría</th>
+                <th className={`w-[18%] ${spacing.pxLg} py-3 ${typography.uiLabel} ${colors.textSecondary} truncate text-right`}>Disponible / Deuda</th>
+                <th className={`w-[15%] ${spacing.pxLg} py-3 ${typography.uiLabel} ${colors.textSecondary} truncate text-right`}>Valor en Bodega</th>
+                <th className={`w-[15%] ${spacing.pxLg} py-3 ${typography.uiLabel} ${colors.textSecondary} truncate text-right`}>Costo Promedio</th>
+                <th className={`w-[10%] ${spacing.pxLg} py-3 ${typography.uiLabel} ${colors.textSecondary} text-right`}>Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
@@ -486,35 +518,35 @@ const RawMaterials: React.FC = () => {
 
                 return (
                   <React.Fragment key={m.id}>
-                    <tr className={`table-row ${expandedMaterialId === m.id ? 'bg-bg-page/50' : 'bg-bg-card'}`}>
-                      <td className="px-4 py-3 truncate">
+                    <tr className={`table-row ${expandedMaterialId === m.id ? `${colors.bgMain}/50` : colors.bgSurface}`}>
+                      <td className={`${spacing.pxLg} py-3 truncate`}>
                         <div className="flex flex-col" title={`${m.name} - ${m.provider || 'Varios'}`}>
-                          <span className="text-body font-bold text-text-primary truncate" title={m.name}>{m.name}</span>
-                          <span className="text-sm font-medium text-text-secondary truncate mt-0.5" title={m.provider || 'Varios'}>{m.provider || 'Varios'}</span>
+                          <span className={`${typography.body} font-bold ${colors.textPrimary} truncate`} title={m.name}>{m.name}</span>
+                          <span className={`${typography.caption} font-medium ${colors.textSecondary} truncate mt-0.5`} title={m.provider || 'Varios'}>{m.provider || 'Varios'}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 truncate">
-                        <Badge variant="secondary" className="text-xs font-semibold bg-bg-page text-text-secondary" title={m.type}>{m.type}</Badge>
+                      <td className={`${spacing.pxLg} py-3 truncate`}>
+                        <Badge variant="secondary" className={`${typography.uiLabel} ${colors.bgMain} ${colors.textSecondary}`} title={m.type}>{m.type}</Badge>
                       </td>
-                      <td className="px-4 py-3 truncate text-right">
+                      <td className={`${spacing.pxLg} py-3 truncate text-right`}>
                         <div className="flex justify-end items-center" title={`Stock Actual: ${displayStock.toFixed(2)} ${m.unit}s`}>
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-sm font-medium ${displayStock > 0 ? 'bg-emerald-50 text-emerald-700' : displayStock < 0 ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-600'}`}>
+                          <span className={`inline-flex items-center ${spacing.pxMd} py-0.5 ${radius.sm} ${typography.caption} font-bold ${displayStock > 0 ? `${colors.bgSuccess} ${colors.statusSuccess} border ${colors.borderSubtle}` : displayStock < 0 ? `${colors.bgDanger} ${colors.statusDanger} border ${colors.borderSubtle}` : `${colors.bgMain} ${colors.textSecondary} border ${colors.borderStandard}`}`}>
                             {displayStock < 0 ? '🔴 ' : displayStock > 0 ? '🟢 ' : ''}
-                            {displayStock.toFixed(2)} <span className="ml-1 text-xs font-semibold opacity-70">{m.unit}s</span>
+                            {displayStock.toFixed(2)} <span className="ml-1 opacity-70">{m.unit}s</span>
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 truncate text-right">
-                        <span className={`text-lg font-extrabold tabular-nums ${valuation < 0 ? 'text-error' : 'text-text-primary'}`} title={`Valorización: ${formatCurrency(valuation)}`}>
+                      <td className={`${spacing.pxLg} py-3 truncate text-right`}>
+                        <span className={`${typography.body} font-medium ${valuation < 0 ? colors.statusDanger : colors.textPrimary}`} title={`Valorización: ${formatCurrency(valuation)}`}>
                           {formatCurrency(valuation)}
                         </span>
                       </td>
-                      <td className="px-4 py-3 truncate text-right">
-                        <span className="text-body font-medium tabular-nums text-text-secondary" title={`Costo Promedio FIFO: ${formatCurrency(weightedAvgCost)}`}>
+                      <td className={`${spacing.pxLg} py-3 truncate text-right`}>
+                        <span className={`${typography.body} font-medium tabular-nums ${colors.textSecondary}`} title={`Costo Promedio FIFO: ${formatCurrency(weightedAvgCost)}`}>
                           {formatCurrency(weightedAvgCost)}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className={`${spacing.pxLg} py-3 text-right`}>
                         <div className="flex justify-end gap-1.5 opacity-70 transition-opacity group-hover:opacity-100">
                           <Button
                             variant="secondary"
@@ -532,7 +564,7 @@ const RawMaterials: React.FC = () => {
                                 setFormData({ ...m, initialQty: stats.totalRemainingQty, unitCost: stats.weightedAvgCost });
                                 setIsModalOpen(true);
                               }}
-                              className="h-8 w-8 p-0 border border-transparent bg-gray-50 text-gray-400 hover:border-gray-200 hover:bg-white hover:text-gray-600"
+                              className="h-8 w-8 p-0 border border-transparent bg-gray-50 text-slate-500 hover:border-gray-200 hover:bg-white hover:text-gray-600"
                               title="Editar Materia Prima"
                               icon={<Edit2 size={16} />}
                             />
@@ -558,7 +590,7 @@ const RawMaterials: React.FC = () => {
                             ) : (
                               <Button
                                 variant="ghost"
-                                className="h-8 w-8 p-0 border border-transparent bg-gray-50 text-gray-400 hover:border-gray-200 hover:bg-white hover:text-red-600"
+                                className="h-8 w-8 p-0 border border-transparent bg-gray-50 text-slate-500 hover:border-gray-200 hover:bg-white hover:text-red-600"
                                 title="Eliminar (sin stock ni productos vinculados)"
                                 onClick={async () => {
                                   if (window.confirm(`¿Eliminar "${m.name}"? Sin stock ni productos vinculados. Esta acción no se puede deshacer.`)) {
@@ -577,21 +609,21 @@ const RawMaterials: React.FC = () => {
                     {/* ACCORDION DESKTOP IN-LINE */}
                     {expandedMaterialId === m.id && (
                       <tr>
-                        <td colSpan={6} className="p-0 border-b border-indigo-100 bg-indigo-50/30">
-                          <div className="p-6 space-y-8 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <td colSpan={6} className={`p-0 border-b ${colors.borderSubtle} ${colors.bgMain}/30`}>
+                          <div className={`p-6 space-y-8 animate-in fade-in slide-in-from-top-2 duration-300`}>
 
                             {/* NEW BATCH FORM */}
-                            <div className="no-print surface-card p-6 shadow-sm">
+                            <div className={`no-print ${colors.bgSurface} ${radius.xl} ${spacing.pLg} ${shadows.sm}`}>
                               <div className="mb-6 flex items-center justify-between">
-                                <h4 className="flex items-center gap-2 text-label font-bold uppercase tracking-widest text-brand">
+                                <h4 className={`flex items-center gap-2 ${typography.uiLabel} text-indigo-700`}>
                                   <ShoppingCart size={16} /> Registrar Nueva Entrada Física
                                 </h4>
                                 {isDimensional && (
-                                  <div className="flex gap-1 rounded-xl border border-indigo-100 bg-slate-50 p-1">
-                                    <button type="button" onClick={() => set_entry_mode('rollo')} className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold uppercase transition-all ${entry_mode === 'rollo' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}>
+                                  <div className={`flex gap-1 ${radius.xl} border ${colors.borderSubtle} ${colors.bgMain} p-1`}>
+                                    <button type="button" onClick={() => set_entry_mode('rollo')} className={`flex items-center gap-1.5 ${radius.lg} ${spacing.pxMd} py-1 ${typography.uiLabel} uppercase transition-all ${entry_mode === 'rollo' ? `${colors.bgBrand} text-white ${shadows.md}` : `${colors.textSecondary} hover:${colors.bgMain}`}`}>
                                       <RotateCcw size={14} /> Rollo
                                     </button>
-                                    <button type="button" onClick={() => set_entry_mode('pieza')} className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold uppercase transition-all ${entry_mode === 'pieza' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}>
+                                    <button type="button" onClick={() => set_entry_mode('pieza')} className={`flex items-center gap-1.5 ${radius.lg} ${spacing.pxMd} py-1 ${typography.uiLabel} uppercase transition-all ${entry_mode === 'pieza' ? `${colors.bgBrand} text-white ${shadows.md}` : `${colors.textSecondary} hover:${colors.bgMain}`}`}>
                                       <Scissors size={14} /> Pieza
                                     </button>
                                   </div>
@@ -618,7 +650,7 @@ const RawMaterials: React.FC = () => {
                                         <div className="w-32"><Input label="Costo Total (€)" type="number" step="0.01" value={batchFormData.unit_cost || ''} onChange={e => setBatchFormData({ ...batchFormData, unit_cost: parseFloat(e.target.value) })} required /></div>
                                       </>
                                     )}
-                                    <Button type="submit" variant="primary" icon={<Plus size={16} />} className="mb-0.5 h-10 w-full sm:w-auto shadow-md">Añadir Lote</Button>
+                                    <Button type="submit" variant="primary" icon={<Plus size={16} />} className={`mb-0.5 h-10 w-full sm:w-auto ${shadows.md}`}>Añadir Lote</Button>
                                   </div>
                                 </form>
                               )}
@@ -627,22 +659,22 @@ const RawMaterials: React.FC = () => {
                             {/* BATCHES TABLE IN-LINE */}
                             <div>
                               <div className="flex items-center justify-between mb-4 mt-8">
-                                <h4 className="text-body font-bold text-text-primary">Kardex de Lotes y Movimientos</h4>
-                                <Button variant="ghost" size="icon" onClick={handlePrint} className="text-slate-500" title="Imprimir"><Printer size={18} /></Button>
+                                <h4 className={`${typography.sectionTitle} ${colors.textPrimary}`}>Kardex de Lotes y Movimientos</h4>
+                                <Button variant="ghost" size="icon" onClick={handlePrint} className={colors.textSecondary} title="Imprimir"><Printer size={18} /></Button>
                               </div>
-                              <div className="table-container shadow-subtle bg-bg-card">
+                              <div className={`table-container ${shadows.sm} ${colors.bgSurface} ${radius.xl} border ${colors.borderStandard} overflow-hidden`}>
                                 <table className="w-full text-left table-fixed min-w-[700px]">
-                                  <thead className="table-header">
-                                    <tr>
-                                      <th className="table-header-cell w-[12%]">Fecha</th>
-                                      <th className="table-header-cell w-[10%]">Modo</th>
-                                      <th className="table-header-cell w-[18%]">Proveedor</th>
-                                      <th className="table-header-cell w-[15%] text-right">Dimensiones</th>
-                                      <th className="table-header-cell w-[10%] text-right text-emerald-600">Área</th>
-                                      <th className="table-header-cell w-[10%] text-right">Costo</th>
-                                      <th className="table-header-cell w-[10%] text-right text-brand">/m²</th>
-                                      <th className="table-header-cell w-[10%] text-right">Restante</th>
-                                      <th className="table-header-cell w-[5%] text-center"></th>
+                                  <thead>
+                                    <tr className={`${colors.bgMain} border-b ${colors.borderStandard}`}>
+                                      <th className={`${spacing.pxMd} py-3 ${typography.uiLabel} ${colors.textSecondary} w-[12%]`}>Fecha</th>
+                                      <th className={`${spacing.pxMd} py-3 ${typography.uiLabel} ${colors.textSecondary} w-[10%]`}>Modo</th>
+                                      <th className={`${spacing.pxMd} py-3 ${typography.uiLabel} ${colors.textSecondary} w-[18%]`}>Proveedor</th>
+                                      <th className={`${spacing.pxMd} py-3 ${typography.uiLabel} ${colors.textSecondary} w-[15%] text-right`}>Dimensiones</th>
+                                      <th className={`${spacing.pxMd} py-3 ${typography.uiLabel} ${colors.statusSuccess} w-[10%] text-right`}>Área</th>
+                                      <th className={`${spacing.pxMd} py-3 ${typography.uiLabel} ${colors.textSecondary} w-[10%] text-right`}>Costo</th>
+                                      <th className={`${spacing.pxMd} py-3 ${typography.uiLabel} text-indigo-600 w-[10%] text-right`}>/m²</th>
+                                      <th className={`${spacing.pxMd} py-3 ${typography.uiLabel} ${colors.textSecondary} w-[10%] text-right`}>Restante</th>
+                                      <th className="w-[5%] text-center"></th>
                                     </tr>
                                   </thead>
                                   <tbody className="divide-y divide-border/50 text-text-primary bg-bg-card">
@@ -653,35 +685,35 @@ const RawMaterials: React.FC = () => {
                                       const currentCostPerM2 = isDimensional && batch.area && batch.area > 0 ? currentTotalPurchaseCost / batch.area : 0;
                                       return (
                                         <tr key={batch.id} className="hover:bg-slate-50 transition-colors">
-                                          <td className="px-4 py-2.5 tabular-nums text-sm font-medium">{batch.date}</td>
-                                          <td className="px-4 py-2.5">
+                                          <td className={`${spacing.pxMd} py-2.5 tabular-nums ${typography.text.caption} font-medium`}>{batch.date}</td>
+                                          <td className={`${spacing.pxMd} py-2.5`}>
                                             {isDimensional ? (
-                                              <Badge variant={batch.entry_mode === 'pieza' ? 'warning' : 'default'} className="flex w-fit items-center gap-1 flex-shrink-0 text-xs font-semibold px-2 py-0.5">
+                                              <Badge variant={batch.entry_mode === 'pieza' ? 'warning' : 'default'} className={`flex w-fit items-center gap-1 flex-shrink-0 ${typography.text.caption} px-2 py-0.5`}>
                                                 {batch.entry_mode === 'pieza' ? <Scissors size={12} /> : <RotateCcw size={12} />}
                                                 {batch.entry_mode || 'Rollo'}
                                               </Badge>
                                             ) : (
-                                              <Badge variant="default" className="text-xs font-semibold bg-slate-100 text-slate-600">Estándar</Badge>
+                                              <Badge variant="default" className={`${typography.text.caption} ${colors.bgMain} ${colors.textSecondary}`}>Estándar</Badge>
                                             )}
                                           </td>
-                                          <td className="px-4 py-2.5 font-medium text-sm truncate" title={batch.provider}>{batch.provider}</td>
-                                          <td className="px-4 py-2.5 text-right flex flex-col items-end">
+                                          <td className={`${spacing.pxMd} py-2.5 font-medium ${typography.text.caption} truncate`} title={batch.provider}>{batch.provider}</td>
+                                          <td className={`${spacing.pxMd} py-2.5 text-right flex flex-col items-end`}>
                                             {isDimensional ? (
                                               <>
-                                                <span className="text-sm font-medium text-slate-900 leading-tight">
+                                                <span className={`${typography.text.caption} font-medium ${colors.textPrimary} leading-tight`}>
                                                   {batch.entry_mode === 'pieza' ? `${batch.length} × ${batch.width} cm` : `${batch.initial_quantity.toFixed(2)} m`}
                                                 </span>
-                                                <span className="text-xs font-medium text-slate-500 leading-tight">{batch.width} cm ancho</span>
+                                                <span className={`${typography.text.caption} font-medium ${colors.textSecondary} leading-tight`}>{batch.width} cm ancho</span>
                                               </>
                                             ) : (
-                                              <span className="text-slate-400 font-medium text-sm">---</span>
+                                              <span className={`${colors.textSecondary} font-medium ${typography.text.caption}`}>---</span>
                                             )}
                                           </td>
-                                          <td className="px-4 py-2.5 text-right tabular-nums text-sm font-medium text-emerald-600">{isDimensional && batch.area ? `${batch.area.toFixed(2)} m²` : '---'}</td>
-                                          <td className="px-4 py-2.5 text-right tabular-nums text-sm font-medium">{formatCurrency(currentTotalPurchaseCost)}</td>
-                                          <td className="px-4 py-2.5 text-right tabular-nums text-sm font-medium text-indigo-600">{isDimensional && currentCostPerM2 > 0 ? formatCurrency(currentCostPerM2) : '---'}</td>
-                                          <td className="px-4 py-2.5 text-right">
-                                            <Badge variant={batch.remaining_quantity > 0 ? 'success' : 'secondary'} className="text-xs tabular-nums font-semibold">
+                                          <td className={`${spacing.pxMd} py-2.5 text-right tabular-nums ${typography.text.caption} font-medium ${colors.statusSuccess}`}>{isDimensional && batch.area ? `${batch.area.toFixed(2)} m²` : '---'}</td>
+                                          <td className={`${spacing.pxMd} py-2.5 text-right tabular-nums ${typography.text.caption} font-medium`}>{formatCurrency(currentTotalPurchaseCost)}</td>
+                                          <td className={`${spacing.pxMd} py-2.5 text-right tabular-nums ${typography.text.caption} font-medium text-indigo-600`}>{isDimensional && currentCostPerM2 > 0 ? formatCurrency(currentCostPerM2) : '---'}</td>
+                                          <td className={`${spacing.pxMd} py-2.5 text-right`}>
+                                            <Badge variant={batch.remaining_quantity > 0 ? 'success' : 'secondary'} className={`${typography.text.caption} tabular-nums`}>
                                               {batch.remaining_quantity.toFixed(2)}
                                             </Badge>
                                           </td>
@@ -706,13 +738,13 @@ const RawMaterials: React.FC = () => {
                                       );
                                     })}
                                     {/* Totals Row */}
-                                    <tr className="bg-bg-page border-t-2 border-border">
-                                      <td colSpan={3} className="px-4 py-4 uppercase text-label font-bold text-text-secondary text-right">Totales Acumulados</td>
-                                      <td className="px-4 py-4 text-right tabular-nums text-body font-medium text-text-secondary">{isDimensional ? `${totalRemainingQty.toFixed(2)} m` : '---'}</td>
-                                      <td className="px-4 py-4 text-right tabular-nums text-body font-medium text-emerald-600">{isDimensional ? `${batchStatsByMaterial[m.id].totalArea.toFixed(2)} m²` : '---'}</td>
-                                      <td className="px-4 py-4 text-right tabular-nums text-lg font-extrabold text-text-primary">{formatCurrency(batchStatsByMaterial[m.id].totalValue)}</td>
-                                      <td className="px-4 py-4 text-right tabular-nums text-lg font-extrabold text-brand">{isDimensional ? formatCurrency(batchStatsByMaterial[m.id].avgCostPerM2) : '---'}</td>
-                                      <td className="px-4 py-4 text-right tabular-nums text-lg font-extrabold text-emerald-600">{totalRemainingQty.toFixed(2)}</td>
+                                    <tr className={`${colors.bgMain} border-t-2 ${colors.borderStandard}`}>
+                                      <td colSpan={3} className={`${spacing.pxMd} py-4 text-right ${typography.text.caption} ${colors.textSecondary}`}>Totales Acumulados</td>
+                                      <td className={`${spacing.pxMd} py-4 text-right ${typography.text.body} font-medium ${colors.textSecondary} tabular-nums`}>{isDimensional ? `${totalRemainingQty.toFixed(2)} m` : '---'}</td>
+                                      <td className={`${spacing.pxMd} py-4 text-right ${typography.text.body} font-medium ${colors.statusSuccess} tabular-nums`}>{isDimensional ? `${batchStatsByMaterial[m.id].totalArea.toFixed(2)} m²` : '---'}</td>
+                                      <td className={`${spacing.pxMd} py-4 text-right ${typography.text.body} font-medium ${colors.textPrimary}`}>{formatCurrency(batchStatsByMaterial[m.id].totalValue)}</td>
+                                      <td className={`${spacing.pxMd} py-4 text-right ${typography.text.body} font-medium text-indigo-600`}>{isDimensional ? formatCurrency(batchStatsByMaterial[m.id].avgCostPerM2) : '---'}</td>
+                                      <td className={`${spacing.pxMd} py-4 text-right ${typography.text.body} font-medium ${colors.statusSuccess}`}>{totalRemainingQty.toFixed(2)}</td>
                                       <td></td>
                                     </tr>
                                   </tbody>
@@ -734,8 +766,8 @@ const RawMaterials: React.FC = () => {
       {/* MODAL — Nueva / Editar Materia Prima */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" style={{ backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)' }}>
-          <Card className="my-4 w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 sm:p-8">
-            <h3 className="mb-6 sm:mb-8 text-xl sm:text-2xl font-bold">
+          <Card className={`my-4 w-full max-w-xl max-h-[90vh] overflow-y-auto ${spacing.pLg} sm:${spacing.pLg} border ${colors.borderStandard} ${shadows.xl}`}>
+            <h3 className={`mb-6 sm:mb-8 ${typography.sectionTitle} ${colors.textPrimary} text-xl sm:text-2xl`}>
               {editingId ? 'Editar' : 'Nueva'} Materia Prima
             </h3>
             <form onSubmit={handleMasterSubmit} className="space-y-4 sm:space-y-5">
@@ -782,9 +814,9 @@ const RawMaterials: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, status: formData.status === 'activa' ? 'inactiva' : 'activa' })}
-                    className={`w-full flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold transition-all active:scale-95 ${formData.status === 'activa' ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-gray-100 text-gray-400 ring-1 ring-gray-200'}`}
+                    className={`w-full flex items-center justify-center gap-2 ${radius.xl} px-3 py-2.5 ${typography.uiLabel} font-bold transition-all active:scale-95 ${formData.status === 'activa' ? `${colors.bgSuccess} ${colors.statusSuccess} ring-1 ring-emerald-200` : `${colors.bgMain} ${colors.textSecondary} ring-1 ${colors.borderStandard}`}`}
                   >
-                    <div className={`size-2.5 rounded-full transition-colors ${formData.status === 'activa' ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                    <div className={`size-2.5 rounded-full transition-colors ${formData.status === 'activa' ? 'bg-emerald-500' : colors.textMuted}`} />
                     {formData.status === 'activa' ? 'Activa' : 'Inactiva'}
                   </button>
                 </div>
@@ -803,15 +835,15 @@ const RawMaterials: React.FC = () => {
       {/* MODAL — Editar Lote */}
       {editingBatchData && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6" style={{ backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>
-          <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto p-6 sm:p-8">
-            <h4 className="mb-6 flex items-center gap-2 text-xl font-bold">
+          <Card className={`w-full max-w-md max-h-[90vh] overflow-y-auto ${spacing.pLg} sm:${spacing.pLg} border ${colors.borderStandard} ${shadows.xl}`}>
+            <h4 className={`mb-6 flex items-center gap-2 ${typography.sectionTitle} ${colors.textPrimary}`}>
               <Pencil size={20} className="text-indigo-500" /> Editar Registro
             </h4>
             <form onSubmit={handleEditBatchSubmit} className="space-y-4">
               {editingBatchData.remaining_quantity < editingBatchData.initial_quantity && (
-                <div className="flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50 p-4">
+                <div className={`flex items-start gap-3 ${radius.xl} border border-amber-100 bg-amber-50 p-4`}>
                   <AlertCircle size={20} className="mt-0.5 shrink-0 text-amber-500" />
-                  <p className="text-sm font-semibold leading-tight text-amber-700">
+                  <p className={`${typography.bodySm} font-semibold leading-tight text-amber-700`}>
                     ESTE LOTE YA SE HA USADO. La cantidad, costo y dimensiones no son editables para mantener la coherencia FIFO.
                   </p>
                 </div>
@@ -844,8 +876,9 @@ const RawMaterials: React.FC = () => {
           </Card>
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 };
 
 export default RawMaterials;
+

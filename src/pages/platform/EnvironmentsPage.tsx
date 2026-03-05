@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Layers, ExternalLink, MoreHorizontal, Users, Zap, Printer, Download } from 'lucide-react';
+import { Plus, Search, Layers, ExternalLink, MoreHorizontal, Printer, Download } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/services/supabase';
 import { Company } from '@/types';
@@ -9,6 +9,11 @@ import EditTenantModal from '../../components/EditTenantModal';
 import { EntityList } from '@/components/entity/EntityList';
 import { EntityConfig } from '@/components/entity/types';
 import { getStatusDisplay } from '@/config/subscription.config';
+import { colors, typography } from '@/design/design-tokens';
+import { PageContainer, SectionBlock } from '@/components/ui/LayoutPrimitives';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
 
 export const EnvironmentsPage: React.FC = () => {
     const { user, userCompanies, refreshAuth, enterCompanyAsFounder } = useAuth();
@@ -73,7 +78,6 @@ export const EnvironmentsPage: React.FC = () => {
         );
     }, [companies, searchTerm]);
 
-    // ── Bulk Actions ──────────────────────────────
     const handleBulkPrint = (ids: string[]) => {
         const selected = companies.filter(c => ids.includes(c.id));
         const printWindow = window.open('', '_blank');
@@ -82,19 +86,19 @@ export const EnvironmentsPage: React.FC = () => {
         const rows = selected.map(c => {
             const status = getStatusDisplay(c.subscription_status);
             return `<tr>
-                <td style="padding:8px;border-bottom:1px solid #eee">${c.name}</td>
-                <td style="padding:8px;border-bottom:1px solid #eee">${c.slug}</td>
-                <td style="padding:8px;border-bottom:1px solid #eee">${c.subscription_tier || 'Demo'}</td>
-                <td style="padding:8px;border-bottom:1px solid #eee">${status.label}</td>
-                <td style="padding:8px;border-bottom:1px solid #eee">${c.seat_count || 0}/${c.seat_limit || 1}</td>
+                <td style="padding:12px;border-bottom:1px solid #eee;font-weight:600">${c.name}</td>
+                <td style="padding:12px;border-bottom:1px solid #eee;font-family:monospace">${c.slug}</td>
+                <td style="padding:12px;border-bottom:1px solid #eee">${c.subscription_tier || 'Demo'}</td>
+                <td style="padding:12px;border-bottom:1px solid #eee">${status.label}</td>
+                <td style="padding:12px;border-bottom:1px solid #eee">${c.seat_count || 0}/${c.seat_limit || 1}</td>
             </tr>`;
         }).join('');
 
         printWindow.document.write(`
             <html><head><title>Environments — BETO OS</title>
-            <style>body{font-family:system-ui;padding:2rem}table{width:100%;border-collapse:collapse}th{text-align:left;padding:8px;border-bottom:2px solid #333;font-size:12px;text-transform:uppercase}</style>
+            <style>body{font-family:system-ui;padding:2rem}table{width:100%;border-collapse:collapse}th{text-align:left;padding:12px;border-bottom:2px solid #333;text-transform:uppercase;font-size:12px;letter-spacing:1px}</style>
             </head><body>
-            <h1 style="font-size:1.5rem">Reporte de Environments</h1>
+            <h1>Auditoría de Entornos</h1>
             <p style="color:#666">Generado: ${new Date().toLocaleString()}</p>
             <table><thead><tr><th>Nombre</th><th>Slug</th><th>Plan</th><th>Estado</th><th>Seats</th></tr></thead>
             <tbody>${rows}</tbody></table>
@@ -119,88 +123,81 @@ export const EnvironmentsPage: React.FC = () => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `environments_${new Date().toISOString().slice(0, 10)}.csv`;
+        a.download = `env_audit_${new Date().toISOString().slice(0, 10)}.csv`;
         a.click();
         URL.revokeObjectURL(url);
     };
 
-    // ── EntityConfig ──────────────────────────────
     const envConfig: EntityConfig<Company> = {
         name: 'Environment',
         pluralName: 'Environments',
         rowIdKey: 'id' as keyof Company,
         fields: [
             {
-                key: 'name' as keyof Company,
-                label: 'Environment Name',
+                key: 'name',
+                label: 'Environment',
                 type: 'text',
-                render: (c) => (
+                render: (c: Company) => (
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 flex-shrink-0">
-                            <Layers size={20} />
+                        <div className={`flex size-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-sm`}>
+                            <Layers size={18} />
                         </div>
                         <div className="min-w-0">
-                            <div className="font-bold text-slate-900 truncate">{c.name}</div>
-                            <div className="text-xs text-slate-400 font-mono truncate">{c.slug}</div>
+                            <div className={`${typography.text.body} font-black ${colors.textPrimary} truncate`}>{c.name}</div>
+                            <div className={`${typography.text.caption} ${colors.textMuted} font-mono truncate uppercase tracking-tight`}>{c.slug}</div>
                         </div>
                     </div>
                 )
             },
             {
-                key: 'subscription_tier' as keyof Company,
-                label: 'Plan',
+                key: 'subscription_tier',
+                label: 'Tier',
                 type: 'text',
-                render: (c) => (
-                    <span className="text-sm capitalize text-slate-700">
-                        {c.subscription_tier || 'Demo'}
-                    </span>
+                render: (c: Company) => (
+                    <Badge variant={c.subscription_tier === 'pro' ? 'info' : 'neutral'}>
+                        {(c.subscription_tier || 'DEMO').toUpperCase()}
+                    </Badge>
                 )
             },
             {
-                key: 'seat_count' as keyof Company,
+                key: 'seat_count',
                 label: 'Usage (Seats)',
                 type: 'text',
-                render: (c) => {
+                render: (c: Company) => {
                     const seatPercent = Math.min(100, ((c.seat_count || 0) / (c.seat_limit || 1)) * 100);
-                    const barColor = seatPercent > 85 ? 'bg-orange-500' : 'bg-indigo-500';
+                    const barColor = seatPercent > 85 ? 'bg-rose-500' : 'bg-indigo-600';
                     return (
-                        <div className="flex items-center gap-2">
-                            <div className="h-1.5 w-24 rounded-full bg-slate-100 overflow-hidden">
-                                <div className={`h-full rounded-full ${barColor}`} style={{ width: `${seatPercent}%` }} />
+                        <div className="flex items-center gap-3 min-w-[120px]">
+                            <div className={`h-2 flex-1 rounded-full bg-slate-100 overflow-hidden border border-slate-200`}>
+                                <div className={`h-full transition-all duration-500 ${barColor}`} style={{ width: `${seatPercent}%` }} />
                             </div>
-                            <span className="text-xs text-slate-500">{c.seat_count || 0}/{c.seat_limit || 1}</span>
+                            <span className={`${typography.text.caption} font-bold ${colors.textSecondary} min-w-[40px] text-right`}>
+                                {c.seat_count || 0}/{c.seat_limit || 1}
+                            </span>
                         </div>
                     );
                 }
             },
             {
-                key: 'subscription_status' as keyof Company,
+                key: 'subscription_status',
                 label: 'Status',
                 type: 'badge',
-                render: (c) => {
+                render: (c: Company) => {
                     const status = getStatusDisplay(c.subscription_status);
                     return (
-                        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold ${status.color}`}>
-                            <span className={`size-1.5 rounded-full ${status.dot}`} />
-                            {status.label}
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <div className={`size-2 rounded-full ${status.dot.replace('bg-', 'bg-')}`} />
+                            <span className={`${typography.text.caption} font-black ${status.color.replace('text-', 'text-')}`}>
+                                {status.label.toUpperCase()}
+                            </span>
+                        </div>
                     );
                 }
             }
         ],
         actions: [
-            {
-                id: 'access',
-                label: 'Acceder',
-                icon: <ExternalLink size={18} />,
-                onClick: (c) => handleAccess(c.id)
-            },
-            {
-                id: 'edit',
-                label: 'Editar',
-                icon: <MoreHorizontal size={18} />,
-                onClick: (c) => handleEdit(c)
-            }
+            { id: 'access', label: 'Acceder', icon: <ExternalLink size={18} />, onClick: (c: any) => handleAccess(c.id) },
+            { id: 'edit', label: 'Editar', icon: <MoreHorizontal size={18} />, onClick: (c: any) => handleEdit(c) }
         ],
         bulkActions: [
             { label: 'Imprimir', onClick: handleBulkPrint },
@@ -208,59 +205,66 @@ export const EnvironmentsPage: React.FC = () => {
         ]
     };
 
-    return (
-        <div className="animate-in fade-in space-y-5 lg:space-y-6 duration-700">
-            {/* Header */}
-            <header className="space-y-4">
-                <div>
-                    <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-slate-900">Environments</h1>
-                    <p className="mt-1 text-sm lg:text-base font-medium text-slate-500">
-                        Manage your deployed instances and subscriptions · {filteredCompanies.length} environments
-                    </p>
+    if (loading) {
+        return (
+            <PageContainer>
+                <div className="flex h-96 items-center justify-center">
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="size-12 animate-spin rounded-full border-4 border-indigo-500/20 border-t-indigo-500" />
+                        <span className={`${typography.text.body} ${colors.textMuted} font-bold animate-pulse`}>CARGANDO ENTORNOS...</span>
+                    </div>
                 </div>
+            </PageContainer>
+        );
+    }
 
-                {/* Search + Create + Quick Actions */}
-                <div className="flex items-center gap-2">
-                    <div className="relative flex-1 min-w-0">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+    return (
+        <PageContainer>
+            <SectionBlock>
+                <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div className="space-y-1">
+                        <h1 className={`${typography.text.title} ${colors.textPrimary} tracking-tight`}>
+                            Gestión de Entornos
+                        </h1>
+                        <p className={`${typography.text.body} ${colors.textSecondary} max-w-lg`}>
+                            Supervisa y accede a tus instancias desplegadas. {filteredCompanies.length} entornos registrados.
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <Button variant="primary" onClick={() => setIsCreateModalOpen(true)} icon={<Plus />}>
+                            NUEVO ENTORNO
+                        </Button>
+                    </div>
+                </header>
+
+                <div className="flex flex-wrap items-center gap-3 pt-6 border-t border-slate-100">
+                    <div className="relative flex-1 min-w-[300px]">
+                        <Search size={16} className={`absolute left-4 top-1/2 -translate-y-1/2 ${colors.textMuted}`} />
                         <input
                             type="text"
-                            placeholder="Search environments..."
+                            placeholder="Buscar por nombre, slug o plan..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full rounded-xl bg-white pl-10 pr-3 py-2.5 text-sm text-slate-700 ring-1 ring-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                            className={`w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl ${typography.text.body} transition-all focus:ring-2 focus:ring-indigo-500 focus:bg-white`}
                         />
                     </div>
-                    <button
-                        onClick={() => handleBulkPrint(companies.map(c => c.id))}
-                        className="flex items-center justify-center rounded-xl bg-white ring-1 ring-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-all h-10 w-10 flex-shrink-0"
-                        title="Imprimir todo"
-                    >
-                        <Printer size={18} />
-                    </button>
-                    <button
-                        onClick={() => handleBulkExport(companies.map(c => c.id))}
-                        className="flex items-center justify-center rounded-xl bg-white ring-1 ring-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-all h-10 w-10 flex-shrink-0"
-                        title="Exportar CSV"
-                    >
-                        <Download size={18} />
-                    </button>
-                    <button
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 text-white font-medium shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all h-10 w-10 sm:w-auto sm:px-4 flex-shrink-0"
-                    >
-                        <Plus size={18} />
-                        <span className="hidden sm:inline text-sm">New Environment</span>
-                    </button>
+                    <Button variant="secondary" onClick={() => handleBulkPrint(companies.map(c => c.id))} icon={<Printer />}>
+                        REPORTAR
+                    </Button>
+                    <Button variant="secondary" onClick={() => handleBulkExport(companies.map(c => c.id))} icon={<Download />}>
+                        EXPORTAR
+                    </Button>
                 </div>
-            </header>
 
-            <EntityList
-                config={envConfig}
-                items={filteredCompanies}
-                loading={loading}
-                emptyMessage="No environments found."
-            />
+                <Card noPadding className="overflow-hidden">
+                    <EntityList
+                        config={envConfig as any}
+                        items={filteredCompanies}
+                        loading={loading}
+                        emptyMessage="No se encontraron entornos."
+                    />
+                </Card>
+            </SectionBlock>
 
             <CreateTenantModal
                 isOpen={isCreateModalOpen}
@@ -276,6 +280,6 @@ export const EnvironmentsPage: React.FC = () => {
                     onSuccess={handleEditSuccess}
                 />
             )}
-        </div>
+        </PageContainer>
     );
 };

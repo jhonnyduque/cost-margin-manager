@@ -1,7 +1,7 @@
 import React from 'react';
-import { tokens } from '../../design/design-tokens';
 import { LucideIcon } from 'lucide-react';
 import { Button } from './Button';
+import { typography } from '@/design/typography';
 
 interface EmptyStateProps {
     icon?: LucideIcon;
@@ -11,7 +11,7 @@ interface EmptyStateProps {
         label: string;
         onClick: () => void;
     };
-    className?: string; // For layout
+    className?: string;
 }
 
 export const EmptyState: React.FC<EmptyStateProps> = ({
@@ -22,52 +22,23 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
     className = ''
 }) => {
     return (
-        <div
-            className={`flex flex-col items-center justify-center p-8 text-center ${className}`}
-            style={{
-                borderRadius: tokens.radius.lg,
-                border: `2px dashed ${tokens.colors.border}`,
-                backgroundColor: tokens.colors.bg, // Slightly different bg to distinguish from Card? Or surface?
-                // Usually empty states are on surface but with dashed border.
-                // Let's stick to simple clear design.
-            }}
-        >
+        <div className={`flex flex-col items-center justify-center p-12 text-center rounded-[32px] border-2 border-dashed border-slate-100 bg-slate-50/30 ${className}`}>
             {Icon && (
-                <div
-                    className="mb-4 rounded-full p-3"
-                    style={{
-                        backgroundColor: tokens.colors.bg, // darker circle
-                        color: tokens.colors.text.muted
-                    }}
-                >
+                <div className="mb-6 rounded-2xl bg-white p-4 text-slate-300 shadow-sm ring-1 ring-slate-100">
                     <Icon size={32} />
                 </div>
             )}
 
-            <h3
-                style={{
-                    fontSize: tokens.typography.titleMd.fontSize,
-                    fontWeight: 500,
-                    color: tokens.colors.text.primary,
-                    marginBottom: tokens.spacing.xs
-                }}
-            >
+            <h3 className={`${typography.sectionTitle} text-slate-900 mb-2`}>
                 {title}
             </h3>
 
-            <p
-                style={{
-                    fontSize: tokens.typography.body.fontSize,
-                    color: tokens.colors.text.secondary,
-                    maxWidth: '400px',
-                    marginBottom: action ? tokens.spacing.lg : 0
-                }}
-            >
+            <p className={`${typography.body} text-slate-500 max-w-sm mx-auto mb-8`}>
                 {description}
             </p>
 
             {action && (
-                <Button onClick={action.onClick}>
+                <Button onClick={action.onClick} className="font-bold">
                     {action.label}
                 </Button>
             )}

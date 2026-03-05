@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { EntityConfig } from './types';
 import { Pencil, Plus } from 'lucide-react';
+import { colors, typography, spacing, radius, shadows } from '@/design/design-tokens';
 
 interface EntityModalProps<T> {
     config: EntityConfig<T>;
@@ -53,21 +54,21 @@ export function EntityModal<T>({
                 if (e.target === e.currentTarget) onClose();
             }}
         >
-            <div className="animate-in zoom-in-95 w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl duration-300 max-h-[85vh] flex flex-col">
+            <div className={`animate-in zoom-in-95 w-full max-w-md overflow-hidden ${radius.xl} ${colors.bgSurface} ${shadows.xl} duration-300 max-h-[85vh] flex flex-col`}>
                 {/* Header - compact */}
-                <div className="flex items-center gap-3 px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-100 flex-shrink-0">
-                    <div className="flex size-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 flex-shrink-0">
+                <div className={`flex items-center gap-3 ${spacing.pxLg} py-3 sm:py-4 border-b ${colors.borderSubtle} flex-shrink-0`}>
+                    <div className={`flex size-9 items-center justify-center ${radius.xl} ${colors.bgBrandSubtle} text-indigo-600 flex-shrink-0`}>
                         {isEdit ? <Pencil size={16} /> : <Plus size={16} />}
                     </div>
                     <div className="flex-1 min-w-0">
-                        <h3 className="text-base font-bold text-slate-900">{title}</h3>
+                        <h3 className={`${typography.cardTitle} ${colors.textPrimary}`}>{title}</h3>
                         {isEdit && (
-                            <p className="text-xs text-slate-400">Modificando registro existente</p>
+                            <p className={`${typography.caption} ${colors.textSecondary}`}>Modificando registro existente</p>
                         )}
                     </div>
                     <button
                         onClick={onClose}
-                        className="flex size-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors min-w-[36px] min-h-[36px]"
+                        className={`flex size-9 items-center justify-center ${radius.md} ${colors.textSecondary} hover:${colors.bgMain} hover:${colors.textPrimary} transition-colors min-w-[36px] min-h-[36px]`}
                     >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18" />
@@ -87,23 +88,23 @@ export function EntityModal<T>({
                     className="flex flex-col flex-1 overflow-hidden"
                 >
                     {/* Scrollable fields */}
-                    <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 space-y-4">
+                    <div className={`flex-1 overflow-y-auto ${spacing.pxLg} py-4 sm:py-5 ${spacing.sm}`}>
                         {children}
                     </div>
 
                     {/* Sticky actions at bottom */}
-                    <div className="flex items-center gap-3 px-4 py-3 sm:px-6 sm:py-4 border-t border-slate-100 bg-white flex-shrink-0">
+                    <div className={`flex items-center gap-3 ${spacing.pxLg} py-3 sm:py-4 border-t ${colors.borderSubtle} ${colors.bgSurface} flex-shrink-0`}>
                         <button
                             type="button"
                             onClick={onClose}
-                            className="flex-1 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500 transition-all hover:bg-slate-50 active:scale-[0.98]"
+                            className={`flex-1 ${radius.xl} px-4 py-2.5 ${typography.bodySm} font-bold ${colors.textSecondary} transition-all hover:${colors.bgMain} active:scale-[0.98]`}
                         >
                             Cancelar
                         </button>
                         <button
                             type="submit"
                             disabled={loading}
-                            className="flex-[1.5] flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-100 transition-all hover:bg-indigo-700 active:scale-[0.98] disabled:opacity-50"
+                            className={`flex-[1.5] flex items-center justify-center gap-2 ${radius.xl} ${colors.bgBrand} px-4 py-2.5 ${typography.bodySm} font-bold text-white ${shadows.md} shadow-indigo-100 transition-all hover:bg-indigo-700 active:scale-[0.98] disabled:opacity-50`}
                         >
                             {loading ? (
                                 <>

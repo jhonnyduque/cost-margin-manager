@@ -2,6 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+    font-family: "Inter";
+    src: url("/fonts/inter-var.woff2") format("woff2");
+    font-weight: 100 900;
+    font-display: swap;
+}
+
+@layer base {
+    html {
+        font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        @apply text-slate-900 antialiased;
+    }
+}
+
 @layer components {
 
     /* ── SUPERFICIES & CARDS ─────────────────────────────────────── */

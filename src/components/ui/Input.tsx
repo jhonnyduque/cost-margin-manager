@@ -1,5 +1,5 @@
 import React from 'react';
-import { tokens } from '../../design/design-tokens';
+import { colors, typography, spacing, radius, shadows } from '@/design/design-tokens';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
     label?: string;
@@ -15,24 +15,25 @@ export const Input: React.FC<InputProps> = ({
     ...props
 }) => {
     return (
-        <div className={`flex flex-col gap-1.5 ${fullWidth ? 'w-full' : ''} ${className}`}>
+        <div className={`flex flex-col ${spacing.xs} ${fullWidth ? 'w-full' : ''} ${className}`}>
             {label && (
-                <label className="text-label text-text-secondary">
+                <label className={`${typography.text.caption} ${colors.textSecondary} ml-1`}>
                     {label}
                 </label>
             )}
             <input
                 className={`
-                    h-10 px-4 rounded-sm outline-none transition-colors
-                    bg-bg-card text-body text-text-primary
-                    placeholder:text-text-muted
-                    focus:ring-2 focus:ring-offset-0 focus:ring-brand/20
-                    ${error ? 'border border-error focus:border-error' : 'border border-border focus:border-brand'}
+                    h-11 ${spacing.pxMd} ${radius.md} outline-none transition-all duration-200
+                    ${colors.surface} ${colors.textPrimary}
+                    placeholder:${colors.textMuted}
+                    border ${colors.borderStandard}
+                    focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-600
+                    ${error ? `border-red-500 focus:ring-red-500/10 focus:border-red-600` : ''}
                 `}
                 {...props}
             />
             {error && (
-                <span className="text-caption text-error">
+                <span className={`${typography.text.secondary} ${colors.danger} font-medium ml-1`}>
                     {error}
                 </span>
             )}

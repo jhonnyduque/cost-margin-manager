@@ -5,6 +5,7 @@ import { adminStatsService } from '@/services/adminStatsService';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Activity, UserPlus, AlertCircle, CreditCard, Box, Zap } from 'lucide-react';
+import { typography } from '@/design/typography';
 
 export function ActivityFeed() {
     const [events, setEvents] = useState<any[]>([]);
@@ -56,7 +57,7 @@ export function ActivityFeed() {
         if (key.includes('BILLING')) return <CreditCard size={14} className="text-red-500" />;
         if (key.includes('TEAM')) return <UserPlus size={14} className="text-blue-500" />;
         if (key.includes('SYSTEM')) return <Zap size={14} className="text-indigo-500" />;
-        return <Activity size={14} className="text-slate-400" />;
+        return <Activity size={14} className="text-slate-500" />;
     };
 
     const handleEventClick = (event: any) => {
@@ -86,7 +87,7 @@ export function ActivityFeed() {
             {events.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                     <Activity size={32} className="text-slate-100 mb-2" />
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No hay actividad</p>
+                    <p className={`${typography.uiLabel} font-semibold text-slate-500 uppercase tracking-widest`}>No hay actividad</p>
                 </div>
             ) : (
                 events.map((event) => (
@@ -100,17 +101,17 @@ export function ActivityFeed() {
                         </div>
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
-                                <p className="text-[11px] font-black text-slate-800 uppercase tracking-tighter group-hover:text-indigo-600 transition-colors">
+                                <p className={`${typography.uiLabel} font-semibold text-slate-800 uppercase tracking-tighter group-hover:text-indigo-600 transition-colors`}>
                                     {event.event_key.split('.').pop()?.replace(/_/g, ' ')}
                                 </p>
-                                <span className="text-[10px] text-slate-300 font-medium whitespace-nowrap">
+                                <span className={`${typography.caption} text-slate-300 font-medium whitespace-nowrap`}>
                                     {formatDistanceToNow(new Date(event.created_at), { addSuffix: true, locale: es })}
                                 </span>
                             </div>
-                            <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2 leading-relaxed">
+                            <p className={`${typography.caption} text-slate-500 mt-0.5 line-clamp-2 leading-relaxed`}>
                                 {event.payload?.message || `Evento registrado en ${event.source_module}`}
                                 {event.companies?.name && (
-                                    <span className="inline-flex items-center gap-1 bg-slate-50 px-1.5 py-0.5 rounded text-[9px] font-bold text-slate-500 ml-1.5 border border-slate-100">
+                                    <span className={`inline-flex items-center gap-1 bg-slate-50 px-1.5 py-0.5 rounded ${typography.uiLabel} font-semibold text-slate-500 ml-1.5 border border-slate-100`}>
                                         {event.companies.name}
                                     </span>
                                 )}
@@ -119,7 +120,7 @@ export function ActivityFeed() {
                     </div>
                 ))
             )}
-            <button className="w-full py-3 mt-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-indigo-600 hover:bg-slate-50 rounded-xl transition-all border border-dashed border-slate-200">
+            <button className={`w-full py-3 mt-4 ${typography.uiLabel} font-black text-slate-500 uppercase tracking-widest hover:text-indigo-600 hover:bg-slate-50 rounded-xl transition-all border border-dashed border-slate-200`}>
                 Ver todos los logs
             </button>
         </div>

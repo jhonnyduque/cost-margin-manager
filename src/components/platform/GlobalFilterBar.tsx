@@ -1,5 +1,5 @@
-import React from 'react';
 import { Calendar, Filter, ChevronDown, Download, Share2 } from 'lucide-react';
+import { typography } from '@/design/typography';
 
 interface GlobalFilterBarProps {
     dateRange: string;
@@ -29,7 +29,7 @@ export function GlobalFilterBar({
                     <select
                         value={dateRange}
                         onChange={(e) => onDateRangeChange(e.target.value)}
-                        className="bg-transparent text-sm font-bold text-slate-700 focus:outline-none cursor-pointer hover:text-indigo-600 transition-colors"
+                        className={`bg-transparent ${typography.uiLabel} text-slate-700 focus:outline-none cursor-pointer hover:text-indigo-600 transition-colors`}
                     >
                         <option value="last-30">Últimos 30 días</option>
                         <option value="last-90">Últimos 90 días</option>
@@ -46,15 +46,15 @@ export function GlobalFilterBar({
                                 min="2024-01-01"
                                 max={endDate}
                                 onChange={(e) => onStartDateChange(e.target.value)}
-                                className="px-2 py-1 rounded-lg bg-slate-50 border border-slate-100 text-[10px] font-bold text-slate-600 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                className={`px-2 py-1 rounded-lg bg-slate-50 border border-slate-100 ${typography.uiLabel} text-slate-600 focus:ring-2 focus:ring-indigo-500 focus:outline-none`}
                             />
-                            <span className="text-slate-300 text-[10px] font-bold">al</span>
+                            <span className={`text-slate-300 ${typography.uiLabel}`}>al</span>
                             <input
                                 type="date"
                                 value={endDate}
                                 min={startDate || "2024-01-01"}
                                 onChange={(e) => onEndDateChange(e.target.value)}
-                                className="px-2 py-1 rounded-lg bg-slate-50 border border-slate-100 text-[10px] font-bold text-slate-600 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                className={`px-2 py-1 rounded-lg bg-slate-50 border border-slate-100 ${typography.uiLabel} text-slate-600 focus:ring-2 focus:ring-indigo-500 focus:outline-none`}
                             />
                         </div>
                     )}
@@ -68,14 +68,14 @@ export function GlobalFilterBar({
                         <select
                             value={plan}
                             onChange={(e) => onPlanChange(e.target.value)}
-                            className="appearance-none bg-transparent pr-6 text-xs font-bold text-slate-500 group-hover:text-slate-900 transition-colors focus:outline-none cursor-pointer"
+                            className={`appearance-none bg-transparent pr-6 ${typography.uiLabel} text-slate-500 group-hover:text-slate-900 transition-colors focus:outline-none cursor-pointer`}
                         >
                             <option value="all">Todos los Planes</option>
                             <option value="starter">Starter</option>
                             <option value="growth">Growth</option>
                             <option value="enterprise">Enterprise</option>
                         </select>
-                        <ChevronDown size={14} className="absolute right-0 text-slate-400 pointer-events-none" />
+                        <ChevronDown size={14} className="absolute right-0 text-slate-500 pointer-events-none" />
                     </div>
 
                     <div className="flex items-center gap-2 cursor-pointer group relative">
@@ -85,24 +85,24 @@ export function GlobalFilterBar({
                         <select
                             value={segment}
                             onChange={(e) => onSegmentChange(e.target.value)}
-                            className="appearance-none bg-transparent pr-6 text-xs font-bold text-slate-500 group-hover:text-slate-900 transition-colors focus:outline-none cursor-pointer"
+                            className={`appearance-none bg-transparent pr-6 ${typography.uiLabel} text-slate-500 group-hover:text-slate-900 transition-colors focus:outline-none cursor-pointer`}
                         >
                             <option value="all">Todos los Segmentos</option>
                             <option value="new">Nuevos</option>
                             <option value="loyal">Leales</option>
                             <option value="at-risk">En Riesgo</option>
                         </select>
-                        <ChevronDown size={14} className="absolute right-0 text-slate-400 pointer-events-none" />
+                        <ChevronDown size={14} className="absolute right-0 text-slate-500 pointer-events-none" />
                     </div>
                 </div>
             </div>
 
             <div className="flex items-center gap-2">
-                <button className="flex items-center gap-2 rounded-2xl px-4 py-3 text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all active:scale-95">
+                <button className={`flex items-center gap-2 rounded-2xl px-4 py-3 ${typography.uiLabel} text-slate-600 hover:bg-slate-100 transition-all active:scale-95`}>
                     <Share2 size={16} />
                     Compartir Informe
                 </button>
-                <button className="flex items-center gap-2 rounded-2xl bg-indigo-600 px-6 py-3 text-xs font-bold text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all">
+                <button className={`flex items-center gap-2 rounded-2xl bg-indigo-600 px-6 py-3 ${typography.uiLabel} text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all`}>
                     <Download size={16} />
                     Exportar CSV
                 </button>

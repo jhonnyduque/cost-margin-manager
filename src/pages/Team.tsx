@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
-import { UserPlus, Trash2, Shield, Building2, Search, Printer } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Building2, Search, Printer, Users } from 'lucide-react';
+import { colors, typography, spacing, shadows } from '@/design/design-tokens';
 import { EntityList } from '../components/entity/EntityList';
-import { Button } from '../components/ui/Button';
+import { Button } from '@/components/ui/Button';
 import { AppModal } from '../components/ui/AppModal';
-import { EntityDetail } from '../components/entity/EntityDetail';
-import { EntityConfig } from '../components/entity/types';
+import { Badge } from '@/components/ui/Badge';
+import { Card } from '@/components/ui/Card';
+import { PageContainer, SectionBlock } from '@/components/ui/LayoutPrimitives';
+import { MetricCard } from '@/components/platform/MetricCard';
 
 interface TeamMember {
     id: string;
@@ -21,36 +24,33 @@ interface TeamMember {
     company_name?: string | null;
 }
 
+const ROLE_VARIANT: Record<string, "neutral" | "warning" | "error" | "info" | "success"> = {
+    'manager': 'info',
+    'operator': 'neutral',
+    'viewer': 'neutral',
+    'super_admin': 'warning'
+};
+
 export default function Team() {
     const { user, session, currentCompany, userRole, isLoading: authLoading } = useAuth();
     const [members, setMembers] = useState<TeamMember[]>([]);
     const [maxUsers, setMaxUsers] = useState(3);
     const [loading, setLoading] = useState(true);
 
-    // Search & selection state
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-    // Callback to sync selection from EntityList
-    const handleSelectionChange = React.useCallback((ids: string[]) => {
-        setSelectedIds(ids);
-    }, []);
-
-    // Create form state
     const [newUserEmail, setNewUserEmail] = useState('');
     const [newUserFullName, setNewUserFullName] = useState('');
     const [newUserRole, setNewUserRole] = useState<'manager' | 'operator' | 'viewer'>('operator');
     const [newUserPassword, setNewUserPassword] = useState('');
     const [showCreateModal, setShowCreateModal] = useState(false);
 
-    // Edit form state
     const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
     const [editName, setEditName] = useState('');
     const [editRole, setEditRole] = useState('');
     const [editPassword, setEditPassword] = useState('');
 
-    // UI state
-    const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
     const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
     const isSuperAdmin = user != null && !currentCompany;
@@ -61,9 +61,7 @@ export default function Team() {
     const currentUsersCount = members.length;
     const isAtLimit = !isSuperAdmin && currentUsersCount >= maxUsers;
     const percentageUsed = Math.min(100, (currentUsersCount / maxUsers) * 100);
-    const upgradeRecommended = !isSuperAdmin && percentageUsed >= 80;
 
-    // Smart search: filters by company name, member name, or email
     const filteredMembers = useMemo(() => {
         if (!searchQuery.trim()) return members;
         const q = searchQuery.toLowerCase().trim();
@@ -94,7 +92,6 @@ export default function Team() {
             if (error) throw error;
             if (data?.seat_limit) {
                 setMaxUsers(data.seat_limit);
-                console.log('[Team] Seat limit loaded:', data.seat_limit);
             }
         } catch (err) {
             console.error('[Team] Error fetching seat_limit:', err);
@@ -103,25 +100,14 @@ export default function Team() {
     };
 
     const fetchMembers = async () => {
-        console.log('[Team] Fetching members. SuperAdmin:', isSuperAdmin, '| Company:', currentCompany?.id);
         try {
             setLoading(true);
+            const { data, error } = await supabase
+                .rpc('get_team_members', isSuperAdmin ? {} : { p_company_id: currentCompany?.id })
+                .order('joined_at', { ascending: true });
 
-            if (isSuperAdmin) {
-                const { data, error } = await supabase
-                    .rpc('get_team_members')
-                    .order('joined_at', { ascending: true });
-
-                if (error) throw error;
-                setMembers(data || []);
-            } else {
-                const { data, error } = await supabase
-                    .rpc('get_team_members', { p_company_id: currentCompany?.id })
-                    .order('joined_at', { ascending: true });
-
-                if (error) throw error;
-                setMembers(data || []);
-            }
+            if (error) throw error;
+            setMembers(data || []);
         } catch (error) {
             console.error('Error fetching members:', error);
             setMembers([]);
@@ -134,12 +120,7 @@ export default function Team() {
         if (isAtLimit) return;
         try {
             setLoading(true);
-
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('La solicitud tardó demasiado. Verifica que las Edge Functions estén desplegadas.')), 15000);
-            });
-
-            const invokePromise = supabase.functions.invoke('beto-manage-team', {
+            const { data, error } = await supabase.functions.invoke('beto-manage-team', {
                 body: {
                     action: 'create',
                     email: newUserEmail,
@@ -150,16 +131,9 @@ export default function Team() {
                 }
             });
 
-            const { data, error } = await Promise.race([invokePromise, timeoutPromise]) as any;
+            if (error) throw error;
 
-            if (error) {
-                if (error.code === 'not_found' || error.status === 404) {
-                    throw new Error('La función del sistema no está desplegada. Ejecuta "supabase functions deploy beto-manage-team".');
-                }
-                throw error;
-            }
-
-            setStatusMessage({ type: 'success', text: `Usuario ${newUserEmail} creado con éxito.` });
+            setStatusMessage({ type: 'success', text: `Usuario ${newUserEmail} invitado con éxito.` });
             setNewUserEmail('');
             setNewUserFullName('');
             setNewUserPassword('');
@@ -176,61 +150,30 @@ export default function Team() {
         if (!editingMember) return;
         try {
             setLoading(true);
-
-            // ✅ CAMBIO: Obtener sesión con fallback si session del hook es null
-            const { data: { session: currentSession } } = await supabase.auth.getSession();
-            const tokenToUse = session?.access_token || currentSession?.access_token;
-
-            // ✅ DEBUG: Log para ver qué token estamos usando
-            console.log('[Team] Update Profile Debug:', {
-                sessionFromHook: !!session,
-                sessionFromGetSession: !!currentSession,
-                hasToken: !!tokenToUse,
-                tokenLength: tokenToUse?.length || 0,
-                userId: user?.id,
-                editingMemberId: editingMember.user_id
-            });
-
-            if (!tokenToUse) {
-                throw new Error('No hay sesión activa. Por favor, inicia sesión nuevamente.');
-            }
-
             const isSelfUpdate = editingMember.user_id === user?.id;
-            const isRoleChanged = canEdit && editRole !== editingMember.role;
-
             const { error } = await (isSelfUpdate
                 ? supabase.functions.invoke('beto-update-profile', {
-                    body: { full_name: editName, password: editPassword || undefined },
-                    headers: {
-                        'Authorization': `Bearer ${tokenToUse}`,
-                        'Content-Type': 'application/json'
-                    }
+                    body: { full_name: editName, password: editPassword || undefined }
                 })
                 : supabase.functions.invoke('beto-manage-team', {
                     body: {
                         action: 'update',
                         target_user_id: editingMember.user_id,
                         full_name: canEdit ? editName : undefined,
-                        role: isRoleChanged ? editRole : undefined,
+                        role: canEdit ? editRole : undefined,
                         password: editPassword || undefined,
                         company_id: editingMember.company_id || currentCompany?.id
                     }
                 })
             );
 
-            if (error) {
-                if (isSelfUpdate && (error.code === 'not_found' || error.status === 404)) {
-                    throw new Error('Función beto-update-profile no desplegada. Ejecuta: supabase functions deploy beto-update-profile');
-                }
-                throw error;
-            }
+            if (error) throw error;
 
             setEditingMember(null);
             setEditPassword('');
             fetchMembers();
-            setStatusMessage({ type: 'success', text: 'Miembro actualizado con éxito.' });
+            setStatusMessage({ type: 'success', text: 'Miembro actualizado correctamente.' });
         } catch (error: any) {
-            console.error('[Team] Update Error:', error);
             setStatusMessage({ type: 'error', text: error.message || 'Error al actualizar' });
         } finally {
             setLoading(false);
@@ -238,7 +181,7 @@ export default function Team() {
     };
 
     const handleDeleteUser = async (userId: string) => {
-        if (!confirm('¿Estás seguro de que deseas eliminar este miembro?')) return;
+        if (!confirm('¿Archivar este miembro del sistema?')) return;
         try {
             setLoading(true);
             const member = members.find(m => m.user_id === userId);
@@ -258,32 +201,7 @@ export default function Team() {
         }
     };
 
-    const handleBulkAction = async (action: string, ids: string[]) => {
-        if (action === 'Archivar' && !canEdit) return;
-        if (action === 'Eliminar' && !canDelete) return;
-
-        if (action === 'Archivar') await executeBulk('bulk_archive', ids);
-        else if (action === 'Eliminar') await executeBulk('bulk_delete', ids);
-    };
-
-    const executeBulk = async (action: string, ids: string[]) => {
-        if (!confirm(`¿Estás seguro de que deseas ejecutar esta acción en ${ids.length} usuarios?`)) return;
-        try {
-            setLoading(true);
-            const { error } = await supabase.functions.invoke('beto-manage-team', {
-                body: { action, user_ids: ids, company_id: currentCompany?.id }
-            });
-            if (error) throw error;
-            setStatusMessage({ type: 'success', text: 'Acción masiva completada.' });
-            fetchMembers();
-        } catch (error: any) {
-            setStatusMessage({ type: 'error', text: error.message });
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const teamConfig: EntityConfig<TeamMember> = {
+    const teamConfig = {
         name: 'Miembro',
         pluralName: 'Equipo',
         rowIdKey: 'user_id',
@@ -291,275 +209,185 @@ export default function Team() {
             {
                 key: 'full_name',
                 label: 'Usuario',
-                type: 'text',
-                render: (m) => (
-                    <div className="flex items-center gap-3 min-w-0">
-                        <div className="flex size-8 items-center justify-center rounded-lg bg-indigo-50 text-xs font-bold text-indigo-600 flex-shrink-0">
-                            {m.email?.substring(0, 2).toUpperCase()}
+                render: (m: TeamMember) => (
+                    <div className="flex items-center gap-3">
+                        <div className={`flex size-10 items-center justify-center rounded-xl ${colors.bgBrandSubtle} ${colors.brand} font-black uppercase text-xs border border-indigo-100 shadow-sm`}>
+                            {m.email?.substring(0, 2)}
                         </div>
-                        <div className="min-w-0">
-                            <div className="font-bold text-gray-900 truncate">{m.full_name || 'Sin nombre'}</div>
-                            <div className="text-xs text-gray-500 truncate">{m.email}</div>
+                        <div>
+                            <div className={`${typography.text.body} font-black ${colors.textPrimary}`}>{m.full_name || 'PENDIENTE'}</div>
+                            <div className={`${typography.text.caption} ${colors.textMuted}`}>{m.email}</div>
                         </div>
                     </div>
                 )
             },
-            ...(isSuperAdmin ? [{
-                key: 'company_name' as keyof TeamMember,
-                label: 'Empresa',
-                type: 'text' as const,
-                render: (m: TeamMember) => (
-                    <span className="inline-flex items-center gap-1 rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-600 truncate">
-                        <Building2 size={11} />
-                        {m.company_name || m.company_id}
-                    </span>
-                )
-            }] : []),
             {
                 key: 'role',
-                label: 'Rol',
-                type: 'badge',
-                render: (m) => (
-                    <span className={`text-sm font-bold ${m.is_active ? 'text-gray-800' : 'text-orange-600'}`}>
-                        {m.role.toUpperCase()}{!m.is_active && ' · ARCHIVADO'}
-                    </span>
+                label: 'Jerarquía',
+                render: (m: TeamMember) => (
+                    <Badge variant={ROLE_VARIANT[m.role] || 'neutral'}>
+                        {m.role.toUpperCase()}
+                    </Badge>
                 )
             },
             {
-                key: 'joined_at',
-                label: 'Unido',
-                type: 'date',
-                render: (m) => <span className="text-xs font-medium text-gray-500 truncate">{new Date(m.joined_at).toLocaleDateString()}</span>
-            },
-            {
-                key: 'last_sign_in_at',
-                label: 'Último Acceso',
-                type: 'date',
-                render: (m) => <span className="text-xs text-gray-400 truncate">{m.last_sign_in_at ? new Date(m.last_sign_in_at).toLocaleDateString() : 'Nunca'}</span>
+                key: 'status',
+                label: 'Estado',
+                render: (m: TeamMember) => (
+                    <div className="flex items-center gap-2">
+                        <div className={`size-2 rounded-full ${m.is_active ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                        <span className={`${typography.text.caption} ${colors.textSecondary} font-bold`}>
+                            {m.is_active ? 'ACTIVO' : 'INACTIVO'}
+                        </span>
+                    </div>
+                )
             }
         ],
         actions: [
-            {
-                id: 'detail',
-                label: 'Detalles',
-                icon: <Building2 size={18} />,
-                onClick: (m) => setSelectedMember(m)
-            },
-            ...(canEdit ? [{
-                id: 'edit',
-                label: 'Editar',
-                icon: <Shield size={18} />,
-                onClick: (m: TeamMember) => {
-                    setEditingMember(m);
-                    setEditName(m.full_name || '');
-                    setEditRole(m.role);
-                }
-            }] : []),
-            ...(canDelete ? [{
-                id: 'delete',
-                label: 'Eliminar',
-                icon: <Trash2 size={18} />,
-                color: 'text-red-500 hover:bg-red-50 hover:border-red-100',
-                onClick: (m: TeamMember) => handleDeleteUser(m.user_id)
-            }] : [])
-        ],
-        bulkActions: [
-            ...(canEdit ? [{ label: 'Archivar', onClick: (ids: string[]) => handleBulkAction('Archivar', ids) }] : []),
-            ...(canDelete ? [{ label: 'Eliminar', onClick: (ids: string[]) => handleBulkAction('Eliminar', ids), variant: 'danger' as const }] : [])
+            { id: 'edit', label: 'Editar', icon: <Shield size={18} />, onClick: (m: any) => { setEditingMember(m); setEditName(m.full_name || ''); setEditRole(m.role); } },
+            { id: 'delete', label: 'Eliminar', icon: <Trash2 size={18} />, color: 'text-red-500', onClick: (m: any) => handleDeleteUser(m.user_id) }
         ]
     };
 
     return (
-        <div className="animate-in fade-in space-y-6 lg:space-y-8 duration-700">
-            {/* ✅ HEADER */}
-            <header className="space-y-4">
-                <div>
-                    <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-gray-900">Equipo</h1>
-                    <p className="mt-1 text-sm lg:text-base font-medium text-gray-500">
-                        {isSuperAdmin
-                            ? `Todos los usuarios de la plataforma · ${filteredMembers.length} miembros`
-                            : `Gestión de acceso para ${currentCompany?.name}`}
-                    </p>
-                </div>
+        <PageContainer>
+            <SectionBlock>
+                <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div className="space-y-1">
+                        <h1 className={`${typography.text.title} ${colors.textPrimary} tracking-tight`}>
+                            Control de Equipo
+                        </h1>
+                        <p className={`${typography.text.body} ${colors.textSecondary} max-w-lg`}>
+                            Gestiona jerarquías, permisos y accesos de los miembros de la organización.
+                        </p>
+                    </div>
 
-                {/* Toolbar */}
-                <div className="flex items-center gap-2">
-                    <div className="relative flex-1 min-w-0">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    {!isSuperAdmin && (
+                        <div className="md:w-64">
+                            <MetricCard
+                                title="OCUPACIÓN DE ASIENTOS"
+                                value={`${currentUsersCount} / ${maxUsers}`}
+                                visualType="gauge"
+                                variant={isAtLimit ? 'error' : percentageUsed > 80 ? 'warning' : 'success'}
+                            />
+                        </div>
+                    )}
+                </header>
+
+                <div className="flex flex-wrap items-center gap-3 pt-6 border-t border-slate-100">
+                    <div className="relative flex-1 min-w-[300px]">
+                        <Search size={16} className={`absolute left-4 top-1/2 -translate-y-1/2 ${colors.textMuted}`} />
                         <input
                             type="text"
-                            placeholder="Buscar empresa, nombre, email..."
+                            placeholder="Buscar miembro o rol..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full rounded-xl bg-white pl-10 pr-3 py-2.5 text-sm text-gray-700 ring-1 ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                            className={`w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl ${typography.text.body} transition-all focus:ring-2 focus:ring-indigo-500 focus:bg-white`}
                         />
                     </div>
+
+                    <Button variant="secondary" onClick={() => window.print()} icon={<Printer />}>
+                        IMPRIMIR
+                    </Button>
 
                     <Button
-                        variant="ghost"
-                        onClick={() => window.print()}
-                        title="Imprimir listado"
-                        icon={<Printer size={18} />}
-                    />
-
-                    {selectedIds.length > 0 && canDelete && (
-                        <Button
-                            variant="danger"
-                            onClick={() => handleBulkAction('Eliminar', selectedIds)}
-                            title={`Eliminar ${selectedIds.length} seleccionados`}
-                            icon={<Trash2 size={18} />}
-                        />
-                    )}
-
-                    {canCreate && (
-                        <div className="group relative flex-shrink-0">
-                            <Button
-                                variant="primary"
-                                onClick={() => setShowCreateModal(true)}
-                                disabled={isAtLimit}
-                                isLoading={false}
-                                title="Crear miembro"
-                                icon={<UserPlus size={18} />}
-                            >
-                                <span className="hidden sm:inline">Crear</span>
-                            </Button>
-                            {isAtLimit && (
-                                <div className="animate-in fade-in slide-in-from-bottom-2 absolute bottom-full right-0 z-50 mb-3 hidden w-64 rounded-2xl bg-gray-900 p-4 text-xs text-white shadow-2xl group-hover:block">
-                                    Límite alcanzado. Actualiza tu plan para invitar más personas.
-                                </div>
-                            )}
-                        </div>
-                    )}
+                        variant="primary"
+                        onClick={() => setShowCreateModal(true)}
+                        disabled={isAtLimit}
+                        isLoading={loading}
+                        icon={<UserPlus />}
+                    >
+                        INVITAR MIEMBRO
+                    </Button>
                 </div>
-            </header>
 
-            {/* ✅ LAYOUT FULL-WIDTH */}
-            <div className="space-y-6">
                 {statusMessage && (
-                    <div className={`animate-in slide-in-from-top-4 flex items-center gap-4 rounded-2xl border p-4 duration-500 ${statusMessage.type === 'success' ? 'border-emerald-100 bg-emerald-50 text-emerald-700' : 'border-red-100 bg-red-50 text-red-700'}`}>
-                        <div className={`flex size-10 items-center justify-center rounded-full font-bold flex-shrink-0 ${statusMessage.type === 'success' ? 'bg-emerald-100' : 'bg-red-100'}`}>
-                            {statusMessage.type === 'success' ? '✓' : '!'}
+                    <Card className={statusMessage.type === 'success' ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}>
+                        <div className="flex items-center gap-3">
+                            <div className={`p-1 rounded-full ${statusMessage.type === 'success' ? 'bg-emerald-200 text-emerald-800' : 'bg-red-200 text-red-800'}`}>
+                                {statusMessage.type === 'success' ? '✓' : '!'}
+                            </div>
+                            <p className={`${typography.text.body} font-bold ${statusMessage.type === 'success' ? 'text-emerald-800' : 'text-red-800'}`}>
+                                {statusMessage.text}
+                            </p>
+                            <button onClick={() => setStatusMessage(null)} className="ml-auto opacity-40 hover:opacity-100">✕</button>
                         </div>
-                        <p className="text-sm font-bold tracking-tight">{statusMessage.text}</p>
-                        <button onClick={() => setStatusMessage(null)} className="ml-auto p-2 opacity-50 hover:opacity-100">✕</button>
-                    </div>
+                    </Card>
                 )}
 
-                <EntityList
-                    config={teamConfig}
-                    items={filteredMembers}
-                    loading={loading}
-                    onSelectionChange={handleSelectionChange}
-                />
-            </div>
+                <Card noPadding className="overflow-hidden">
+                    <EntityList
+                        config={teamConfig as any}
+                        items={filteredMembers}
+                        loading={loading}
+                        onSelectionChange={setSelectedIds}
+                    />
+                </Card>
+            </SectionBlock>
 
-            {/* CREATE MODAL — AppModal T2 */}
             <AppModal
                 isOpen={showCreateModal}
                 onClose={() => setShowCreateModal(false)}
                 onSave={handleCreateUser}
-                title="Nuevo Miembro"
-                description="Añadir un usuario al equipo"
+                title="Invitar al Equipo"
                 tier={2}
-                size="md"
-                saveLabel="Crear Miembro"
+                saveLabel="Enviar Invitación"
                 loading={loading}
             >
-                <div className="grid grid-cols-2 gap-3">
-                    {/* Fila 1: Identidad + Rol */}
-                    <div className="space-y-1.5">
-                        <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Nombre</label>
-                        <input name="full_name" type="text" placeholder="Juan Pérez" className="w-full rounded-2xl border-none bg-gray-50 px-4 py-3 text-sm transition-all focus:ring-2 focus:ring-indigo-500" value={newUserFullName} onChange={(e) => setNewUserFullName(e.target.value)} required />
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5 col-span-2 md:col-span-1">
+                        <label className={`${typography.text.caption} font-black ${colors.textSecondary} uppercase px-1`}>Nombre Completo</label>
+                        <input type="text" className="w-full h-11 px-4 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-indigo-500" value={newUserFullName} onChange={(e) => setNewUserFullName(e.target.value)} placeholder="Ej. Alex Smith" />
                     </div>
-                    <div className="space-y-1.5">
-                        <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Rol</label>
-                        <select name="role" className="w-full rounded-2xl border-none bg-gray-50 px-4 py-3 text-sm transition-all focus:ring-2 focus:ring-indigo-500" value={newUserRole} onChange={(e: any) => setNewUserRole(e.target.value)}>
-                            <option value="manager">Manager</option>
-                            <option value="operator">Operador</option>
-                            <option value="viewer">Lector</option>
+                    <div className="space-y-1.5 col-span-2 md:col-span-1">
+                        <label className={`${typography.text.caption} font-black ${colors.textSecondary} uppercase px-1`}>Rol Sugerido</label>
+                        <select className="w-full h-11 px-4 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-indigo-500 capitalize" value={newUserRole} onChange={(e: any) => setNewUserRole(e.target.value)}>
+                            <option value="manager">Manager (Admin)</option>
+                            <option value="operator">Operador (Escritura)</option>
+                            <option value="viewer">Lector (Solo Consulta)</option>
                         </select>
                     </div>
-                    {/* Fila 2: Contacto + Acceso */}
-                    <div className="space-y-1.5">
-                        <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Correo</label>
-                        <input name="email" type="email" placeholder="usuario@emp.com" className="w-full rounded-2xl border-none bg-gray-50 px-4 py-3 text-sm transition-all focus:ring-2 focus:ring-indigo-500" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} required />
+                    <div className="space-y-1.5 col-span-2">
+                        <label className={`${typography.text.caption} font-black ${colors.textSecondary} uppercase px-1`}>Correo Corporativo</label>
+                        <input type="email" className="w-full h-11 px-4 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-indigo-500" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} placeholder="alex@empresa.com" />
                     </div>
-                    <div className="space-y-1.5">
-                        <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Contraseña</label>
-                        <input name="password" type="password" placeholder="••••••••" className="w-full rounded-2xl border-none bg-gray-50 px-4 py-3 text-sm transition-all focus:ring-2 focus:ring-indigo-500" value={newUserPassword} onChange={(e) => setNewUserPassword(e.target.value)} required />
+                    <div className="space-y-1.5 col-span-2">
+                        <label className={`${typography.text.caption} font-black ${colors.textSecondary} uppercase px-1`}>Contraseña Temporal</label>
+                        <input type="password" title="Mínimo 6 caracteres" className="w-full h-11 px-4 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-indigo-500" value={newUserPassword} onChange={(e) => setNewUserPassword(e.target.value)} />
                     </div>
                 </div>
             </AppModal>
 
-            {/* EDIT MODAL — AppModal T2 */}
-            <AppModal
-                isOpen={!!editingMember}
-                onClose={() => setEditingMember(null)}
-                onSave={handleUpdateMember}
-                title="Editar Miembro"
-                description={editingMember?.email || ''}
-                tier={2}
-                size="md"
-                saveLabel="Guardar Cambios"
-                loading={loading}
-            >
-                <div className="grid grid-cols-2 gap-3">
-                    {/* Fila 1: Identidad + Rol */}
-                    <div className="space-y-1.5">
-                        <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Nombre</label>
-                        <input
-                            type="text"
-                            placeholder="Juan Pérez"
-                            className={`w-full rounded-2xl border-none bg-gray-50 px-4 py-3 text-sm transition-all focus:ring-2 focus:ring-indigo-500 ${!canEdit ? 'cursor-not-allowed opacity-50' : ''}`}
-                            value={editName || editingMember?.full_name || ''}
-                            onChange={(e) => setEditName(e.target.value)}
-                            disabled={!canEdit}
-                        />
+            {editingMember && (
+                <AppModal
+                    isOpen={true}
+                    onClose={() => setEditingMember(null)}
+                    onSave={handleUpdateMember}
+                    title="Configurar Perfil"
+                    tier={2}
+                    saveLabel="Aplicar Cambios"
+                    loading={loading}
+                >
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5 col-span-2 md:col-span-1">
+                            <label className={`${typography.text.caption} font-black ${colors.textSecondary} uppercase px-1`}>Nombre</label>
+                            <input type="text" className="w-full h-11 px-4 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-indigo-500" value={editName} onChange={(e) => setEditName(e.target.value)} />
+                        </div>
+                        <div className="space-y-1.5 col-span-2 md:col-span-1">
+                            <label className={`${typography.text.caption} font-black ${colors.textSecondary} uppercase px-1`}>Rol de Sistema</label>
+                            <select className="w-full h-11 px-4 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-indigo-500" value={editRole} onChange={(e) => setEditRole(e.target.value)} disabled={editingMember.user_id === user?.id}>
+                                <option value="manager">Manager</option>
+                                <option value="operator">Operador</option>
+                                <option value="viewer">Lector</option>
+                            </select>
+                        </div>
+                        <div className="space-y-1.5 col-span-2">
+                            <label className={`${typography.text.caption} font-black ${colors.textSecondary} uppercase px-1`}>Nueva Contraseña (Opcional)</label>
+                            <input type="password" placeholder="••••••••" className="w-full h-11 px-4 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-indigo-500" value={editPassword} onChange={(e) => setEditPassword(e.target.value)} />
+                        </div>
                     </div>
-                    <div className="space-y-1.5">
-                        <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Rol</label>
-                        <select
-                            className={`w-full rounded-2xl border-none bg-gray-50 px-4 py-3 text-sm transition-all focus:ring-2 focus:ring-indigo-500 ${!canEdit ? 'cursor-not-allowed opacity-50' : ''}`}
-                            value={editRole || editingMember?.role || ''}
-                            onChange={(e) => setEditRole(e.target.value)}
-                            disabled={!canEdit}
-                        >
-                            <option value="manager">Manager</option>
-                            <option value="operator">Operador</option>
-                            <option value="viewer">Lector</option>
-                        </select>
-                    </div>
-                    {/* Fila 2: Correo (readonly) + Contraseña */}
-                    <div className="space-y-1.5">
-                        <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Correo</label>
-                        <input
-                            type="email"
-                            disabled
-                            readOnly
-                            className="w-full rounded-2xl border-none bg-gray-100 px-4 py-3 text-sm cursor-not-allowed text-gray-400"
-                            value={editingMember?.email || ''}
-                        />
-                    </div>
-                    <div className="space-y-1.5">
-                        <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">Contraseña</label>
-                        <input
-                            type="password"
-                            placeholder="Opcional"
-                            className="w-full rounded-2xl border-none bg-gray-50 px-4 py-3 text-sm transition-all focus:ring-2 focus:ring-indigo-500"
-                            value={editPassword}
-                            onChange={(e) => setEditPassword(e.target.value)}
-                        />
-                    </div>
-                </div>
-            </AppModal>
-
-            {/* DETAIL SIDE-OVER */}
-            <EntityDetail
-                config={teamConfig}
-                item={selectedMember}
-                isOpen={!!selectedMember}
-                onClose={() => setSelectedMember(null)}
-            />
-        </div>
+                </AppModal>
+            )}
+        </PageContainer>
     );
 }

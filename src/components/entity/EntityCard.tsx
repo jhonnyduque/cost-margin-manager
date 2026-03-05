@@ -1,5 +1,6 @@
 import React from 'react';
 import { EntityConfig } from './types';
+import { typography } from '@/design/typography';
 
 interface EntityCardProps<T> {
     config: EntityConfig<T>;
@@ -27,7 +28,7 @@ export function EntityCard<T>({ config, item, actions, isSelected, onToggle }: E
                     />
                     <div>
                         {headerFields.map((field, idx) => (
-                            <div key={idx} className={idx === 0 ? "font-bold text-gray-900" : "text-xs text-gray-500"}>
+                            <div key={idx} className={idx === 0 ? `${typography.bodySm} font-bold text-gray-900` : `${typography.caption} text-gray-500`}>
                                 {field.render ? field.render(item) : (item as any)[field.key]}
                             </div>
                         ))}
@@ -37,7 +38,7 @@ export function EntityCard<T>({ config, item, actions, isSelected, onToggle }: E
                 {detailFields.length > 0 && (
                     <div className="flex flex-col items-end gap-1">
                         {detailFields[0].render ? detailFields[0].render(item) : (
-                            <span className="text-[10px] font-bold uppercase text-gray-400">
+                            <span className={`${typography.uiLabel} uppercase text-slate-500`}>
                                 {(item as any)[detailFields[0].key]}
                             </span>
                         )}
@@ -48,7 +49,7 @@ export function EntityCard<T>({ config, item, actions, isSelected, onToggle }: E
             <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50/80 p-3">
                 <div className="space-y-1">
                     {detailFields.slice(1, 3).map((field, idx) => (
-                        <div key={idx} className="text-[10px] text-gray-400">
+                        <div key={idx} className={`${typography.caption} text-slate-500`}>
                             <span className="font-medium opacity-60">{field.label}:</span> {field.render ? field.render(item) : (item as any)[field.key]}
                         </div>
                     ))}

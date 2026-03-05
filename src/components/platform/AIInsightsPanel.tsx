@@ -1,5 +1,5 @@
-import React from 'react';
 import { Sparkles, TrendingUp, AlertCircle, Lightbulb, ArrowRight } from 'lucide-react';
+import { typography } from '@/design/typography';
 
 interface AIInsightsPanelProps {
     metrics?: any; // Usamos any temporalmente para no importar todo el objeto si no es necesario, o Tipar correctamente
@@ -52,14 +52,14 @@ export function AIInsightsPanel({ metrics, loading }: AIInsightsPanelProps) {
     ];
 
     return (
-        <div className="h-full rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+        <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-6">
                 <div className="rounded-xl bg-indigo-600 p-2 text-white shadow-lg shadow-indigo-200">
                     <Sparkles size={18} />
                 </div>
                 <div>
-                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight leading-none mb-1">Inteligencia Real</h3>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Análisis de Datos Vivos</p>
+                    <h3 className={`${typography.uiLabel} text-slate-900 uppercase tracking-tight leading-none mb-1`}>Inteligencia Real</h3>
+                    <p className={`${typography.uiLabel} text-slate-500 uppercase tracking-widest`}>Análisis de Datos Vivos</p>
                 </div>
             </div>
 
@@ -71,8 +71,8 @@ export function AIInsightsPanel({ metrics, loading }: AIInsightsPanelProps) {
                                 {item.icon}
                             </div>
                             <div className="flex-1">
-                                <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-tight mb-1">{item.title}</h4>
-                                <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                                <h4 className={`${typography.uiLabel} text-slate-900 uppercase tracking-tight mb-1`}>{item.title}</h4>
+                                <p className={`${typography.caption} text-slate-600 leading-relaxed font-medium`}>
                                     {item.text}
                                 </p>
                             </div>
@@ -83,11 +83,11 @@ export function AIInsightsPanel({ metrics, loading }: AIInsightsPanelProps) {
 
             <div className="mt-8 rounded-2xl bg-indigo-600 p-4 text-white">
                 <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-black uppercase tracking-widest opacity-80">Proyección de Ingresos (MRR)</span>
-                    <span className="rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-bold">Datos Reales</span>
+                    <span className={`${typography.uiLabel} uppercase tracking-widest opacity-80`}>Proyección de Ingresos (MRR)</span>
+                    <span className={`rounded-full bg-white/20 px-2 py-0.5 ${typography.uiLabel}`}>Datos Reales</span>
                 </div>
-                <div className="text-2xl font-black mb-1">${Math.round(metrics?.totalMRR || 0).toLocaleString()}</div>
-                <p className="text-[10px] font-bold opacity-80 leading-tight">Cifra basada en suscripciones activas procesadas.</p>
+                <div className={`${typography.metric} mb-1`}>${Math.round(metrics?.totalMRR || 0).toLocaleString()}</div>
+                <p className={`${typography.caption} font-bold opacity-80 leading-tight`}>Cifra basada en suscripciones activas procesadas.</p>
             </div>
         </div>
     );

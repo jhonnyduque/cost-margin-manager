@@ -31,7 +31,9 @@ export async function fetchRawMaterials(companyId: string): Promise<RawMaterial[
         provider: row.provider,
         status: row.status as 'activa' | 'inactiva',
         created_at: row.created_at,
+        created_by: row.created_by || '',
         updated_at: row.updated_at,
+        updated_by: row.updated_by || '',
         deleted_at: row.deleted_at
     }));
 }
@@ -98,7 +100,9 @@ function mapBatches(data: any[]): MaterialBatch[] {
         area: row.area ? Number(row.area) : 0,
         entry_mode: row.entry_mode as 'rollo' | 'pieza',
         created_at: row.created_at,
+        created_by: row.created_by || '',
         updated_at: row.updated_at,
+        updated_by: row.updated_by || '',
         deleted_at: row.deleted_at
     }));
 }

@@ -1,4 +1,5 @@
 import React from 'react';
+import { colors, typography, spacing, radius, shadows } from '@/design/design-tokens';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
@@ -22,63 +23,53 @@ export const Button: React.FC<ButtonProps> = ({
     ...props
 }) => {
 
-    // Base styling shared by all buttons
     const baseClasses = `
     inline-flex items-center justify-center gap-2
-    rounded-md
-    text-sm font-semibold
-    transition-all duration-150
+    ${radius.md}
+    transition-all duration-200
     outline-none whitespace-nowrap
-    focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+    focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600
     active:scale-[0.98]
   `;
 
-    // Button sizes
     const sizeClasses = {
-        base: "px-5 py-2.5",
-        sm: "px-3 py-1.5 text-xs",
-        lg: "px-8 py-4 text-base",
-        icon: "p-2 aspect-square gap-0"
+        base: `${spacing.pxLg} py-2.5 ${typography.text.secondary} font-semibold`,
+        sm: `${spacing.pxMd} py-1.5 ${typography.text.caption} font-bold`,
+        lg: `${spacing.pxXl} py-4 ${typography.text.body} font-bold`,
+        icon: "p-2.5 aspect-square"
     };
 
-    // Width + disabled state
     const layoutClasses = `
     ${fullWidth ? 'w-full' : ''}
-    ${(disabled || isLoading) ? 'opacity-50 cursor-not-allowed' : ''}
+    ${(disabled || isLoading) ? 'opacity-40 cursor-not-allowed' : ''}
   `;
 
-    // Variant styles
     const variantClasses: Record<ButtonVariant, string> = {
-
         primary: `
-      bg-blue-600 text-white
-      hover:bg-blue-700
+      ${colors.bgBrand} ${colors.textInverted}
+      hover:brightness-110
       border border-transparent
-      font-semibold
-      shadow-sm
+      ${shadows.sm}
     `,
-
         secondary: `
-      bg-gray-100 text-gray-700
-      hover:bg-gray-200
-      border border-gray-200
-      shadow-sm
+      ${colors.surface} ${colors.textPrimary}
+      hover:${colors.surfaceMuted}
+      border ${colors.borderStandard}
+      ${shadows.sm}
     `,
-
         ghost: `
-      bg-transparent text-slate-500
-      hover:text-blue-600
+      bg-transparent ${colors.textSecondary}
+      hover:${colors.surfaceMuted} hover:${colors.brand}
       border border-transparent
     `,
-
         danger: `
-      bg-red-600 text-white
-      hover:bg-red-700
-      border border-transparent
-      font-semibold
-      shadow-sm
+      ${colors.bgDanger} ${colors.danger}
+      hover:bg-red-600 hover:${colors.textInverted}
+      border ${colors.borderDanger}
     `
     };
+
+    const iconSize = size === 'sm' ? typography.icon.xs : typography.icon.sm;
 
     return (
         <button
@@ -96,47 +87,30 @@ export const Button: React.FC<ButtonProps> = ({
         >
 
             {isLoading ? (
-                <>
-                    <svg
-                        className="animate-spin h-4 w-4 text-current"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                    >
-                        <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                        />
-                        <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 
-              0 0 5.373 0 12h4zm2 
-              5.291A7.962 7.962 
-              0 014 12H0c0 3.042 
-              1.135 5.824 3 
-              7.938l3-2.647z"
-                        />
-                    </svg>
-
-                    {children || 'Procesando...'}
-                </>
+                <svg
+                    className="animate-spin h-4 w-4 text-current"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    width={iconSize}
+                    height={iconSize}
+                >
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
             ) : (
                 <>
                     {icon && (
                         <span className="flex-shrink-0">
-                            {icon}
+                            {React.cloneElement(icon as React.ReactElement, {
+                                size: iconSize,
+                                className: (icon as React.ReactElement).props.className
+                            })}
                         </span>
                     )}
-
                     {children}
                 </>
             )}
-
         </button>
     );
 };

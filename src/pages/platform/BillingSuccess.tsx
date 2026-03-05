@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CheckCircle, ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { typography } from '@/design/typography';
 
 export default function BillingSuccess() {
     const navigate = useNavigate();
@@ -42,13 +43,13 @@ export default function BillingSuccess() {
                         <CheckCircle size={32} className="text-emerald-600" />
                     )}
                 </div>
-                
-                <h2 className="mt-6 text-2xl font-black text-gray-900">
+
+                <h2 className={`mt-6 ${typography.pageTitle} text-gray-900`}>
                     {isCanceled ? 'Pago cancelado' : '¡Suscripción exitosa!'}
                 </h2>
-                
+
                 <p className="mt-3 text-gray-600">
-                    {isCanceled 
+                    {isCanceled
                         ? 'No se realizó ningún cargo. Puedes intentarlo de nuevo cuando quieras.'
                         : 'Tu plan ha sido activado. Ya puedes disfrutar de todas las funcionalidades.'
                     }

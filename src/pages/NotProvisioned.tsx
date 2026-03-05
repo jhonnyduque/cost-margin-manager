@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldAlert, LogOut, MessageSquare } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { typography } from '@/design/typography';
 
 const NotProvisioned: React.FC = () => {
     const { resetState } = useAuth();
@@ -26,7 +27,7 @@ const NotProvisioned: React.FC = () => {
                         </div>
                     </div>
 
-                    <h1 className="mb-4 text-2xl font-black tracking-tight text-slate-900">
+                    <h1 className={`${typography.pageTitle} mb-4 text-slate-900`}>
                         Cuenta no provisionada
                     </h1>
 
@@ -38,14 +39,14 @@ const NotProvisioned: React.FC = () => {
                     <div className="space-y-4">
                         <a
                             href="mailto:soporte@beto.com"
-                            className="flex w-full items-center justify-center gap-3 rounded-2xl bg-blue-600 py-4 text-base font-black text-white shadow-xl shadow-blue-200 transition-all hover:bg-blue-700 active:scale-[0.98]"
+                            className={`flex w-full items-center justify-center gap-3 rounded-2xl bg-blue-600 py-4 ${typography.body} font-bold text-white shadow-xl shadow-blue-200 transition-all hover:bg-blue-700 active:scale-[0.98]`}
                         >
                             Contactar Soporte <MessageSquare size={18} />
                         </a>
 
                         <button
                             onClick={handleLogout}
-                            className="flex w-full items-center justify-center gap-3 rounded-2xl bg-slate-100 py-4 text-base font-black text-slate-600 transition-all hover:bg-slate-200 active:scale-[0.98]"
+                            className={`flex w-full items-center justify-center gap-3 rounded-2xl bg-slate-100 py-4 ${typography.body} font-bold text-slate-600 transition-all hover:bg-slate-200 active:scale-[0.98]`}
                         >
                             Cerrar Sesión <LogOut size={18} />
                         </button>

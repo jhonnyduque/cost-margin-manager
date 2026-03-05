@@ -1,5 +1,6 @@
 import { useAuth } from '../hooks/useAuth';
 import { isInGracePeriod, getSuspensionLevel } from '../utils/subscription';
+import { typography } from '@/design/typography';
 
 export function SubscriptionBanner() {
     const { currentCompany } = useAuth();
@@ -20,7 +21,7 @@ export function SubscriptionBanner() {
         const daysLeft = calculateDaysLeft(grace_period_ends_at);
 
         return (
-            <div className="bg-orange-500 p-2 text-center text-sm font-medium text-white">
+            <div className={`bg-orange-500 p-2 text-center ${typography.bodySm} font-medium text-white`}>
                 ⚠️ No pudimos procesar tu último pago.
                 Tienes {daysLeft} días para actualizar tu método antes de perder acceso.
                 <button className="ml-3 font-semibold underline">
@@ -36,7 +37,7 @@ export function SubscriptionBanner() {
 
         if (daysLeft <= 3 && daysLeft > 0) {
             return (
-                <div className="bg-yellow-500 p-2 text-center text-sm font-medium text-black">
+                <div className={`bg-yellow-500 p-2 text-center ${typography.bodySm} font-medium text-black`}>
                     ⏳ Tu prueba termina en {daysLeft} días.
                     <button className="ml-3 font-semibold underline">
                         Suscribirme ahora
@@ -49,7 +50,7 @@ export function SubscriptionBanner() {
     // Caso 3: Bloqueado
     if (suspensionLevel === 'blocked') {
         return (
-            <div className="bg-red-600 p-2 text-center text-sm font-bold text-white">
+            <div className={`bg-red-600 p-2 text-center ${typography.bodySm} font-bold text-white`}>
                 ⛔ Cuenta suspendida.
                 <button className="ml-3 underline">
                     Reactivar ahora

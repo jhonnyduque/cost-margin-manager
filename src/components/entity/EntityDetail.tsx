@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { EntityConfig, EntityField } from './types';
+import { typography } from '@/design/typography';
 
 interface EntityDetailProps<T> {
     config: EntityConfig<T>;
@@ -56,7 +57,7 @@ export function EntityDetail<T>({ config, item, isOpen, onClose }: EntityDetailP
                     {/* ── Header ─────────────────────────────────────────── */}
                     <div className="bg-indigo-600 px-5 py-4 sm:px-6 sm:py-6">
                         <div className="flex items-center justify-between">
-                            <h2 className="text-lg font-bold leading-6 text-white">
+                            <h2 className={`${typography.sectionTitle} leading-6 text-white`}>
                                 Detalles de {config.name}
                             </h2>
                             <button
@@ -81,10 +82,10 @@ export function EntityDetail<T>({ config, item, isOpen, onClose }: EntityDetailP
                             {field1 && (
                                 <div className="flex items-center justify-between border-b border-gray-100 pb-5">
                                     <div>
-                                        <dt className="mb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                        <dt className={`mb-1 ${typography.uiLabel} uppercase tracking-widest text-slate-500`}>
                                             {field1.label}
                                         </dt>
-                                        <dd className="text-sm font-medium text-gray-900">
+                                        <dd className={`${typography.bodySm} font-medium text-gray-900`}>
                                             {renderField(field1)}
                                         </dd>
                                     </div>
@@ -108,10 +109,10 @@ export function EntityDetail<T>({ config, item, isOpen, onClose }: EntityDetailP
                             {/* ── Fila 2: campo principal (Usuario) — ancho completo ── */}
                             {field0 && (
                                 <div className="border-b border-gray-100 pb-5">
-                                    <dt className="mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                    <dt className={`mb-2 ${typography.uiLabel} uppercase tracking-widest text-slate-500`}>
                                         {field0.label}
                                     </dt>
-                                    <dd className="text-sm font-medium text-gray-900">
+                                    <dd className={`${typography.bodySm} font-medium text-gray-900`}>
                                         {renderField(field0)}
                                     </dd>
                                 </div>
@@ -122,10 +123,10 @@ export function EntityDetail<T>({ config, item, isOpen, onClose }: EntityDetailP
                                 <div className="grid grid-cols-2 gap-x-4 gap-y-5">
                                     {restFields.map((field, idx) => (
                                         <div key={idx} className="border-b border-gray-100 pb-4">
-                                            <dt className="mb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                            <dt className={`mb-1 ${typography.uiLabel} uppercase tracking-widest text-slate-500`}>
                                                 {field.label}
                                             </dt>
-                                            <dd className="text-sm font-medium text-gray-900">
+                                            <dd className={`${typography.bodySm} font-medium text-gray-900`}>
                                                 {renderField(field)}
                                             </dd>
                                         </div>

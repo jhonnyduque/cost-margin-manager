@@ -7,7 +7,7 @@ export const PlaceholderPage: React.FC = () => {
 
     return (
         <div className="flex flex-col items-center justify-center p-12 text-center">
-            <div className="rounded-full bg-slate-100 p-4 text-slate-400 mb-4">
+            <div className="rounded-full bg-slate-100 p-4 text-slate-500 mb-4">
                 <Construction size={48} />
             </div>
             <h2 className="text-xl font-semibold text-slate-800">Module Under Construction</h2>

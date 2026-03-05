@@ -26,7 +26,9 @@ export async function fetchProductsFromSupabase(): Promise<Product[]> {
     materials: Array.isArray(row.materials) ? row.materials : [],
     status: row.status as 'activa' | 'inactiva',
     created_at: row.created_at,
+    created_by: row.created_by || '',
     updated_at: row.updated_at,
+    updated_by: row.updated_by || '',
     deleted_at: row.deleted_at
   }));
 }

@@ -12,6 +12,7 @@ import {
     ExternalLink
 } from 'lucide-react';
 import { BillingEvent } from '@/services/adminStatsService';
+import { typography } from '@/design/typography';
 
 interface BillingEventTableProps {
     events: BillingEvent[];
@@ -52,10 +53,10 @@ export function BillingEventTable({ events }: BillingEventTableProps) {
         <div className="rounded-3xl border border-slate-100 bg-white shadow-sm overflow-hidden">
             <div className="flex items-center justify-between border-b border-slate-50 p-6">
                 <div>
-                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Feed Operativo de Facturación</h3>
-                    <p className="text-xs text-slate-500">Eventos de facturación y cambios de suscripción en tiempo real.</p>
+                    <h3 className={`${typography.uiLabel} text-slate-900 uppercase tracking-tight`}>Feed Operativo de Facturación</h3>
+                    <p className={`${typography.caption} text-slate-500`}>Eventos de facturación y cambios de suscripción en tiempo real.</p>
                 </div>
-                <button className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors">
+                <button className={`rounded-xl border border-slate-200 px-4 py-2 ${typography.uiLabel} text-slate-600 hover:bg-slate-50 transition-colors`}>
                     Ver toda la actividad
                 </button>
             </div>
@@ -64,18 +65,18 @@ export function BillingEventTable({ events }: BillingEventTableProps) {
                 <table className="w-full">
                     <thead>
                         <tr className="bg-slate-50/50">
-                            <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Fecha</th>
-                            <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Empresa</th>
-                            <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Evento</th>
-                            <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Monto</th>
-                            <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Estado</th>
-                            <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Acciones</th>
+                            <th className={`px-6 py-4 text-left ${typography.uiLabel} text-slate-500 uppercase tracking-widest`}>Fecha</th>
+                            <th className={`px-6 py-4 text-left ${typography.uiLabel} text-slate-500 uppercase tracking-widest`}>Empresa</th>
+                            <th className={`px-6 py-4 text-left ${typography.uiLabel} text-slate-500 uppercase tracking-widest`}>Evento</th>
+                            <th className={`px-6 py-4 text-left ${typography.uiLabel} text-slate-500 uppercase tracking-widest`}>Monto</th>
+                            <th className={`px-6 py-4 text-left ${typography.uiLabel} text-slate-500 uppercase tracking-widest`}>Estado</th>
+                            <th className={`px-6 py-4 text-right ${typography.uiLabel} text-slate-500 uppercase tracking-widest`}>Acciones</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
                         {events.length === 0 ? (
                             <tr>
-                                <td colSpan={6} className="px-6 py-12 text-center text-sm font-bold text-slate-400">
+                                <td colSpan={6} className={`px-6 py-12 text-center ${typography.bodySm} font-bold text-slate-500`}>
                                     No se encontraron eventos recientes.
                                 </td>
                             </tr>
@@ -84,26 +85,26 @@ export function BillingEventTable({ events }: BillingEventTableProps) {
                                 <tr key={event.id} className="group hover:bg-slate-50/50 transition-colors">
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex flex-col">
-                                            <span className="text-[11px] font-bold text-slate-900">{format(new Date(event.created_at), 'MMM dd, HH:mm', { locale: es })}</span>
-                                            <span className="text-[10px] text-slate-400 font-medium">#{event.id.slice(0, 8)}</span>
+                                            <span className={`${typography.uiLabel} text-slate-900`}>{format(new Date(event.created_at), 'MMM dd, HH:mm', { locale: es })}</span>
+                                            <span className={`${typography.caption} text-slate-500 font-medium`}>#{event.id.slice(0, 8)}</span>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center gap-2">
-                                            <div className="h-7 w-7 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 font-black text-[10px]">
+                                            <div className={`h-7 w-7 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 ${typography.uiLabel}`}>
                                                 {event.company_name.charAt(0).toUpperCase()}
                                             </div>
-                                            <span className="text-[11px] font-bold text-slate-700">{event.company_name}</span>
+                                            <span className={`${typography.uiLabel} text-slate-700`}>{event.company_name}</span>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className="text-[11px] font-bold text-slate-600 uppercase tracking-tight">{event.event_type}</span>
+                                        <span className={`${typography.uiLabel} text-slate-600 uppercase tracking-tight`}>{event.event_type}</span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className="text-[11px] font-black text-slate-900">${event.amount.toLocaleString()}</span>
+                                        <span className={`${typography.uiLabel} text-slate-900`}>${event.amount.toLocaleString()}</span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-tight ${getStatusStyle(event.status)}`}>
+                                        <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 ${typography.uiLabel} uppercase tracking-tight ${getStatusStyle(event.status)}`}>
                                             {getStatusIcon(event.status)}
                                             {getStatusLabel(event.status)}
                                         </div>
@@ -115,10 +116,10 @@ export function BillingEventTable({ events }: BillingEventTableProps) {
                                                     <RotateCcw size={14} />
                                                 </button>
                                             )}
-                                            <button className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors" title="Ver Detalle">
+                                            <button className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors" title="Ver Detalle">
                                                 <ExternalLink size={14} />
                                             </button>
-                                            <button className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors">
+                                            <button className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">
                                                 <MoreHorizontal size={14} />
                                             </button>
                                         </div>

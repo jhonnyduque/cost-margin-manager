@@ -1,6 +1,7 @@
 import React from 'react';
 import { Area, AreaChart, ResponsiveContainer, YAxis } from 'recharts';
 import { ArrowUpRight, ArrowDownRight, Info } from 'lucide-react';
+import { typography } from '@/design/typography';
 import { RevenueMetric } from '@/services/adminStatsService';
 
 interface RevenueKpiCardProps {
@@ -29,20 +30,20 @@ export const RevenueKpiCard: React.FC<RevenueKpiCardProps> = ({ metric }) => {
             <div className="flex items-start justify-between mb-4">
                 <div>
                     <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">{title}</span>
+                        <span className={`${typography.uiLabel} text-slate-500`}>{title}</span>
                         <div className="group/info relative">
                             <Info size={12} className="text-slate-300 cursor-help" />
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 scale-90 opacity-0 group-hover/info:scale-100 group-hover/info:opacity-100 transition-all pointer-events-none z-10">
-                                <div className="bg-slate-900 text-[10px] text-white p-2 rounded-lg shadow-xl font-medium leading-relaxed">
+                                <div className={`bg-slate-900 text-white p-2 rounded-lg shadow-xl ${typography.caption} font-medium leading-relaxed`}>
                                     {description}
                                 </div>
                                 <div className="w-2 h-2 bg-slate-900 rotate-45 mx-auto -mt-1" />
                             </div>
                         </div>
                     </div>
-                    <div className="text-3xl font-black text-slate-900 tracking-tight">{value}</div>
+                    <div className={`${typography.metric} text-slate-900`}>{value}</div>
                 </div>
-                <div className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-tight ${trend.isPositive ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                <div className={`flex items-center gap-1 rounded-full px-2.5 py-1 ${typography.uiLabel} uppercase tracking-tight ${trend.isPositive ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
                     {trend.isPositive ? <ArrowUpRight size={12} strokeWidth={3} /> : <ArrowDownRight size={12} strokeWidth={3} />}
                     {trend.value}%
                 </div>
@@ -71,7 +72,7 @@ export const RevenueKpiCard: React.FC<RevenueKpiCardProps> = ({ metric }) => {
                 </ResponsiveContainer>
             </div>
 
-            <div className="absolute bottom-6 right-6 text-[10px] font-bold text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className={`absolute bottom-6 right-6 ${typography.uiLabel} text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity`}>
                 {trend.label}
             </div>
         </div>
