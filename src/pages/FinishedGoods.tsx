@@ -3,6 +3,7 @@ import { PackageSearch, Search, Info, Plus, FileDown, Printer, History, ArrowUpR
 import { useStore } from '../store';
 import { colors, typography, spacing, radius, shadows } from '@/design/design-tokens';
 import { PageContainer, SectionBlock } from '@/components/ui/LayoutPrimitives';
+import { UniversalPageHeader } from '@/components/ui/UniversalPageHeader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
@@ -88,20 +89,30 @@ const FinishedGoods: React.FC = () => {
     return (
         <PageContainer>
             <SectionBlock>
-                <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-                    <div className="space-y-1">
-                        <h1 className={`${typography.text.title} ${colors.textPrimary} tracking-tight`}>Inventario de Productos Terminado</h1>
-                        <p className={`${typography.text.body} ${colors.textSecondary}`}>Rastreo de Kardex, existencias físicas y valorización de inventario listo para venta.</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <Button variant="secondary" onClick={() => window.print()} icon={<Printer size={18} />}>
-                            IMPRIMIR
-                        </Button>
-                        <Button variant="primary" onClick={() => navigate('/products')} icon={<PackageSearch />}>
-                            CATÁLOGO
-                        </Button>
-                    </div>
-                </header>
+                <UniversalPageHeader
+                    title="Inventario de Terminado"
+                    breadcrumbs={
+                        <>
+                            <span>BETO OS</span>
+                            <span>/</span>
+                            <span className={colors.textPrimary}>Producto Terminado</span>
+                        </>
+                    }
+                    metadata={[
+                        <span key="1">Valuación y Existencia Física</span>,
+                        <span key="2">{products.length} productos registrados</span>
+                    ]}
+                    actions={
+                        <>
+                            <Button variant="secondary" size="sm" onClick={() => window.print()} icon={<Printer size={16} />}>
+                                IMPRIMIR
+                            </Button>
+                            <Button variant="primary" size="sm" onClick={() => navigate('/products')} icon={<PackageSearch size={16} />}>
+                                CATÁLOGO
+                            </Button>
+                        </>
+                    }
+                />
 
                 <div className="flex flex-wrap items-center gap-4 pt-6 mt-6 border-t border-slate-100 no-print">
                     <div className="relative flex-1 min-w-[300px]">
@@ -256,7 +267,7 @@ const FinishedGoods: React.FC = () => {
                                                                                                             variant="ghost"
                                                                                                             size="sm"
                                                                                                             onClick={() => setExpandedMovementId(expandedMovementId === m.id ? null : m.id)}
-                                                                                                            className={`h-7 px-2 ${typography.text.caption} font-bold ${expandedMovementId === m.id ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:text-indigo-600 hover:bg-indigo-50/50'}`}
+                                                                                                            className={`font-bold ${expandedMovementId === m.id ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:text-indigo-600 hover:bg-indigo-50/50'}`}
                                                                                                         >
                                                                                                             {expandedMovementId === m.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />} DETALLE
                                                                                                         </Button>
@@ -345,9 +356,9 @@ const FinishedGoods: React.FC = () => {
                                     <ArrowUpRight className="text-orange-500" />
                                     Registrar Salida
                                 </h2>
-                                <button onClick={() => setOutputModal(prev => ({ ...prev, isOpen: false }))} className="text-slate-400 hover:text-slate-600 transition-colors">
+                                <Button variant="ghost" size="icon" onClick={() => setOutputModal(prev => ({ ...prev, isOpen: false }))} className="text-slate-400 hover:text-slate-600 transition-colors">
                                     <X size={24} />
-                                </button>
+                                </Button>
                             </div>
 
                             <div className="p-6 space-y-6">
@@ -415,14 +426,15 @@ const FinishedGoods: React.FC = () => {
 
                             <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex flex-col gap-3">
                                 <Button
-                                    variant={outputModal.quantity > outputModal.currentStock ? "warning" : "primary"}
+                                    variant={outputModal.quantity > outputModal.currentStock ? "danger" : "primary"}
                                     onClick={handleConfirmOutput}
                                     isLoading={isSaving}
-                                    className="w-full py-6 font-black uppercase tracking-widest h-14"
+                                    fullWidth
+                                    size="lg"
                                 >
                                     {outputModal.quantity > outputModal.currentStock ? `Aceptar y Generar Deuda` : `Confirmar Salida`}
                                 </Button>
-                                <Button variant="ghost" className="w-full text-slate-400 font-bold" onClick={() => setOutputModal(prev => ({ ...prev, isOpen: false }))}>
+                                <Button variant="ghost" fullWidth className="text-slate-400 font-bold" onClick={() => setOutputModal(prev => ({ ...prev, isOpen: false }))}>
                                     CANCELAR REGISTRO
                                 </Button>
                             </div>

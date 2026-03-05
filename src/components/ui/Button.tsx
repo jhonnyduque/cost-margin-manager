@@ -33,10 +33,10 @@ export const Button: React.FC<ButtonProps> = ({
   `;
 
     const sizeClasses = {
-        base: `${spacing.pxLg} py-2.5 ${typography.text.secondary} font-semibold`,
-        sm: `${spacing.pxMd} py-1.5 ${typography.text.caption} font-bold`,
-        lg: `${spacing.pxXl} py-4 ${typography.text.body} font-bold`,
-        icon: "p-2.5 aspect-square"
+        base: `${spacing.pxLg} py-1.5 text-[13px] font-bold uppercase tracking-wider`,
+        sm: `${spacing.pxMd} py-1 text-[11px] font-black uppercase tracking-widest`,
+        lg: `${spacing.pxXl} py-3 ${typography.text.secondary} font-bold uppercase tracking-wide`,
+        icon: "p-2 aspect-square"
     };
 
     const layoutClasses = `

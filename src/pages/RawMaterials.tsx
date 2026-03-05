@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/Badge';
 import { translateError } from '@/utils/errorHandler';
 import { calculateBatchArea } from '@/utils/materialCalculations';
 import { PageContainer, SectionBlock } from '@/components/ui/LayoutPrimitives';
+import { UniversalPageHeader } from '@/components/ui/UniversalPageHeader';
 
 const RawMaterials: React.FC = () => {
   const navigate = useNavigate();
@@ -321,30 +322,41 @@ const RawMaterials: React.FC = () => {
 
       <SectionBlock>
         {/* Responsive Header */}
-        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-          <div className="space-y-1">
-            <h1 className={`${typography.text.title} ${colors.textPrimary} tracking-tight`}>Materias Primas</h1>
-            <p className={`${typography.text.body} ${colors.textSecondary}`}>Inventario Maestro y Gestión FIFO</p>
-          </div>
-          {canCreate && (
-            <div className="flex items-center gap-3">
-              <Button variant="secondary" onClick={() => navigate('/productos')}>
-                PRODUCTOS
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  setEditingId(null);
-                  setFormData({ name: '', description: '', type: 'Tela', unit: 'metro', provider: '', status: 'activa', initialQty: 0, unitCost: 0, width: 140 });
-                  setIsModalOpen(true);
-                }}
-                icon={<Plus />}
-              >
-                NUEVO MATERIAL
-              </Button>
-            </div>
-          )}
-        </header>
+        <UniversalPageHeader
+          title="Materias Primas"
+          breadcrumbs={
+            <>
+              <span>BETO OS</span>
+              <span>/</span>
+              <span className={colors.textPrimary}>Inventario</span>
+            </>
+          }
+          metadata={[
+            <span key="1">Inventario Maestro y Gestión FIFO</span>,
+            <span key="2">{rawMaterials.length} insumos registrados</span>
+          ]}
+          actions={
+            canCreate && (
+              <>
+                <Button variant="secondary" size="sm" onClick={() => navigate('/productos')}>
+                  PRODUCTOS
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    setEditingId(null);
+                    setFormData({ name: '', description: '', type: 'Tela', unit: 'metro', provider: '', status: 'activa', initialQty: 0, unitCost: 0, width: 140 });
+                    setIsModalOpen(true);
+                  }}
+                  icon={<Plus />}
+                >
+                  NUEVO MATERIAL
+                </Button>
+              </>
+            )
+          }
+        />
 
         {/* Financial Governance Banner */}
         {totalFinancialDebt > 0 && (

@@ -231,7 +231,7 @@ const Dashboard: React.FC = () => {
               <Button
                 variant="primary"
                 size="lg"
-                className="bg-white text-indigo-600 hover:bg-indigo-50 border-none px-10 shadow-none"
+                className="!bg-white !text-indigo-600 hover:!bg-indigo-50 border-none px-10 shadow-none"
                 onClick={fetchAi}
                 disabled={products.length === 0}
               >
@@ -241,7 +241,7 @@ const Dashboard: React.FC = () => {
               <Button
                 variant="secondary"
                 size="base"
-                className="bg-white/10 text-white hover:bg-white/20 border-white/20"
+                className="!bg-white/10 !text-white hover:!bg-white/20 !border-white/20"
                 onClick={fetchAi}
                 isLoading={loadingAi}
                 icon={<RefreshCw />}

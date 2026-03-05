@@ -1,5 +1,6 @@
 import { Calendar, Filter, ChevronDown, Download, Share2 } from 'lucide-react';
 import { typography } from '@/design/typography';
+import { Button } from '@/components/ui/Button';
 
 interface GlobalFilterBarProps {
     dateRange: string;
@@ -98,14 +99,12 @@ export function GlobalFilterBar({
             </div>
 
             <div className="flex items-center gap-2">
-                <button className={`flex items-center gap-2 rounded-2xl px-4 py-3 ${typography.uiLabel} text-slate-600 hover:bg-slate-100 transition-all active:scale-95`}>
-                    <Share2 size={16} />
+                <Button variant="ghost" icon={<Share2 size={16} />}>
                     Compartir Informe
-                </button>
-                <button className={`flex items-center gap-2 rounded-2xl bg-indigo-600 px-6 py-3 ${typography.uiLabel} text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all`}>
-                    <Download size={16} />
+                </Button>
+                <Button variant="primary" icon={<Download size={16} />} className="shadow-lg shadow-indigo-200">
                     Exportar CSV
-                </button>
+                </Button>
             </div>
         </div>
     );

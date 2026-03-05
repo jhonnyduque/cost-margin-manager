@@ -13,6 +13,7 @@ import { colors, typography, spacing, radius, shadows } from '@/design/design-to
 import { useCurrency } from '@/hooks/useCurrency';
 import { translateError } from '@/utils/errorHandler';
 import { PageContainer, SectionBlock } from '@/components/ui/LayoutPrimitives';
+import { UniversalPageHeader } from '@/components/ui/UniversalPageHeader';
 
 const Products: React.FC = () => {
   const navigate = useNavigate();
@@ -203,29 +204,41 @@ const Products: React.FC = () => {
       `}</style>
 
       <SectionBlock>
-        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-          <div className="space-y-1">
-            <h1 className={`${typography.text.title} ${colors.textPrimary} tracking-tight`}>Catálogo de Productos</h1>
-            <p className={`${typography.text.body} ${colors.textSecondary}`}>Gestión de Escandallos (Costos FIFO)</p>
-          </div>
-          {canCreate && (
-            <div className="flex items-center gap-3">
-              <Button
-                variant="secondary"
-                onClick={() => navigate('/materias-primas')}
-              >
-                NUEVO INSUMO
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => navigate('/productos/nuevo')}
-                icon={<Plus />}
-              >
-                NUEVO PRODUCTO
-              </Button>
-            </div>
-          )}
-        </header>
+        <UniversalPageHeader
+          title="Catálogo de Productos"
+          breadcrumbs={
+            <>
+              <span>BETO OS</span>
+              <span>/</span>
+              <span className={colors.textPrimary}>Productos</span>
+            </>
+          }
+          metadata={[
+            <span key="1">Gestión de Escandallos (Costos FIFO)</span>,
+            <span key="2">{products.length} productos registrados</span>
+          ]}
+          actions={
+            canCreate && (
+              <>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => navigate('/materias-primas')}
+                >
+                  NUEVO INSUMO
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => navigate('/productos/nuevo')}
+                  icon={<Plus />}
+                >
+                  NUEVO PRODUCTO
+                </Button>
+              </>
+            )
+          }
+        />
 
         {/* UNIFIED TOOLBAR */}
         <div className="flex flex-wrap items-center gap-4 pt-6 mt-6 border-t border-slate-100 no-print">
@@ -479,8 +492,8 @@ const Products: React.FC = () => {
                 <div className="space-y-4">
                   <Input label="Cantidad a fabricar" type="number" value={productionModal.quantity} onChange={e => setProductionModal({ ...productionModal, quantity: Number(e.target.value) || 1 })} />
                   <Input label="Precio Venta (Unid.)" type="number" value={productionModal.targetPrice} onChange={e => setProductionModal({ ...productionModal, targetPrice: Number(e.target.value) || 1 })} />
-                  <Button variant="primary" className="w-full py-6" onClick={handleConfirmBatchProduction} icon={<CheckCircle2 size={20} />}>Confirmar Producción</Button>
-                  <Button variant="ghost" className="w-full" onClick={() => setProductionModal({ ...productionModal, isOpen: false })}>Cancelar</Button>
+                  <Button variant="primary" fullWidth size="lg" onClick={handleConfirmBatchProduction} icon={<CheckCircle2 size={20} />}>Confirmar Producción</Button>
+                  <Button variant="ghost" fullWidth onClick={() => setProductionModal({ ...productionModal, isOpen: false })}>Cancelar</Button>
                 </div>
               </Card>
             )}
@@ -494,7 +507,7 @@ const Products: React.FC = () => {
                 <p className={`${typography.body} ${colors.textSecondary}`}>No tienes stock suficiente de algunos insumos. Se registrará una deuda de inventario.</p>
                 <div className="flex gap-4 pt-4">
                   <Button variant="ghost" className="flex-1" onClick={() => setMissingStockModal({ ...missingStockModal, isOpen: false })}>Cancelar</Button>
-                  <Button className={`flex-1 ${colors.bgDanger} text-white`} onClick={() => {
+                  <Button fullWidth variant="danger" onClick={() => {
                     consumeStockBatch(missingStockModal.productId, missingStockModal.quantity, missingStockModal.targetPrice).then(() => {
                       const product = products.find(p => p.id === missingStockModal.productId);
                       const baseCost = calculateProductCost(product!, batches, rawMaterials);
@@ -511,7 +524,7 @@ const Products: React.FC = () => {
                 <CheckCircle2 size={48} className="mx-auto text-emerald-500" />
                 <h3 className={typography.sectionTitle}>¡Producción Exitosa!</h3>
                 <p className={`${typography.body} text-gray-600`}>El lote ha sido ingresado al inventario.</p>
-                <Button className="w-full" onClick={() => setSuccessModal(null)}>Entendido</Button>
+                <Button fullWidth onClick={() => setSuccessModal(null)}>Entendido</Button>
               </Card>
             )}
           </div>

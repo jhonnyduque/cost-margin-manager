@@ -9,6 +9,7 @@ import { AppModal } from '../components/ui/AppModal';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { PageContainer, SectionBlock } from '@/components/ui/LayoutPrimitives';
+import { UniversalPageHeader } from '@/components/ui/UniversalPageHeader';
 import { MetricCard } from '@/components/platform/MetricCard';
 
 interface TeamMember {
@@ -252,30 +253,52 @@ export default function Team() {
     return (
         <PageContainer>
             <SectionBlock>
-                <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                    <div className="space-y-1">
-                        <h1 className={`${typography.text.title} ${colors.textPrimary} tracking-tight`}>
-                            Control de Equipo
-                        </h1>
-                        <p className={`${typography.text.body} ${colors.textSecondary} max-w-lg`}>
-                            Gestiona jerarquías, permisos y accesos de los miembros de la organización.
-                        </p>
-                    </div>
+                <UniversalPageHeader
+                    title="Control de Equipo"
+                    breadcrumbs={
+                        <>
+                            <span>BETO OS</span>
+                            <span>/</span>
+                            <span className={colors.textPrimary}>Equipo</span>
+                        </>
+                    }
+                    metadata={[
+                        <span key="1">Gestión de Seats & Jerarquías</span>,
+                        <span key="2">{currentUsersCount} usuarios activos</span>
+                    ]}
+                    rightContent={
+                        !isSuperAdmin ? (
+                            <div className="md:w-64 -mt-2">
+                                <MetricCard
+                                    title="OCUPACIÓN DE ASIENTOS"
+                                    value={`${currentUsersCount} / ${maxUsers}`}
+                                    visualType="gauge"
+                                    variant={isAtLimit ? 'error' : percentageUsed > 80 ? 'warning' : 'success'}
+                                />
+                            </div>
+                        ) : undefined
+                    }
+                    actions={
+                        <>
+                            <Button variant="secondary" size="sm" onClick={() => window.print()} icon={<Printer size={16} />}>
+                                IMPRIMIR
+                            </Button>
+                            <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={() => setShowCreateModal(true)}
+                                disabled={isAtLimit}
+                                isLoading={loading}
+                                icon={<UserPlus size={16} />}
+                            >
+                                INVITAR MIEMBRO
+                            </Button>
+                        </>
+                    }
+                />
 
-                    {!isSuperAdmin && (
-                        <div className="md:w-64">
-                            <MetricCard
-                                title="OCUPACIÓN DE ASIENTOS"
-                                value={`${currentUsersCount} / ${maxUsers}`}
-                                visualType="gauge"
-                                variant={isAtLimit ? 'error' : percentageUsed > 80 ? 'warning' : 'success'}
-                            />
-                        </div>
-                    )}
-                </header>
-
-                <div className="flex flex-wrap items-center gap-3 pt-6 border-t border-slate-100">
-                    <div className="relative flex-1 min-w-[300px]">
+                <div className="flex flex-wrap items-center gap-3 pt-6 border-t border-slate-100 mb-6">
+                    <div className="relative w-full md:max-w-md">
                         <Search size={16} className={`absolute left-4 top-1/2 -translate-y-1/2 ${colors.textMuted}`} />
                         <input
                             type="text"
@@ -285,20 +308,6 @@ export default function Team() {
                             className={`w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl ${typography.text.body} transition-all focus:ring-2 focus:ring-indigo-500 focus:bg-white`}
                         />
                     </div>
-
-                    <Button variant="secondary" onClick={() => window.print()} icon={<Printer />}>
-                        IMPRIMIR
-                    </Button>
-
-                    <Button
-                        variant="primary"
-                        onClick={() => setShowCreateModal(true)}
-                        disabled={isAtLimit}
-                        isLoading={loading}
-                        icon={<UserPlus />}
-                    >
-                        INVITAR MIEMBRO
-                    </Button>
                 </div>
 
                 {statusMessage && (

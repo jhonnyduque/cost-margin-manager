@@ -867,10 +867,10 @@ const ProductBuilder = () => {
             </div>
 
             <div className="flex flex-col gap-3">
-              <Button variant="primary" className="w-full py-6 font-black uppercase tracking-widest text-lg" onClick={handleConfirmBatchProduction}>
+              <Button variant="primary" fullWidth size="lg" className="uppercase font-black tracking-widest" onClick={handleConfirmBatchProduction}>
                 CONFIRMAR INGRESO
               </Button>
-              <Button variant="ghost" className="w-full font-bold text-slate-400" onClick={() => setProductionModal({ ...productionModal, isOpen: false })}>
+              <Button variant="ghost" fullWidth className="font-bold text-slate-400" onClick={() => setProductionModal({ ...productionModal, isOpen: false })}>
                 CANCELAR
               </Button>
             </div>
@@ -915,7 +915,7 @@ const ProductBuilder = () => {
               <Button variant="ghost" className="flex-1 font-bold text-slate-500" onClick={() => setMissingStockModal({ ...missingStockModal, isOpen: false })}>
                 CANCELAR
               </Button>
-              <Button className="flex-1 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-wider" onClick={() => {
+              <Button variant="danger" className="flex-1 font-black uppercase tracking-wider" onClick={() => {
                 consumeStockBatch(missingStockModal.productId, missingStockModal.quantity, missingStockModal.targetPrice).then(() => {
                   const product = products.find(p => p.id === missingStockModal.productId);
                   const baseCost = calculateProductCost(product!, batches, rawMaterials);
@@ -942,7 +942,7 @@ const ProductBuilder = () => {
                 Lote de <span className="font-bold text-slate-900">{successModal.productName}</span> ingresado correctamente.
               </p>
             </div>
-            <Button className="w-full h-14 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-emerald-200" onClick={() => {
+            <Button variant="primary" size="lg" fullWidth className="font-black uppercase tracking-widest shadow-emerald-200" style={{ backgroundColor: '#059669', borderColor: '#059669' }} onClick={() => {
               setSuccessModal(null);
               navigate('/productos');
             }}>
