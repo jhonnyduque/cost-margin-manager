@@ -28,6 +28,7 @@ import { CreateTenantModal } from '@/components/CreateTenantModal';
 import EditTenantModal from '@/components/EditTenantModal';
 import { Plus, Search, MoreHorizontal, Printer, Download } from 'lucide-react';
 import { colors, typography, spacing, radius, shadows } from '@/design/design-tokens';
+import { UniversalPageHeader } from '@/components/ui/UniversalPageHeader';
 
 // Subcomponente: Consola de Comunicación (v1.3 mejorada)
 function BroadcastConsole() {
@@ -335,36 +336,45 @@ export default function PlatformAdmin() {
 
     return (
         <div className={`animate-in fade-in space-y-8 duration-700 pb-12 ${colors.bgMain}`}>
-            {/* Header Estratégico */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div>
-                    <h1 className={`${typography.pageTitle} ${colors.textPrimary}`}>Control Center <span className="text-indigo-600">v2.0</span></h1>
-                    <div className={`flex items-center gap-3 mt-1.5 ${typography.caption} ${colors.textSecondary} font-medium`}>
-                        <span className="flex items-center gap-1.5"><Clock size={14} /> Actualizado en tiempo real</span>
-                        <span className={`${colors.textMuted}`}>·</span>
-                        <span className={`flex items-center gap-1.5 ${colors.statusSuccess} font-bold`}><Activity size={14} /> System Health: Healthy</span>
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-4">
-                    <CommandPalette />
-                    <div className={`flex items-center gap-2 ${spacing.pXs} ${colors.bgSurface} ${radius.xl} border ${colors.borderStandard} w-fit ${shadows.sm}`}>
-                        {tabs.map(tab => (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id as any)}
-                                className={`flex items-center gap-2 px-4 py-2 ${radius.lg} ${typography.uiLabel} transition-all ${activeTab === tab.id
-                                    ? `bg-indigo-600 text-white ${shadows.md}`
-                                    : `${colors.textSecondary} hover:${colors.textPrimary} hover:${colors.bgMain}`
-                                    }`}
-                            >
-                                <tab.icon size={16} />
-                                <span className="hidden md:inline">{tab.label}</span>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            </div>
+            {/* Header Estratégico (BETO OS v3.0) */}
+            <UniversalPageHeader
+                title="Control Center v2.0"
+                breadcrumbs={
+                    <>
+                        <span>BETO OS</span>
+                        <span>/</span>
+                        <span className={colors.textPrimary}>Platform Control</span>
+                    </>
+                }
+                metadata={[
+                    <span key="1" className="flex items-center gap-1.5"><Clock size={14} /> Actualizado en tiempo real</span>
+                ]}
+                status={
+                    <span className={`flex items-center gap-1.5 ${colors.statusSuccess} font-bold`}>
+                        <Activity size={14} /> System Health: Healthy
+                    </span>
+                }
+                actions={
+                    <>
+                        <CommandPalette />
+                        <div className={`flex items-center gap-1 ${spacing.pXs} ${colors.bgSurface} ${radius.xl} border ${colors.borderStandard} w-max shrink-0 ${shadows.sm}`}>
+                            {tabs.map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id as any)}
+                                    className={`flex items-center gap-2 px-3 sm:px-4 py-2 ${radius.lg} ${typography.uiLabel} transition-all ${activeTab === tab.id
+                                        ? `bg-indigo-600 text-white ${shadows.md}`
+                                        : `${colors.textSecondary} hover:${colors.textPrimary} hover:${colors.bgMain}`
+                                        }`}
+                                >
+                                    <tab.icon size={16} />
+                                    <span className="hidden lg:inline">{tab.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </>
+                }
+            />
 
             {activeTab === 'overview' && (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">

@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { PageContainer, SectionBlock, CardGrid } from '@/components/ui/LayoutPrimitives';
 import { MetricCard } from '@/components/platform/MetricCard';
+import { UniversalPageHeader } from '@/components/ui/UniversalPageHeader';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmt$ = (n: number) =>
@@ -32,75 +33,6 @@ const STATUS_CFG: Record<ProtectionStatus, { Icon: typeof Shield; variant: "succ
   CRITICO: { Icon: ShieldX, variant: 'error', label: 'CRÍTICO' },
 };
 
-// ─── Health Hero Component ──────────────────────────────────────────────────
-function HealthHero({ report, userName }: { report: ProtectionReport, userName: string }) {
-  const { Icon, variant, label } = STATUS_CFG[report.protectionStatus];
-
-  return (
-    <Card className="relative overflow-hidden">
-      {/* Decorative background gradient */}
-      <div className={`absolute -right-20 -top-20 h-48 w-48 rounded-full ${colors.bgBrandSubtle}/30 blur-3xl`} />
-
-      <Card.Content className="relative flex flex-col md:flex-row md:items-center justify-between gap-8">
-        <div className="space-y-4">
-          <div className="space-y-1">
-            <h1 className={`${typography.text.title} ${colors.textPrimary}`}>
-              Buenas tardes, <span className={colors.brand}>{userName}</span> 👋
-            </h1>
-            <p className={`${typography.text.body} ${colors.textSecondary} max-w-xl`}>
-              {report.executiveSummary}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <Badge variant={variant}>
-              <div className="flex items-center gap-1.5 py-0.5">
-                <Icon size={12} />
-                {label}
-              </div>
-            </Badge>
-            <span className={`${typography.text.caption} ${colors.textMuted}`}>
-              ACTUALIZADO: {new Date(report.generatedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          </div>
-        </div>
-
-        <div className={`flex flex-col items-center justify-center ${spacing.pMd} ${colors.surfaceMuted} border ${colors.borderSubtle} rounded-2xl min-w-[160px]`}>
-          <div className="relative h-20 w-20 mb-3">
-            <svg className="h-full w-full rotate-[-90deg]" viewBox="0 0 36 36">
-              <circle
-                cx="18" cy="18" r="16"
-                className={`${colors.textMuted} opacity-10`}
-                strokeWidth="3"
-                stroke="currentColor"
-                fill="none"
-              />
-              <circle
-                cx="18" cy="18" r="16"
-                className={variant === 'success' ? 'text-emerald-500' : variant === 'warning' ? 'text-amber-500' : 'text-red-500'}
-                strokeDasharray={`${report.healthScore}, 100`}
-                strokeWidth="3"
-                strokeLinecap="round"
-                stroke="currentColor"
-                fill="none"
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className={`${typography.text.title} ${colors.textPrimary} leading-none tracking-tighter`}>{report.healthScore}</span>
-              <span className={`${typography.text.caption} ${colors.textSecondary} font-bold`}>SCORE</span>
-            </div>
-          </div>
-          {report.totalProtectedValue > 0 && (
-            <div className="text-center">
-              <p className={`${typography.text.caption} ${colors.textSecondary} mb-0.5`}>RIESGO 7D</p>
-              <p className={`${typography.text.body} font-black ${colors.danger}`}>{fmt$(report.totalProtectedValue)}</p>
-            </div>
-          )}
-        </div>
-      </Card.Content>
-    </Card>
-  );
-}
 
 // ─── Alert Row ────────────────────────────────────────────────────────────────
 const AlertRow: React.FC<{ action: ProtectedAction; onNavigate: (r: string) => void }> = ({ action, onNavigate }) => {
@@ -200,27 +132,38 @@ const Dashboard: React.FC = () => {
   return (
     <PageContainer>
       <SectionBlock className="mb-8">
-        {/* Header Navigation */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-2 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <div className={`p-1.5 ${colors.bgBrandSubtle} ${colors.brand} rounded-lg`}>
-              <Sparkles size={typography.icon.sm} />
-            </div>
-            <span className={`${typography.text.caption} ${colors.textSecondary} font-black uppercase tracking-widest`}>
-              {currentCompany?.name || 'ESTRATEGIAS'}
+        {/* Header Estratégico (BETO OS v3.0) */}
+        <UniversalPageHeader
+          title="Dashboard de Operaciones"
+          breadcrumbs={
+            <>
+              <span>BETO OS</span>
+              <span>/</span>
+              <span className={colors.textPrimary}>{currentCompany?.name || 'Empresa'}</span>
+            </>
+          }
+          metadata={[
+            <span key="1">Empresa: {currentCompany?.name || 'BETO OS'}</span>,
+            <span key="2">Última actualización: {new Date(report.generatedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>,
+            <span key="3">Riesgo monetario: {fmt$(report.totalProtectedValue)}</span>
+          ]}
+          status={
+            <span className={`flex items-center gap-1.5 font-bold ${STATUS_CFG[report.protectionStatus].variant === 'success' ? colors.statusSuccess : STATUS_CFG[report.protectionStatus].variant === 'warning' ? colors.statusWarning : colors.statusDanger}`}>
+              {React.createElement(STATUS_CFG[report.protectionStatus].Icon, { size: 14 })}
+              Nivel de Riesgo: {STATUS_CFG[report.protectionStatus].label}
             </span>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="secondary" size="sm" onClick={() => navigate('/productos')} icon={<Package />}>
-              PRODUCTOS
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => navigate('/materias-primas')} icon={<BarChart2 />}>
-              M. PRIMAS
-            </Button>
-          </div>
-        </div>
-
-        <HealthHero report={report} userName={userName} />
+          }
+          actions={
+            <>
+              <Button variant="secondary" size="sm" onClick={() => navigate('/productos')} icon={<Package />}>
+                PRODUCTOS
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => navigate('/materias-primas')} icon={<BarChart2 />}>
+                M. PRIMAS
+              </Button>
+            </>
+          }
+        />
 
         <CardGrid cols={4}>
           {report.kpis.map((kpi) => (
