@@ -13,6 +13,7 @@ import { EntityConfig } from '@/components/entity/types';
 import { getPlanDisplay, getStatusDisplay } from '@/config/subscription.config';
 import { colors, typography } from '@/design/design-tokens';
 import { PageContainer, SectionBlock } from '@/components/ui/LayoutPrimitives';
+import { UniversalPageHeader } from '@/components/ui/UniversalPageHeader';
 import { Badge } from '@/components/ui/Badge';
 
 interface BillingCompany {
@@ -203,22 +204,26 @@ export default function Billing() {
     return (
         <PageContainer>
             <SectionBlock>
-                <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                    <div className="space-y-1">
-                        <h1 className={`${typography.text.title} ${colors.textPrimary} tracking-tight`}>
-                            {user?.is_super_admin ? 'Gobernanza de Cuentas' : 'Facturación y Suscripción'}
-                        </h1>
-                        <p className={`${typography.text.body} ${colors.textSecondary} max-w-lg`}>
-                            {user?.is_super_admin
-                                ? `Supervisión de suscripciones de todas las organizaciones activas.`
-                                : 'Gestiona tu plan comercial y métodos de pago corporativos.'}
-                        </p>
-                    </div>
-                </header>
+                <UniversalPageHeader
+                    title={user?.is_super_admin ? 'Gobernanza de Cuentas' : 'Facturación y Suscripción'}
+                    breadcrumbs={
+                        <>
+                            <span>BETO OS</span>
+                            <span>/</span>
+                            <span>Platform Control</span>
+                            <span>/</span>
+                            <span className={colors.textPrimary}>Billing</span>
+                        </>
+                    }
+                    metadata={[
+                        <span key="1">{user?.is_super_admin ? 'Supervisión de suscripciones' : 'Plan y métodos de pago'}</span>,
+                        user?.is_super_admin ? <span key="2">{filteredCompanies.length} empresas registradas</span> : <span key="2">{subscription ? 'Suscripción activa' : 'Sin suscripción'}</span>
+                    ]}
+                />
 
                 {user?.is_super_admin ? (
                     <>
-                        <div className="flex flex-wrap items-center gap-3 pt-6 border-t border-slate-100">
+                        <div className="flex flex-wrap items-center gap-3 pt-6 mt-6 border-t border-slate-100 mb-6">
                             <div className="relative flex-1 min-w-[300px]">
                                 <Search size={16} className={`absolute left-4 top-1/2 -translate-y-1/2 ${colors.textMuted}`} />
                                 <input
@@ -226,7 +231,7 @@ export default function Billing() {
                                     placeholder="Buscar empresa, plan, estado..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className={`w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl ${typography.text.body} transition-all focus:ring-2 focus:ring-indigo-500 focus:bg-white`}
+                                    className={`w-full h-10 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl ${typography.text.body} transition-all focus:ring-2 focus:ring-indigo-500 focus:bg-white`}
                                 />
                             </div>
                             <Button variant="secondary" onClick={() => handleBulkPrint(filteredCompanies.map(c => c.id))} icon={<Printer />}>

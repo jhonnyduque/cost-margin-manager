@@ -1,0 +1,79 @@
+import React, { useState, useEffect } from 'react';
+import { Sidebar } from '../components/os/Sidebar';
+import { MobileBottomNav } from '../components/os/MobileBottomNav';
+import { Topbar } from '../components/os/Topbar';
+import { useAuth } from '@/hooks/useAuth';
+import { Loader2 } from 'lucide-react';
+import { colors } from '@/design/design-tokens';
+
+interface AppShellProps {
+    children: React.ReactNode;
+}
+
+export const AppShell: React.FC<AppShellProps> = ({ children }) => {
+    const { isLoading: authLoading, user } = useAuth();
+
+    // Persistencia: default colapsado en primera visita
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('sidebarCollapsed');
+            return saved !== null ? saved === 'true' : true;
+        }
+        return true;
+    });
+
+    useEffect(() => {
+        localStorage.setItem('sidebarCollapsed', String(sidebarCollapsed));
+    }, [sidebarCollapsed]);
+
+    const toggleSidebar = () => {
+        setSidebarCollapsed(prev => !prev);
+    };
+
+    // BOOT SAFETY GUARD
+    if (authLoading) {
+        return (
+            <div className={`flex h-screen w-full flex-col items-center justify-center ${colors.bgMain} ${colors.textMuted}`}>
+                <Loader2 className={`h-10 w-10 animate-spin ${colors.statusInfo} mb-4`} />
+                <p className="font-medium">Initializing BETO OS...</p>
+            </div>
+        );
+    }
+
+    if (!user) {
+        return null;
+    }
+
+    return (
+        <div className={`min-h-screen flex flex-col ${colors.bgMain} w-full max-w-[100vw] overflow-x-hidden`}>
+            {/* Desktop Sidebar - hidden on mobile */}
+            <div className="hidden lg:block">
+                <Sidebar
+                    collapsed={sidebarCollapsed}
+                    onToggle={toggleSidebar}
+                />
+            </div>
+
+            {/* Topbar - full width on mobile, offset on desktop */}
+            <Topbar sidebarCollapsed={sidebarCollapsed} />
+
+            {/* Main Content Area */}
+            <main
+                className={`
+                    flex-1 flex flex-col min-w-0
+                    relative z-0
+                    pt-20 pb-28
+                    transition-all duration-300
+                    ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'}
+                `}
+            >
+                {children}
+            </main>
+
+            {/* Mobile Bottom Navigation - visible only on mobile, sticky to bottom */}
+            <div className="sticky bottom-0 w-full z-50 lg:hidden">
+                <MobileBottomNav />
+            </div>
+        </div>
+    );
+};

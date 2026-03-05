@@ -81,9 +81,8 @@ export const MobileBottomNav: React.FC = () => {
     return (
         <nav
             className="
-                fixed bottom-0 left-0 right-0 z-50
-                bg-white border-t border-slate-200
-                safe-area-bottom lg:hidden
+                w-full bg-white border-t border-slate-200
+                safe-area-bottom
             "
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         >

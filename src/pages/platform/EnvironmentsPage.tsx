@@ -11,6 +11,7 @@ import { EntityConfig } from '@/components/entity/types';
 import { getStatusDisplay } from '@/config/subscription.config';
 import { colors, typography } from '@/design/design-tokens';
 import { PageContainer, SectionBlock } from '@/components/ui/LayoutPrimitives';
+import { UniversalPageHeader } from '@/components/ui/UniversalPageHeader';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -221,23 +222,29 @@ export const EnvironmentsPage: React.FC = () => {
     return (
         <PageContainer>
             <SectionBlock>
-                <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                    <div className="space-y-1">
-                        <h1 className={`${typography.text.title} ${colors.textPrimary} tracking-tight`}>
-                            Gestión de Entornos
-                        </h1>
-                        <p className={`${typography.text.body} ${colors.textSecondary} max-w-lg`}>
-                            Supervisa y accede a tus instancias desplegadas. {filteredCompanies.length} entornos registrados.
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <Button variant="primary" onClick={() => setIsCreateModalOpen(true)} icon={<Plus />}>
+                <UniversalPageHeader
+                    title="Gestión de Entornos"
+                    breadcrumbs={
+                        <>
+                            <span>BETO OS</span>
+                            <span>/</span>
+                            <span>Platform Control</span>
+                            <span>/</span>
+                            <span className={colors.textPrimary}>Environments</span>
+                        </>
+                    }
+                    metadata={[
+                        <span key="1">Supervisa y accede a tus instancias desplegadas</span>,
+                        <span key="2">{filteredCompanies.length} entornos registrados</span>
+                    ]}
+                    actions={
+                        <Button variant="primary" size="sm" onClick={() => setIsCreateModalOpen(true)} icon={<Plus size={16} />}>
                             NUEVO ENTORNO
                         </Button>
-                    </div>
-                </header>
+                    }
+                />
 
-                <div className="flex flex-wrap items-center gap-3 pt-6 border-t border-slate-100">
+                <div className="flex flex-wrap items-center gap-3 pt-6 mt-6 border-t border-slate-100 mb-6">
                     <div className="relative flex-1 min-w-[300px]">
                         <Search size={16} className={`absolute left-4 top-1/2 -translate-y-1/2 ${colors.textMuted}`} />
                         <input
@@ -245,7 +252,7 @@ export const EnvironmentsPage: React.FC = () => {
                             placeholder="Buscar por nombre, slug o plan..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className={`w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl ${typography.text.body} transition-all focus:ring-2 focus:ring-indigo-500 focus:bg-white`}
+                            className={`w-full h-10 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl ${typography.text.body} transition-all focus:ring-2 focus:ring-indigo-500 focus:bg-white`}
                         />
                     </div>
                     <Button variant="secondary" onClick={() => handleBulkPrint(companies.map(c => c.id))} icon={<Printer />}>

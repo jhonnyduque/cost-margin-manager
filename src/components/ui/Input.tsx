@@ -23,7 +23,7 @@ export const Input: React.FC<InputProps> = ({
             )}
             <input
                 className={`
-                    h-11 ${spacing.pxMd} ${radius.md} outline-none transition-all duration-200
+                    h-10 ${spacing.pxMd} ${radius.md} outline-none transition-all duration-200
                     ${colors.surface} ${colors.textPrimary}
                     placeholder:${colors.textMuted}
                     border ${colors.borderStandard}

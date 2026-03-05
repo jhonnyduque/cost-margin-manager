@@ -22,12 +22,14 @@ import { AIInsightsPanel } from '@/components/platform/AIInsightsPanel';
 import { BillingEventTable } from '@/components/platform/BillingEventTable';
 import { EntityList } from '@/components/entity/EntityList';
 import { EntityConfig } from '@/components/entity/types';
-import { getStatusDisplay } from '@/config/subscription.config';
+import { getPlanDisplay, getStatusDisplay } from '@/config/subscription.config';
 import { Company } from '@/types';
 import { CreateTenantModal } from '@/components/CreateTenantModal';
 import EditTenantModal from '@/components/EditTenantModal';
 import { Plus, Search, MoreHorizontal, Printer, Download } from 'lucide-react';
 import { colors, typography, spacing, radius, shadows } from '@/design/design-tokens';
+import { PageContainer, SectionBlock } from '@/components/ui/LayoutPrimitives';
+import { Button } from '@/components/ui/Button';
 import { UniversalPageHeader } from '@/components/ui/UniversalPageHeader';
 
 // Subcomponente: Consola de Comunicación (v1.3 mejorada)
@@ -402,6 +404,7 @@ export default function PlatformAdmin() {
                                 icon={<Users size={20} />}
                                 visualType="gauge"
                                 variant="success"
+                                progressValue={metrics?.churnRate || 0}
                                 loading={loading}
                             />
                             <MetricCard
@@ -660,7 +663,7 @@ export default function PlatformAdmin() {
 
             {activeTab === 'tenants' && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                    <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
                             <h2 className={`${typography.sectionTitle} ${colors.textPrimary} tracking-tighter`}>Gestión de Environments</h2>
                             <p className={`${typography.caption} ${colors.textSecondary} font-medium`}>Control total sobre las instancias y suscripciones de la plataforma</p>
@@ -674,17 +677,19 @@ export default function PlatformAdmin() {
                                     placeholder="Buscar empresa, slug o plan..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className={`w-full ${radius.xl} ${colors.bgSurface} pl-11 pr-4 py-3 ${typography.uiLabel} ${colors.textPrimary} border ${colors.borderStandard} placeholder:${colors.textMuted} focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all ${shadows.sm}`}
+                                    className={`w-full h-10 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl ${typography.text.body} transition-all focus:ring-2 focus:ring-indigo-500 focus:bg-white`}
                                 />
                             </div>
-                            <button
+                            <Button
+                                variant="primary"
+                                size="sm"
                                 onClick={() => setIsCreateModalOpen(true)}
-                                className={`flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white ${radius.xl} ${typography.uiLabel} hover:bg-indigo-700 ${shadows.lg} shadow-indigo-100 transition-all active:scale-95 font-bold`}
+                                icon={<Plus size={16} />}
                             >
-                                <Plus size={18} /> Nueva Empresa
-                            </button>
+                                Nueva Empresa
+                            </Button>
                         </div>
-                    </header>
+                    </div>
 
                     <div className="rounded-[32px] border border-slate-100 bg-white overflow-hidden shadow-sm">
                         <EntityList

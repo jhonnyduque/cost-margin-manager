@@ -273,6 +273,7 @@ export default function Team() {
                                     title="OCUPACIÓN DE ASIENTOS"
                                     value={`${currentUsersCount} / ${maxUsers}`}
                                     visualType="gauge"
+                                    progressValue={percentageUsed}
                                     variant={isAtLimit ? 'error' : percentageUsed > 80 ? 'warning' : 'success'}
                                 />
                             </div>

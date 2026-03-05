@@ -9,7 +9,7 @@ export const PageContainer: React.FC<{ children: React.ReactNode; className?: st
     children,
     className = ''
 }) => (
-    <div className={`w-full mx-auto ${spacing.pLg} md:${spacing.pXl} animate-in fade-in duration-500 ${className}`}>
+    <div className={`w-full min-w-0 mx-auto ${spacing.pLg} md:${spacing.pXl} animate-in fade-in duration-500 ${className}`}>
         {children}
     </div>
 );
@@ -22,7 +22,7 @@ export const SectionBlock: React.FC<{ children: React.ReactNode; className?: str
     children,
     className = ''
 }) => (
-    <section className={`flex flex-col ${spacing.xl} ${className}`}>
+    <section className={`flex flex-col min-w-0 ${spacing.xl} ${className}`}>
         {children}
     </section>
 );

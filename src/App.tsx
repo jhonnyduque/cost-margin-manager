@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { Loader2 } from 'lucide-react';
 
 // Layouts
-import { OSLayout } from './layouts/OSLayout';
+import { AppShell } from './layouts/AppShell';
 
 // Pages
 import Dashboard from '@/pages/Dashboard';
@@ -111,7 +111,7 @@ const AppContent: React.FC = () => {
 
     // -- BETO OS SHELL --
     return (
-        <OSLayout>
+        <AppShell>
             <Routes>
                 {/* Default Redirect */}
                 <Route path="/" element={<Navigate to={user.is_super_admin ? "/control-center" : "/dashboard"} replace />} />
@@ -129,7 +129,6 @@ const AppContent: React.FC = () => {
                 <Route path="/productos" element={<Products />} />
                 <Route path="/productos/nuevo" element={<ProductBuilder />} />
                 <Route path="/productos/editar/:id" element={<ProductBuilder />} />
-                <Route path="/productos/detalle/:id" element={<ProductDetail />} />
                 <Route path="/productos/detalle/:id" element={<ProductDetail />} />
                 <Route path="/inventario" element={<FinishedGoods />} />
                 <Route path="/materias-primas" element={<RawMaterials />} />
@@ -155,7 +154,7 @@ const AppContent: React.FC = () => {
                 {/* Fallback */}
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
-        </OSLayout>
+        </AppShell>
     );
 };
 

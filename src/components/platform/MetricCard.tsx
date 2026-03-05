@@ -24,6 +24,7 @@ interface MetricCardProps {
     variant?: 'default' | 'primary' | 'success' | 'warning' | 'error';
     size?: 'sm' | 'md' | 'lg';
     visualType?: 'chart' | 'gauge';
+    progressValue?: number;
     loading?: boolean;
 }
 
@@ -37,6 +38,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
     variant = 'default',
     size = 'md',
     visualType = 'chart',
+    progressValue,
     loading = false
 }) => {
     const [isMounted, setIsMounted] = React.useState(false);
@@ -151,15 +153,18 @@ export const MetricCard: React.FC<MetricCardProps> = ({
                 </div>
             )}
 
-            {visualType === 'gauge' && (
+            {visualType === 'gauge' && progressValue !== undefined && (
                 <div className={`relative h-2 w-full ${colors.surfaceMuted} ${radius.pill} overflow-hidden mt-4`}>
                     <div
                         className={cn(
                             "h-full rounded-full transition-all duration-1000",
-                            parseFloat(value.toString()) < 3 ? "bg-emerald-500" :
-                                parseFloat(value.toString()) < 5 ? "bg-amber-500" : "bg-red-500"
+                            variant === 'success' ? "bg-emerald-500" :
+                                variant === 'warning' ? "bg-amber-500" :
+                                    variant === 'error' ? "bg-red-500" :
+                                        variant === 'primary' ? "bg-indigo-500" :
+                                            "bg-slate-500"
                         )}
-                        style={{ width: `${Math.min(100, (parseFloat(value.toString()) / 10) * 100)}%` }}
+                        style={{ width: `${Math.max(0, Math.min(100, progressValue))}%` }}
                     />
                 </div>
             )}
