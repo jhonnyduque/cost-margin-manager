@@ -11,11 +11,12 @@ export type Company = Tables<'companies'> & {
   grace_period_ends_at?: string | null;
   seat_count?: number;
   seat_limit?: number;
+  custom_price_cents?: number | null;
 };
 
-export type UserRole = Enums<'user_role'>;
-export type SubscriptionStatus = Enums<'subscription_status'>;
-export type SubscriptionTier = Enums<'subscription_tier'>;
+export type UserRole = 'owner' | 'admin' | 'manager' | 'operator' | 'viewer';
+export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'suspended' | 'canceled' | 'incomplete' | 'incomplete_expired' | 'unpaid';
+export type SubscriptionTier = 'demo' | 'starter' | 'growth' | 'scale' | 'enterprise';
 
 // We extend these to make certain fields optional in the UI/Logic if needed, 
 // but keeping them compatible with Database Row.

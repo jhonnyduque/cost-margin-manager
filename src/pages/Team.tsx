@@ -391,7 +391,7 @@ export default function Team() {
                             placeholder="Buscar empresa, nombre, email..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full rounded-xl bg-white pl-9 pr-3 py-2.5 text-sm text-gray-700 ring-1 ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                            className="w-full rounded-xl bg-white pl-10 pr-3 py-2.5 text-sm text-gray-700 ring-1 ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
                         />
                     </div>
 

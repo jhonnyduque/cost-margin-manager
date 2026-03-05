@@ -14,6 +14,7 @@ import { Select } from '@/components/ui/Select';
 import { Card } from '@/components/ui/Card';
 import { tokens } from '@/design/design-tokens';
 import { useAuth } from '@/hooks/useAuth';
+import { subscriptionConfig } from '@/platform/subscription.config';
 
 interface EditTenantModalProps {
     isOpen: boolean;
@@ -30,6 +31,9 @@ const EditTenantModal: React.FC<EditTenantModalProps> = ({ isOpen, company, onCl
     const [status, setStatus] = useState(company.subscription_status);
     const [tier, setTier] = useState(company.subscription_tier);
     const [seatLimit, setSeatLimit] = useState(company.seat_limit || 1);
+    const [customPriceUSD, setCustomPriceUSD] = useState<string>(
+        company.custom_price_cents ? (company.custom_price_cents / 100).toString() : ''
+    );
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -39,6 +43,9 @@ const EditTenantModal: React.FC<EditTenantModalProps> = ({ isOpen, company, onCl
         setError(null);
 
         try {
+            // Convert USD to cents, or null if empty
+            const customPriceCents = customPriceUSD ? Math.round(parseFloat(customPriceUSD) * 100) : null;
+
             const { error: updateError } = await supabase
                 .from('companies')
                 .update({
@@ -47,6 +54,7 @@ const EditTenantModal: React.FC<EditTenantModalProps> = ({ isOpen, company, onCl
                     subscription_status: status,
                     subscription_tier: tier,
                     seat_limit: seatLimit,
+                    custom_price_cents: customPriceCents,
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', company.id);
@@ -107,8 +115,8 @@ const EditTenantModal: React.FC<EditTenantModalProps> = ({ isOpen, company, onCl
                         <div>
                             <h2
                                 style={{
-                                    fontSize: tokens.typography.titleMd.fontSize,
-                                    fontWeight: tokens.typography.titleMd.fontWeight,
+                                    fontSize: tokens.typography.h1.fontSize,
+                                    fontWeight: tokens.typography.h1.fontWeight,
                                     color: tokens.colors.text.primary
                                 }}
                             >
@@ -166,6 +174,23 @@ const EditTenantModal: React.FC<EditTenantModalProps> = ({ isOpen, company, onCl
                             onChange={e => setSlug(e.target.value)}
                             required
                         />
+                        {/* Custom Price Support for Enterprise/Special Deals */}
+                        {user?.is_super_admin && tier === 'enterprise' && (
+                            <div className="flex flex-col gap-2">
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    label="Precio Manual MRR (USD)"
+                                    placeholder="Ej: 499.00"
+                                    value={customPriceUSD}
+                                    onChange={e => setCustomPriceUSD(e.target.value)}
+                                />
+                                <p className="text-[10px] text-slate-400">
+                                    Si se define, este monto **sobrescribe** el precio del plan en las finanzas.
+                                    Útil para Enterprise o acuerdos especiales. Dejar vacío para usar precio de plan.
+                                </p>
+                            </div>
+                        )}
                         <div className="flex flex-col gap-2">
                             <span className="text-xs font-medium text-slate-500">Estado del Servicio</span>
                             {user?.is_super_admin ? (
@@ -189,9 +214,9 @@ const EditTenantModal: React.FC<EditTenantModalProps> = ({ isOpen, company, onCl
                                         <div className="h-2 w-2 rounded-full bg-red-500" />
                                     )}
                                     <span className="capitalize">{status}</span>
-                                    {company.current_period_end_at && (
+                                    {company.current_period_ends_at && (
                                         <span className="ml-auto text-xs text-slate-400">
-                                            Vence: {new Date(company.current_period_end_at).toLocaleDateString()}
+                                            Vence: {new Date(company.current_period_ends_at).toLocaleDateString()}
                                         </span>
                                     )}
                                 </div>
@@ -203,7 +228,19 @@ const EditTenantModal: React.FC<EditTenantModalProps> = ({ isOpen, company, onCl
                             {user?.is_super_admin ? (
                                 <Select
                                     value={tier || 'starter'}
-                                    onChange={e => setTier(e.target.value)}
+                                    onChange={e => {
+                                        const newTier = e.target.value as any;
+                                        setTier(newTier);
+                                        // Auto-update seat limit based on plan rules
+                                        const planConfig = subscriptionConfig.plans[newTier as keyof typeof subscriptionConfig.plans];
+                                        if (planConfig) {
+                                            setSeatLimit(planConfig.seat_limit);
+                                        }
+                                        // Reset manual price if not enterprise
+                                        if (newTier !== 'enterprise') {
+                                            setCustomPriceUSD('');
+                                        }
+                                    }}
                                 >
                                     <option value="demo">Demo</option>
                                     <option value="starter">Starter</option>
@@ -231,6 +268,7 @@ const EditTenantModal: React.FC<EditTenantModalProps> = ({ isOpen, company, onCl
                                 value={seatLimit}
                                 onChange={e => setSeatLimit(parseInt(e.target.value) || 1)}
                                 min={1}
+                                disabled={!user?.is_super_admin || tier !== 'enterprise'}
                                 required
                             />
                             <div className="flex items-center gap-2 text-xs text-slate-500">

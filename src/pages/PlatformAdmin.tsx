@@ -4,16 +4,29 @@ import { supabase } from '@/services/supabase';
 import {
     Server, Users, AlertTriangle, Layers, CreditCard,
     UserPlus, ChevronRight, Megaphone, Send, Activity,
-    TrendingUp, ShieldCheck, Globe, Zap, Clock, Info, ExternalLink
+    TrendingUp, ShieldCheck, Globe, Zap, Clock, Info, ExternalLink, ArrowUpRight
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { eventBusService } from '@/services/eventBusService';
 import { EVENTS, SOURCE_MODULES } from '@/core/events';
-import { adminStatsService, PlatformMetrics, GrowthPoint, VIPStatus } from '@/services/adminStatsService';
+import { adminStatsService, PlatformMetrics, GrowthPoint, VIPStatus, RevenueMetric, MRRWaterfallPoint, CohortPoint, BillingEvent } from '@/services/adminStatsService';
 import { MetricCard } from '@/components/platform/MetricCard';
 import { ActivityFeed } from '@/components/platform/ActivityFeed';
 import { MainGrowthChart, PlanDonutChart } from '@/components/platform/Charts';
 import { CommandPalette } from '@/components/platform/CommandPalette';
+import { RevenueKpiCard } from '@/components/platform/RevenueKpiCard';
+import { GlobalFilterBar } from '@/components/platform/GlobalFilterBar';
+import { MRRWaterfallChart } from '@/components/platform/MRRWaterfallChart';
+import { CohortHeatmap } from '@/components/platform/CohortHeatmap';
+import { AIInsightsPanel } from '@/components/platform/AIInsightsPanel';
+import { BillingEventTable } from '@/components/platform/BillingEventTable';
+import { EntityList } from '@/components/entity/EntityList';
+import { EntityConfig } from '@/components/entity/types';
+import { getStatusDisplay } from '@/config/subscription.config';
+import { Company } from '@/types';
+import { CreateTenantModal } from '@/components/CreateTenantModal';
+import EditTenantModal from '@/components/EditTenantModal';
+import { Plus, Search, MoreHorizontal, Printer, Download } from 'lucide-react';
 
 // Subcomponente: Consola de Comunicación (v1.3 mejorada)
 function BroadcastConsole() {
@@ -94,37 +107,202 @@ function BroadcastConsole() {
 }
 
 export default function PlatformAdmin() {
-    const { user, enterCompanyAsFounder } = useAuth();
+    const { user, enterCompanyAsFounder, refreshAuth } = useAuth();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'overview' | 'tenants' | 'billing' | 'ops'>('overview');
     const [metrics, setMetrics] = useState<PlatformMetrics | null>(null);
     const [growthData, setGrowthData] = useState<GrowthPoint[]>([]);
     const [planData, setPlanData] = useState<any[]>([]);
     const [vipTenants, setVipTenants] = useState<VIPStatus[]>([]);
+
+    // Revenue Intelligence State
+    const [revenueMetrics, setRevenueMetrics] = useState<RevenueMetric[]>([]);
+    const [waterfallData, setWaterfallData] = useState<MRRWaterfallPoint[]>([]);
+    const [cohortData, setCohortData] = useState<CohortPoint[]>([]);
+    const [billingEvents, setBillingEvents] = useState<BillingEvent[]>([]);
+
+    // Filtros de Finanzas
+    const [dateRange, setDateRange] = useState('last-30');
+    const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
+    const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+    const [planFilter, setPlanFilter] = useState('all');
+    const [segmentFilter, setSegmentFilter] = useState('all');
+
     const [loading, setLoading] = useState(true);
+
+    // Tenant Management States
+    const [allCompanies, setAllCompanies] = useState<Company[]>([]);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [fetchingTenants, setFetchingTenants] = useState(false);
 
     useEffect(() => {
         loadData();
-    }, []);
+    }, [activeTab, dateRange, startDate, endDate, planFilter, segmentFilter]);
+
+    const fetchAllTenants = async () => {
+        setFetchingTenants(true);
+        try {
+            const { data } = await supabase
+                .from('companies')
+                .select('*')
+                .order('created_at', { ascending: false });
+            if (data) setAllCompanies(data);
+        } catch (err) {
+            console.error('Error fetching all tenants:', err);
+        } finally {
+            setFetchingTenants(false);
+        }
+    };
 
     const loadData = async () => {
+        if (activeTab === 'overview' && metrics) {
+            // No recargar todo si ya tenemos métricas básicas y no estamos en finanzas
+            // Pero si queremos que overview también reaccione a filtros (opcional)
+        }
+
         setLoading(true);
+        const filters = {
+            dateRange,
+            startDate,
+            endDate,
+            plan: planFilter,
+            segment: segmentFilter
+        };
+
         try {
-            const [m, g, p, v] = await Promise.all([
+            const [m, g, p, v, revIntel, waterfall, cohorts, events] = await Promise.all([
                 adminStatsService.getPlatformSummary(),
                 adminStatsService.getGrowthData(),
                 adminStatsService.getPlanDistribution(),
-                adminStatsService.getVIPTenants(5)
+                adminStatsService.getVIPTenants(5),
+                adminStatsService.getRevenueIntelligence(filters),
+                adminStatsService.getMRRWaterfall(filters),
+                adminStatsService.getCohortRetention(filters),
+                adminStatsService.getBillingEvents(10, filters)
             ]);
             setMetrics(m);
             setGrowthData(g);
             setPlanData(p);
             setVipTenants(v);
+            setRevenueMetrics(revIntel);
+            setWaterfallData(waterfall);
+            setCohortData(cohorts);
+            setBillingEvents(events);
+            fetchAllTenants(); // Cargar todos para la gestión
         } catch (err) {
             console.error('Error loading admin stats:', err);
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleEdit = (company: Company) => {
+        setSelectedCompany(company);
+        setIsEditModalOpen(true);
+    };
+
+    const handleCreateSuccess = () => {
+        setIsCreateModalOpen(false);
+        fetchAllTenants();
+        refreshAuth();
+    };
+
+    const handleEditSuccess = () => {
+        setIsEditModalOpen(false);
+        setSelectedCompany(null);
+        fetchAllTenants();
+    };
+
+    const filteredCompanies = React.useMemo(() => {
+        if (!searchTerm.trim()) return allCompanies;
+        const q = searchTerm.toLowerCase();
+        return allCompanies.filter(c =>
+            c.name.toLowerCase().includes(q) ||
+            c.slug.toLowerCase().includes(q) ||
+            (c.subscription_tier || '').toLowerCase().includes(q)
+        );
+    }, [allCompanies, searchTerm]);
+
+    const tenantConfig: EntityConfig<Company> = {
+        name: 'Environment',
+        pluralName: 'Environments',
+        rowIdKey: 'id' as keyof Company,
+        fields: [
+            {
+                key: 'name' as keyof Company,
+                label: 'Environment',
+                type: 'text',
+                render: (c) => (
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400 font-black border border-slate-100">
+                            {c.name[0]}
+                        </div>
+                        <div className="min-w-0">
+                            <div className="font-black text-slate-900 truncate text-sm">{c.name}</div>
+                            <div className="text-[10px] text-slate-400 font-mono truncate uppercase tracking-tighter">{c.slug}</div>
+                        </div>
+                    </div>
+                )
+            },
+            {
+                key: 'subscription_tier' as keyof Company,
+                label: 'Plan',
+                type: 'text',
+                render: (c) => (
+                    <span className="text-xs font-bold capitalize text-slate-600 px-2 py-1 bg-slate-50 rounded-lg border border-slate-100">
+                        {c.subscription_tier || 'Demo'}
+                    </span>
+                )
+            },
+            {
+                key: 'seat_count' as keyof Company,
+                label: 'Usage',
+                type: 'text',
+                render: (c) => {
+                    const seatPercent = Math.min(100, ((c.seat_count || 0) / (c.seat_limit || 1)) * 100);
+                    const barColor = seatPercent > 85 ? 'bg-orange-500' : 'bg-indigo-500';
+                    return (
+                        <div className="flex items-center gap-2">
+                            <div className="h-1.5 w-16 rounded-full bg-slate-100 overflow-hidden">
+                                <div className={`h-full rounded-full ${barColor} shadow-sm`} style={{ width: `${seatPercent}%` }} />
+                            </div>
+                            <span className="text-[10px] font-bold text-slate-500">{c.seat_count || 0}/{c.seat_limit || 1}</span>
+                        </div>
+                    );
+                }
+            },
+            {
+                key: 'subscription_status' as keyof Company,
+                label: 'Status',
+                type: 'badge',
+                render: (c) => {
+                    const status = getStatusDisplay(c.subscription_status);
+                    return (
+                        <span className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-[10px] font-black uppercase tracking-widest ${status.color} border shadow-sm`}>
+                            <span className={`size-1.5 rounded-full ${status.dot} animate-pulse`} />
+                            {status.label}
+                        </span>
+                    );
+                }
+            }
+        ],
+        actions: [
+            {
+                id: 'access',
+                label: 'Acceder',
+                icon: <ExternalLink size={16} />,
+                onClick: (c) => handleTenantAccess(c.id)
+            },
+            {
+                id: 'edit',
+                label: 'Editar',
+                icon: <MoreHorizontal size={16} />,
+                onClick: (c) => handleEdit(c)
+            }
+        ]
     };
 
     const handleTenantAccess = async (companyId: string) => {
@@ -343,6 +521,91 @@ export default function PlatformAdmin() {
                 </div>
             )}
 
+            {activeTab === 'billing' && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    <GlobalFilterBar
+                        dateRange={dateRange}
+                        onDateRangeChange={setDateRange}
+                        startDate={startDate}
+                        onStartDateChange={(date) => {
+                            setStartDate(date);
+                            if (new Date(date) > new Date(endDate)) {
+                                setEndDate(date);
+                            }
+                        }}
+                        endDate={endDate}
+                        onEndDateChange={(date) => {
+                            setEndDate(date);
+                            if (new Date(date) < new Date(startDate)) {
+                                setStartDate(date);
+                            }
+                        }}
+                        plan={planFilter}
+                        onPlanChange={setPlanFilter}
+                        segment={segmentFilter}
+                        onSegmentChange={setSegmentFilter}
+                    />
+
+                    {/* KPI Grid 2026 */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
+                        {revenueMetrics.map((m, idx) => (
+                            <RevenueKpiCard key={idx} metric={m} />
+                        ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                        {/* Main Charts Section */}
+                        <div className="lg:col-span-8 space-y-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="md:col-span-1">
+                                    <MRRWaterfallChart data={waterfallData} />
+                                </div>
+                                <div className="md:col-span-1">
+                                    <CohortHeatmap data={cohortData} />
+                                </div>
+                            </div>
+
+                            <BillingEventTable events={billingEvents} />
+                        </div>
+
+                        {/* AI & Actions Section */}
+                        <div className="lg:col-span-4 space-y-8">
+                            <AIInsightsPanel metrics={metrics} loading={loading} />
+
+                            <div className="rounded-[32px] border border-slate-100 bg-white p-8 shadow-sm">
+                                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Acciones Rápidas</h3>
+                                <div className="space-y-3">
+                                    <button
+                                        onClick={() => {
+                                            const confirm = window.confirm('¿Deseas generar una suscripción manual para una nueva empresa?');
+                                            if (confirm) alert('Acción procesada: Redirigiendo al flujo de suscripción manual...');
+                                        }}
+                                        className="w-full flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:bg-white hover:border-indigo-200 hover:shadow-lg hover:text-indigo-600 transition-all font-bold text-sm"
+                                    >
+                                        Suscripción Manual
+                                        <ArrowUpRight size={16} />
+                                    </button>
+                                    <button
+                                        onClick={() => alert('Sincronizando facturas pendientes con el procesador de pagos...')}
+                                        className="w-full flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:bg-white hover:border-indigo-200 hover:shadow-lg hover:text-indigo-600 transition-all font-bold text-sm"
+                                    >
+                                        Facturación Masiva
+                                        <ArrowUpRight size={16} />
+                                    </button>
+                                    <button
+                                        onClick={() => alert('Abriendo configuración de Webhooks de Facturación...')}
+                                        className="w-full flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:bg-white hover:border-indigo-200 hover:shadow-lg hover:text-indigo-600 transition-all font-bold text-sm"
+                                    >
+                                        Webhooks de Facturación
+                                        <ArrowUpRight size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {activeTab === 'ops' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl animate-in slide-in-from-bottom-4 duration-500">
                     <BroadcastConsole />
@@ -385,11 +648,56 @@ export default function PlatformAdmin() {
             )}
 
             {activeTab === 'tenants' && (
-                <div className="p-12 text-center rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200">
-                    <Globe size={48} className="mx-auto text-slate-300 mb-4" />
-                    <h3 className="text-lg font-black text-slate-900">Gestión de Tenants</h3>
-                    <p className="text-sm text-slate-500 max-w-xs mx-auto mt-2">Próximamente estaremos integrando el TanStack DataTable v2.0 para una gestión de datos de clase mundial.</p>
-                    <button onClick={() => navigate('/platform/environments')} className="mt-6 px-6 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold shadow-sm hover:bg-slate-50">Gestionar Entornos Manualmente</button>
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                    <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <h2 className="text-xl font-black text-slate-800 tracking-tighter uppercase">Gestión de Environments</h2>
+                            <p className="text-sm text-slate-400 font-medium">Control total sobre las instancias y suscripciones de la plataforma</p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <div className="relative min-w-[280px]">
+                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                <input
+                                    type="text"
+                                    placeholder="Buscar empresa, slug o plan..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full rounded-xl bg-white pl-10 pr-3 py-2 text-xs font-bold text-slate-700 ring-1 ring-slate-100 placeholder:text-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all shadow-sm"
+                                />
+                            </div>
+                            <button
+                                onClick={() => setIsCreateModalOpen(true)}
+                                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all active:scale-95"
+                            >
+                                <Plus size={14} /> Nueva Empresa
+                            </button>
+                        </div>
+                    </header>
+
+                    <div className="rounded-[32px] border border-slate-100 bg-white overflow-hidden shadow-sm">
+                        <EntityList
+                            config={tenantConfig}
+                            items={filteredCompanies}
+                            loading={fetchingTenants}
+                            emptyMessage="No se encontraron empresas con esos criterios."
+                        />
+                    </div>
+
+                    <CreateTenantModal
+                        isOpen={isCreateModalOpen}
+                        onClose={() => setIsCreateModalOpen(false)}
+                        onSuccess={handleCreateSuccess}
+                    />
+
+                    {selectedCompany && (
+                        <EditTenantModal
+                            isOpen={isEditModalOpen}
+                            onClose={() => setIsEditModalOpen(false)}
+                            company={selectedCompany}
+                            onSuccess={handleEditSuccess}
+                        />
+                    )}
                 </div>
             )}
         </div>

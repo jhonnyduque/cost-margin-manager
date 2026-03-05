@@ -17,9 +17,18 @@ export function ActivityFeed() {
             .channel('platform_activity_feed')
             .on(
                 'postgres_changes',
-                { event: 'INSERT', schema: 'public', table: 'event_bus' },
+                { event: 'INSERT', schema: 'public', table: 'audit_logs' },
                 (payload) => {
-                    setEvents(prev => [payload.new, ...prev].slice(0, 15));
+                    const log = payload.new as any;
+                    const formattedEvent = {
+                        id: log.id,
+                        created_at: log.created_at,
+                        event_key: `${log.resource_type?.toUpperCase() || 'SYSTEM'}.${log.action?.toUpperCase() || 'EVENT'}`,
+                        source_module: log.resource_type,
+                        payload: { message: `Acción ${log.action} en ${log.resource_type}` },
+                        // company name might not be available immediately via realtime without another fetch
+                    };
+                    setEvents(prev => [formattedEvent, ...prev].slice(0, 15));
                 }
             )
             .subscribe();
