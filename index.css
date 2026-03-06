@@ -11,10 +11,14 @@
 
 @layer base {
 
-    html,
+    html {
+        font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        @apply text-slate-900 antialiased;
+    }
+
     body {
         font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-        @apply text-slate-900 antialiased w-full max-w-[100vw] overflow-x-hidden;
+        @apply text-slate-900 antialiased;
     }
 }
 
