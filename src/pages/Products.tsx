@@ -224,16 +224,17 @@ const Products: React.FC = () => {
                   variant="secondary"
                   size="sm"
                   onClick={() => navigate('/materias-primas')}
+                  icon={<Layers size={16} />}
                 >
-                  NUEVO INSUMO
+                  <span className="hidden sm:inline">NUEVO INSUMO</span>
                 </Button>
                 <Button
                   variant="primary"
                   size="sm"
                   onClick={() => navigate('/productos/nuevo')}
-                  icon={<Plus />}
+                  icon={<Plus size={16} />}
                 >
-                  NUEVO PRODUCTO
+                  <span className="hidden sm:inline">NUEVO PRODUCTO</span>
                 </Button>
               </>
             )

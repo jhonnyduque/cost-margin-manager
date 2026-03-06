@@ -337,7 +337,7 @@ export default function PlatformAdmin() {
     ];
 
     return (
-        <div className={`animate-in fade-in space-y-8 duration-700 pb-12 ${colors.bgMain}`}>
+        <PageContainer className="space-y-8 pb-12">
             {/* Header Estratégico (BETO OS v3.0) */}
             <UniversalPageHeader
                 title="Control Center v2.0"
@@ -686,7 +686,7 @@ export default function PlatformAdmin() {
                                 onClick={() => setIsCreateModalOpen(true)}
                                 icon={<Plus size={16} />}
                             >
-                                Nueva Empresa
+                                <span className="hidden sm:inline">Nueva Empresa</span>
                             </Button>
                         </div>
                     </div>
@@ -716,6 +716,6 @@ export default function PlatformAdmin() {
                     )}
                 </div>
             )}
-        </div>
+        </PageContainer>
     );
 }

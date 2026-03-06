@@ -9,7 +9,7 @@ export const PageContainer: React.FC<{ children: React.ReactNode; className?: st
     children,
     className = ''
 }) => (
-    <div className={`w-full mx-auto ${spacing.pLg} md:${spacing.pXl} animate-in fade-in duration-500 ${className}`}>
+    <div className={`w-full mx-auto ${spacing.pyLg} md:${spacing.pyXl} animate-in fade-in duration-500 ${className}`}>
         {children}
     </div>
 );

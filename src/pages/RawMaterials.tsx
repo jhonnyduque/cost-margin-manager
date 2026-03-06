@@ -364,8 +364,13 @@ const RawMaterials: React.FC = () => {
           actions={
             canCreate && (
               <>
-                <Button variant="secondary" size="sm" onClick={() => navigate('/productos')}>
-                  PRODUCTOS
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => navigate('/productos')}
+                  icon={<Package size={16} />}
+                >
+                  <span className="hidden sm:inline">PRODUCTOS</span>
                 </Button>
                 <Button
                   variant="primary"
@@ -375,9 +380,9 @@ const RawMaterials: React.FC = () => {
                     setFormData({ name: '', description: '', type: 'Tela', unit: 'metro', provider: '', status: 'activa', initialQty: 0, unitCost: 0, width: 140 });
                     setIsModalOpen(true);
                   }}
-                  icon={<Plus />}
+                  icon={<Plus size={16} />}
                 >
-                  NUEVO MATERIAL
+                  <span className="hidden sm:inline">NUEVO MATERIAL</span>
                 </Button>
               </>
             )

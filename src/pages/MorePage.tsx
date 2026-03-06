@@ -15,6 +15,7 @@ import {
     LucideIcon
 } from 'lucide-react';
 import { colors, typography, spacing, radius, shadows } from '@/design/design-tokens';
+import { PageContainer } from '@/components/ui/LayoutPrimitives';
 
 interface MenuItem {
     label: string;
@@ -131,7 +132,7 @@ export default function MorePage() {
     });
 
     return (
-        <div className={`animate-in fade-in space-y-6 duration-500 pb-12 ${colors.bgMain}`}>
+        <PageContainer className="pb-12">
             {/* User card */}
             <div className={`flex items-center gap-3 ${radius.xl} ${colors.bgSurface} ${spacing.pMd} ${shadows.sm} border ${colors.borderStandard}`}>
                 <div className={`flex size-12 items-center justify-center ${radius.pill} bg-indigo-600 text-white font-bold text-lg flex-shrink-0`}>
@@ -202,6 +203,6 @@ export default function MorePage() {
 
             {/* Bottom spacing for safe area */}
             <div className="h-4" />
-        </div>
+        </PageContainer>
     );
 }
