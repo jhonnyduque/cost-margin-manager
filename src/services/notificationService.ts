@@ -65,13 +65,21 @@ export const notificationService = {
 
         const { data, error } = await supabase
             .from('notifications')
-            .select('*')
-            .eq('user_id', userId)
+            .select(`
+                *,
+                notification_reads!left(read_at)
+            `)
+            .or(`user_id.eq.${userId},target_scope.in.(global,company)`)
             .order('created_at', { ascending: false })
             .limit(limit);
 
         if (error) throw error;
-        return data;
+
+        // Mapear el estado read_at desde la tabla de relación o la propia notificación
+        return data.map(n => ({
+            ...n,
+            read_at: n.user_id ? n.read_at : (n.notification_reads?.[0]?.read_at || null)
+        }));
     },
 
     /**
@@ -84,14 +92,25 @@ export const notificationService = {
     async getUnreadCount() {
         const userId = await getCurrentUserId();
 
-        const { count, error } = await supabase
+        const { data: notes, error: fetchError } = await supabase
             .from('notifications')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', userId)
-            .is('read_at', null);
+            .select(`
+                id,
+                user_id,
+                read_at,
+                notification_reads!left(read_at)
+            `)
+            .or(`user_id.eq.${userId},target_scope.in.(global,company)`);
 
-        if (error) throw error;
-        return count || 0;
+        if (fetchError) throw fetchError;
+
+        // Contar las que no tienen read_at personal ni en la relación
+        const unread = notes.filter(n => {
+            if (n.user_id) return !n.read_at;
+            return !n.notification_reads || n.notification_reads.length === 0;
+        });
+
+        return unread.length;
     },
 
     /**
@@ -103,13 +122,33 @@ export const notificationService = {
     async markAsRead(id: string) {
         const userId = await getCurrentUserId();
 
-        const { error } = await supabase
+        // Primero verificamos si es una notificación personal
+        const { data: note } = await supabase
             .from('notifications')
-            .update({ read_at: new Date().toISOString() })
+            .select('user_id')
             .eq('id', id)
-            .eq('user_id', userId);
+            .single();
 
-        if (error) throw error;
+        if (note?.user_id) {
+            // Si es personal, actualizamos directamente (como antes, pero seguro)
+            const { error } = await supabase
+                .from('notifications')
+                .update({ read_at: new Date().toISOString() })
+                .eq('id', id)
+                .eq('user_id', userId);
+            if (error) throw error;
+        } else {
+            // Si es global/empresa, registramos la lectura individual en la nueva tabla
+            const { error } = await supabase
+                .from('notification_reads')
+                .upsert({
+                    notification_id: id,
+                    user_id: userId,
+                    read_at: new Date().toISOString()
+                }, { onConflict: 'notification_id,user_id' });
+            if (error) throw error;
+        }
+
         return true;
     },
 
@@ -122,13 +161,38 @@ export const notificationService = {
     async markAllAsRead() {
         const userId = await getCurrentUserId();
 
-        const { error } = await supabase
+        // 1. Marcar personales
+        await supabase
             .from('notifications')
             .update({ read_at: new Date().toISOString() })
             .eq('user_id', userId)
             .is('read_at', null);
 
-        if (error) throw error;
+        // 2. Marcar compartidas (global/company)
+        // Buscamos todas las compartidas que el usuario no ha leído aún
+        const { data: sharedNotes } = await supabase
+            .from('notifications')
+            .select(`
+                id,
+                notification_reads!left(id)
+            `)
+            .is('user_id', null)
+            .or('target_scope.eq.global,target_scope.eq.company');
+
+        if (sharedNotes) {
+            const unreadShared = sharedNotes.filter(n => !n.notification_reads || n.notification_reads.length === 0);
+
+            if (unreadShared.length > 0) {
+                const reads = unreadShared.map(n => ({
+                    notification_id: n.id,
+                    user_id: userId,
+                    read_at: new Date().toISOString()
+                }));
+
+                await supabase.from('notification_reads').upsert(reads, { onConflict: 'notification_id,user_id' });
+            }
+        }
+
         return true;
     },
 
@@ -150,10 +214,17 @@ export const notificationService = {
                 {
                     event: 'INSERT',
                     schema: 'public',
-                    table: 'notifications',
-                    filter: `user_id=eq.${userId}`,
+                    table: 'notifications'
                 },
-                (payload) => callback(payload.new)
+                (payload) => {
+                    const newNote = payload.new;
+                    // Filtrar en cliente: si es para el usuario OR global OR de su empresa
+                    const isForMe = newNote.user_id === userId ||
+                        newNote.target_scope === 'global' ||
+                        (newNote.target_scope === 'company' && newNote.company_id); // El company_id se valida en RLS usualmente
+
+                    if (isForMe) callback(newNote);
+                }
             )
             .subscribe();
     }

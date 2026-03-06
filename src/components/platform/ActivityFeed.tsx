@@ -27,12 +27,15 @@ export function ActivityFeed() {
                 { event: 'INSERT', schema: 'public', table: 'audit_logs' },
                 (payload) => {
                     const log = payload.new as any;
+                    const eventKey = `${log.resource_type?.toUpperCase() || 'SYSTEM'}.${log.action?.toUpperCase() || 'EVENT'}`;
                     const formattedEvent = {
                         id: log.id,
                         created_at: log.created_at,
-                        event_key: `${log.resource_type?.toUpperCase() || 'SYSTEM'}.${log.action?.toUpperCase() || 'EVENT'}`,
+                        event_key: eventKey,
                         source_module: log.resource_type,
-                        payload: { message: `Acción ${log.action} en ${log.resource_type}` },
+                        payload: {
+                            message: `Acción ${log.action} en ${log.resource_type}`
+                        },
                     };
                     setEvents(prev => [formattedEvent, ...prev].slice(0, 15));
                 }
@@ -145,7 +148,7 @@ export function ActivityFeed() {
                     );
                 })
             )}
-            <button className={`w-full py-3 mt-4 ${typography.uiLabel} font-black text-slate-500 uppercase tracking-widest hover:text-indigo-600 hover:bg-slate-50 rounded-xl transition-all border border-dashed border-slate-200`}>
+            <button className={`${typography.uiLabel} w-full py-3 mt-4 font-black text-slate-500 uppercase tracking-widest hover:text-indigo-600 hover:bg-slate-50 rounded-xl transition-all border border-dashed border-slate-200`}>
                 Ver todos los logs
             </button>
         </div>
