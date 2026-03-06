@@ -382,11 +382,11 @@ const Products: React.FC = () => {
                       <td className={`${spacing.pxLg} py-4 text-right ${typography.text.body} font-bold ${colors.textPrimary} truncate tabular-nums`}>
                         {formatCurrency(cost)}
                       </td>
-                      <td className={`${spacing.pxLg} py-4 text-right ${typography.text.body} font-black text-indigo-600 truncate tabular-nums`}>
+                      <td className={`${spacing.pxLg} py-4 text-right ${typography.text.body} font-bold text-indigo-600 truncate tabular-nums`}>
                         {formatCurrency(p.price)}
                       </td>
                       <td className={`${spacing.pxLg} py-4 text-center`}>
-                        <Badge variant={metrics.realMargin >= (p.target_margin || 0.3) ? 'success' : 'warning'} className="font-black">
+                        <Badge variant={metrics.realMargin >= (p.target_margin || 0.3) ? 'success' : 'warning'} className="font-bold">
                           {(metrics.realMargin * 100).toFixed(1)}%
                         </Badge>
                       </td>

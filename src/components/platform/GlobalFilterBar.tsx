@@ -23,9 +23,9 @@ export function GlobalFilterBar({
     segment, onSegmentChange
 }: GlobalFilterBarProps) {
     return (
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-slate-100 bg-white/50 p-2 pl-6 backdrop-blur-xl">
-            <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2 border-r border-slate-100 pr-6">
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-slate-100 bg-white/50 p-4 md:p-2 md:pl-6 backdrop-blur-xl">
+            <div className="flex flex-wrap items-center gap-4 md:gap-6">
+                <div className="flex items-center gap-2 border-r border-slate-100 pr-4 md:pr-6">
                     <Calendar size={16} className="text-indigo-600" />
                     <select
                         value={dateRange}
@@ -61,7 +61,7 @@ export function GlobalFilterBar({
                     )}
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-3 md:gap-4">
                     <div className="flex items-center gap-2 cursor-pointer group relative">
                         <div className="rounded-lg bg-slate-100 p-1.5 text-slate-500 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
                             <Filter size={14} />
@@ -98,11 +98,11 @@ export function GlobalFilterBar({
                 </div>
             </div>
 
-            <div className="flex items-center gap-2">
-                <Button variant="ghost" icon={<Share2 size={16} />}>
+            <div className="flex items-center gap-2 w-full md:w-auto justify-center md:justify-end border-t md:border-t-0 border-slate-100 pt-4 md:pt-0">
+                <Button variant="ghost" icon={<Share2 size={16} />} className="flex-1 md:flex-none">
                     Compartir Informe
                 </Button>
-                <Button variant="primary" icon={<Download size={16} />} className="shadow-lg shadow-indigo-200">
+                <Button variant="primary" icon={<Download size={16} />} className="shadow-lg shadow-indigo-200 flex-1 md:flex-none">
                     Exportar CSV
                 </Button>
             </div>
