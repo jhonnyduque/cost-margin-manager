@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Product, RawMaterial, Unit, ProductMaterial, MaterialBatch, StockMovement, UserRole, ProductMovement } from '@/types';
+import { Product, RawMaterial, Unit, ProductMaterial, MaterialBatch, StockMovement, UserRole, ProductMovement, STOCK_MOVEMENT_REF } from '@/types';
 import { supabase } from './services/supabase';
 import { fetchProductsFromSupabase } from './services/products.service';
 import { calculatePiecesToLinearMeters, getLatestRollWidth } from '@/utils/materialCalculations';
@@ -139,9 +139,9 @@ export const calculateProductCost = (
     // 🟠 AUDIT FIX: Usar calculatePiecesToLinearMeters centralizado
     // en lugar de duplicar la lógica dimensional aquí.
     let effectiveQty = pm.quantity;
-    if ((pm as any).mode === 'pieces' && Array.isArray((pm as any).pieces) && (pm as any).pieces.length > 0) {
+    if (pm.mode === 'pieces' && Array.isArray(pm.pieces) && pm.pieces.length > 0) {
       const rollWidth = getLatestRollWidth(pm.material_id, batches);
-      effectiveQty = calculatePiecesToLinearMeters((pm as any).pieces, rollWidth);
+      effectiveQty = calculatePiecesToLinearMeters(pm.pieces, rollWidth);
     }
 
     const fifoCost = calculateFifoCost(
@@ -470,7 +470,7 @@ export const useStore = create<AppState>()(
             type: 'egreso_compensatorio',
             quantity: qtyToCompensate,
             unit_cost: batch.unit_cost,
-            reference: 'Compensación Automática (Auto-Clearing)',
+            reference: STOCK_MOVEMENT_REF.compensacion(),
             created_at: now,
             deleted_at: null
           });
@@ -610,8 +610,8 @@ export const useStore = create<AppState>()(
 
         product.materials?.forEach(pm => {
           // 🟢 AUDIT FIX #3: Soporte modo pieces via getEffectiveQuantity
-          const effectiveQty = (pm as any).mode === 'pieces' && Array.isArray((pm as any).pieces) && (pm as any).pieces.length > 0
-            ? calculatePiecesToLinearMeters((pm as any).pieces, getLatestRollWidth(pm.material_id, currentBatches))
+          const effectiveQty = pm.mode === 'pieces' && Array.isArray(pm.pieces) && pm.pieces.length > 0
+            ? calculatePiecesToLinearMeters(pm.pieces, getLatestRollWidth(pm.material_id, currentBatches))
             : pm.quantity;
 
           const breakdown = getFifoBreakdown(
@@ -642,7 +642,9 @@ export const useStore = create<AppState>()(
               type: item.is_missing ? 'egreso_asumido' : 'egreso',
               quantity: item.quantity_used,
               unit_cost: item.unit_cost,
-              reference: item.is_missing ? `Faltante Asumido (Prod_ID: ${product.id}) - ${product.name}` : `Prod: ${product.name}`,
+              reference: item.is_missing
+                ? STOCK_MOVEMENT_REF.egresoAsumido(product.id, product.name)
+                : STOCK_MOVEMENT_REF.egreso(product.name),
               created_at: now
             });
           });
@@ -691,9 +693,9 @@ export const useStore = create<AppState>()(
         product.materials?.forEach(pm => {
           // 🟠 AUDIT FIX: Usar calculatePiecesToLinearMeters centralizado
           let reqQty = pm.quantity * quantity;
-          if ((pm as any).mode === 'pieces' && (pm as any).pieces) {
+          if (pm.mode === 'pieces' && pm.pieces) {
             const rollWidth = getLatestRollWidth(pm.material_id, currentBatches);
-            reqQty = calculatePiecesToLinearMeters((pm as any).pieces, rollWidth) * quantity;
+            reqQty = calculatePiecesToLinearMeters(pm.pieces, rollWidth) * quantity;
           }
 
           const breakdown = getFifoBreakdown(
@@ -724,7 +726,9 @@ export const useStore = create<AppState>()(
               type: item.is_missing ? 'egreso_asumido' : 'egreso',
               quantity: item.quantity_used,
               unit_cost: item.unit_cost,
-              reference: item.is_missing ? `Faltante Lote (Prod_ID: ${product.id})` : `Prod Lote: ${product.name}`,
+              reference: item.is_missing
+                ? STOCK_MOVEMENT_REF.egresoAsumidoLote(product.id)
+                : STOCK_MOVEMENT_REF.egresoLote(product.name),
               created_at: now
             });
             if (item.is_missing) hasMissingMaterials = true;

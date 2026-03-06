@@ -16,7 +16,8 @@ export const EVENTS = {
     // Global / System
     SYSTEM_NEW_SIGNUP: 'NEW_SIGNUP',
     SYSTEM_ERROR: 'SYSTEM_ERROR',
-    SYSTEM_MAINTENANCE: 'MAINTENANCE_ALERT'
+    SYSTEM_MAINTENANCE: 'MAINTENANCE_ALERT',
+    SYSTEM_BROADCAST: 'PLATFORM_NOTICE'
 } as const;
 
 export type EventKey = typeof EVENTS[keyof typeof EVENTS];

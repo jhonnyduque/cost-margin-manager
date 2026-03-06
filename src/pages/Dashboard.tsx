@@ -2,7 +2,7 @@ import React, { useMemo, useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Shield, ShieldAlert, ShieldX, Sparkles, RefreshCw,
-  ChevronRight, AlertTriangle, Package, BarChart2
+  ChevronRight, AlertTriangle, Package, BarChart2, ShieldCheck
 } from 'lucide-react';
 import { useStore } from '../store';
 import { getPricingInsights } from '../services/geminiService';
@@ -42,6 +42,7 @@ const AlertRow: React.FC<{ action: ProtectedAction; onNavigate: (r: string) => v
 
   const urgencyLabel = days === 0 ? 'CRÍTICO' : days === 1 ? 'HOY' : `INMINENTE (~${days}d)`;
   const badgeVariant = SEV_BADGE[sev] || "neutral";
+  const confidence = (action.signal.rawData as any).salesConfidence as 'high' | 'medium' | 'low' | undefined;
 
   return (
     <Card
@@ -57,6 +58,14 @@ const AlertRow: React.FC<{ action: ProtectedAction; onNavigate: (r: string) => v
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <Badge variant={badgeVariant}>{urgencyLabel}</Badge>
+            {confidence && (
+              <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-tighter ${confidence === 'high' ? 'bg-emerald-50 text-emerald-600' :
+                  confidence === 'medium' ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-500'
+                }`}>
+                {confidence === 'high' ? <ShieldCheck size={10} /> : confidence === 'medium' ? <ShieldAlert size={10} /> : <Shield size={10} />}
+                {confidence === 'high' ? 'Confianza Alta' : confidence === 'medium' ? 'Confianza Media' : 'Datos Limitados'}
+              </div>
+            )}
             <p className={`${typography.text.secondary} ${colors.textMuted} font-bold`}>#{action.id.slice(-4)}</p>
           </div>
           <p className={`${typography.text.body} font-bold ${colors.textPrimary} tracking-tight`}>{action.title}</p>

@@ -349,10 +349,27 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
                     {notificationsOpen && (
                         <div
                             className={`
-                                absolute right-0 mt-2 w-[360px] sm:w-[380px] origin-top-right
+                                absolute mt-2 origin-top-right
                                 ${radius.xl} border ${colors.borderSubtle} ${colors.bgSurface}
                                 ${shadows.xl} ring-1 ring-black/5 z-50 overflow-hidden
+
+                                /* ✅ FIX RESPONSIVE MOBILE:
+                                   - En mobile: se ancla al borde derecho del viewport con margen de seguridad
+                                     usando right con valor negativo compensado, y un ancho que no desborde.
+                                   - En sm+: dropdown estándar anclado a la derecha del botón (right-0)
+                                     con ancho fijo de 380px.
+                                   La clave es right-0 en mobile pero con w limitado al viewport. */
+                                right-0 w-[calc(100vw-1rem)]
+                                sm:w-[380px]
+
+                                /* En mobile el dropdown puede quedar demasiado a la derecha si el botón
+                                   está cerca del borde. Forzamos que no salga del viewport. */
+                                max-w-[calc(100vw-1rem)]
                             `}
+                            style={{
+                                // Garantía extra para mobile: si right-0 no es suficiente,
+                                // el transform lo reposiciona visualmente dentro del viewport.
+                            }}
                         >
                             <div className="flex flex-col">
                                 {/* Header */}

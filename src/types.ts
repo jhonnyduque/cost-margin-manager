@@ -30,6 +30,42 @@ export type SubscriptionTier = 'demo' | 'starter' | 'growth' | 'scale' | 'enterp
 // but keeping them compatible with Database Row.
 export type RawMaterial = Tables<'raw_materials'> & { created_by?: string; updated_by?: string; deleted_at?: string | null; };
 export type MaterialBatch = Tables<'material_batches'> & { created_by?: string; updated_by?: string; deleted_at?: string | null; };
+
+/**
+ * ⚠️ INVARIANT — StockMovement.reference field contract.
+ *
+ * The `reference` field encodes the movement origin as a human-readable string.
+ * Several system functions parse this field to reconstruct business logic
+ * (e.g. hasProductGeneratedActiveDebt, detectStockBreak in businessHealthEngine).
+ *
+ * NEVER change these formats without updating every consumer listed below.
+ *
+ * Canonical formats (defined in src/store.ts):
+ *
+ *   type='ingreso'            → batch.provider  (free text, not parsed)
+ *   type='egreso'             → `Prod: ${product.name}`
+ *                             | `Prod Lote: ${product.name}`
+ *   type='egreso_asumido'     → `Faltante Asumido (Prod_ID: ${product.id}) - ${product.name}`
+ *                             | `Faltante Lote (Prod_ID: ${product.id})`
+ *   type='egreso_compensatorio' → 'Compensación Automática (Auto-Clearing)'
+ *
+ * Consumers that depend on these formats:
+ *   - src/store.ts → hasProductGeneratedActiveDebt()
+ *     Parses: `Prod_ID: ${productId}` substring match on egreso_asumido
+ *   - src/services/businessHealthEngine.ts → detectStockBreak()
+ *     Parses: pm.product_id substring match to find dependentProductIds
+ *
+ * If you need to change a format, use STOCK_MOVEMENT_REF helpers below
+ * so all write sites stay in sync automatically.
+ */
+export const STOCK_MOVEMENT_REF = {
+  egreso: (productName: string) => `Prod: ${productName}`,
+  egresoLote: (productName: string) => `Prod Lote: ${productName}`,
+  egresoAsumido: (productId: string, productName: string) => `Faltante Asumido (Prod_ID: ${productId}) - ${productName}`,
+  egresoAsumidoLote: (productId: string) => `Faltante Lote (Prod_ID: ${productId})`,
+  compensacion: () => 'Compensación Automática (Auto-Clearing)',
+} as const;
+
 export type StockMovement = Tables<'stock_movements'> & { deleted_at?: string | null; };
 export type ProductMovement = Tables<'product_movements'>;
 export interface ProductMaterial {

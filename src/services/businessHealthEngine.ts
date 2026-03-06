@@ -34,21 +34,77 @@ export type SignalType =
     | 'dead_stock'
     | 'price_below_cost';
 
-export interface RiskSignal {
+// ─── Typed rawData payloads per signal type ───────────────────────────────────
+// Each detector injects a specific payload shape. Typing them eliminates all
+// `as any` casts in decisionEngine when reading these fields.
+
+export interface DebtRawData {
+    totalDebt: number;
+    totalInventoryValue: number;
+}
+
+export interface PriceBelowCostRawData {
+    cost: number;
+    price: number;
+    deficit: number;
+    /** Real monthly production volume (units). Fallback: FALLBACK_MONTHLY_SALES */
+    avgMonthlySales: number;
+    /** Confidence level of the avgMonthlySales estimate */
+    salesConfidence: SalesEstimate['confidence'];
+    /** Percentage (e.g. 30 = 30%) */
+    targetMargin: number;
+}
+
+export interface MarginDriftRawData {
+    actualMargin: number;
+    /** Percentage (e.g. 30 = 30%) */
+    targetMargin: number;
+    drift: number;
+    cost: number;
+    targetPrice: number;
+    gap: number;
+    /** Real monthly production volume (units). Fallback: FALLBACK_MONTHLY_SALES */
+    avgMonthlySales: number;
+    /** Confidence level of the avgMonthlySales estimate */
+    salesConfidence: SalesEstimate['confidence'];
+}
+
+export interface StockBreakRawData {
+    remaining: number;
+    dailyRate: number;
+    daysUntilBreak: number;
+    avgUnitCost: number;
+    /** Average real margin (%) of products that depend on this material */
+    avgProductMargin: number;
+    dependentProducts: number;
+    recentProductionRuns: number;
+}
+
+export interface DeadStockRawData {
+    frozenValue: number;
+    staleBatchCount: number;
+}
+
+// ─── Discriminated union — RiskSignal ─────────────────────────────────────────
+// Each variant carries its own strongly-typed rawData.
+// decisionEngine narrows the type via signal.type and gets full IntelliSense.
+
+interface RiskSignalBase {
     id: string;
-    type: SignalType;
     severity: Severity;
     affectedEntityId: string;
     affectedEntityName: string;
-    /** 0.0 – 1.0. 1.0 = certeza absoluta (ej: deuda ya contabilizada) */
     probability: number;
-    /** Pérdida monetaria estimada en la moneda del negocio */
     estimatedImpact: number;
-    /** Días hasta que el riesgo se materializa (0 = ya ocurrió) */
     timeToImpactDays: number;
-    /** Datos crudos útiles para el decisionEngine */
-    rawData: Record<string, unknown>;
 }
+
+export type RiskSignal =
+    | (RiskSignalBase & { type: 'debt'; rawData: DebtRawData })
+    | (RiskSignalBase & { type: 'price_below_cost'; rawData: PriceBelowCostRawData })
+    | (RiskSignalBase & { type: 'margin_drift'; rawData: MarginDriftRawData })
+    | (RiskSignalBase & { type: 'stock_break'; rawData: StockBreakRawData })
+    | (RiskSignalBase & { type: 'dead_stock'; rawData: DeadStockRawData });
 
 export interface KPI {
     label: string;
@@ -96,27 +152,85 @@ function avgDailyConsumption(materialId: string, movements: StockMovement[]): nu
 }
 
 /**
- * Promedio mensual de unidades producidas de un producto.
- * Usa una ventana de 90 días dividida en 3 meses para suavizar picos.
+ * SalesEstimate — resultado enriquecido de getAvgMonthlySales.
  *
- * Fallback: FALLBACK_MONTHLY_SALES (5 unidades) cuando no hay historial.
- * Este valor es deliberadamente conservador para no inflar proyecciones
- * en productos nuevos sin datos reales.
+ * confidence levels:
+ *   'high'   → 6+ meses de historial con varianza ≤ 40%
+ *              Los números del Dashboard son confiables.
+ *   'medium' → 3–6 meses, o 6+ meses con varianza > 40% (posible estacionalidad)
+ *              Los números son una aproximación razonable.
+ *   'low'    → < 3 meses de datos reales, o solo el fallback de 5 unidades.
+ *              Los números son orientativos — no tomar decisiones de compra basadas en ellos.
+ *
+ * dataMonths: cuántos meses del historial de 90 días tienen al menos 1 producción.
+ * variance:   coeficiente de variación entre meses (0 = perfecto, >1 = muy volátil).
+ *             Útil en el futuro para detectar estacionalidad cuando haya 12+ meses de datos.
  */
+export interface SalesEstimate {
+    avgMonthlySales: number;
+    confidence: 'high' | 'medium' | 'low';
+    dataMonths: number;
+    variance: number;
+}
+
 const FALLBACK_MONTHLY_SALES = 5;
 
-function getAvgMonthlySales(productId: string, productMovements: ProductMovement[]): number {
-    const cutoff90 = Date.now() - 90 * 24 * 60 * 60 * 1000;
-    const recent = productMovements.filter(
-        (pm) =>
-            pm.product_id === productId &&
-            pm.type === 'ingreso_produccion' &&
-            new Date(pm.created_at).getTime() > cutoff90
+function getAvgMonthlySales(productId: string, productMovements: ProductMovement[]): SalesEstimate {
+    const now = Date.now();
+    const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+    // Split the 90-day window into 3 buckets of 30 days each
+    const buckets = [0, 0, 0]; // [month-3-ago, month-2-ago, month-1-ago]
+    for (const pm of productMovements) {
+        if (pm.product_id !== productId || pm.type !== 'ingreso_produccion') continue;
+        const ageInDays = (now - new Date(pm.created_at).getTime()) / MS_PER_DAY;
+        if (ageInDays <= 30) buckets[2] += pm.quantity;
+        else if (ageInDays <= 60) buckets[1] += pm.quantity;
+        else if (ageInDays <= 90) buckets[0] += pm.quantity;
+    }
+
+    const dataMonths = buckets.filter(b => b > 0).length;
+
+    // No data at all → use conservative fallback
+    if (dataMonths === 0) {
+        return {
+            avgMonthlySales: FALLBACK_MONTHLY_SALES,
+            confidence: 'low',
+            dataMonths: 0,
+            variance: 0,
+        };
+    }
+
+    // Average only over months that actually have data
+    const activeBuckets = buckets.filter(b => b > 0);
+    const avg = activeBuckets.reduce((a, b) => a + b, 0) / activeBuckets.length;
+
+    // Coefficient of variation: stdDev / mean — measures volatility between months
+    const mean = avg;
+    const stdDev = Math.sqrt(
+        activeBuckets.reduce((acc, b) => acc + Math.pow(b - mean, 2), 0) / activeBuckets.length
     );
-    if (recent.length === 0) return FALLBACK_MONTHLY_SALES;
-    const totalUnits = recent.reduce((acc, pm) => acc + pm.quantity, 0);
-    // Divide over 3 months — minimum 1 unit to avoid zero projections
-    return Math.max(1, totalUnits / 3);
+    const variance = mean > 0 ? stdDev / mean : 0;
+
+    // Confidence rules:
+    // high   → 3 months of data with low variance (≤ 0.4)
+    // medium → 2–3 months with high variance, OR only 2 months with low variance
+    // low    → only 1 month of data (could be a peak or a slow month)
+    let confidence: SalesEstimate['confidence'];
+    if (dataMonths >= 3 && variance <= 0.4) {
+        confidence = 'high';
+    } else if (dataMonths >= 2) {
+        confidence = 'medium';
+    } else {
+        confidence = 'low';
+    }
+
+    return {
+        avgMonthlySales: Math.max(1, avg),
+        confidence,
+        dataMonths,
+        variance: Math.round(variance * 100) / 100,
+    };
 }
 
 /** Días estimados hasta quiebre de stock dado el consumo diario */
@@ -169,7 +283,7 @@ function detectPriceBelowCost(
         const cost = calculateProductCost(p, batches, rawMaterials);
         if (cost > 0 && p.price < cost) {
             const deficit = cost - p.price;
-            const avgMonthlySales = getAvgMonthlySales(p.id, productMovements);
+            const salesEstimate = getAvgMonthlySales(p.id, productMovements);
             signals.push({
                 id: `price-below-cost-${p.id}`,
                 type: 'price_below_cost',
@@ -177,14 +291,14 @@ function detectPriceBelowCost(
                 affectedEntityId: p.id,
                 affectedEntityName: p.name,
                 probability: 1.0,
-                // estimatedImpact now uses real monthly sales volume instead of hardcoded 10
-                estimatedImpact: deficit * avgMonthlySales,
+                estimatedImpact: deficit * salesEstimate.avgMonthlySales,
                 timeToImpactDays: 0,
                 rawData: {
                     cost,
                     price: p.price,
                     deficit,
-                    avgMonthlySales,
+                    avgMonthlySales: salesEstimate.avgMonthlySales,
+                    salesConfidence: salesEstimate.confidence,
                     targetMargin: p.target_margin ?? DEFAULT_TARGET_MARGIN,
                 },
             });
@@ -213,7 +327,7 @@ function detectMarginDrift(
             const severity: Severity = drift > 20 ? 'alto' : 'medio';
             const gap = metrics.adjustmentNeeded;
             const targetPrice = metrics.priceTarget;
-            const avgMonthlySales = getAvgMonthlySales(p.id, productMovements);
+            const salesEstimate = getAvgMonthlySales(p.id, productMovements);
             signals.push({
                 id: `margin-drift-${p.id}`,
                 type: 'margin_drift',
@@ -221,8 +335,7 @@ function detectMarginDrift(
                 affectedEntityId: p.id,
                 affectedEntityName: p.name,
                 probability: 0.9,
-                // estimatedImpact now uses real monthly sales volume instead of hardcoded 10
-                estimatedImpact: gap > 0 ? gap * avgMonthlySales : 0,
+                estimatedImpact: gap > 0 ? gap * salesEstimate.avgMonthlySales : 0,
                 timeToImpactDays: 1,
                 rawData: {
                     actualMargin,
@@ -231,7 +344,8 @@ function detectMarginDrift(
                     cost,
                     targetPrice,
                     gap,
-                    avgMonthlySales,
+                    avgMonthlySales: salesEstimate.avgMonthlySales,
+                    salesConfidence: salesEstimate.confidence,
                 },
             });
         }

@@ -112,9 +112,22 @@ const ProductBuilder = () => {
           .filter(r => /^REF-\d+$/i.test(r))
           .map(r => parseInt(r.replace(/^REF-/i, ''), 10));
         const maxNum = existingRefs.length > 0 ? Math.max(...existingRefs) : 0;
-        return `REF-${String(maxNum + 1).padStart(3, '0')}`;
       })();
-      setFormData({ name: '', reference: nextRef, materials: [], target_margin: 30, price: undefined });
+
+      // 🟢 CLAUDE FIX: Support duplication via router state
+      const duplicateFrom = (window.history.state?.usr as any)?.duplicateFrom as Product;
+      if (duplicateFrom) {
+        setFormData({
+          name: `${duplicateFrom.name} (Copia)`,
+          reference: nextRef,
+          price: duplicateFrom.price ?? 0,
+          target_margin: duplicateFrom.target_margin ?? 30,
+          materials: (duplicateFrom.materials || []) as ProductMaterialUI[],
+          status: 'activa'
+        });
+      } else {
+        setFormData({ name: '', reference: nextRef, materials: [], target_margin: 30, price: undefined });
+      }
     }
   }, [id, products, batches, navigate]);
 

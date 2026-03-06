@@ -45,10 +45,10 @@ function BroadcastConsole() {
         setStatus(null);
         try {
             await eventBusService.emitEvent({
-                eventKey: EVENTS.SYSTEM_MAINTENANCE,
+                eventKey: EVENTS.SYSTEM_BROADCAST,
                 sourceModule: SOURCE_MODULES.SYSTEM,
                 payload: {
-                    title: title.trim() || undefined,
+                    title: title.trim() || 'Aviso BETO OS',
                     message: message.trim()
                 }
             });

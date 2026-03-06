@@ -52,47 +52,57 @@ export interface DecisionReport {
 // ─── simulateScenario ─────────────────────────────────────────────────────────
 
 function simulateInaction(signal: RiskSignal): ScenarioResult {
-    const { type, estimatedImpact, timeToImpactDays, rawData } = signal;
+    const { type, estimatedImpact, timeToImpactDays } = signal;
 
     switch (type) {
         case 'debt': {
-            const debt = rawData.totalDebt as number;
+            const { totalDebt } = signal.rawData;
             return {
-                projectedValue: -(debt),
+                projectedValue: -totalDebt,
                 projectedMarginIn7Days: 0,
-                narrative: `La deuda de ${currency(debt)} seguirá acumulándose. Cada producción adicional sin stock empeora la integridad contable.`,
+                narrative: `La deuda de ${currency(totalDebt)} seguirá acumulándose. Cada producción adicional sin stock empeora la integridad contable.`,
             };
         }
         case 'stock_break': {
-            const { dailyRate, avgUnitCost, daysUntilBreak } = rawData as any;
-            const daysBlocked = Math.max(0, 7 - (daysUntilBreak as number));
-            const lostProduction = dailyRate * daysBlocked * (avgUnitCost * 2); // margen perdido estimado
+            const { dailyRate, avgUnitCost, daysUntilBreak } = signal.rawData;
+            const daysBlocked = Math.max(0, 7 - daysUntilBreak);
+            const lostProduction = dailyRate * daysBlocked * (avgUnitCost * 2);
             return {
-                projectedValue: -(lostProduction),
+                projectedValue: -lostProduction,
                 projectedMarginIn7Days: 0,
-                narrative: `Stock se agota en ~${Math.floor(daysUntilBreak as number)} días. Producción bloqueada por ~${Math.ceil(daysBlocked)} días. Pérdida estimada: ${currency(lostProduction)}.`,
+                narrative: `Stock se agota en ~${Math.floor(daysUntilBreak)} días. Producción bloqueada por ~${Math.ceil(daysBlocked)} días. Pérdida estimada: ${currency(lostProduction)}.`,
             };
         }
         case 'margin_drift': {
-            const { gap, avgMonthlySales } = rawData as any;
-            // Use real monthly sales volume — no longer a hardcoded estimate
-            const monthlySales = (avgMonthlySales as number) ?? 5;
-            const salesLoss = (gap as number) * monthlySales;
+            const { gap, avgMonthlySales, actualMargin, salesConfidence } = signal.rawData;
+            const salesLoss = gap * avgMonthlySales;
+            const confidenceNote = salesConfidence === 'low'
+                ? ` (estimación orientativa — menos de 2 meses de datos)`
+                : salesConfidence === 'medium' ? ` (estimación media — posible estacionalidad)` : '';
             return {
-                projectedValue: -(salesLoss),
-                projectedMarginIn7Days: (rawData.actualMargin as number),
-                narrative: `Cada venta pierde ${currency(gap)} vs. el margen objetivo. Con ~${Math.round(monthlySales)} uds/mes, la pérdida proyectada a 7 días es ${currency(salesLoss)}.`,
+                projectedValue: -salesLoss,
+                projectedMarginIn7Days: actualMargin,
+                narrative: `Cada venta pierde ${currency(gap)} vs. el margen objetivo. Con ~${Math.round(avgMonthlySales)} uds/mes${confidenceNote}, la pérdida proyectada es ${currency(salesLoss)}.`,
             };
         }
         case 'price_below_cost': {
-            const { deficit, avgMonthlySales } = rawData as any;
-            // Use real monthly sales volume — no longer a hardcoded estimate
-            const monthlySales = (avgMonthlySales as number) ?? 5;
-            const totalLoss = (deficit as number) * monthlySales;
+            const { deficit, avgMonthlySales, salesConfidence } = signal.rawData;
+            const totalLoss = deficit * avgMonthlySales;
+            const confidenceNote = salesConfidence === 'low'
+                ? ` (estimación orientativa — menos de 2 meses de datos)`
+                : salesConfidence === 'medium' ? ` (estimación media — posible estacionalidad)` : '';
             return {
-                projectedValue: -(totalLoss),
-                projectedMarginIn7Days: -(rawData.deficit as number),
-                narrative: `Cada unidad vendida genera una pérdida de ${currency(deficit)}. Con ~${Math.round(monthlySales)} uds/mes, el negocio pierde ${currency(totalLoss)} mensuales en este producto.`,
+                projectedValue: -totalLoss,
+                projectedMarginIn7Days: -deficit,
+                narrative: `Cada unidad vendida genera una pérdida de ${currency(deficit)}. Con ~${Math.round(avgMonthlySales)} uds/mes${confidenceNote}, el negocio pierde ${currency(totalLoss)} mensuales.`,
+            };
+        }
+        case 'dead_stock': {
+            const { frozenValue } = signal.rawData;
+            return {
+                projectedValue: -frozenValue,
+                projectedMarginIn7Days: 0,
+                narrative: `Capital inmovilizado de ${currency(frozenValue)} sin rotación. El costo de oportunidad aumenta cada semana.`,
             };
         }
         default:
@@ -105,7 +115,7 @@ function simulateInaction(signal: RiskSignal): ScenarioResult {
 }
 
 function simulateAction(signal: RiskSignal): ScenarioResult {
-    const { type, estimatedImpact, rawData } = signal;
+    const { type, estimatedImpact } = signal;
 
     switch (type) {
         case 'debt':
@@ -115,36 +125,39 @@ function simulateAction(signal: RiskSignal): ScenarioResult {
                 narrative: 'Regularizando el inventario, la deuda técnica queda a 0 y la integridad contable se restaura.',
             };
         case 'stock_break': {
-            const lostProduction = estimatedImpact;
-            const avgProductMargin = (rawData.avgProductMargin as number) ?? 0;
+            const { avgProductMargin } = signal.rawData;
             return {
-                projectedValue: lostProduction,
-                // Use real average margin of dependent products — was hardcoded to 1 before
+                projectedValue: estimatedImpact,
                 projectedMarginIn7Days: avgProductMargin,
                 narrative: 'Reabasteciendo hoy, la producción continúa sin interrupción durante los próximos 7 días.',
             };
         }
         case 'margin_drift': {
-            const { targetMargin, gap, avgMonthlySales } = rawData as any;
-            const monthlySales = (avgMonthlySales as number) ?? 5;
-            const recovered = (gap as number) * monthlySales;
+            const { targetMargin, gap, avgMonthlySales } = signal.rawData;
+            const recovered = gap * avgMonthlySales;
             return {
                 projectedValue: recovered,
-                projectedMarginIn7Days: targetMargin as number,
-                narrative: `Ajustando el precio de venta, el margen regresa al objetivo de ${(targetMargin as number).toFixed(1)}%. Recuperación proyectada: ${currency(recovered)}/mes.`,
+                projectedMarginIn7Days: targetMargin,
+                narrative: `Ajustando el precio de venta, el margen regresa al objetivo de ${targetMargin.toFixed(1)}%. Recuperación proyectada: ${currency(recovered)}/mes.`,
             };
         }
         case 'price_below_cost': {
-            const { cost, avgMonthlySales, targetMargin } = rawData as any;
-            const monthlySales = (avgMonthlySales as number) ?? 5;
-            // Use the product's real target margin — not a hardcoded 20%
-            const margin = ((targetMargin as number) ?? 30) / 100;
+            const { cost, avgMonthlySales, targetMargin } = signal.rawData;
+            const margin = targetMargin / 100;
             const correctedPrice = cost / (1 - margin);
-            const recovered = (correctedPrice - cost) * monthlySales;
+            const recovered = (correctedPrice - cost) * avgMonthlySales;
             return {
                 projectedValue: recovered,
-                projectedMarginIn7Days: (targetMargin as number) ?? 30,
+                projectedMarginIn7Days: targetMargin,
                 narrative: `Corrigiendo el precio a ${currency(correctedPrice)}, las ventas generan margen positivo. Recuperación proyectada: ${currency(recovered)}/mes.`,
+            };
+        }
+        case 'dead_stock': {
+            const { frozenValue } = signal.rawData;
+            return {
+                projectedValue: frozenValue * 0.7, // Capital liberado estimado al rotar el stock
+                projectedMarginIn7Days: 0,
+                narrative: 'Rotando el stock inmovilizado, el capital se libera para nuevas compras de mayor rentabilidad.',
             };
         }
         default:
@@ -177,7 +190,7 @@ function getActionMeta(signal: RiskSignal): { title: string; description: string
         case 'margin_drift':
             return {
                 title: `Ajustar precio de ${signal.affectedEntityName}`,
-                description: `El margen cayó ${((signal.rawData.drift as number) || 0).toFixed(1)}% por debajo del objetivo. Revisa el escandallo o actualiza el precio de venta.`,
+                description: `El margen cayó ${signal.rawData.drift.toFixed(1)}% por debajo del objetivo. Revisa el escandallo o actualiza el precio de venta.`,
                 actionLabel: 'Editar Producto',
                 actionRoute: '/productos',
             };
@@ -194,13 +207,6 @@ function getActionMeta(signal: RiskSignal): { title: string; description: string
                 description: `Hay ${currency(signal.estimatedImpact)} en material sin movimiento por más de 60 días.`,
                 actionLabel: 'Revisar Inventario',
                 actionRoute: '/materias-primas',
-            };
-        default:
-            return {
-                title: 'Atender señal de riesgo',
-                description: signal.affectedEntityName,
-                actionLabel: 'Ver Detalles',
-                actionRoute: '/',
             };
     }
 }
