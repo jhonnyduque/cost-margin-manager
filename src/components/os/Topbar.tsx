@@ -1,5 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, ChevronDown, ChevronRight, Settings, LogOut, Layout, Hexagon, X, CheckSquare, Info, AlertTriangle, AlertOctagon } from 'lucide-react';
+import {
+    Bell,
+    ChevronDown,
+    ChevronRight,
+    Settings,
+    LogOut,
+    Layout,
+    Hexagon,
+    CheckCheck,
+    Info,
+    AlertTriangle,
+    AlertOctagon
+} from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useStore } from '@/store';
 import { supabase } from '@/services/supabase';
@@ -12,6 +24,17 @@ import { colors, typography, spacing, radius, shadows } from '@/design/design-to
 interface TopbarProps {
     sidebarCollapsed?: boolean;
 }
+
+type NotificationItem = {
+    id: string;
+    title: string;
+    message: string;
+    created_at: string;
+    read_at?: string | null;
+    action_url?: string | null;
+    type?: string | null;
+    priority?: string | null;
+};
 
 /** Map platform routes to human-readable section names */
 const PLATFORM_SECTIONS: Record<string, string> = {
@@ -30,29 +53,78 @@ const getSectionName = (pathname: string): string | null => {
     return null;
 };
 
+const getNotificationIcon = (note: NotificationItem) => {
+    const title = `${note.title || ''} ${note.message || ''}`.toLowerCase();
+    const type = (note.type || '').toLowerCase();
+    const priority = (note.priority || '').toLowerCase();
+
+    if (priority === 'critical' || type.includes('critical') || title.includes('crítico') || title.includes('urgent')) {
+        return <AlertOctagon size={14} className="text-red-600" />;
+    }
+
+    if (priority === 'warning' || type.includes('warning') || title.includes('alerta') || title.includes('warning')) {
+        return <AlertTriangle size={14} className="text-amber-500" />;
+    }
+
+    if (type.includes('success') || title.includes('completado') || title.includes('aprobado') || title.includes('éxito')) {
+        return <CheckCheck size={14} className="text-emerald-600" />;
+    }
+
+    return <Info size={14} className="text-indigo-600" />;
+};
+
+const getNotificationIconBg = (note: NotificationItem) => {
+    const title = `${note.title || ''} ${note.message || ''}`.toLowerCase();
+    const type = (note.type || '').toLowerCase();
+    const priority = (note.priority || '').toLowerCase();
+
+    if (priority === 'critical' || type.includes('critical') || title.includes('crítico') || title.includes('urgent')) {
+        return 'bg-red-50 border-red-100';
+    }
+
+    if (priority === 'warning' || type.includes('warning') || title.includes('alerta') || title.includes('warning')) {
+        return 'bg-amber-50 border-amber-100';
+    }
+
+    if (type.includes('success') || title.includes('completado') || title.includes('aprobado') || title.includes('éxito')) {
+        return 'bg-emerald-50 border-emerald-100';
+    }
+
+    return 'bg-indigo-50 border-indigo-100';
+};
+
+const formatRelativeTime = (date: string) => {
+    const raw = formatDistanceToNow(new Date(date), { addSuffix: true, locale: es });
+    return raw.replace(/^alrededor de /i, '').toLowerCase();
+};
+
 export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
     const { user, currentCompany, mode, exitImpersonation, setIsSigningOut, resetState } = useAuth();
     const logout = useStore(state => state.logout);
     const navigate = useNavigate();
     const location = useLocation();
+
     const [menuOpen, setMenuOpen] = useState(false);
     const [notificationsOpen, setNotificationsOpen] = useState(false);
-    const [notifications, setNotifications] = useState<any[]>([]);
+    const [notifications, setNotifications] = useState<NotificationItem[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
+
     const menuRef = useRef<HTMLDivElement>(null);
     const notificationsRef = useRef<HTMLDivElement>(null);
 
     const sectionName = getSectionName(location.pathname);
 
-    // Cargar notificaciones iniciales
     useEffect(() => {
         const loadInitialData = async () => {
             if (!user) return;
+
             try {
                 const [list, count] = await Promise.all([
-                    notificationService.getNotifications(8),
+                    notificationService.getNotifications(12),
                     notificationService.getUnreadCount()
                 ]);
+
                 setNotifications(list);
                 setUnreadCount(count);
             } catch (err) {
@@ -62,11 +134,12 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
 
         loadInitialData();
 
-        // Suscripción Realtime
-        const subscription = notificationService.subscribeToNotifications((newNote) => {
-            setNotifications(prev => [newNote, ...prev].slice(0, 8));
+        const subscription = notificationService.subscribeToNotifications((newNote: NotificationItem) => {
+            setNotifications(prev => {
+                if (prev.some(n => n.id === newNote.id)) return prev;
+                return [newNote, ...prev].slice(0, 12);
+            });
             setUnreadCount(prev => prev + 1);
-            // Opcional: Sonido o Toast aquí
         });
 
         return () => {
@@ -77,26 +150,41 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
     useEffect(() => {
         setMenuOpen(false);
         setNotificationsOpen(false);
+        setExpandedNoteId(null);
     }, [location.pathname]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(event.target as Node)) setMenuOpen(false);
-            if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) setNotificationsOpen(false);
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setMenuOpen(false);
+            }
+
+            if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+                setNotificationsOpen(false);
+                setExpandedNoteId(null);
+            }
         };
+
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
     useEffect(() => {
-        if (!menuOpen) return;
-        const handleKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false); };
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setMenuOpen(false);
+                setNotificationsOpen(false);
+                setExpandedNoteId(null);
+            }
+        };
+
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [menuOpen]);
+    }, []);
 
     const handleLogout = async () => {
         setIsSigningOut(true);
+
         try {
             await supabase.auth.signOut();
             logout();
@@ -113,6 +201,57 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
         if (mode === 'company') {
             exitImpersonation();
             navigate('/control-center');
+        }
+    };
+
+    const handleOpenNotifications = () => {
+        setNotificationsOpen(prev => !prev);
+        setMenuOpen(false);
+    };
+
+    const handleMarkAllAsRead = async () => {
+        try {
+            await notificationService.markAllAsRead();
+            setNotifications(prev =>
+                prev.map(n => ({
+                    ...n,
+                    read_at: n.read_at || new Date().toISOString(),
+                }))
+            );
+            setUnreadCount(0);
+        } catch (error) {
+            console.error('Error marking all as read:', error);
+        }
+    };
+
+    const handleNotificationClick = async (note: NotificationItem) => {
+        try {
+            if (!note.read_at) {
+                await notificationService.markAsRead(note.id);
+                setUnreadCount(prev => Math.max(0, prev - 1));
+                setNotifications(prev =>
+                    prev.map(n =>
+                        n.id === note.id
+                            ? { ...n, read_at: new Date().toISOString() }
+                            : n
+                    )
+                );
+            }
+
+            const isLong = note.message.length > 85;
+
+            if (note.action_url) {
+                navigate(note.action_url);
+                setNotificationsOpen(false);
+                setExpandedNoteId(null);
+                return;
+            }
+
+            if (isLong) {
+                setExpandedNoteId(prev => (prev === note.id ? null : note.id));
+            }
+        } catch (error) {
+            console.error('Error interacting with notification:', error);
         }
     };
 
@@ -146,7 +285,9 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
                             {sectionName && sectionName !== 'Control Center' && (
                                 <>
                                     <ChevronRight size={14} className={`${colors.textMuted} flex-shrink-0 opacity-40`} />
-                                    <span className={`${typography.bodySm} font-semibold ${colors.textPrimary} truncate`}>{sectionName}</span>
+                                    <span className={`${typography.bodySm} font-semibold ${colors.textPrimary} truncate`}>
+                                        {sectionName}
+                                    </span>
                                 </>
                             )}
                         </>
@@ -159,7 +300,13 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
                                 {currentCompany?.name || 'Loading...'}
                             </span>
                             {currentCompany?.subscription_status && (
-                                <span className={`inline-flex ${radius.pill} ${colors.bgMain} ${spacing.pxSm} py-0.5 ${typography.caption} font-medium ${colors.textSecondary} border ${colors.borderStandard}`}>
+                                <span
+                                    className={`
+                                        inline-flex ${radius.pill} ${colors.bgMain} ${spacing.pxSm}
+                                        py-0.5 ${typography.caption} font-medium ${colors.textSecondary}
+                                        border ${colors.borderStandard}
+                                    `}
+                                >
                                     {currentCompany.subscription_status}
                                 </span>
                             )}
@@ -170,133 +317,245 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
 
             {/* Right side */}
             <div className="flex items-center gap-2 sm:gap-4">
+                {/* Notifications */}
                 <div className="relative" ref={notificationsRef}>
                     <button
-                        onClick={() => setNotificationsOpen(!notificationsOpen)}
+                        onClick={handleOpenNotifications}
+                        aria-label="Abrir notificaciones"
                         className={`
-                            relative ${radius.pill} p-2 transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center
-                            ${notificationsOpen ? `${colors.bgBrandSubtle} text-indigo-600` : `${colors.textSecondary} hover:${colors.bgMain} hover:${colors.textPrimary}`}
+                            relative h-11 w-11 ${radius.pill} transition-all flex items-center justify-center
+                            ${notificationsOpen
+                                ? `${colors.bgBrandSubtle} text-indigo-600 shadow-sm`
+                                : `${colors.textSecondary} hover:${colors.bgMain} hover:${colors.textPrimary}`
+                            }
                         `}
                     >
-                        <Bell size={20} />
+                        <Bell size={22} />
+
                         {unreadCount > 0 && (
-                            <span className={`absolute right-2 top-2 h-4 w-4 ${radius.pill} bg-red-500 ${typography.text.caption} font-bold text-white flex items-center justify-center border-2 ${colors.bgSurface}`}>
-                                {unreadCount > 9 ? '9+' : unreadCount}
-                            </span>
+                            <div className="absolute top-[8px] right-[8px] pointer-events-none">
+                                <span
+                                    className="absolute inset-0 h-2.5 w-2.5 bg-[#ff3040] rounded-full animate-ping opacity-70"
+                                    aria-hidden="true"
+                                />
+                                <span
+                                    className="relative block h-2.5 w-2.5 bg-[#ff3040] border-2 border-white rounded-full shadow-sm"
+                                    aria-hidden="true"
+                                />
+                            </div>
                         )}
                     </button>
 
                     {notificationsOpen && (
-                        <div className={`absolute right-0 mt-2 w-80 sm:w-96 origin-top-right ${radius.xl} border ${colors.borderSubtle} ${colors.bgSurface} ${shadows.xl} ring-1 ring-black ring-opacity-5 z-50 overflow-hidden`}>
-                            <div className={`flex items-center justify-between ${spacing.pxLg} py-3 border-b ${colors.bgMain}`}>
-                                <h3 className={`${typography.bodySm} font-semibold ${colors.textPrimary}`}>Notificaciones</h3>
-                                {unreadCount > 0 && (
-                                    <button
-                                        onClick={async () => {
-                                            await notificationService.markAllAsRead();
-                                            setUnreadCount(0);
-                                            setNotifications(prev => prev.map(n => ({ ...n, read_at: new Date().toISOString() })));
-                                        }}
-                                        className="text-xs font-medium text-indigo-600 hover:text-indigo-700"
-                                    >
-                                        Marcar todas como leídas
-                                    </button>
-                                )}
-                            </div>
+                        <div
+                            className={`
+                                absolute right-0 mt-2 w-[360px] sm:w-[380px] origin-top-right
+                                ${radius.xl} border ${colors.borderSubtle} ${colors.bgSurface}
+                                ${shadows.xl} ring-1 ring-black/5 z-50 overflow-hidden
+                            `}
+                        >
+                            <div className="flex flex-col">
+                                {/* Header */}
+                                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-white">
+                                    <div className="min-w-0">
+                                        <h3 className="text-[15px] font-semibold text-slate-900 leading-none">
+                                            Notificaciones
+                                        </h3>
+                                        <p className="text-[11px] text-slate-500 mt-1">
+                                            {unreadCount > 0
+                                                ? `${unreadCount} pendiente${unreadCount > 1 ? 's' : ''}`
+                                                : 'Todo al día'}
+                                        </p>
+                                    </div>
 
-                            <div className="max-h-[400px] overflow-y-auto">
-                                {notifications.length > 0 ? (
-                                    <div className="divide-y divide-slate-50">
-                                        {notifications.map((note) => (
-                                            <div
-                                                key={note.id}
-                                                onClick={async () => {
-                                                    if (!note.read_at) {
-                                                        await notificationService.markAsRead(note.id);
-                                                        setUnreadCount(prev => Math.max(0, prev - 1));
-                                                        setNotifications(prev => prev.map(n => n.id === note.id ? { ...n, read_at: new Date().toISOString() } : n));
-                                                    }
-                                                    if (note.action_url) navigate(note.action_url);
-                                                    setNotificationsOpen(false);
-                                                }}
-                                                className={`
-                                                    group flex gap-3 ${spacing.pxLg} py-3 hover:${colors.bgMain} transition-colors cursor-pointer
-                                                    ${!note.read_at ? `${colors.bgBrandSubtle}/30` : ''}
-                                                `}
-                                            >
-                                                <div className={`
-                                                    mt-0.5 h-8 w-8 ${radius.pill} flex items-center justify-center flex-shrink-0
-                                                    ${note.level === 'error' ? `${colors.bgDanger} ${colors.statusDanger}` :
-                                                        note.level === 'warning' ? `${colors.bgWarning} ${colors.statusWarning}` :
-                                                            `${colors.bgInfo} ${colors.statusInfo}`}
-                                                `}>
-                                                    {note.level === 'error' ? <AlertOctagon size={16} /> :
-                                                        note.level === 'warning' ? <AlertTriangle size={16} /> :
-                                                            <Info size={16} />}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-start justify-between gap-2">
-                                                        <p className={`${typography.bodySm} leading-snug ${!note.read_at ? `font-bold ${colors.textPrimary}` : `font-medium ${colors.textSecondary}`}`}>
-                                                            {note.title}
-                                                        </p>
-                                                        <span className={`${typography.caption} font-medium ${colors.textMuted} whitespace-nowrap mt-0.5`}>
-                                                            {formatDistanceToNow(new Date(note.created_at), { addSuffix: true, locale: es })}
-                                                        </span>
+                                    {unreadCount > 0 && (
+                                        <button
+                                            onClick={handleMarkAllAsRead}
+                                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
+                                        >
+                                            <CheckCheck size={12} />
+                                            marcar todas
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* List */}
+                                <div className="max-h-[252px] overflow-y-auto overscroll-contain">
+                                    {notifications.length > 0 ? (
+                                        <div className="divide-y divide-slate-100">
+                                            {notifications.map((note) => {
+                                                const isUnread = !note.read_at;
+                                                const isExpanded = expandedNoteId === note.id;
+                                                const isLong = note.message.length > 85;
+
+                                                return (
+                                                    <div
+                                                        key={note.id}
+                                                        onClick={() => handleNotificationClick(note)}
+                                                        className={`
+                                                            group cursor-pointer transition-colors
+                                                            ${isUnread ? 'bg-indigo-50/30' : 'bg-white'}
+                                                            hover:bg-slate-50
+                                                        `}
+                                                    >
+                                                        <div className="flex gap-3 px-4 py-3">
+                                                            {/* Icon */}
+                                                            <div
+                                                                className={`
+                                                                    mt-0.5 h-8 w-8 rounded-full border flex items-center justify-center flex-shrink-0
+                                                                    ${getNotificationIconBg(note)}
+                                                                `}
+                                                            >
+                                                                {getNotificationIcon(note)}
+                                                            </div>
+
+                                                            {/* Content */}
+                                                            <div className="min-w-0 flex-1">
+                                                                <div className="flex items-start justify-between gap-3">
+                                                                    <div className="min-w-0">
+                                                                        <p
+                                                                            className={`
+                                                                                text-[13px] leading-4
+                                                                                ${isUnread ? 'font-semibold text-slate-900' : 'font-medium text-slate-800'}
+                                                                            `}
+                                                                        >
+                                                                            {note.title}
+                                                                        </p>
+
+                                                                        <p className="text-[11px] text-slate-500 mt-1">
+                                                                            {formatRelativeTime(note.created_at)}
+                                                                        </p>
+                                                                    </div>
+
+                                                                    {isUnread && (
+                                                                        <span className="mt-1 h-2.5 w-2.5 rounded-full bg-indigo-500 flex-shrink-0" />
+                                                                    )}
+                                                                </div>
+
+                                                                <p
+                                                                    className={`
+                                                                        text-[12px] leading-5 text-slate-600 mt-1.5 pr-1
+                                                                        ${isExpanded ? 'line-clamp-none' : 'line-clamp-2'}
+                                                                    `}
+                                                                >
+                                                                    {note.message}
+                                                                </p>
+
+                                                                {(isLong || note.action_url) && (
+                                                                    <div className="flex items-center gap-3 mt-2">
+                                                                        {isLong && !note.action_url && (
+                                                                            <button
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    setExpandedNoteId(prev => prev === note.id ? null : note.id);
+                                                                                }}
+                                                                                className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-700"
+                                                                            >
+                                                                                {isExpanded ? 'ver menos' : 'ver más'}
+                                                                            </button>
+                                                                        )}
+
+                                                                        {note.action_url && (
+                                                                            <button
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    navigate(note.action_url as string);
+                                                                                    setNotificationsOpen(false);
+                                                                                    setExpandedNoteId(null);
+                                                                                }}
+                                                                                className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-700"
+                                                                            >
+                                                                                ir al detalle
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <p className={`${typography.caption} ${colors.textSecondary} mt-1 line-clamp-2 leading-relaxed`}>
-                                                        {note.message}
-                                                    </p>
-                                                </div>
-                                                {!note.read_at && (
-                                                    <div className={`mt-1.5 h-1.5 w-1.5 ${radius.pill} ${colors.bgBrand} flex-shrink-0`} />
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center py-10 ${spacing.pxLg} text-center">
-                                        <div className={`h-12 w-12 ${radius.pill} ${colors.bgMain} flex items-center justify-center mb-3 ${colors.textMuted} opacity-30`}>
-                                            <Bell size={24} />
+                                                );
+                                            })}
                                         </div>
-                                        <p className={`text-sm font-medium ${colors.textPrimary}`}>No hay notificaciones</p>
-                                        <p className={`${typography.caption} ${colors.textSecondary} mt-1`}>Te avisaremos cuando pase algo importante.</p>
-                                    </div>
-                                )}
-                            </div>
+                                    ) : (
+                                        <div className="px-6 py-10 text-center">
+                                            <div className="mx-auto h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                                                <Bell size={16} className="text-slate-400" />
+                                            </div>
+                                            <p className="text-[13px] font-medium text-slate-700">
+                                                No tienes notificaciones
+                                            </p>
+                                            <p className="text-[11px] text-slate-500 mt-1">
+                                                Cuando ocurra algo importante, aparecerá aquí.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
 
-                            <div className={`border-t ${colors.borderSubtle} ${spacing.pSm} ${colors.bgMain}`}>
-                                <button
-                                    onClick={() => { navigate('/settings/notifications'); setNotificationsOpen(false); }}
-                                    className={`flex w-full items-center justify-center gap-2 ${radius.md} py-2 ${typography.caption} font-medium ${colors.textSecondary} hover:${colors.bgSurface} hover:text-indigo-600 transition-all border border-transparent hover:${colors.borderStandard} ${shadows.sm}`}
-                                >
-                                    <Settings size={14} />
-                                    Gestionar preferencias
-                                </button>
+                                {/* Footer */}
+                                <div className="border-t border-slate-100 bg-slate-50/70 p-2">
+                                    <button
+                                        onClick={() => {
+                                            navigate('/settings?tab=notifications');
+                                            setNotificationsOpen(false);
+                                            setExpandedNoteId(null);
+                                        }}
+                                        className={`
+                                            w-full flex items-center justify-center gap-2 py-2.5
+                                            ${radius.md} text-[12px] font-semibold
+                                            ${colors.textSecondary} hover:bg-white hover:${colors.textPrimary}
+                                            border border-transparent hover:border-slate-200 transition-all
+                                        `}
+                                    >
+                                        <Settings size={14} />
+                                        gestionar preferencias
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
                 </div>
 
+                {/* User menu */}
                 <div className="relative" ref={menuRef}>
                     <button
                         onClick={() => setMenuOpen(!menuOpen)}
-                        className={`flex items-center gap-2 ${radius.pill} border ${colors.borderStandard} ${colors.bgMain} py-1 pl-1 pr-2 sm:pr-3 hover:bg-slate-100 transition-colors min-h-[40px]`}
+                        className={`
+                            flex items-center gap-2 ${radius.pill} border ${colors.borderStandard}
+                            ${colors.bgMain} py-1 pl-1 pr-2 sm:pr-3 hover:bg-slate-100
+                            transition-colors min-h-[40px]
+                        `}
                     >
-                        <div className={`h-8 w-8 ${radius.pill} ${colors.bgBrandSubtle} flex items-center justify-center text-indigo-600 ${typography.uiLabel} flex-shrink-0`}>
+                        <div
+                            className={`
+                                h-8 w-8 ${radius.pill} ${colors.bgBrandSubtle}
+                                flex items-center justify-center text-indigo-600
+                                ${typography.uiLabel} flex-shrink-0
+                            `}
+                        >
                             {user?.user_metadata?.full_name?.charAt(0) || 'U'}
                         </div>
+
                         <div className="hidden md:block text-left">
                             <p className={`text-sm font-medium ${colors.textSecondary} max-w-[100px] truncate`}>
                                 {user?.user_metadata?.full_name || 'User'}
                             </p>
                         </div>
+
                         <ChevronDown size={14} className={`${colors.textMuted} hidden sm:block`} />
                     </button>
 
                     {menuOpen && (
-                        <div className={`absolute right-0 mt-2 w-56 origin-top-right ${radius.lg} border ${colors.borderSubtle} ${colors.bgSurface} ${shadows.lg} ring-1 ring-black ring-opacity-5 py-1 z-50`}>
+                        <div
+                            className={`
+                                absolute right-0 mt-2 w-56 origin-top-right ${radius.lg}
+                                border ${colors.borderSubtle} ${colors.bgSurface}
+                                ${shadows.lg} ring-1 ring-black ring-opacity-5 py-1 z-50
+                            `}
+                        >
                             <div className={`px-4 py-3 border-b ${colors.borderSubtle}`}>
-                                <p className={`${typography.bodySm} font-medium ${colors.textPrimary} truncate`}>{user?.email}</p>
+                                <p className={`${typography.bodySm} font-medium ${colors.textPrimary} truncate`}>
+                                    {user?.email}
+                                </p>
                                 <p className={`${typography.caption} ${colors.textSecondary} truncate mt-1`}>
                                     {user?.is_super_admin ? 'Super Admin' : 'User'}
                                 </p>
@@ -311,16 +570,23 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
                             <div className="py-1">
                                 {user?.is_super_admin && mode === 'company' && (
                                     <button
-                                        onClick={() => { handleSwitchToPlatform(); setMenuOpen(false); }}
+                                        onClick={() => {
+                                            handleSwitchToPlatform();
+                                            setMenuOpen(false);
+                                        }}
                                         className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-amber-600 hover:bg-amber-50"
                                     >
                                         <Layout size={16} />
                                         Back to Platform
                                     </button>
                                 )}
+
                                 <button
                                     className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
-                                    onClick={() => { navigate('/settings'); setMenuOpen(false); }}
+                                    onClick={() => {
+                                        navigate('/settings');
+                                        setMenuOpen(false);
+                                    }}
                                 >
                                     <Settings size={16} />
                                     Settings
@@ -330,7 +596,10 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
                             <div className="py-1 border-t border-slate-50">
                                 <button
                                     onClick={handleLogout}
-                                    className={`flex w-full items-center gap-2 px-4 py-2.5 ${typography.bodySm} text-red-600 hover:${colors.bgDanger}`}
+                                    className={`
+                                        flex w-full items-center gap-2 px-4 py-2.5
+                                        ${typography.bodySm} text-red-600 hover:${colors.bgDanger}
+                                    `}
                                 >
                                     <LogOut size={16} />
                                     Logout

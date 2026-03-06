@@ -33,6 +33,12 @@ export const typography = {
 
         /** Metadata, captions, labels (11px/12px) */
         caption: "text-[11px] md:text-xs font-medium uppercase tracking-wider",
+
+        /** Micro text for high-density UI (10px) */
+        micro: "text-[10px] leading-tight font-medium",
+
+        /** Tiny text for metadata (9px) */
+        tiny: "text-[9px] leading-tight font-medium",
     },
 
     // ── ICON SIZES ──────────────────────────────────────────────────────────
