@@ -298,9 +298,9 @@ const Products: React.FC = () => {
                       <p className={`${typography.text.caption} ${colors.textSecondary} mt-0.5`}>{p.reference || 'SIN REF'}</p>
                     </div>
                   </div>
-                  <Badge variant={metrics.realMargin >= (p.target_margin || 0.3) ? 'success' : 'warning'}>
+                  <span className={`${typography.text.caption} font-bold tabular-nums ${metrics.realMargin >= (p.target_margin || 0.3) ? colors.statusSuccess : colors.statusWarning}`}>
                     {(metrics.realMargin * 100).toFixed(1)}%
-                  </Badge>
+                  </span>
                 </Card.Header>
 
                 <Card.Content className="grid grid-cols-2 gap-4 bg-slate-50/50 rounded-xl p-4 border border-slate-100">
@@ -376,7 +376,7 @@ const Products: React.FC = () => {
                       >
                         {p.name}
                       </td>
-                      <td className={`${spacing.pxLg} py-4 ${typography.text.secondary} text-slate-500 truncate font-medium`} title={p.reference || '---'}>
+                      <td className={`${spacing.pxLg} py-4 ${typography.text.secondary} text-slate-500 truncate font-bold tabular-nums`} title={p.reference || '---'}>
                         {p.reference || '---'}
                       </td>
                       <td className={`${spacing.pxLg} py-4 text-right ${typography.text.body} font-bold ${colors.textPrimary} truncate tabular-nums`}>
@@ -385,10 +385,8 @@ const Products: React.FC = () => {
                       <td className={`${spacing.pxLg} py-4 text-right ${typography.text.body} font-bold text-indigo-600 truncate tabular-nums`}>
                         {formatCurrency(p.price)}
                       </td>
-                      <td className={`${spacing.pxLg} py-4 text-center`}>
-                        <Badge variant={metrics.realMargin >= (p.target_margin || 0.3) ? 'success' : 'warning'} className="font-bold">
-                          {(metrics.realMargin * 100).toFixed(1)}%
-                        </Badge>
+                      <td className={`${spacing.pxLg} py-4 text-center ${typography.text.body} font-bold tabular-nums ${metrics.realMargin >= (p.target_margin || 0.3) ? colors.statusSuccess : colors.statusWarning}`}>
+                        {(metrics.realMargin * 100).toFixed(1)}%
                       </td>
                       <td className={`${spacing.pxLg} py-4`}>
                         <div className="flex justify-center items-center">

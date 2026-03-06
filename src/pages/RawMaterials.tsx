@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Edit2, Search, X, History, ShoppingCart, ArrowDownToLine, Printer, Pencil, AlertCircle, Maximize2, Scissors, RotateCcw, Package, Archive } from 'lucide-react';
+import { Plus, Trash2, Edit2, Search, X, History, ShoppingCart, ArrowDownToLine, Printer, Pencil, AlertCircle, Maximize2, Scissors, RotateCcw, Package, Archive, MoreVertical } from 'lucide-react';
 import { useStore, getMaterialDebt, calculateTotalFinancialDebt } from '../store';
 import { RawMaterial, Unit, MaterialBatch } from '@/types';
 import { Button } from '@/components/ui/Button';
@@ -46,6 +46,32 @@ const RawMaterials: React.FC = () => {
     date: new Date().toISOString().split('T')[0],
     provider: '', initial_quantity: 0, unit_cost: 0, reference: '', width: 140, length: 0
   });
+  const [menuState, setMenuState] = useState<{ materialId: string; rect: DOMRect } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // ── Click outside closes kebab menu ──
+  React.useEffect(() => {
+    if (!menuState) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('[data-kebab-trigger]')) return;
+      if (menuRef.current && !menuRef.current.contains(target)) {
+        setMenuState(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [menuState]);
+
+  const openMenu = (materialId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (menuState?.materialId === materialId) {
+      setMenuState(null);
+      return;
+    }
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setMenuState({ materialId, rect });
+  };
 
   const filteredMaterials = rawMaterials.filter(m =>
     m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -423,7 +449,7 @@ const RawMaterials: React.FC = () => {
                     <h3 className={`${typography.body} font-bold ${colors.textPrimary} truncate`}>{m.name}</h3>
                     <p className={`${typography.caption} ${colors.textSecondary} mt-0.5`}>{m.provider || 'Varios'}</p>
                   </div>
-                  <Badge variant="secondary" className="flex-shrink-0">{m.type}</Badge>
+                  <span className={`${typography.text.caption} font-bold uppercase tracking-wider text-slate-400 flex-shrink-0`}>{m.type}</span>
                 </div>
                 <div className={`grid grid-cols-2 gap-4 mt-4 mb-4 ${radius.lg} ${colors.bgMain} ${spacing.pMd} border ${colors.borderSubtle}`}>
                   <div className="flex flex-col">
@@ -437,61 +463,17 @@ const RawMaterials: React.FC = () => {
                     <span className={`${typography.body} font-medium ${colors.textPrimary}`}>{formatCurrency(weightedAvgCost)}</span>
                   </div>
                 </div>
-                <div className={`flex items-center gap-2 pt-2 border-t ${colors.borderSubtle}`}>
-                  <Button
-                    variant="secondary"
-                    onClick={() => setExpandedMaterialId(expandedMaterialId === m.id ? null : m.id)}
-                    className={`h-8 px-3 text-xs ${expandedMaterialId === m.id ? `${colors.bgBrandSubtle} text-indigo-700` : `${colors.bgBrandSubtle}/50 text-indigo-600 hover:${colors.bgBrandSubtle}`}`}
-                    icon={<History size={13} />}
-                  >
-                    {expandedMaterialId === m.id ? 'Cerrar' : 'Lotes'}
-                  </Button>
-                  {canEdit && (
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        const stats = batchStatsByMaterial[m.id] ?? getBatchStats(m.id);
-                        setEditingId(m.id);
-                        setFormData({ ...m, initialQty: stats.totalRemainingQty, unitCost: stats.weightedAvgCost });
-                        setIsModalOpen(true);
-                      }}
-                      className={`h-8 w-8 p-0 border ${colors.borderStandard} ${colors.bgMain} ${colors.textSecondary} hover:${colors.bgSurface} hover:${colors.textPrimary}`}
-                      icon={<Edit2 size={15} />}
-                    />
-                  )}
-                  {canDelete && (() => {
-                    const hasLinkedProducts = products.some(p => (p.materials ?? []).some(pm => pm.material_id === m.id));
-                    const remainingStock = batchStatsByMaterial[m.id].totalRemainingQty;
-                    const mustArchive = hasLinkedProducts || remainingStock > 0;
-                    const archiveReason = hasLinkedProducts ? 'Vinculada a productos activos' : 'Tiene stock físico con valor en libro';
-                    return mustArchive ? (
-                      <Button
-                        variant="ghost"
-                        onClick={async () => {
-                          if (window.confirm(`¿Archivar "${m.name}"? Razón: ${archiveReason}. Quedará inactiva pero el historial se conserva.`)) {
-                            try { await archiveMaterial(m.id); }
-                            catch (err: any) { alert(`Error: ${translateError(err)}`); }
-                          }
-                        }}
-                        className={`h-8 w-8 p-0 border ${colors.borderStandard} ${colors.bgWarning} ${colors.statusWarning} hover:opacity-80`}
-                        title={`Archivar (${archiveReason})`}
-                        icon={<Archive size={15} />}
-                      />
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        onClick={async () => {
-                          if (window.confirm(`¿Eliminar "${m.name}"? Sin stock ni productos vinculados. Esta acción no se puede deshacer.`)) {
-                            try { await deleteRawMaterial(m.id); }
-                            catch (err: any) { alert(`No se pudo eliminar: ${translateError(err)}`); }
-                          }
-                        }}
-                        className={`h-8 w-8 p-0 border ${colors.borderStandard} ${colors.bgDanger} ${colors.statusDanger} hover:opacity-80`}
-                        title="Eliminar (sin stock ni productos vinculados)"
-                        icon={<Trash2 size={15} />}
-                      />
-                    );
-                  })()}
+                <div className="flex justify-end pt-2 border-t border-slate-100">
+                  <div className="relative">
+                    <button
+                      data-kebab-trigger
+                      className="rounded-lg p-2 transition-colors hover:bg-slate-100 text-slate-400"
+                      onClick={(e) => openMenu(m.id, e)}
+                      aria-label="Más opciones"
+                    >
+                      <MoreVertical size={18} />
+                    </button>
+                  </div>
                 </div>
                 {expandedMaterialId === m.id && (
                   <div className={`mt-3 pt-3 border-t ${colors.borderSubtle} animate-in fade-in hide-in-from-top-2`}>
@@ -512,7 +494,7 @@ const RawMaterials: React.FC = () => {
           <table className="w-full text-left table-fixed">
             <thead className={`${colors.bgMain} border-b ${colors.borderStandard}`}>
               <tr>
-                <th className={`w-[30%] ${spacing.pxLg} py-3 ${typography.uiLabel} ${colors.textSecondary} truncate`}>Materia Prima</th>
+                <th className={`w-[25%] ${spacing.pxLg} py-3 ${typography.uiLabel} ${colors.textSecondary} truncate`}>Materia Prima</th>
                 <th className={`w-[12%] ${spacing.pxLg} py-3 ${typography.uiLabel} ${colors.textSecondary} truncate`}>Categoría</th>
                 <th className={`w-[18%] ${spacing.pxLg} py-3 ${typography.uiLabel} ${colors.textSecondary} truncate text-right`}>Disponible / Deuda</th>
                 <th className={`w-[15%] ${spacing.pxLg} py-3 ${typography.uiLabel} ${colors.textSecondary} truncate text-right`}>Valor en Bodega</th>
@@ -538,82 +520,35 @@ const RawMaterials: React.FC = () => {
                         </div>
                       </td>
                       <td className={`${spacing.pxLg} py-3 truncate`}>
-                        <Badge variant="secondary" className={`${typography.uiLabel} ${colors.bgMain} ${colors.textSecondary}`} title={m.type}>{m.type}</Badge>
+                        <span className={`${typography.text.caption} font-bold uppercase tracking-wider text-slate-500`} title={m.type}>{m.type}</span>
                       </td>
                       <td className={`${spacing.pxLg} py-3 truncate text-right`}>
                         <div className="flex justify-end items-center" title={`Stock Actual: ${displayStock.toFixed(2)} ${m.unit}s`}>
-                          <span className={`inline-flex items-center ${spacing.pxMd} py-0.5 ${radius.sm} ${typography.caption} font-bold ${displayStock > 0 ? `${colors.bgSuccess} ${colors.statusSuccess} border ${colors.borderSubtle}` : displayStock < 0 ? `${colors.bgDanger} ${colors.statusDanger} border ${colors.borderSubtle}` : `${colors.bgMain} ${colors.textSecondary} border ${colors.borderStandard}`}`}>
-                            {displayStock < 0 ? '🔴 ' : displayStock > 0 ? '🟢 ' : ''}
-                            {displayStock.toFixed(2)} <span className="ml-1 opacity-70">{m.unit}s</span>
+                          <span className={`${typography.text.body} font-bold tabular-nums ${displayStock > 0 ? colors.statusSuccess : displayStock < 0 ? colors.statusDanger : colors.textSecondary}`}>
+                            {displayStock.toFixed(2)} <span className={`${typography.text.caption} ml-1 opacity-70`}>{m.unit}s</span>
                           </span>
                         </div>
                       </td>
                       <td className={`${spacing.pxLg} py-3 truncate text-right`}>
-                        <span className={`${typography.body} font-medium ${valuation < 0 ? colors.statusDanger : colors.textPrimary}`} title={`Valorización: ${formatCurrency(valuation)}`}>
+                        <span className={`${typography.text.body} font-bold tabular-nums ${valuation < 0 ? colors.statusDanger : colors.textPrimary}`} title={`Valorización: ${formatCurrency(valuation)}`}>
                           {formatCurrency(valuation)}
                         </span>
                       </td>
                       <td className={`${spacing.pxLg} py-3 truncate text-right`}>
-                        <span className={`${typography.body} font-medium tabular-nums ${colors.textSecondary}`} title={`Costo Promedio FIFO: ${formatCurrency(weightedAvgCost)}`}>
+                        <span className={`${typography.text.body} font-bold tabular-nums ${colors.textSecondary}`} title={`Costo Promedio FIFO: ${formatCurrency(weightedAvgCost)}`}>
                           {formatCurrency(weightedAvgCost)}
                         </span>
                       </td>
                       <td className={`${spacing.pxLg} py-3 text-right`}>
-                        <div className="flex justify-end gap-1.5 opacity-70 transition-opacity group-hover:opacity-100">
-                          <Button
-                            variant="secondary"
-                            onClick={() => setExpandedMaterialId(expandedMaterialId === m.id ? null : m.id)}
-                            className={`h-8 w-8 p-0 border ${expandedMaterialId === m.id ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'border-transparent bg-gray-50 text-indigo-600 hover:border-gray-200 hover:bg-white hover:text-indigo-700'}`}
-                            title={expandedMaterialId === m.id ? 'Cerrar Detalles' : 'Ver Lotes (Histórico)'}
-                            icon={<History size={16} />}
-                          />
-                          {canEdit && (
-                            <Button
-                              variant="ghost"
-                              onClick={() => {
-                                const stats = batchStatsByMaterial[m.id] ?? getBatchStats(m.id);
-                                setEditingId(m.id);
-                                setFormData({ ...m, initialQty: stats.totalRemainingQty, unitCost: stats.weightedAvgCost });
-                                setIsModalOpen(true);
-                              }}
-                              className="h-8 w-8 p-0 border border-transparent bg-gray-50 text-slate-500 hover:border-gray-200 hover:bg-white hover:text-gray-600"
-                              title="Editar Materia Prima"
-                              icon={<Edit2 size={16} />}
-                            />
-                          )}
-                          {canDelete && (() => {
-                            const hasLinkedProducts = products.some(p => (p.materials ?? []).some(pm => pm.material_id === m.id));
-                            const remainingStock = batchStatsByMaterial[m.id].totalRemainingQty;
-                            const mustArchive = hasLinkedProducts || remainingStock > 0;
-                            const archiveReason = hasLinkedProducts ? 'Vinculada a productos activos' : 'Tiene stock físico con valor en libro';
-                            return mustArchive ? (
-                              <Button
-                                variant="ghost"
-                                className="h-8 w-8 p-0 border border-transparent bg-amber-50 text-amber-500 hover:border-amber-200 hover:bg-amber-100"
-                                title={`Archivar (${archiveReason})`}
-                                onClick={async () => {
-                                  if (window.confirm(`¿Archivar "${m.name}"? Razón: ${archiveReason}. Quedará inactiva pero el historial se conserva.`)) {
-                                    try { await archiveMaterial(m.id); }
-                                    catch (err: any) { alert(`Error: ${translateError(err)}`); }
-                                  }
-                                }}
-                                icon={<Archive size={16} />}
-                              />
-                            ) : (
-                              <Button
-                                variant="ghost"
-                                className="h-8 w-8 p-0 border border-transparent bg-gray-50 text-slate-500 hover:border-gray-200 hover:bg-white hover:text-red-600"
-                                title="Eliminar (sin stock ni productos vinculados)"
-                                onClick={async () => {
-                                  if (window.confirm(`¿Eliminar "${m.name}"? Sin stock ni productos vinculados. Esta acción no se puede deshacer.`)) {
-                                    try { await deleteRawMaterial(m.id); }
-                                    catch (err: any) { alert(`No se pudo eliminar: ${translateError(err)}`); }
-                                  }
-                                }}
-                                icon={<Trash2 size={16} />}
-                              />
-                            );
-                          })()}
+                        <div className="flex justify-end items-center">
+                          <button
+                            data-kebab-trigger
+                            className={`rounded-lg p-2 transition-all border border-transparent ${menuState?.materialId === m.id ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}
+                            onClick={(e) => openMenu(m.id, e)}
+                            aria-label="Más opciones"
+                          >
+                            <MoreVertical size={18} />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -700,12 +635,12 @@ const RawMaterials: React.FC = () => {
                                           <td className={`${spacing.pxMd} py-2.5 tabular-nums ${typography.text.caption} font-medium`}>{batch.date}</td>
                                           <td className={`${spacing.pxMd} py-2.5`}>
                                             {isDimensional ? (
-                                              <Badge variant={batch.entry_mode === 'pieza' ? 'warning' : 'default'} className={`flex w-fit items-center gap-1 flex-shrink-0 ${typography.text.caption} px-2 py-0.5`}>
+                                              <span className={`flex w-fit items-center gap-1 flex-shrink-0 ${typography.text.caption} font-bold uppercase tracking-tight ${batch.entry_mode === 'pieza' ? colors.statusWarning : colors.statusSuccess}`}>
                                                 {batch.entry_mode === 'pieza' ? <Scissors size={12} /> : <RotateCcw size={12} />}
                                                 {batch.entry_mode || 'Rollo'}
-                                              </Badge>
+                                              </span>
                                             ) : (
-                                              <Badge variant="default" className={`${typography.text.caption} ${colors.bgMain} ${colors.textSecondary}`}>Estándar</Badge>
+                                              <span className={`${typography.text.caption} font-bold uppercase tracking-wider text-slate-400`}>Estándar</span>
                                             )}
                                           </td>
                                           <td className={`${spacing.pxMd} py-2.5 font-medium ${typography.text.caption} truncate`} title={batch.provider}>{batch.provider}</td>
@@ -888,6 +823,91 @@ const RawMaterials: React.FC = () => {
           </Card>
         </div>
       )}
+      {/* ── FIXED KEBAB DROPDOWN (escapes all overflow) ── */}
+      {menuState && (() => {
+        const material = rawMaterials.find(m => m.id === menuState.materialId);
+        if (!material) return null;
+        const { rect } = menuState;
+        const menuHeight = 164;
+        const openUpward = rect.bottom + menuHeight > window.innerHeight;
+        const style: React.CSSProperties = {
+          position: 'fixed',
+          right: window.innerWidth - rect.right,
+          zIndex: 9999,
+          ...(openUpward ? { bottom: window.innerHeight - rect.top + 4 } : { top: rect.bottom + 4 }),
+        };
+
+        const stats = batchStatsByMaterial[material.id] ?? getBatchStats(material.id);
+        const hasLinkedProducts = products.some(p => (p.materials ?? []).some(pm => pm.material_id === material.id));
+        const remainingStock = stats.totalRemainingQty;
+        const mustArchive = hasLinkedProducts || remainingStock > 0;
+        const archiveReason = hasLinkedProducts ? 'Vinculada a productos activos' : 'Tiene stock físico con valor en libro';
+
+        return (
+          <div ref={menuRef} className={`${radius.xl} border ${colors.borderStandard} ${colors.bgSurface} ${shadows.xl} py-1.5 min-w-[180px]`} style={style}>
+            <button
+              className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${expandedMaterialId === material.id ? 'text-indigo-700 bg-indigo-50' : `${colors.textSecondary} hover:${colors.bgMain}`} transition-colors`}
+              onClick={() => { setMenuState(null); setExpandedMaterialId(expandedMaterialId === material.id ? null : material.id); }}
+            >
+              <History size={14} className={colors.textMuted} /> {expandedMaterialId === material.id ? 'Cerrar Detalles' : 'Ver Lotes'}
+            </button>
+            <div className={`border-t ${colors.borderSubtle} my-1.5`} />
+
+            {canEdit && (
+              <button
+                className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.textSecondary} hover:${colors.bgMain} transition-colors`}
+                onClick={() => {
+                  setMenuState(null);
+                  setEditingId(material.id);
+                  setFormData({
+                    name: material.name,
+                    description: material.description || '',
+                    type: material.type,
+                    unit: material.unit,
+                    provider: material.provider || '',
+                    status: material.status,
+                    initialQty: stats.totalRemainingQty,
+                    unitCost: stats.weightedAvgCost
+                  });
+                  setIsModalOpen(true);
+                }}
+              >
+                <Edit2 size={14} className={colors.textMuted} /> Editar Material
+              </button>
+            )}
+
+            {canDelete && (
+              mustArchive ? (
+                <button
+                  className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.statusWarning} hover:${colors.bgWarning} transition-colors`}
+                  onClick={async () => {
+                    setMenuState(null);
+                    if (window.confirm(`¿Archivar "${material.name}"? Razón: ${archiveReason}. Quedará inactiva pero el historial se conserva.`)) {
+                      try { await archiveMaterial(material.id); }
+                      catch (err: any) { alert(`Error: ${translateError(err)}`); }
+                    }
+                  }}
+                >
+                  <Archive size={14} /> Archivar Insumo
+                </button>
+              ) : (
+                <button
+                  className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.statusDanger} hover:${colors.bgDanger} transition-colors`}
+                  onClick={async () => {
+                    setMenuState(null);
+                    if (window.confirm(`¿Eliminar "${material.name}"? Sin stock ni productos vinculados. Esta acción no se puede deshacer.`)) {
+                      try { await deleteRawMaterial(material.id); }
+                      catch (err: any) { alert(`No se pudo eliminar: ${translateError(err)}`); }
+                    }
+                  }}
+                >
+                  <Trash2 size={14} /> Eliminar Insumo
+                </button>
+              )
+            )}
+          </div>
+        );
+      })()}
     </PageContainer>
   );
 };

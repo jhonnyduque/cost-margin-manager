@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { PackageSearch, Search, Info, Plus, FileDown, Printer, History, ArrowUpRight, AlertTriangle, ChevronDown, ChevronUp, X } from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { Plus, Trash2, Edit2, Search, X, History, ShoppingCart, ArrowDownToLine, Printer, Pencil, AlertCircle, Maximize2, Scissors, RotateCcw, Package, Archive, MoreVertical, ArrowUpRight, PackageSearch, FileDown, ChevronUp, ChevronDown, AlertTriangle } from 'lucide-react';
 import { useStore } from '../store';
 import { colors, typography, spacing, radius, shadows } from '@/design/design-tokens';
 import { PageContainer, SectionBlock } from '@/components/ui/LayoutPrimitives';
@@ -38,6 +38,33 @@ const FinishedGoods: React.FC = () => {
         type: 'salida_venta',
         reference: ''
     });
+
+    const [menuState, setMenuState] = useState<{ productId: string; rect: DOMRect } | null>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    // ── Click outside closes kebab menu ──
+    useEffect(() => {
+        if (!menuState) return;
+        const handler = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (target.closest('[data-kebab-trigger]')) return;
+            if (menuRef.current && !menuRef.current.contains(target)) {
+                setMenuState(null);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [menuState]);
+
+    const openMenu = (productId: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (menuState?.productId === productId) {
+            setMenuState(null);
+            return;
+        }
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        setMenuState({ productId, rect });
+    };
 
     const getProductStock = (productId: string) => {
         const movements = productMovements.filter(m => m.product_id === productId);
@@ -185,32 +212,15 @@ const FinishedGoods: React.FC = () => {
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4 text-center">
-                                                        <div className="flex items-center justify-center gap-2">
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                className="h-8 transition-colors border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                                                                onClick={() => setOutputModal({
-                                                                    isOpen: true,
-                                                                    productId: p.id,
-                                                                    productName: p.name,
-                                                                    currentStock: stock,
-                                                                    quantity: 1,
-                                                                    type: 'salida_venta',
-                                                                    reference: ''
-                                                                })}
-                                                                title="Registrar Salida / Venta"
+                                                        <div className="flex justify-center items-center">
+                                                            <button
+                                                                data-kebab-trigger
+                                                                className={`rounded-lg p-2 transition-all border border-transparent ${menuState?.productId === p.id ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}
+                                                                onClick={(e) => openMenu(p.id, e)}
+                                                                aria-label="Más opciones"
                                                             >
-                                                                <ArrowUpRight size={16} className="mr-1" /> Sacar
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className={`h-8 transition-colors ${isExpanded ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-gray-100 text-gray-500'}`}
-                                                                onClick={() => setExpandedProductId(isExpanded ? null : p.id)}
-                                                            >
-                                                                <History size={16} className="mr-2" /> Histórico ({pMovements.length})
-                                                            </Button>
+                                                                <MoreVertical size={18} />
+                                                            </button>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -442,6 +452,51 @@ const FinishedGoods: React.FC = () => {
                     </div>
                 )
             }
+            {/* ── FIXED KEBAB DROPDOWN (escapes all overflow) ── */}
+            {menuState && (() => {
+                const product = products.find(pp => pp.id === menuState.productId);
+                if (!product) return null;
+                const { rect } = menuState;
+                const menuHeight = 120;
+                const openUpward = rect.bottom + menuHeight > window.innerHeight;
+                const style: React.CSSProperties = {
+                    position: 'fixed',
+                    right: window.innerWidth - rect.right,
+                    zIndex: 9999,
+                    ...(openUpward ? { bottom: window.innerHeight - rect.top + 4 } : { top: rect.bottom + 4 }),
+                };
+                const stock = getProductStock(product.id);
+                const pMovements = productMovements.filter(m => m.product_id === product.id);
+
+                return (
+                    <div ref={menuRef} className={`${radius.xl} border ${colors.borderStandard} ${colors.bgSurface} ${shadows.xl} py-1.5 min-w-[180px]`} style={style}>
+                        <button
+                            className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${expandedProductId === product.id ? 'bg-indigo-50 text-indigo-700' : `${colors.textSecondary} hover:${colors.bgMain}`} transition-colors`}
+                            onClick={() => { setMenuState(null); setExpandedProductId(expandedProductId === product.id ? null : product.id); }}
+                        >
+                            <History size={14} className={colors.textMuted} /> Histórico ({pMovements.length})
+                        </button>
+                        <div className={`border-t ${colors.borderSubtle} my-1.5`} />
+                        <button
+                            className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium text-orange-600 hover:bg-orange-50 transition-colors`}
+                            onClick={() => {
+                                setMenuState(null);
+                                setOutputModal({
+                                    isOpen: true,
+                                    productId: product.id,
+                                    productName: product.name,
+                                    currentStock: stock,
+                                    quantity: 1,
+                                    type: 'salida_venta',
+                                    reference: ''
+                                });
+                            }}
+                        >
+                            <ArrowUpRight size={14} /> Registrar Salida
+                        </button>
+                    </div>
+                );
+            })()}
         </PageContainer>
     );
 };
