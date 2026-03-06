@@ -1,0 +1,60 @@
+# 📋 INFORME INTEGRAL DE AUDITORÍA — BETO OS v3.0
+
+## 1. PROPÓSITO Y VISIÓN GENERAL
+**BETO OS** es una plataforma SaaS de clase mundial diseñada para la gestión operativa y financiera de empresas de manufactura y retail. Su propósito es proporcionar una **"Única Fuente de Verdad"** (Single Ledger) para el control microscópico de costos, márgenes de rentabilidad y salud del inventario.
+
+### Objetivos Principales:
+- **Transparencia Financiera**: Cálculo en tiempo real de márgenes reales vs. objetivos.
+- **Eficiencia Operativa**: Mitigación de quiebres de stock y gestión de lotes FIFO.
+- **Protección Proactiva**: Identificación automática de riesgos financieros y operativos antes de que impacten el flujo de caja.
+
+---
+
+## 2. GOBERNANZA Y ARQUITECTURA
+El sistema está construido bajo tres pilares fundamentales de gobernanza:
+
+### A. Gobernanza de Datos (Single Ledger)
+Todo movimiento físico tiene un impacto financiero inmediato. El sistema no permite "descuidos" operativos; cada producción debe estar respaldada por un lote físico, de lo contrario, el sistema genera **Deuda de Inventario**, una señal crítica de riesgo contable.
+
+### B. Active Protection System (APS)
+La lógica de negocio reside en motores desacoplados (Engines) que funcionan como capas de auditoría:
+1.  **Capa 1: BusinessHealthEngine**: Detecta "señales de riesgo" (quiebres, deudas, márgenes en caída).
+2.  **Capa 2: DecisionEngine**: Simula escenarios (¿Qué pasa si no actúo?) y calcula el beneficio neto de la intervención.
+3.  **Capa 3: ProtectionEngine**: Prioriza las acciones basándose en el impacto monetario y la probabilidad.
+
+### C. Gobernanza de Diseño (BETO OS DS)
+La interfaz es un reflejo de la precisión financiera del sistema. El sistema de diseño (Design Tokens) prohíbe el uso de estilos arbitrarios. La consistencia visual (tipografía `tabular-nums`, espaciados de 8px, y pureza visual "Zero Badges") es obligatoria para mantener un entorno de trabajo profesional y libre de ruido.
+
+---
+
+## 3. FINALIDAD DEL SaaS
+La finalidad última de BETO OS es transformar datos operativos crudos en **decisiones estratégicas automáticas**. La plataforma no solo reporta lo que pasó, sino que predice lo que pasará y guía al usuario hacia la acción de mayor beneficio económico.
+
+---
+
+## 4. ARCHIVOS CLAVE PARA AUDITORÍA (CLAUDE AI)
+Para una auditoría profunda del "alma" y la estructura del sistema, se recomienda enviar los siguientes archivos organizados por área:
+
+### 🧠 Motores de Lógica (El "Cerebro")
+- [/src/services/businessHealthEngine.ts](file:///c:/Users/Beto/Documents/APP/cost-margin-manager/src/services/businessHealthEngine.ts) (Detección de señales de riesgo)
+- [/src/services/decisionEngine.ts](file:///c:/Users/Beto/Documents/APP/cost-margin-manager/src/services/decisionEngine.ts) (Simulación de escenarios e impacto)
+- [/src/services/protectionEngine.ts](file:///c:/Users/Beto/Documents/APP/cost-margin-manager/src/services/protectionEngine.ts) (Consolidación y priorización estratégica)
+- [/src/core/financialMetricsEngine.ts](file:///c:/Users/Beto/Documents/APP/cost-margin-manager/src/core/financialMetricsEngine.ts) (Cálculos matemáticos de rentabilidad)
+
+### 📊 Estado y Datos (El "Single Ledger")
+- `/src/store/index.ts` (Estado global de inventario y lógicas de agregación)
+- `/src/types/index.ts` (Definiciones de los modelos de negocio)
+
+### 🎨 Gobernanza UI (El "Estándar")
+- [/src/design/design-tokens.ts](file:///c:/Users/Beto/Documents/APP/cost-margin-manager/src/design/design-tokens.ts) (Tokens oficiales del sistema)
+- [/src/components/ui/LayoutPrimitives.tsx](file:///c:/Users/Beto/Documents/APP/cost-margin-manager/src/components/ui/LayoutPrimitives.tsx) (Patrones de layout estandarizados)
+- `C:\Users\Beto\.gemini\antigravity\brain\...\design_system_governance.md` (Este documento es la constitución visual)
+
+### 🖥️ Vistas Críticas (La "Implementación")
+- [/src/pages/Dashboard.tsx](file:///c:/Users/Beto/Documents/APP/cost-margin-manager/src/pages/Dashboard.tsx) (Consumo del APS)
+- [/src/pages/Products.tsx](file:///c:/Users/Beto/Documents/APP/cost-margin-manager/src/pages/Products.tsx) (Gestión de márgenes y acciones)
+- [/src/pages/RawMaterials.tsx](file:///c:/Users/Beto/Documents/APP/cost-margin-manager/src/pages/RawMaterials.tsx) (Gestión FIFO y deuda técnica)
+
+---
+
+**Preparado por Antigravity para la Auditoría de Claude AI.** ⚖️🛡️🚀

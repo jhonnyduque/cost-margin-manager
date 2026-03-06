@@ -74,21 +74,25 @@ function simulateInaction(signal: RiskSignal): ScenarioResult {
             };
         }
         case 'margin_drift': {
-            const { gap } = rawData as any;
-            const salesLoss = (gap as number) * 10; // Estimado 10 unidades
+            const { gap, avgMonthlySales } = rawData as any;
+            // Use real monthly sales volume — no longer a hardcoded estimate
+            const monthlySales = (avgMonthlySales as number) ?? 5;
+            const salesLoss = (gap as number) * monthlySales;
             return {
                 projectedValue: -(salesLoss),
                 projectedMarginIn7Days: (rawData.actualMargin as number),
-                narrative: `Cada venta pierde ${currency(gap)} vs. el margen objetivo. En 7 días, el negocio dejará de ser rentable en este producto.`,
+                narrative: `Cada venta pierde ${currency(gap)} vs. el margen objetivo. Con ~${Math.round(monthlySales)} uds/mes, la pérdida proyectada a 7 días es ${currency(salesLoss)}.`,
             };
         }
         case 'price_below_cost': {
-            const { deficit } = rawData as any;
-            const totalLoss = (deficit as number) * 15;
+            const { deficit, avgMonthlySales } = rawData as any;
+            // Use real monthly sales volume — no longer a hardcoded estimate
+            const monthlySales = (avgMonthlySales as number) ?? 5;
+            const totalLoss = (deficit as number) * monthlySales;
             return {
                 projectedValue: -(totalLoss),
                 projectedMarginIn7Days: -(rawData.deficit as number),
-                narrative: `Cada unidad vendida genera una pérdida de ${currency(deficit)}. El negocio subsidia cada venta de este producto.`,
+                narrative: `Cada unidad vendida genera una pérdida de ${currency(deficit)}. Con ~${Math.round(monthlySales)} uds/mes, el negocio pierde ${currency(totalLoss)} mensuales en este producto.`,
             };
         }
         default:
@@ -112,28 +116,35 @@ function simulateAction(signal: RiskSignal): ScenarioResult {
             };
         case 'stock_break': {
             const lostProduction = estimatedImpact;
+            const avgProductMargin = (rawData.avgProductMargin as number) ?? 0;
             return {
-                projectedValue: lostProduction, // Se evita la pérdida
-                projectedMarginIn7Days: 1,
+                projectedValue: lostProduction,
+                // Use real average margin of dependent products — was hardcoded to 1 before
+                projectedMarginIn7Days: avgProductMargin,
                 narrative: 'Reabasteciendo hoy, la producción continúa sin interrupción durante los próximos 7 días.',
             };
         }
         case 'margin_drift': {
-            const { targetMargin, gap } = rawData as any;
-            const recovered = (gap as number) * 10;
+            const { targetMargin, gap, avgMonthlySales } = rawData as any;
+            const monthlySales = (avgMonthlySales as number) ?? 5;
+            const recovered = (gap as number) * monthlySales;
             return {
                 projectedValue: recovered,
                 projectedMarginIn7Days: targetMargin as number,
-                narrative: `Ajustando el precio de venta, el margen regresa al objetivo de ${(targetMargin as number).toFixed(1)}%.`,
+                narrative: `Ajustando el precio de venta, el margen regresa al objetivo de ${(targetMargin as number).toFixed(1)}%. Recuperación proyectada: ${currency(recovered)}/mes.`,
             };
         }
         case 'price_below_cost': {
-            const { cost } = rawData as any;
-            const recovered = (cost as number) * 15 * 0.2; // Margen mínimo 20%
+            const { cost, avgMonthlySales, targetMargin } = rawData as any;
+            const monthlySales = (avgMonthlySales as number) ?? 5;
+            // Use the product's real target margin — not a hardcoded 20%
+            const margin = ((targetMargin as number) ?? 30) / 100;
+            const correctedPrice = cost / (1 - margin);
+            const recovered = (correctedPrice - cost) * monthlySales;
             return {
                 projectedValue: recovered,
-                projectedMarginIn7Days: 20,
-                narrative: 'Corrigiendo el precio, las ventas pasan de generar pérdidas a generar margen positivo.',
+                projectedMarginIn7Days: (targetMargin as number) ?? 30,
+                narrative: `Corrigiendo el precio a ${currency(correctedPrice)}, las ventas generan margen positivo. Recuperación proyectada: ${currency(recovered)}/mes.`,
             };
         }
         default:
@@ -202,7 +213,7 @@ const currency = (n: number) =>
 export function buildDecisionReport(healthReport: HealthReport): DecisionReport {
     const { signals } = healthReport;
 
-    const actions: RecommendedAction[] = signals.map((signal, idx) => {
+    const actions: RecommendedAction[] = signals.map((signal) => {
         const inaction = simulateInaction(signal);
         const action = simulateAction(signal);
         const netBenefit = action.projectedValue - inaction.projectedValue;
@@ -215,7 +226,7 @@ export function buildDecisionReport(healthReport: HealthReport): DecisionReport 
             inactionScenario: inaction,
             actionScenario: action,
             netBenefit,
-            priority: idx, // Will be overwritten after sort
+            priority: 0, // Assigned after sort below
         };
     });
 

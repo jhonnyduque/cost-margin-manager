@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Edit2, Search, PlayCircle, Info, Layers, TrendingUp, CheckCircle2, X, ChevronRight, AlertTriangle, RotateCcw, Ruler, History, Copy, Package, PackageSearch, Printer, Archive, MoreVertical } from 'lucide-react';
 import { useStore, calculateProductCost, calculateFifoCost, getFifoBreakdown, hasProductGeneratedActiveDebt } from '../store';
 import { calculateFinancialMetrics } from '@/core/financialMetricsEngine';
-import { Product, Unit, RawMaterial, MaterialBatch } from '@/types';
+import { Product, Unit, RawMaterial, MaterialBatch, DEFAULT_TARGET_MARGIN } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
@@ -18,10 +18,15 @@ import { UniversalPageHeader } from '@/components/ui/UniversalPageHeader';
 const Products: React.FC = () => {
   const navigate = useNavigate();
   const { currentCompanyId, currentUserRole, products, productMovements, rawMaterials, batches, movements, addProduct, deleteProduct, discontinueProduct, updateProduct, consumeStock, consumeStockBatch } = useStore();
+  // Roles allowed to perform write operations. 'super_admin' is a system role
+  // defined in UserRole — previously missing from the type caused this check to
+  // always return false for super admins.
   const allowedRoles = ['super_admin', 'admin', 'owner', 'manager'];
-  const canCreate = allowedRoles.includes((currentUserRole as string) || '');
-  const canEdit = allowedRoles.includes((currentUserRole as string) || '');
-  const canDelete = allowedRoles.includes((currentUserRole as string) || '');
+  const canManage = allowedRoles.includes((currentUserRole as string) || '');
+  // Keep semantic aliases for readability in JSX — they all share the same rule for now.
+  const canCreate = canManage;
+  const canEdit = canManage;
+  const canDelete = canManage;
   const { formatCurrency, currencySymbol } = useCurrency();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'activa' | 'inactiva' | 'todos'>('activa');
@@ -114,7 +119,10 @@ const Products: React.FC = () => {
   });
 
   const handleDuplicate = (product: Product) => {
-    navigate('/productos/nuevo');
+    // 🔴 FIX: Previously this function ignored the `product` argument and navigated
+    // to an empty form. Now it passes the source product via router state so the
+    // new product form can pre-populate all fields from the original.
+    navigate('/productos/nuevo', { state: { duplicateFrom: product } });
   };
 
   const handlePrint = () => {
@@ -281,7 +289,13 @@ const Products: React.FC = () => {
         <div className="md:hidden space-y-4">
           {filteredProducts.map((p) => {
             const cost = calculateProductCost(p, batches, rawMaterials);
-            const metrics = calculateFinancialMetrics(cost, p.price, p.target_margin || 0.3);
+            const metrics = calculateFinancialMetrics(
+              cost,
+              p.price,
+              // 🔴 FIX: target_margin is stored as PERCENTAGE (e.g. 30), not decimal (0.3).
+              // Divide by 100 to convert to the decimal format financialMetricsEngine expects.
+              (p.target_margin ?? DEFAULT_TARGET_MARGIN) / 100
+            );
             return (
               <Card key={p.id} className="border border-slate-200">
                 <Card.Header className="mb-4">
@@ -299,7 +313,7 @@ const Products: React.FC = () => {
                       <p className={`${typography.text.caption} ${colors.textSecondary} mt-0.5`}>{p.reference || 'SIN REF'}</p>
                     </div>
                   </div>
-                  <span className={`${typography.text.caption} font-bold tabular-nums ${metrics.realMargin >= (p.target_margin || 0.3) ? colors.statusSuccess : colors.statusWarning}`}>
+                  <span className={`${typography.text.caption} font-bold tabular-nums ${metrics.realMargin >= (p.target_margin ?? DEFAULT_TARGET_MARGIN) / 100 ? colors.statusSuccess : colors.statusWarning}`}>
                     {(metrics.realMargin * 100).toFixed(1)}%
                   </span>
                 </Card.Header>
@@ -358,7 +372,13 @@ const Products: React.FC = () => {
               <tbody className="divide-y divide-slate-100">
                 {filteredProducts.map((p) => {
                   const cost = calculateProductCost(p, batches, rawMaterials);
-                  const metrics = calculateFinancialMetrics(cost, p.price, p.target_margin || 0.3);
+                  const metrics = calculateFinancialMetrics(
+                    cost,
+                    p.price,
+                    // 🔴 FIX: target_margin is stored as PERCENTAGE (e.g. 30), not decimal (0.3).
+                    // Divide by 100 to convert to the decimal format financialMetricsEngine expects.
+                    (p.target_margin ?? DEFAULT_TARGET_MARGIN) / 100
+                  );
                   return (
                     <tr key={p.id} className={`group transition-all hover:bg-slate-50/50 ${selectedIds.has(p.id) ? `bg-indigo-50/30` : colors.bgSurface}`}>
                       <td className={`${spacing.pxLg} py-4`}>
@@ -386,7 +406,7 @@ const Products: React.FC = () => {
                       <td className={`${spacing.pxLg} py-4 text-right ${typography.text.body} font-bold text-indigo-600 truncate tabular-nums`}>
                         {formatCurrency(p.price)}
                       </td>
-                      <td className={`${spacing.pxLg} py-4 text-center ${typography.text.body} font-bold tabular-nums ${metrics.realMargin >= (p.target_margin || 0.3) ? colors.statusSuccess : colors.statusWarning}`}>
+                      <td className={`${spacing.pxLg} py-4 text-center ${typography.text.body} font-bold tabular-nums ${metrics.realMargin >= (p.target_margin ?? DEFAULT_TARGET_MARGIN) / 100 ? colors.statusSuccess : colors.statusWarning}`}>
                         {(metrics.realMargin * 100).toFixed(1)}%
                       </td>
                       <td className={`${spacing.pxLg} py-4`}>
@@ -512,6 +532,10 @@ const Products: React.FC = () => {
                       const baseCost = calculateProductCost(product!, batches, rawMaterials);
                       setMissingStockModal({ ...missingStockModal, isOpen: false });
                       setSuccessModal({ isOpen: true, productName: product?.name || '', cost: baseCost * missingStockModal.quantity, quantity: missingStockModal.quantity });
+                      // 🔴 FIX: Previously missing — if production fails here the modal
+                      // closes silently with no feedback to the user.
+                    }).catch(err => {
+                      alert('Error registrando producción con deuda: ' + err.message);
                     });
                   }}>Aceptar y Generar Deuda</Button>
                 </div>

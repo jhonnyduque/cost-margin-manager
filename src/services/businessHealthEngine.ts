@@ -15,6 +15,7 @@ import {
     MaterialBatch,
     StockMovement,
     ProductMovement,
+    DEFAULT_TARGET_MARGIN,
 } from '@/types';
 import {
     calculateProductCost,
@@ -94,6 +95,30 @@ function avgDailyConsumption(materialId: string, movements: StockMovement[]): nu
     return totalConsumed / 30;
 }
 
+/**
+ * Promedio mensual de unidades producidas de un producto.
+ * Usa una ventana de 90 días dividida en 3 meses para suavizar picos.
+ *
+ * Fallback: FALLBACK_MONTHLY_SALES (5 unidades) cuando no hay historial.
+ * Este valor es deliberadamente conservador para no inflar proyecciones
+ * en productos nuevos sin datos reales.
+ */
+const FALLBACK_MONTHLY_SALES = 5;
+
+function getAvgMonthlySales(productId: string, productMovements: ProductMovement[]): number {
+    const cutoff90 = Date.now() - 90 * 24 * 60 * 60 * 1000;
+    const recent = productMovements.filter(
+        (pm) =>
+            pm.product_id === productId &&
+            pm.type === 'ingreso_produccion' &&
+            new Date(pm.created_at).getTime() > cutoff90
+    );
+    if (recent.length === 0) return FALLBACK_MONTHLY_SALES;
+    const totalUnits = recent.reduce((acc, pm) => acc + pm.quantity, 0);
+    // Divide over 3 months — minimum 1 unit to avoid zero projections
+    return Math.max(1, totalUnits / 3);
+}
+
 /** Días estimados hasta quiebre de stock dado el consumo diario */
 function daysUntilBreak(remaining: number, daily: number): number {
     if (daily <= 0) return Infinity;
@@ -136,12 +161,15 @@ function detectDebt(
 function detectPriceBelowCost(
     products: Product[],
     batches: MaterialBatch[],
-    rawMaterials: RawMaterial[]
+    rawMaterials: RawMaterial[],
+    productMovements: ProductMovement[]
 ): RiskSignal[] {
     const signals: RiskSignal[] = [];
     for (const p of products) {
         const cost = calculateProductCost(p, batches, rawMaterials);
         if (cost > 0 && p.price < cost) {
+            const deficit = cost - p.price;
+            const avgMonthlySales = getAvgMonthlySales(p.id, productMovements);
             signals.push({
                 id: `price-below-cost-${p.id}`,
                 type: 'price_below_cost',
@@ -149,9 +177,16 @@ function detectPriceBelowCost(
                 affectedEntityId: p.id,
                 affectedEntityName: p.name,
                 probability: 1.0,
-                estimatedImpact: (cost - p.price) * 10, // Estimado: 10 unidades de venta perdida
+                // estimatedImpact now uses real monthly sales volume instead of hardcoded 10
+                estimatedImpact: deficit * avgMonthlySales,
                 timeToImpactDays: 0,
-                rawData: { cost, price: p.price, deficit: cost - p.price },
+                rawData: {
+                    cost,
+                    price: p.price,
+                    deficit,
+                    avgMonthlySales,
+                    targetMargin: p.target_margin ?? DEFAULT_TARGET_MARGIN,
+                },
             });
         }
     }
@@ -162,11 +197,13 @@ function detectPriceBelowCost(
 function detectMarginDrift(
     products: Product[],
     batches: MaterialBatch[],
-    rawMaterials: RawMaterial[]
+    rawMaterials: RawMaterial[],
+    productMovements: ProductMovement[]
 ): RiskSignal[] {
     const signals: RiskSignal[] = [];
     for (const p of products) {
-        const targetMargin: number = (p as any).target_margin ?? 30;
+        // target_margin is a PERCENTAGE (e.g. 30 = 30%) — divide by 100 for financialMetricsEngine
+        const targetMargin: number = p.target_margin ?? DEFAULT_TARGET_MARGIN;
         const cost = calculateProductCost(p, batches, rawMaterials);
         const metrics = calculateFinancialMetrics(cost, p.price, targetMargin / 100);
         const actualMargin = metrics.realMargin * 100;
@@ -174,9 +211,9 @@ function detectMarginDrift(
 
         if (drift > 5 && cost > 0) {
             const severity: Severity = drift > 20 ? 'alto' : 'medio';
-            // Impacto estimado: cuánto dinero extra se necesita subir el precio para alcanzar el target
             const gap = metrics.adjustmentNeeded;
             const targetPrice = metrics.priceTarget;
+            const avgMonthlySales = getAvgMonthlySales(p.id, productMovements);
             signals.push({
                 id: `margin-drift-${p.id}`,
                 type: 'margin_drift',
@@ -184,9 +221,18 @@ function detectMarginDrift(
                 affectedEntityId: p.id,
                 affectedEntityName: p.name,
                 probability: 0.9,
-                estimatedImpact: gap > 0 ? gap * 10 : 0, // Estimado 10 unidades
-                timeToImpactDays: 1, // Cada venta que se haga hoy pierde margen
-                rawData: { actualMargin, targetMargin, drift, cost, targetPrice, gap },
+                // estimatedImpact now uses real monthly sales volume instead of hardcoded 10
+                estimatedImpact: gap > 0 ? gap * avgMonthlySales : 0,
+                timeToImpactDays: 1,
+                rawData: {
+                    actualMargin,
+                    targetMargin,
+                    drift,
+                    cost,
+                    targetPrice,
+                    gap,
+                    avgMonthlySales,
+                },
             });
         }
     }
@@ -198,7 +244,8 @@ function detectStockBreak(
     rawMaterials: RawMaterial[],
     batches: MaterialBatch[],
     movements: StockMovement[],
-    productMovements: ProductMovement[]
+    productMovements: ProductMovement[],
+    products: Product[]
 ): RiskSignal[] {
     const signals: RiskSignal[] = [];
 
@@ -242,6 +289,19 @@ function detectStockBreak(
                 ).map((pm) => pm.product_id)
             );
 
+            // Find products that use this material and compute their avg real margin
+            // so decisionEngine can project the real margin recovered when restocking
+            const dependentProducts = products.filter(p =>
+                (p.materials ?? []).some(pm => pm.material_id === mat.id)
+            );
+            const avgProductMargin = dependentProducts.length > 0
+                ? dependentProducts.reduce((acc, p) => {
+                    const cost = avgUnitCost > 0 ? avgUnitCost : 0;
+                    if (cost <= 0 || p.price <= 0) return acc;
+                    return acc + ((p.price - cost) / p.price) * 100;
+                }, 0) / dependentProducts.length
+                : 0;
+
             signals.push({
                 id: `stock-break-${mat.id}`,
                 type: 'stock_break',
@@ -256,6 +316,7 @@ function detectStockBreak(
                     dailyRate,
                     daysUntilBreak: days,
                     avgUnitCost,
+                    avgProductMargin,
                     dependentProducts: dependentProductIds.size,
                     recentProductionRuns: recentProductions.length,
                 },
@@ -324,7 +385,12 @@ function buildKPIs(
 
     const margins = products.map(p => {
         const cost = calculateProductCost(p, batches, rawMaterials);
-        return calculateFinancialMetrics(cost, p.price, (p.target_margin || 30) / 100).realMargin * 100;
+        return calculateFinancialMetrics(
+            cost,
+            p.price,
+            // target_margin is PERCENTAGE — divide by 100 for financialMetricsEngine
+            (p.target_margin ?? DEFAULT_TARGET_MARGIN) / 100
+        ).realMargin * 100;
     }).filter(m => !isNaN(m));
     const avgMargin =
         margins.length > 0
@@ -405,9 +471,9 @@ export function runHealthCheck(input: HealthCheckInput): HealthReport {
 
     const signals: RiskSignal[] = [
         ...detectDebt(movements, rawMaterials, batches),
-        ...detectPriceBelowCost(products, batches, rawMaterials),
-        ...detectMarginDrift(products, batches, rawMaterials),
-        ...detectStockBreak(rawMaterials, batches, movements, productMovements),
+        ...detectPriceBelowCost(products, batches, rawMaterials, productMovements),
+        ...detectMarginDrift(products, batches, rawMaterials, productMovements),
+        ...detectStockBreak(rawMaterials, batches, movements, productMovements, products),
         ...detectDeadStock(batches, movements, rawMaterials),
     ].sort((a, b) => b.estimatedImpact * b.probability - a.estimatedImpact * a.probability);
 

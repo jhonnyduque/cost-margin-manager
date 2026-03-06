@@ -370,8 +370,9 @@ export const useStore = create<AppState>()(
         if (!companyId) return;
         const actorId = await getActorId();
 
-        set((state) => ({ rawMaterials: [...state.rawMaterials, material] }));
-
+        // 🔴 FIX: Insert to DB FIRST, then update local state.
+        // Previous code did set() optimistically before the insert — if the DB
+        // insert failed, the material appeared in the UI but didn't exist in DB.
         const { error } = await supabase.from('raw_materials').insert({
           id: material.id,
           company_id: companyId,
@@ -390,6 +391,9 @@ export const useStore = create<AppState>()(
           console.error('[Supabase] addRawMaterial Error:', error.message);
           throw error;
         }
+
+        // Only update local state after confirmed DB write
+        set((state) => ({ rawMaterials: [...state.rawMaterials, material] }));
       },
 
       updateRawMaterial: async (material) => {
@@ -742,7 +746,20 @@ export const useStore = create<AppState>()(
         };
 
         for (const batch of currentBatches) {
-          await supabase.from('material_batches').update({ remaining_quantity: batch.remaining_quantity }).eq('id', batch.id).eq('company_id', companyId);
+          const original = get().batches.find(b => b.id === batch.id);
+          if (original && original.remaining_quantity !== batch.remaining_quantity) {
+            // 🔴 FIX: Check error on every DB write — previously this was fire-and-forget.
+            // A silent failure here would leave DB and in-memory state desynchronized,
+            // creating invisible inventory debt with no audit trail.
+            const { error } = await supabase.from('material_batches')
+              .update({ remaining_quantity: batch.remaining_quantity })
+              .eq('id', batch.id)
+              .eq('company_id', companyId);
+            if (error) {
+              console.error(`[store] consumeStockBatch batch update failed for ${batch.id}:`, error.message);
+              throw error;
+            }
+          }
         }
 
         if (syncMovements.length > 0) {
@@ -797,7 +814,18 @@ export const useStore = create<AppState>()(
       },
     }),
     {
-      name: 'calculadora-pro-fifo-v4',
+      // 🔒 SECURITY FIX: Only persist session identifiers — NEVER operational data.
+      // Persisting products/batches/movements in localStorage creates a cross-tenant
+      // data leak risk in multi-tenant environments: switching companies would show
+      // stale data from the previous tenant until Supabase reloads.
+      // All operational data is always loaded fresh from Supabase on session start.
+      name: 'beto-os-session-v1',
+      partialize: (state) => ({
+        currentCompanyId: state.currentCompanyId,
+        currentUserRole: state.currentUserRole,
+        isImpersonating: state.isImpersonating,
+        impersonatedCompanyId: state.impersonatedCompanyId,
+      }),
     }
   )
 );

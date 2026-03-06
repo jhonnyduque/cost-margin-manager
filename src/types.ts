@@ -14,7 +14,15 @@ export type Company = Tables<'companies'> & {
   custom_price_cents?: number | null;
 };
 
-export type UserRole = 'owner' | 'admin' | 'manager' | 'operator' | 'viewer';
+// ⚠️ CANONICAL FORMAT: target_margin is stored as a PERCENTAGE in the DB.
+// Always use as a number 0–100 (e.g. 30 = 30%).
+// When passing to financialMetricsEngine, divide by 100: (target_margin / 100).
+// Never store or compare as a decimal (0.3) — that caused silent calculation errors.
+export const DEFAULT_TARGET_MARGIN = 30; // 30% — used as fallback when target_margin is null
+
+// 'super_admin' is a system-level role assigned server-side (not a tenant role).
+// It must be included here so allowedRoles checks in UI components work correctly.
+export type UserRole = 'owner' | 'admin' | 'manager' | 'operator' | 'viewer' | 'super_admin';
 export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'suspended' | 'canceled' | 'incomplete' | 'incomplete_expired' | 'unpaid';
 export type SubscriptionTier = 'demo' | 'starter' | 'growth' | 'scale' | 'enterprise';
 
@@ -33,6 +41,9 @@ export interface ProductMaterial {
 }
 
 export type Product = Tables<'products'> & {
+  // NOTE: target_margin is already in database.types.ts (products.Row) as `number | null`.
+  // Format: PERCENTAGE (e.g. 30 = 30%). Use DEFAULT_TARGET_MARGIN as fallback.
+  // materials is stored as Json in the DB — we cast it to ProductMaterial[] here for type safety.
   materials: ProductMaterial[] | null;
   created_by?: string;
   updated_by?: string;
