@@ -9,8 +9,8 @@ import { Session } from '@supabase/supabase-js';
 // 🔧 Logging helper - solo muestra logs informativos en desarrollo
 // Errores y warnings SIEMPRE se muestran (en cualquier entorno)
 const log = {
-    debug: (...args: any[]) => import.meta.env.DEV && console.debug('[AuthProvider]', ...args),
-    info: (...args: any[]) => import.meta.env.DEV && console.info('[AuthProvider]', ...args),
+    debug: (...args: any[]) => { },
+    info: (...args: any[]) => { },
     warn: (...args: any[]) => console.warn('[AuthProvider]', ...args),
     error: (...args: any[]) => console.error('[AuthProvider]', ...args),
 };
@@ -170,7 +170,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 .map((m: any) => m.companies)
                 .filter(Boolean);
 
-            log.info(`Data loaded. User: ${userData.id}, Companies: ${companies.length}, SuperAdmin: ${userData.is_super_admin}`);
+            log.info(`Data loaded. Companies: ${companies.length}, SuperAdmin: ${userData.is_super_admin}`);
 
             setUserCompanies(companies);
             setUser(userData);

@@ -21,7 +21,7 @@ supabase.functions.invoke = async (functionName: string, options: any = {}) => {
   const store = useStore.getState()
 
   if (store.isImpersonating && store.impersonatedCompanyId) {
-    console.log(`[Supabase] Injecting traceability headers for impersonation on: ${functionName}`)
+    // Injecting traceability headers
 
     const { data } = await supabase.auth.getUser()
 

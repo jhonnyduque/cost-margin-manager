@@ -1,4 +1,3 @@
-```javascript
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/services/supabase';
@@ -31,10 +30,9 @@ export function ActivityFeed() {
                     const formattedEvent = {
                         id: log.id,
                         created_at: log.created_at,
-                        event_key: `${ log.resource_type?.toUpperCase() || 'SYSTEM' }.${ log.action?.toUpperCase() || 'EVENT' } `,
+                        event_key: `${log.resource_type?.toUpperCase() || 'SYSTEM'}.${log.action?.toUpperCase() || 'EVENT'}`,
                         source_module: log.resource_type,
-                        payload: { message: `Acción ${ log.action } en ${ log.resource_type } ` },
-                        // company name might not be available immediately via realtime without another fetch
+                        payload: { message: `Acción ${log.action} en ${log.resource_type}` },
                     };
                     setEvents(prev => [formattedEvent, ...prev].slice(0, 15));
                 }
@@ -95,12 +93,12 @@ export function ActivityFeed() {
             {events.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                     <Activity size={32} className="text-slate-100 mb-2" />
-                    <p className={`${ typography.uiLabel } font - semibold text - slate - 500 uppercase tracking - widest`}>No hay actividad</p>
+                    <p className={`${typography.uiLabel} font-semibold text-slate-500 uppercase tracking-widest`}>No hay actividad</p>
                 </div>
             ) : (
                 events.map((event) => {
                     const isExpanded = !!expandedEvents[event.id];
-                    const message = event.payload?.message || `Evento registrado en ${ event.source_module } `;
+                    const message = event.payload?.message || `Evento registrado en ${event.source_module}`;
                     const isLong = message.length > 80;
 
                     return (
@@ -114,20 +112,20 @@ export function ActivityFeed() {
                             </div>
                             <div className="flex-1 min-w-0">
                                 {/* Línea A: Título (Identificador del Evento o Título Personalizado) */}
-                                <p className={`${ typography.uiLabel } font - bold text - slate - 900 uppercase tracking - tight group - hover: text - indigo - 600 transition - colors block leading - tight`}>
+                                <p className={`${typography.uiLabel} font-bold text-slate-900 uppercase tracking-tight group-hover:text-indigo-600 transition-colors block leading-tight`}>
                                     {event.payload?.title || event.event_key.split('.').pop()?.replace(/_/g, ' ')}
                                 </p>
 
                                 {/* Línea B: Tiempo (Notificación) */}
-                                <p className={`${ typography.text.tiny } text - slate - 400 font - bold mt - 0.5 uppercase tracking - widest`}>
+                                <p className={`${typography.text.tiny} text-slate-400 font-bold mt-0.5 uppercase tracking-widest`}>
                                     {formatDistanceToNow(new Date(event.created_at), { addSuffix: true, locale: es })}
                                 </p>
 
                                 {/* Línea C: Mensaje (Contenido) */}
-                                <p className={`${ typography.text.micro } text - slate - 500 mt - 1 ${ isExpanded ? '' : 'line-clamp-2' } leading - relaxed`}>
+                                <p className={`${typography.text.micro} text-slate-500 mt-1 ${isExpanded ? '' : 'line-clamp-2'} leading-relaxed`}>
                                     {message}
                                     {event.companies?.name && (
-                                        <span className={`inline - flex items - center gap - 1 bg - slate - 50 px - 1.5 py - 0.5 rounded ${ typography.text.tiny } font - bold text - slate - 400 ml - 1.5 border border - slate - 100 uppercase`}>
+                                        <span className={`inline-flex items-center gap-1 bg-slate-50 px-1.5 py-0.5 rounded ${typography.text.tiny} font-bold text-slate-400 ml-1.5 border border-slate-100 uppercase`}>
                                             {event.companies.name}
                                         </span>
                                     )}
@@ -137,7 +135,7 @@ export function ActivityFeed() {
                                 {isLong && (
                                     <button
                                         onClick={(e) => toggleExpand(event.id, e)}
-                                        className={`${ typography.text.tiny } font - black text - indigo - 500 mt - 2 uppercase tracking - tighter hover: text - indigo - 700 transition - colors`}
+                                        className={`${typography.text.tiny} font-black text-indigo-500 mt-2 uppercase tracking-tighter hover:text-indigo-700 transition-colors`}
                                     >
                                         {isExpanded ? '... ver menos' : 'ver más...'}
                                     </button>
@@ -147,7 +145,7 @@ export function ActivityFeed() {
                     );
                 })
             )}
-            <button className={`w - full py - 3 mt - 4 ${ typography.uiLabel } font - black text - slate - 500 uppercase tracking - widest hover: text - indigo - 600 hover: bg - slate - 50 rounded - xl transition - all border border - dashed border - slate - 200`}>
+            <button className={`w-full py-3 mt-4 ${typography.uiLabel} font-black text-slate-500 uppercase tracking-widest hover:text-indigo-600 hover:bg-slate-50 rounded-xl transition-all border border-dashed border-slate-200`}>
                 Ver todos los logs
             </button>
         </div>

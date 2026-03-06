@@ -111,24 +111,9 @@ export const adminStatsService = {
             return acc + finalPrice;
         }, 0);
 
-        // 🛡️ MODO NUCLEAR: Si el usuario ve $69, aquí sabremos exactamente POR QUÉ.
-        console.group("⚖️ EL JUEZ: AUDITORÍA DE DATOS DE SUPABASE");
-        console.log("PLANES DETECTADOS EN DB:", planPrices);
-        console.log("EMPRESAS ACTIVAS/TRIAL:", activeCompanies.length);
-        console.table(activeCompanies.map(c => {
-            const customPrice = c.custom_price_cents ? (c.custom_price_cents / 100) : null;
-            const standardPrice = c.subscription_tier ? (planPrices[c.subscription_tier] || 0) : 0;
-            return {
-                Empresa: c.name,
-                Estado: c.subscription_status,
-                Plan: c.subscription_tier,
-                PrecioPlan: standardPrice,
-                PrecioCustom: customPrice,
-                Final: customPrice !== null ? customPrice : standardPrice
-            };
-        }));
-        console.log("TOTAL MRR CALCULADO:", totalMRR);
-        console.groupEnd();
+        // Logs de auditoría silenciados para producción/soporte
+        // console.group("⚖️ EL JUEZ: AUDITORÍA DE DATOS DE SUPABASE");
+        // ...
 
         const projectedMRR = totalMRR;
 

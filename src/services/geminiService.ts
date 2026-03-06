@@ -20,7 +20,7 @@ export const getPricingInsights = async (
   }
 
   // Log de diagnóstico para verificar que la clave se cargó correctamente (solo primeros caracteres)
-  console.log("Gemini Service: Usando API Key que comienza con:", apiKey.substring(0, 7));
+  // Diagnóstico de API Key eliminado por seguridad
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -48,7 +48,7 @@ ${dataString}
     // Intentamos cada modelo hasta que uno funcione
     for (const modelName of modelsToTry) {
       try {
-        console.log(`Intentando modelo: ${modelName}...`);
+        // Intentando modelo...
         const model = genAI.getGenerativeModel({ model: modelName });
         const result = await model.generateContent(prompt);
         const responseText = result.response.text?.() || "No se recibió respuesta.";

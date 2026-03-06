@@ -8,7 +8,7 @@ export const notificationListener = {
      * En una app frontend, esto suele llamarse una vez al inicio.
      */
     start() {
-        console.log('[NotificationListener] Listening to Event Bus...');
+        // Listener inicializado silenciosamente
 
         return supabase
             .channel('event_bus_notifications')

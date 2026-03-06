@@ -134,13 +134,16 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
 
         loadInitialData();
 
-        const subscription = notificationService.subscribeToNotifications((newNote: NotificationItem) => {
-            setNotifications(prev => {
-                if (prev.some(n => n.id === newNote.id)) return prev;
-                return [newNote, ...prev].slice(0, 12);
-            });
-            setUnreadCount(prev => prev + 1);
-        });
+        const subscription = notificationService.subscribeToNotifications(
+            user.id,
+            (newNote: NotificationItem) => {
+                setNotifications(prev => {
+                    if (prev.some(n => n.id === newNote.id)) return prev;
+                    return [newNote, ...prev].slice(0, 12);
+                });
+                setUnreadCount(prev => prev + 1);
+            }
+        );
 
         return () => {
             subscription.unsubscribe();

@@ -424,11 +424,11 @@ export default function PlatformAdmin() {
                                     <h3 className={`${typography.sectionTitle} ${colors.textPrimary} tracking-tighter`}>Performance de Plataforma</h3>
                                     <p className={`${typography.caption} ${colors.textSecondary} font-medium`}>Trayectoria de MRR Real vs Metas Proyectadas</p>
                                 </div>
-                                <div className="flex gap-4">
-                                    <div className={`flex items-center gap-2 ${typography.uiLabel} text-slate-500`}>
+                                <div className="flex flex-wrap justify-end gap-x-6 gap-y-2">
+                                    <div className={`flex items-center gap-2 ${typography.uiLabel} text-slate-500 whitespace-nowrap`}>
                                         <div className="w-3 h-1 bg-indigo-600 rounded-full" /> MRR Real
                                     </div>
-                                    <div className={`flex items-center gap-2 ${typography.uiLabel} text-slate-500`}>
+                                    <div className={`flex items-center gap-2 ${typography.uiLabel} text-slate-500 whitespace-nowrap`}>
                                         <div className="w-3 h-1 bg-slate-200 rounded-full border border-dashed border-slate-400" /> Proyectado
                                     </div>
                                 </div>
