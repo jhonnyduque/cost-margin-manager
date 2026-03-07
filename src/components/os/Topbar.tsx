@@ -36,7 +36,81 @@ type NotificationItem = {
     priority?: string | null;
 };
 
-/** Map platform routes to human-readable section names */
+// ============================================================================
+// ✅ HELPERS PARA USER INFO (Eliminan "User" y "U" genéricos)
+// ============================================================================
+
+/**
+ * Obtiene iniciales profesionales para el avatar:
+ * - Si hay full_name: "Juan Pérez" → "JP"
+ * - Si hay email: "juan@empresa.com" → "JU" 
+ * - Fallback seguro: nunca muestra "U" solo
+ */
+const getUserInitials = (user: any): string => {
+    const fullName = user?.user_metadata?.full_name;
+    const email = user?.email || '';
+
+    if (fullName && fullName.trim()) {
+        const names = fullName.trim().split(/\s+/).filter(Boolean);
+        if (names.length >= 2) {
+            // Primera letra del primer nombre + primera del apellido
+            return (names[0][0] + names[names.length - 1][0]).toUpperCase();
+        }
+        // Nombre solo: primeras 2 letras
+        return names[0].slice(0, 2).toUpperCase();
+    }
+
+    if (email) {
+        const emailName = email.split('@')[0];
+        if (emailName.length >= 2) {
+            return (emailName[0] + emailName[1]).toUpperCase();
+        }
+        return emailName[0].toUpperCase();
+    }
+
+    return 'US'; // Fallback más profesional que "U"
+};
+
+/**
+ * Obtiene texto para mostrar en el topbar:
+ * - Prioriza full_name si existe
+ * - Fallback a email (sin dominio si es largo)
+ * - Nunca muestra "User" genérico
+ */
+const getUserDisplayName = (user: any): string => {
+    const fullName = user?.user_metadata?.full_name;
+    const email = user?.email || '';
+
+    if (fullName && fullName.trim()) {
+        return fullName.trim();
+    }
+
+    if (email) {
+        const [name, domain] = email.split('@');
+        // Si el nombre del email es razonable, mostrarlo
+        if (name && name.length <= 20 && !/^[0-9]+$/.test(name)) {
+            return name;
+        }
+        // Si es muy largo o numérico, mostrar email completo truncado
+        return email.length > 24 ? `${email.slice(0, 21)}...` : email;
+    }
+
+    return 'Invitado'; // Mejor que "User"
+};
+
+/**
+ * Obtiene label de rol para badge
+ */
+const getUserRoleLabel = (user: any, mode: string): string => {
+    if (user?.is_super_admin) return 'Super Admin';
+    if (mode === 'platform') return 'Platform';
+    return 'Member';
+};
+
+// ============================================================================
+// MAPPINGS Y UTILIDADES EXISTENTES
+// ============================================================================
+
 const PLATFORM_SECTIONS: Record<string, string> = {
     '/control-center': 'Control Center',
     '/platform/environments': 'Environments',
@@ -98,6 +172,10 @@ const formatRelativeTime = (date: string) => {
     return raw.replace(/^alrededor de /i, '').toLowerCase();
 };
 
+// ============================================================================
+// COMPONENTE PRINCIPAL
+// ============================================================================
+
 export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
     const { user, currentCompany, mode, exitImpersonation, setIsSigningOut, resetState } = useAuth();
     const logout = useStore(state => state.logout);
@@ -114,6 +192,11 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
     const notificationsRef = useRef<HTMLDivElement>(null);
 
     const sectionName = getSectionName(location.pathname);
+
+    // ✅ Calcular user info una vez por render
+    const userInitials = getUserInitials(user);
+    const userDisplayName = getUserDisplayName(user);
+    const userRole = getUserRoleLabel(user, mode);
 
     useEffect(() => {
         const loadInitialData = async () => {
@@ -355,24 +438,10 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
                                 absolute mt-2 origin-top-right
                                 ${radius.xl} border ${colors.borderSubtle} ${colors.bgSurface}
                                 ${shadows.xl} ring-1 ring-black/5 z-50 overflow-hidden
-
-                                /* ✅ FIX RESPONSIVE MOBILE:
-                                   - En mobile: se ancla al borde derecho del viewport con margen de seguridad
-                                     usando right con valor negativo compensado, y un ancho que no desborde.
-                                   - En sm+: dropdown estándar anclado a la derecha del botón (right-0)
-                                     con ancho fijo de 380px.
-                                   La clave es right-0 en mobile pero con w limitado al viewport. */
                                 right-0 w-[calc(100vw-1rem)]
                                 sm:w-[380px]
-
-                                /* En mobile el dropdown puede quedar demasiado a la derecha si el botón
-                                   está cerca del borde. Forzamos que no salga del viewport. */
                                 max-w-[calc(100vw-1rem)]
                             `}
-                            style={{
-                                // Garantía extra para mobile: si right-0 no es suficiente,
-                                // el transform lo reposiciona visualmente dentro del viewport.
-                            }}
                         >
                             <div className="flex flex-col">
                                 {/* Header */}
@@ -535,7 +604,7 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
                     )}
                 </div>
 
-                {/* User menu */}
+                {/* ✅ USER MENU - IMPLEMENTACIÓN PROFESIONAL */}
                 <div className="relative" ref={menuRef}>
                     <button
                         onClick={() => setMenuOpen(!menuOpen)}
@@ -545,23 +614,35 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
                             transition-colors min-h-[40px]
                         `}
                     >
+                        {/* Avatar con iniciales inteligentes */}
                         <div
                             className={`
                                 h-8 w-8 ${radius.pill} ${colors.bgBrandSubtle}
                                 flex items-center justify-center text-indigo-600
-                                ${typography.uiLabel} flex-shrink-0
+                                ${typography.uiLabel} font-semibold flex-shrink-0
                             `}
+                            aria-label={`Perfil de ${userDisplayName}`}
                         >
-                            {user?.user_metadata?.full_name?.charAt(0) || 'U'}
+                            {userInitials}
                         </div>
 
-                        <div className="hidden md:block text-left">
-                            <p className={`text-sm font-medium ${colors.textSecondary} max-w-[100px] truncate`}>
-                                {user?.user_metadata?.full_name || 'User'}
+                        {/* Texto visible solo en desktop */}
+                        <div className="hidden md:block text-left min-w-0">
+                            <p className={`text-sm font-medium ${colors.textPrimary} truncate max-w-[120px]`}>
+                                {userDisplayName}
                             </p>
+                            {/* Badge de rol compacto */}
+                            <span className={`
+                                inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium
+                                ${user?.is_super_admin
+                                    ? 'bg-purple-100 text-purple-700'
+                                    : 'bg-slate-100 text-slate-600'}
+                            `}>
+                                {userRole}
+                            </span>
                         </div>
 
-                        <ChevronDown size={14} className={`${colors.textMuted} hidden sm:block`} />
+                        <ChevronDown size={14} className={`${colors.textMuted} hidden sm:block flex-shrink-0`} />
                     </button>
 
                     {menuOpen && (
@@ -572,13 +653,24 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
                                 ${shadows.lg} ring-1 ring-black ring-opacity-5 py-1 z-50
                             `}
                         >
+                            {/* Header del dropdown con info completa */}
                             <div className={`px-4 py-3 border-b ${colors.borderSubtle}`}>
                                 <p className={`${typography.bodySm} font-medium ${colors.textPrimary} truncate`}>
                                     {user?.email}
                                 </p>
-                                <p className={`${typography.caption} ${colors.textSecondary} truncate mt-1`}>
-                                    {user?.is_super_admin ? 'Super Admin' : 'User'}
-                                </p>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <p className={`${typography.caption} ${colors.textSecondary} truncate`}>
+                                        {userDisplayName}
+                                    </p>
+                                    <span className={`
+                                        inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold
+                                        ${user?.is_super_admin
+                                            ? 'bg-purple-100 text-purple-700'
+                                            : 'bg-slate-100 text-slate-600'}
+                                    `}>
+                                        {userRole}
+                                    </span>
+                                </div>
                             </div>
 
                             <div className={`lg:hidden px-4 py-2 border-b ${colors.borderSubtle}`}>

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Hexagon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Hexagon, Menu } from 'lucide-react';
 import { MODULES } from '../../platform/modules.registry';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '../../platform/useSubscription';
@@ -129,6 +129,42 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
                     );
                 })}
             </nav>
+
+            {/* ── Más — legal, ayuda, estado del sistema ── */}
+            <div className={`absolute bottom-12 left-0 w-full ${spacing.pSm} border-t ${colors.borderSubtle} pt-3`}>
+                <NavLink
+                    to="/more"
+                    className={({ isActive }) => `
+                        flex items-center gap-3 ${spacing.pxMd} py-2 ${radius.xl} transition-all duration-200
+                        ${isActive
+                            ? `${colors.bgBrandSubtle} text-indigo-700 ${shadows.sm}`
+                            : `${colors.textMuted} hover:${colors.bgMain} hover:${colors.textPrimary}`}
+                        ${collapsed ? 'justify-center mx-1' : ''}
+                    `}
+                    title={collapsed ? 'Más' : undefined}
+                >
+                    <Menu size={20} className="flex-shrink-0" />
+                    {!collapsed && <span className={`${typography.body} font-medium truncate`}>Más</span>}
+                </NavLink>
+            </div>
+
+            {/* ── Más — legal, ayuda, estado del sistema ── */}
+            <div className={`absolute bottom-12 left-0 w-full ${spacing.pSm} border-t ${colors.borderSubtle} pt-3`}>
+                <NavLink
+                    to="/more"
+                    className={({ isActive }) => `
+                        flex items-center gap-3 ${spacing.pxMd} py-2 ${radius.xl} transition-all duration-200
+                        ${isActive
+                            ? `${colors.bgBrandSubtle} text-indigo-700 ${shadows.sm}`
+                            : `${colors.textMuted} hover:${colors.bgMain} hover:${colors.textPrimary}`}
+                        ${collapsed ? 'justify-center mx-1' : ''}
+                    `}
+                    title={collapsed ? 'Más' : undefined}
+                >
+                    <Menu size={20} className="flex-shrink-0" />
+                    {!collapsed && <span className={`${typography.body} font-medium truncate`}>Más</span>}
+                </NavLink>
+            </div>
 
             {/* Footer / Version */}
             {!collapsed && (

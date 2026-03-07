@@ -13,7 +13,14 @@ import Team from '@/pages/Team';
 import Login from '@/pages/Login';
 import NotProvisioned from '@/pages/NotProvisioned';
 import Settings from '@/pages/Settings';
-import MorePage from '@/pages/MorePage'; // ✅ Import agregado
+import MorePage from '@/pages/MorePage';
+
+// Pages - Legal & Support
+import PrivacyPage from '@/pages/legal/PrivacyPage';
+import TermsPage from '@/pages/legal/TermsPage';
+import CompliancePage from '@/pages/legal/CompliancePage';
+import HelpPage from '@/pages/HelpPage';
+import StatusPage from '@/pages/StatusPage';
 import FinishedGoods from '@/pages/FinishedGoods';
 import ProductBuilder from '@/pages/ProductBuilder';
 import ProductDetail from '@/pages/ProductDetail';
@@ -143,6 +150,15 @@ const AppContent: React.FC = () => {
 
                 {/* ✅ Nueva ruta: MorePage */}
                 <Route path="/more" element={<MorePage />} />
+
+                {/* ✅ Legal & Cumplimiento */}
+                <Route path="/legal/privacy" element={<PrivacyPage />} />
+                <Route path="/legal/terms" element={<TermsPage />} />
+                <Route path="/legal/compliance" element={<CompliancePage />} />
+
+                {/* ✅ Soporte y Sistema */}
+                <Route path="/help" element={<HelpPage />} />
+                <Route path="/status" element={<StatusPage />} />
 
                 <Route path="/ai" element={<PlaceholderPage />} />
                 <Route path="/analytics" element={<PlaceholderPage />} />
