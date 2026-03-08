@@ -1,4 +1,5 @@
-import { MaterialBatch } from '@/types';
+import { MaterialBatch, UnitOfMeasure } from '@/types';
+import { UnitConverter } from '@/services/inventoryEngineV2';
 
 /**
  * Calculate the effective linear meters consumed from piece dimensions.
@@ -62,13 +63,19 @@ export const calculateBatchArea = (
 };
 
 export const getEffectiveQuantity = (
-    pm: { mode?: string; pieces?: { length: number; width: number }[]; quantity: number },
+    pm: any, // ProductMaterialUI structure
     batches: MaterialBatch[],
-    materialId: string
+    materialId: string,
+    uom?: UnitOfMeasure
 ): number => {
+    let qty = pm.quantity;
     if (pm.mode === 'pieces' && pm.pieces && pm.pieces.length > 0) {
         const rollWidth = getLatestRollWidth(materialId, batches);
-        return calculatePiecesToLinearMeters(pm.pieces, rollWidth);
+        qty = calculatePiecesToLinearMeters(pm.pieces, rollWidth);
     }
-    return pm.quantity;
+
+    if (uom) {
+        return UnitConverter.toBase(qty, uom);
+    }
+    return qty;
 };

@@ -4,7 +4,7 @@ import { supabase } from '@/services/supabase';
 import {
     Server, Users, AlertTriangle, Layers, CreditCard,
     UserPlus, ChevronRight, Megaphone, Send, Activity,
-    TrendingUp, ShieldCheck, Globe, Zap, Clock, Info, ExternalLink, ArrowUpRight
+    TrendingUp, ShieldCheck, Globe, Zap, Clock, Info, ExternalLink, ArrowUpRight, Tags
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { eventBusService } from '@/services/eventBusService';
@@ -20,6 +20,7 @@ import { MRRWaterfallChart } from '@/components/platform/MRRWaterfallChart';
 import { CohortHeatmap } from '@/components/platform/CohortHeatmap';
 import { AIInsightsPanel } from '@/components/platform/AIInsightsPanel';
 import { BillingEventTable } from '@/components/platform/BillingEventTable';
+import { useStore } from '@/store';
 import { EntityList } from '@/components/entity/EntityList';
 import { EntityConfig } from '@/components/entity/types';
 import { getPlanDisplay, getStatusDisplay } from '@/config/subscription.config';
@@ -110,10 +111,253 @@ function BroadcastConsole() {
     );
 }
 
+// Subcomponente: Gestión de Taxonomías (BETO OS v2.0)
+function TaxonomySection({
+    materialTypes, uomCategories, unitsOfMeasure,
+    addMaterialType, updateMaterialType, deleteMaterialType,
+    addUomCategory, updateUomCategory, deleteUomCategory,
+    addUnitOfMeasure, updateUnitOfMeasure, deleteUnitOfMeasure
+}: any) {
+    const [activeSubTab, setActiveSubTab] = useState<'types' | 'categories' | 'units'>('types');
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [editingItem, setEditingItem] = useState<any>(null);
+    const [formData, setFormData] = useState<any>({});
+
+    const handleSave = async () => {
+        try {
+            if (activeSubTab === 'types') {
+                if (editingItem) await updateMaterialType(editingItem.id, formData.name);
+                else await addMaterialType(formData.name);
+            } else if (activeSubTab === 'categories') {
+                if (editingItem) await updateUomCategory(editingItem.id, formData.name, formData.key);
+                else await addUomCategory(formData.name, formData.key);
+            } else if (activeSubTab === 'units') {
+                if (!formData.name || !formData.symbol || !formData.category_id) {
+                    alert('Por favor completa todos los campos obligatorios.');
+                    return;
+                }
+                const factor = parseFloat(formData.conversion_factor);
+                if (isNaN(factor) || factor <= 0) {
+                    alert('El factor de conversión debe ser un número positivo.');
+                    return;
+                }
+                const cleanData = { ...formData, conversion_factor: factor };
+                if (editingItem) await updateUnitOfMeasure(editingItem.id, cleanData);
+                else await addUnitOfMeasure(cleanData);
+            }
+            setIsAddModalOpen(false);
+            setEditingItem(null);
+            setFormData({});
+        } catch (err) {
+            alert('Error al guardar: ' + (err as any).message);
+        }
+    };
+
+    const handleEdit = (item: any) => {
+        setEditingItem(item);
+        setFormData(item);
+        setIsAddModalOpen(true);
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('¿Estás seguro de eliminar este elemento? Podría causar inconsistencias en datos existentes.')) return;
+        try {
+            if (activeSubTab === 'types') await deleteMaterialType(id);
+            else if (activeSubTab === 'categories') await deleteUomCategory(id);
+            else if (activeSubTab === 'units') await deleteUnitOfMeasure(id);
+        } catch (err) {
+            alert('Error al eliminar: ' + (err as any).message);
+        }
+    };
+
+    const subTabs = [
+        { id: 'types', label: 'Tipos de Material', icon: Layers },
+        { id: 'categories', label: 'Categorías UOM', icon: TrendingUp },
+        { id: 'units', label: 'Unidades de Medida', icon: Zap },
+    ];
+
+    return (
+        <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="flex p-1 bg-slate-100 rounded-xl border border-slate-200 w-full sm:w-max overflow-x-auto">
+                    {subTabs.map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveSubTab(tab.id as any)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg ${typography.uiLabel} transition-all whitespace-nowrap ${activeSubTab === tab.id
+                                ? 'bg-white text-indigo-600 shadow-sm font-bold'
+                                : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            <tab.icon size={16} />
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+                <Button
+                    variant="primary"
+                    icon={<Plus size={18} />}
+                    onClick={() => { setEditingItem(null); setFormData({}); setIsAddModalOpen(true); }}
+                >
+                    Añadir {activeSubTab === 'types' ? 'Tipo' : activeSubTab === 'categories' ? 'Categoría' : 'Unidad'}
+                </Button>
+            </div>
+
+            <SectionBlock>
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead className={`border-b ${colors.borderStandard}`}>
+                            <tr>
+                                <th className={`text-left py-4 px-4 ${typography.caption} font-bold ${colors.textSecondary} uppercase tracking-wider`}>Nombre</th>
+                                {activeSubTab === 'categories' && <th className={`text-left py-4 px-4 ${typography.caption} font-bold ${colors.textSecondary} uppercase tracking-wider`}>Key</th>}
+                                {activeSubTab === 'units' && (
+                                    <>
+                                        <th className={`text-left py-4 px-4 ${typography.caption} font-bold ${colors.textSecondary} uppercase tracking-wider`}>Símbolo</th>
+                                        <th className={`text-left py-4 px-4 ${typography.caption} font-bold ${colors.textSecondary} uppercase tracking-wider`}>Factor</th>
+                                        <th className={`text-left py-4 px-4 ${typography.caption} font-bold ${colors.textSecondary} uppercase tracking-wider`}>Categoría</th>
+                                    </>
+                                )}
+                                <th className={`text-right py-4 px-4 ${typography.caption} font-bold ${colors.textSecondary} uppercase tracking-wider`}>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {(activeSubTab === 'types' ? materialTypes : activeSubTab === 'categories' ? uomCategories : unitsOfMeasure).map((item: any) => (
+                                <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                                    <td className="py-4 px-4">
+                                        <span className={`${typography.bodySm} font-semibold text-slate-900`}>{item.name}</span>
+                                        {activeSubTab === 'units' && item.is_base && (
+                                            <span className="ml-2 px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded text-[10px] uppercase font-bold border border-indigo-100">BASE</span>
+                                        )}
+                                    </td>
+                                    {activeSubTab === 'categories' && <td className="py-4 px-4 font-mono text-xs text-slate-500">{item.key}</td>}
+                                    {activeSubTab === 'units' && (
+                                        <>
+                                            <td className="py-4 px-4 font-mono text-xs text-slate-500">{item.symbol}</td>
+                                            <td className="py-4 px-4 text-slate-600">{item.conversion_factor}</td>
+                                            <td className="py-4 px-4 text-slate-500 text-xs">
+                                                {uomCategories.find((c: any) => c.id === item.category_id)?.name || 'N/A'}
+                                            </td>
+                                        </>
+                                    )}
+                                    <td className="py-4 px-4 text-right">
+                                        <div className="flex justify-end gap-2">
+                                            <button onClick={() => handleEdit(item)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"><MoreHorizontal size={18} /></button>
+                                            <button onClick={() => handleDelete(item.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"><AlertTriangle size={18} /></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </SectionBlock>
+
+            {isAddModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in">
+                    <div className={`bg-white ${radius['3xl']} shadow-2xl w-full max-w-lg overflow-hidden border ${colors.borderStandard}`}>
+                        <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                            <h2 className={`${typography.sectionTitle} text-slate-900`}>
+                                {editingItem ? 'Editar' : 'Nueva'} {activeSubTab === 'types' ? 'Tipo de Material' : activeSubTab === 'categories' ? 'Categoría UOM' : 'Unidad de Medida'}
+                            </h2>
+                        </div>
+                        <div className="p-8 space-y-6">
+                            <div>
+                                <label className={`${typography.caption} font-bold text-slate-600 uppercase mb-2 block`}>Nombre</label>
+                                <input
+                                    type="text"
+                                    value={formData.name || ''}
+                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                    className={`w-full ${radius.xl} bg-slate-50 border-none px-4 py-3 ${typography.body} text-slate-900 ring-1 ring-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all`}
+                                />
+                            </div>
+
+                            {activeSubTab === 'categories' && (
+                                <div>
+                                    <label className={`${typography.caption} font-bold text-slate-600 uppercase mb-2 block`}>Key (Identificador técnico)</label>
+                                    <input
+                                        type="text"
+                                        value={formData.key || ''}
+                                        onChange={e => setFormData({ ...formData, key: e.target.value })}
+                                        className={`w-full ${radius.xl} bg-slate-50 border-none px-4 py-3 ${typography.body} text-slate-900 ring-1 ring-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all`}
+                                    />
+                                </div>
+                            )}
+
+                            {activeSubTab === 'units' && (
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className={`${typography.caption} font-bold text-slate-600 uppercase mb-2 block`}>Símbolo</label>
+                                        <input
+                                            type="text"
+                                            value={formData.symbol || ''}
+                                            onChange={e => setFormData({ ...formData, symbol: e.target.value })}
+                                            className="w-full rounded-xl bg-slate-50 border-none px-4 py-3 ring-1 ring-slate-200 focus:ring-2 focus:ring-indigo-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className={`${typography.caption} font-bold text-slate-600 uppercase mb-2 block`}>Factor (Base=1)</label>
+                                        <input
+                                            type="number"
+                                            value={formData.conversion_factor || ''}
+                                            onChange={e => setFormData({ ...formData, conversion_factor: parseFloat(e.target.value) })}
+                                            className="w-full rounded-xl bg-slate-50 border-none px-4 py-3 ring-1 ring-slate-200 focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                                            disabled={formData.is_base}
+                                        />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className={`${typography.caption} font-bold text-slate-600 uppercase mb-2 block`}>Categoría</label>
+                                        <select
+                                            value={formData.category_id || ''}
+                                            onChange={e => setFormData({ ...formData, category_id: e.target.value })}
+                                            className="w-full rounded-xl bg-slate-50 border-none px-4 py-3 ring-1 ring-slate-200 focus:ring-2 focus:ring-indigo-500"
+                                        >
+                                            <option value="">Seleccionar Categoría...</option>
+                                            {uomCategories.map((c: any) => (
+                                                <option key={c.id} value={c.id}>{c.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="col-span-2 flex items-center gap-3 py-2">
+                                        <input
+                                            type="checkbox"
+                                            id="is_base"
+                                            checked={formData.is_base || false}
+                                            onChange={e => {
+                                                const isChecked = e.target.checked;
+                                                const newFormData = { ...formData, is_base: isChecked };
+                                                if (isChecked) {
+                                                    newFormData.conversion_factor = 1;
+                                                }
+                                                setFormData(newFormData);
+                                            }}
+                                            className="size-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                        />
+                                        <label htmlFor="is_base" className={`${typography.bodySm} font-medium text-slate-700`}>Es Unidad Base (Factor = 1)</label>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                            <button onClick={() => setIsAddModalOpen(false)} className={`px-6 py-2.5 ${radius.xl} ${typography.uiLabel} text-slate-600 hover:bg-slate-200 transition-all`}>Cancelar</button>
+                            <button onClick={handleSave} className={`px-8 py-2.5 ${radius.xl} ${typography.uiLabel} bg-indigo-600 text-white hover:bg-indigo-700 shadow-md active:scale-95 transition-all`}>Guardar Cambios</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function PlatformAdmin() {
     const { user, enterCompanyAsFounder, refreshAuth } = useAuth();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'overview' | 'tenants' | 'billing' | 'ops'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'tenants' | 'billing' | 'ops' | 'taxonomies'>('overview');
+    const {
+        materialTypes, uomCategories, unitsOfMeasure,
+        addMaterialType, updateMaterialType, deleteMaterialType,
+        addUomCategory, updateUomCategory, deleteUomCategory,
+        addUnitOfMeasure, updateUnitOfMeasure, deleteUnitOfMeasure,
+        loadUomMetadata
+    } = useStore();
     const [metrics, setMetrics] = useState<PlatformMetrics | null>(null);
     const [growthData, setGrowthData] = useState<GrowthPoint[]>([]);
     const [planData, setPlanData] = useState<any[]>([]);
@@ -145,6 +389,12 @@ export default function PlatformAdmin() {
     useEffect(() => {
         loadData();
     }, [activeTab, dateRange, startDate, endDate, planFilter, segmentFilter]);
+
+    useEffect(() => {
+        if (activeTab === 'taxonomies') {
+            loadUomMetadata();
+        }
+    }, [activeTab]);
 
     const fetchAllTenants = async () => {
         setFetchingTenants(true);
@@ -334,6 +584,7 @@ export default function PlatformAdmin() {
         { id: 'tenants', label: 'Empresas', icon: Globe },
         { id: 'billing', label: 'Finanzas', icon: CreditCard },
         { id: 'ops', label: 'Operaciones', icon: Zap },
+        { id: 'taxonomies', label: 'Taxonomías', icon: Tags, isNew: true },
     ];
 
     return (
@@ -370,7 +621,10 @@ export default function PlatformAdmin() {
                                         }`}
                                 >
                                     <tab.icon size={16} />
-                                    <span className="hidden lg:inline">{tab.label}</span>
+                                    <span className="hidden sm:inline italic-none">{tab.label}</span>
+                                    {(tab as any).isNew && (
+                                        <span className="ml-1 size-1.5 rounded-full bg-rose-500 animate-pulse border border-white" />
+                                    )}
                                 </button>
                             ))}
                         </div>
@@ -513,6 +767,10 @@ export default function PlatformAdmin() {
                                     <CreditCard size={24} className={`${colors.textMuted} group-hover:text-indigo-500 group-hover:scale-110 transition-all`} />
                                     <span className={`${typography.uiLabel}`}>Facturación</span>
                                 </button>
+                                <div onClick={() => setActiveTab('taxonomies')} className={`flex flex-col items-center justify-center gap-3 ${spacing.pLg} ${radius['2xl']} ${colors.bgMain} border ${colors.borderStandard} hover:${colors.bgSurface} hover:${colors.borderBrand} hover:${shadows.xl} hover:shadow-indigo-50 hover:text-indigo-600 transition-all group cursor-pointer`}>
+                                    <Tags size={24} className={`${colors.textMuted} group-hover:text-indigo-500 group-hover:scale-110 transition-all`} />
+                                    <span className={`${typography.uiLabel}`}>Taxonomías</span>
+                                </div>
                                 <div className={`flex flex-col items-center justify-center gap-3 ${spacing.pLg} ${radius['2xl']} bg-indigo-600 text-white cursor-pointer hover:bg-indigo-700 hover:shadow-2xl hover:shadow-indigo-500/20 transition-all shadow-lg active:scale-95 group`}>
                                     <ShieldCheck size={24} className="group-hover:scale-110 transition-all" />
                                     <span className={`${typography.uiLabel}`}>Auditoría</span>
@@ -658,6 +916,25 @@ export default function PlatformAdmin() {
                             ))}
                         </div>
                     </div>
+                </div>
+            )}
+
+            {activeTab === 'taxonomies' && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <TaxonomySection
+                        materialTypes={materialTypes}
+                        uomCategories={uomCategories}
+                        unitsOfMeasure={unitsOfMeasure}
+                        addMaterialType={addMaterialType}
+                        updateMaterialType={updateMaterialType}
+                        deleteMaterialType={deleteMaterialType}
+                        addUomCategory={addUomCategory}
+                        updateUomCategory={updateUomCategory}
+                        deleteUomCategory={deleteUomCategory}
+                        addUnitOfMeasure={addUnitOfMeasure}
+                        updateUnitOfMeasure={updateUnitOfMeasure}
+                        deleteUnitOfMeasure={deleteUnitOfMeasure}
+                    />
                 </div>
             )}
 

@@ -6,7 +6,8 @@ import { calculateFinancialMetrics } from "../core/financialMetricsEngine";
 export const getPricingInsights = async (
   products: Product[],
   materials: RawMaterial[],
-  batches: MaterialBatch[]
+  batches: MaterialBatch[],
+  unitsOfMeasure: any[] // Use any[] or import UnitOfMeasure if preferred
 ) => {
   if (products.length === 0) {
     return "Agrega productos para obtener análisis de IA.";
@@ -31,7 +32,7 @@ export const getPricingInsights = async (
 
     const dataString = products
       .map((p) => {
-        const cost = calculateProductCost(p, batches, materials);
+        const cost = calculateProductCost(p, batches, materials, unitsOfMeasure);
         const metrics = calculateFinancialMetrics(cost, p.price, (p.target_margin || 30) / 100);
         return `Producto: ${p.name || 'Sin nombre'}, Costo FIFO: ${cost.toFixed(2)}, Precio: ${p.price.toFixed(2)}, Margen: ${(metrics.realMargin * 100).toFixed(1)}%`;
       })

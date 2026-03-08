@@ -60,7 +60,7 @@ const AlertRow: React.FC<{ action: ProtectedAction; onNavigate: (r: string) => v
             <Badge variant={badgeVariant}>{urgencyLabel}</Badge>
             {confidence && (
               <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-tighter ${confidence === 'high' ? 'bg-emerald-50 text-emerald-600' :
-                  confidence === 'medium' ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-500'
+                confidence === 'medium' ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-500'
                 }`}>
                 {confidence === 'high' ? <ShieldCheck size={10} /> : confidence === 'medium' ? <ShieldAlert size={10} /> : <Shield size={10} />}
                 {confidence === 'high' ? 'Confianza Alta' : confidence === 'medium' ? 'Confianza Media' : 'Datos Limitados'}
@@ -111,15 +111,15 @@ const AlertRow: React.FC<{ action: ProtectedAction; onNavigate: (r: string) => v
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 const Dashboard: React.FC = () => {
   const { user, currentCompany } = useAuth();
-  const { products, rawMaterials, batches, movements, productMovements } = useStore();
+  const { products, rawMaterials, batches, movements, productMovements, unitsOfMeasure } = useStore();
   const navigate = useNavigate();
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
   const [aiRequested, setAiRequested] = useState(false);
 
   const report = useMemo(
-    () => runProtectionEngine({ products, rawMaterials, batches, movements, productMovements }),
-    [products, rawMaterials, batches, movements, productMovements]
+    () => runProtectionEngine({ products, rawMaterials, batches, movements, productMovements, unitsOfMeasure }),
+    [products, rawMaterials, batches, movements, productMovements, unitsOfMeasure]
   );
 
   const fetchAi = useCallback(async () => {
@@ -127,7 +127,7 @@ const Dashboard: React.FC = () => {
     setLoadingAi(true);
     setAiRequested(true);
     try {
-      const analysis = await getPricingInsights(products, rawMaterials, batches);
+      const analysis = await getPricingInsights(products, rawMaterials, batches, unitsOfMeasure);
       setAiAnalysis(analysis);
     } catch (err) {
       console.error("AI Error:", err);

@@ -1,9 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Product, RawMaterial, Unit, ProductMaterial, MaterialBatch, StockMovement, UserRole, ProductMovement, STOCK_MOVEMENT_REF } from '@/types';
+import { Product, RawMaterial, Unit, ProductMaterial, MaterialBatch, StockMovement, UserRole, ProductMovement, STOCK_MOVEMENT_REF, UomCategory, UnitOfMeasure, MaterialType } from '@/types';
 import { supabase } from './services/supabase';
 import { fetchProductsFromSupabase } from './services/products.service';
 import { calculatePiecesToLinearMeters, getLatestRollWidth } from '@/utils/materialCalculations';
+import { InventoryEngineV2, UnitConverter } from './services/inventoryEngineV2';
 
 // 🔹 AUDIT TRAIL HELPER
 const getActorId = async (): Promise<string | null> => {
@@ -51,68 +52,86 @@ interface AppState {
   consumeStock: (productId: string) => Promise<void>;
   consumeStockBatch: (productId: string, quantity: number, targetPrice?: number) => Promise<void>;
   registerFinishedGoodOutput: (productId: string, quantity: number, type: string, reference: string) => Promise<void>;
+
+  // 🔹 UOM V2 DATA
+  uomCategories: UomCategory[];
+  unitsOfMeasure: UnitOfMeasure[];
+  materialTypes: MaterialType[];
+  loadUomMetadata: () => Promise<void>;
+
+  // 🔹 TAXONOMY MANAGEMENT (Super Admin Only)
+  addMaterialType: (name: string) => Promise<void>;
+  updateMaterialType: (id: string, name: string) => Promise<void>;
+  deleteMaterialType: (id: string) => Promise<void>;
+
+  addUomCategory: (name: string, key: string) => Promise<void>;
+  updateUomCategory: (id: string, name: string, key: string) => Promise<void>;
+  deleteUomCategory: (id: string) => Promise<void>;
+
+  addUnitOfMeasure: (unit: Partial<UnitOfMeasure>) => Promise<void>;
+  updateUnitOfMeasure: (id: string, unit: Partial<UnitOfMeasure>) => Promise<void>;
+  deleteUnitOfMeasure: (id: string) => Promise<void>;
 }
 
-export const getConversionFactor = (buyUnit: Unit, useUnit: Unit): number => {
-  if (buyUnit === useUnit) return 1;
-  if (buyUnit === 'metro' && useUnit === 'cm') return 100;
-  if (buyUnit === 'cm' && useUnit === 'metro') return 0.01;
-  if (buyUnit === 'kg' && useUnit === 'gramo') return 1000;
-  if (buyUnit === 'gramo' && useUnit === 'kg') return 0.001;
-  return 1;
-};
 
 export const getFifoBreakdown = (
   material_id: string,
   requiredQuantity: number,
-  targetUnit: Unit,
+  targetUnitSymbol: string, // Cambiado a string para mayor flexibilidad v2
   batches: MaterialBatch[],
-  rawMaterials: RawMaterial[]
+  rawMaterials: RawMaterial[],
+  unitsOfMeasure: UnitOfMeasure[]
 ) => {
+  const uoms = unitsOfMeasure || [];
   const material = rawMaterials.find(m => m.id === material_id);
-  if (!material) return [];
+  if (!material || !material.base_unit_id) return [];
 
-  const factor = getConversionFactor(material.unit as Unit, targetUnit);
-  let remainingToCover = requiredQuantity / factor;
+  const baseUnit = uoms.find(u => u.id === material.base_unit_id);
+  const targetUnit = uoms.find(u => u.symbol.toLowerCase() === (targetUnitSymbol || '').toLowerCase()) || baseUnit;
 
-  const materialBatches = batches
-    .filter(b => b.material_id === material_id && b.remaining_quantity > 0)
+  if (!baseUnit || !targetUnit) return [];
+
+  // 1. Convertir la cantidad requerida a UNIDADES BASE
+  const baseQuantityRequested = UnitConverter.toBase(requiredQuantity, targetUnit);
+
+  // 2. Ejecutar Lógica FIFO sobre columnas BASE
+  const activeBatches = batches
+    .filter(b => b.material_id === material_id && (b.base_remaining_quantity ?? 0) > 0)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  const allMaterialBatches = batches
-    .filter(b => b.material_id === material_id)
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const engineResult = InventoryEngineV2.calculateFifoConsumption(baseQuantityRequested, activeBatches);
 
-  const breakdown: any[] = [];
+  // 3. Mapear al formato de UI esperado
+  const breakdown = engineResult.consumptions.map(c => {
+    const batch = batches.find(b => b.id === c.batch_id);
+    return {
+      batch_id: c.batch_id,
+      date: batch?.date || 'N/A',
+      unit_cost: c.cost_per_base_unit * targetUnit.conversion_factor,
+      cost_per_base_unit: c.cost_per_base_unit,
+      quantity_used: UnitConverter.fromBase(c.base_quantity_consumed, targetUnit), // En la unidad que pidió el usuario
+      base_quantity_consumed: c.base_quantity_consumed,
+      subtotal: c.total_base_cost
+    };
+  });
 
-  for (const batch of materialBatches) {
-    if (remainingToCover <= 0) break;
-    const amountFromThisBatch = Math.min(remainingToCover, batch.remaining_quantity);
+  if (engineResult.remainingToConsume > 0) {
+    const lastBatch = batches
+      .filter(b => b.material_id === material_id)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
 
-    breakdown.push({
-      batch_id: batch.id,
-      date: batch.date,
-      unit_cost: batch.unit_cost,
-      quantity_used: amountFromThisBatch,
-      quantity_used_in_target_unit: amountFromThisBatch * factor,
-      subtotal: amountFromThisBatch * batch.unit_cost
-    });
+    const fallbackCost = lastBatch?.cost_per_base_unit || 0;
 
-    remainingToCover -= amountFromThisBatch;
-  }
-
-  if (remainingToCover > 0) {
-    const lastBatch = allMaterialBatches[allMaterialBatches.length - 1];
-    const fallbackPrice = lastBatch ? lastBatch.unit_cost : 0;
     breakdown.push({
       batch_id: 'faltante',
       date: 'N/A (Sin Stock)',
-      unit_cost: fallbackPrice,
-      quantity_used: remainingToCover,
-      quantity_used_in_target_unit: remainingToCover * factor,
-      subtotal: remainingToCover * fallbackPrice,
+      unit_cost: fallbackCost * targetUnit.conversion_factor,
+      cost_per_base_unit: fallbackCost,
+      quantity_used: UnitConverter.fromBase(engineResult.remainingToConsume, targetUnit),
+      base_quantity_consumed: engineResult.remainingToConsume,
+      subtotal: engineResult.remainingToConsume * fallbackCost,
       is_missing: true
-    });
+    } as any);
   }
 
   return breakdown;
@@ -121,23 +140,23 @@ export const getFifoBreakdown = (
 export const calculateFifoCost = (
   material_id: string,
   requiredQuantity: number,
-  targetUnit: Unit,
+  targetUnit: string,
   batches: MaterialBatch[],
-  rawMaterials: RawMaterial[]
+  rawMaterials: RawMaterial[],
+  unitsOfMeasure: UnitOfMeasure[]
 ): number => {
-  const breakdown = getFifoBreakdown(material_id, requiredQuantity, targetUnit, batches, rawMaterials);
-  return breakdown.reduce((acc, item) => acc + (item.subtotal ?? 0), 0);
+  const breakdown = getFifoBreakdown(material_id, requiredQuantity, targetUnit, batches, rawMaterials, unitsOfMeasure);
+  return breakdown.reduce((acc, item: any) => acc + (item.subtotal ?? 0), 0);
 };
 
 export const calculateProductCost = (
   product: Product,
   batches: MaterialBatch[],
-  rawMaterials: RawMaterial[]
+  rawMaterials: RawMaterial[],
+  unitsOfMeasure: UnitOfMeasure[]
 ) => {
   const materials = product.materials ?? [];
   return materials.reduce((total, pm) => {
-    // 🟠 AUDIT FIX: Usar calculatePiecesToLinearMeters centralizado
-    // en lugar de duplicar la lógica dimensional aquí.
     let effectiveQty = pm.quantity;
     if (pm.mode === 'pieces' && Array.isArray(pm.pieces) && pm.pieces.length > 0) {
       const rollWidth = getLatestRollWidth(pm.material_id, batches);
@@ -149,7 +168,8 @@ export const calculateProductCost = (
       effectiveQty,
       pm.consumption_unit,
       batches,
-      rawMaterials
+      rawMaterials,
+      unitsOfMeasure
     );
     return total + fifoCost;
   }, 0);
@@ -201,6 +221,7 @@ export const useStore = create<AppState>()(
 
       setCurrentCompany: (companyId, role) => {
         set({ currentCompanyId: companyId, currentUserRole: role });
+        get().loadUomMetadata(); // Load units first
         get().loadProductsFromSupabase();
         get().loadRawMaterialsFromSupabase();
         get().loadBatchesFromSupabase();
@@ -217,6 +238,19 @@ export const useStore = create<AppState>()(
       batches: [],
       movements: [],
       productMovements: [],
+      uomCategories: [],
+      unitsOfMeasure: [],
+      materialTypes: [],
+
+      loadUomMetadata: async () => {
+        const { data: catData } = await supabase.from('uom_categories').select('*').order('name');
+        const { data: unitData } = await supabase.from('units_of_measure').select('*').order('name');
+        const { data: typeData } = await supabase.from('material_types').select('*').order('name');
+
+        if (catData) set({ uomCategories: catData });
+        if (unitData) set({ unitsOfMeasure: unitData });
+        if (typeData) set({ materialTypes: typeData });
+      },
 
       loadProductsFromSupabase: async () => {
         const companyId = get().currentCompanyId;
@@ -263,7 +297,8 @@ export const useStore = create<AppState>()(
         const { data, error } = await supabase
           .from('stock_movements')
           .select('*')
-          .eq('company_id', companyId);
+          .eq('company_id', companyId)
+          .is('deleted_at', null);
         if (!error && data) set({ movements: data as StockMovement[] });
       },
 
@@ -303,7 +338,7 @@ export const useStore = create<AppState>()(
           reference: product.reference,
           price: product.price,
           target_margin: product.target_margin,
-          cost_fifo: calculateProductCost(product, get().batches, get().rawMaterials),
+          cost_fifo: calculateProductCost(product, get().batches, get().rawMaterials, get().unitsOfMeasure),
           materials: product.materials,
           status: product.status,
           created_at: product.created_at,
@@ -324,7 +359,7 @@ export const useStore = create<AppState>()(
             price: product.price,
             target_margin: product.target_margin,
             materials: product.materials,
-            cost_fifo: calculateProductCost(product, get().batches, get().rawMaterials),
+            cost_fifo: calculateProductCost(product, get().batches, get().rawMaterials, get().unitsOfMeasure),
             status: product.status,
             updated_at: new Date().toISOString(),
             updated_by: actorId,
@@ -370,16 +405,16 @@ export const useStore = create<AppState>()(
         if (!companyId) return;
         const actorId = await getActorId();
 
-        // 🔴 FIX: Insert to DB FIRST, then update local state.
-        // Previous code did set() optimistically before the insert — if the DB
-        // insert failed, the material appeared in the UI but didn't exist in DB.
         const { error } = await supabase.from('raw_materials').insert({
           id: material.id,
           company_id: companyId,
           name: material.name,
           description: material.description,
           type: material.type,
-          unit: material.unit,
+          category_id: material.category_id,
+          base_unit_id: material.base_unit_id,
+          purchase_unit_id: material.purchase_unit_id,
+          display_unit_id: material.display_unit_id,
           provider: material.provider,
           status: material.status,
           created_at: new Date().toISOString(),
@@ -392,24 +427,29 @@ export const useStore = create<AppState>()(
           throw error;
         }
 
-        // Only update local state after confirmed DB write
         set((state) => ({ rawMaterials: [...state.rawMaterials, material] }));
       },
 
       updateRawMaterial: async (material) => {
+        const companyId = get().currentCompanyId;
+        if (!companyId) return;
         const actorId = await getActorId();
+
         const { error } = await supabase.from('raw_materials').update({
           name: material.name,
           description: material.description,
           type: material.type,
-          unit: material.unit,
+          category_id: material.category_id,
+          base_unit_id: material.base_unit_id,
+          purchase_unit_id: material.purchase_unit_id,
+          display_unit_id: material.display_unit_id,
           provider: material.provider,
           status: material.status,
           updated_at: new Date().toISOString(),
           updated_by: actorId,
         })
           .eq('id', material.id)
-          .eq('company_id', get().currentCompanyId);
+          .eq('company_id', companyId);
 
         if (error) throw error;
         set((state) => ({
@@ -502,6 +542,11 @@ export const useStore = create<AppState>()(
           provider: batch.provider,
           initial_quantity: batch.initial_quantity,
           remaining_quantity: batch.remaining_quantity,
+          base_initial_quantity: batch.base_initial_quantity,
+          base_remaining_quantity: batch.base_remaining_quantity,
+          base_consumed_quantity: batch.base_consumed_quantity || 0,
+          cost_per_base_unit: batch.cost_per_base_unit,
+          received_unit_id: batch.received_unit_id,
           unit_cost: batch.unit_cost,
           reference: batch.reference,
           width: batch.width,
@@ -549,6 +594,11 @@ export const useStore = create<AppState>()(
           provider: batch.provider,
           initial_quantity: batch.initial_quantity,
           remaining_quantity: batch.remaining_quantity,
+          base_initial_quantity: batch.base_initial_quantity,
+          base_remaining_quantity: batch.base_remaining_quantity,
+          base_consumed_quantity: batch.base_consumed_quantity,
+          cost_per_base_unit: batch.cost_per_base_unit,
+          received_unit_id: batch.received_unit_id,
           unit_cost: batch.unit_cost,
           reference: batch.reference,
           width: batch.width,
@@ -603,6 +653,7 @@ export const useStore = create<AppState>()(
         const companyId = get().currentCompanyId;
         const product = get().products.find(p => p.id === productId);
         if (!product || !companyId) return;
+        const actorId = await getActorId();
 
         let currentBatches = [...get().batches];
         const syncMovements: any[] = [];
@@ -619,15 +670,26 @@ export const useStore = create<AppState>()(
             effectiveQty,
             pm.consumption_unit,
             currentBatches,
-            get().rawMaterials
+            get().rawMaterials,
+            get().unitsOfMeasure
           );
 
           breakdown.forEach(item => {
             if (item.batch_id !== 'faltante') {
               currentBatches = currentBatches.map(b => {
                 if (b.id === item.batch_id) {
-                  const newRemaining = Math.max(0, b.remaining_quantity - item.quantity_used);
-                  return { ...b, remaining_quantity: newRemaining };
+                  const newBaseRemaining = Math.max(0, (b.base_remaining_quantity ?? 0) - (item as any).base_quantity_consumed);
+                  const material = get().rawMaterials.find(m => m.id === b.material_id);
+                  const baseUnit = get().unitsOfMeasure.find(u => u.id === material?.base_unit_id);
+                  const receivedUnit = get().unitsOfMeasure.find(u => u.id === b.received_unit_id) || baseUnit;
+                  const newLegacyRemaining = receivedUnit ? UnitConverter.fromBase(newBaseRemaining, receivedUnit) : b.remaining_quantity;
+
+                  return {
+                    ...b,
+                    base_remaining_quantity: newBaseRemaining,
+                    base_consumed_quantity: (b.base_consumed_quantity ?? 0) + (item as any).base_quantity_consumed,
+                    remaining_quantity: newLegacyRemaining
+                  };
                 }
                 return b;
               });
@@ -639,10 +701,10 @@ export const useStore = create<AppState>()(
               material_id: pm.material_id,
               batch_id: item.batch_id === 'faltante' ? null : item.batch_id,
               date: now,
-              type: item.is_missing ? 'egreso_asumido' : 'egreso',
+              type: (item as any).is_missing ? 'egreso_asumido' : 'egreso',
               quantity: item.quantity_used,
               unit_cost: item.unit_cost,
-              reference: item.is_missing
+              reference: (item as any).is_missing
                 ? STOCK_MOVEMENT_REF.egresoAsumido(product.id, product.name)
                 : STOCK_MOVEMENT_REF.egreso(product.name),
               created_at: now
@@ -653,9 +715,15 @@ export const useStore = create<AppState>()(
         // 🟢 AUDIT FIX #1: Persist to DB with await + error handling
         for (const batch of currentBatches) {
           const original = get().batches.find(b => b.id === batch.id);
-          if (original && original.remaining_quantity !== batch.remaining_quantity) {
+          if (original && (original.base_remaining_quantity !== batch.base_remaining_quantity)) {
             const { error } = await supabase.from('material_batches')
-              .update({ remaining_quantity: batch.remaining_quantity })
+              .update({
+                remaining_quantity: batch.remaining_quantity,
+                base_remaining_quantity: batch.base_remaining_quantity,
+                base_consumed_quantity: batch.base_consumed_quantity,
+                updated_at: now,
+                updated_by: actorId
+              })
               .eq('id', batch.id)
               .eq('company_id', companyId);
             if (error) {
@@ -683,6 +751,7 @@ export const useStore = create<AppState>()(
         const companyId = get().currentCompanyId;
         const product = get().products.find(p => p.id === productId);
         if (!product || !companyId || quantity <= 0) return;
+        const actorId = await getActorId();
 
         let currentBatches = [...get().batches];
         const syncMovements: any[] = [];
@@ -703,15 +772,27 @@ export const useStore = create<AppState>()(
             reqQty,
             pm.consumption_unit,
             currentBatches,
-            get().rawMaterials
+            get().rawMaterials,
+            get().unitsOfMeasure
           );
 
           breakdown.forEach(item => {
             if (item.batch_id !== 'faltante') {
               currentBatches = currentBatches.map(b => {
                 if (b.id === item.batch_id) {
-                  const newRemaining = Math.max(0, b.remaining_quantity - item.quantity_used);
-                  return { ...b, remaining_quantity: newRemaining };
+                  const newBaseRemaining = Math.max(0, (b.base_remaining_quantity ?? 0) - (item as any).base_quantity_consumed);
+
+                  const material = get().rawMaterials.find(m => m.id === b.material_id);
+                  const baseUnit = get().unitsOfMeasure.find(u => u.id === material?.base_unit_id);
+                  const receivedUnit = get().unitsOfMeasure.find(u => u.id === b.received_unit_id) || baseUnit;
+                  const newLegacyRemaining = receivedUnit ? UnitConverter.fromBase(newBaseRemaining, receivedUnit) : b.remaining_quantity;
+
+                  return {
+                    ...b,
+                    base_remaining_quantity: newBaseRemaining,
+                    base_consumed_quantity: (b.base_consumed_quantity ?? 0) + (item as any).base_quantity_consumed,
+                    remaining_quantity: newLegacyRemaining
+                  };
                 }
                 return b;
               });
@@ -723,15 +804,15 @@ export const useStore = create<AppState>()(
               material_id: pm.material_id,
               batch_id: item.batch_id === 'faltante' ? null : item.batch_id,
               date: now,
-              type: item.is_missing ? 'egreso_asumido' : 'egreso',
+              type: (item as any).is_missing ? 'egreso_asumido' : 'egreso',
               quantity: item.quantity_used,
               unit_cost: item.unit_cost,
-              reference: item.is_missing
+              reference: (item as any).is_missing
                 ? STOCK_MOVEMENT_REF.egresoAsumidoLote(product.id)
                 : STOCK_MOVEMENT_REF.egresoLote(product.name),
               created_at: now
             });
-            if (item.is_missing) hasMissingMaterials = true;
+            if ((item as any).is_missing) hasMissingMaterials = true;
           });
         });
 
@@ -751,12 +832,15 @@ export const useStore = create<AppState>()(
 
         for (const batch of currentBatches) {
           const original = get().batches.find(b => b.id === batch.id);
-          if (original && original.remaining_quantity !== batch.remaining_quantity) {
-            // 🔴 FIX: Check error on every DB write — previously this was fire-and-forget.
-            // A silent failure here would leave DB and in-memory state desynchronized,
-            // creating invisible inventory debt with no audit trail.
+          if (original && (original.base_remaining_quantity !== batch.base_remaining_quantity)) {
             const { error } = await supabase.from('material_batches')
-              .update({ remaining_quantity: batch.remaining_quantity })
+              .update({
+                remaining_quantity: batch.remaining_quantity,
+                base_remaining_quantity: batch.base_remaining_quantity,
+                base_consumed_quantity: batch.base_consumed_quantity,
+                updated_at: now,
+                updated_by: actorId
+              })
               .eq('id', batch.id)
               .eq('company_id', companyId);
             if (error) {
@@ -815,6 +899,98 @@ export const useStore = create<AppState>()(
         set(state => ({
           productMovements: [newMovement, ...state.productMovements]
         }));
+      },
+
+      // 🔹 TAXONOMY CRUD (Super Admin Only)
+      addMaterialType: async (name) => {
+        const { error } = await supabase.from('material_types').insert({ name });
+        if (error) throw error;
+        get().loadUomMetadata();
+      },
+      updateMaterialType: async (id, name) => {
+        const { error } = await supabase.from('material_types').update({ name }).eq('id', id);
+        if (error) throw error;
+        get().loadUomMetadata();
+      },
+      deleteMaterialType: async (id) => {
+        const { error } = await supabase.from('material_types').delete().eq('id', id);
+        if (error) throw error;
+        set(state => ({ materialTypes: state.materialTypes.filter(t => t.id !== id) }));
+      },
+
+      addUomCategory: async (name, key) => {
+        const { error } = await supabase.from('uom_categories').insert({ name, key });
+        if (error) throw error;
+        get().loadUomMetadata();
+      },
+      updateUomCategory: async (id, name, key) => {
+        const { error } = await supabase.from('uom_categories').update({ name, key }).eq('id', id);
+        if (error) throw error;
+        get().loadUomMetadata();
+      },
+      deleteUomCategory: async (id) => {
+        const { error } = await supabase.from('uom_categories').delete().eq('id', id);
+        if (error) throw error;
+        set(state => ({ uomCategories: state.uomCategories.filter(c => c.id !== id) }));
+      },
+
+      addUnitOfMeasure: async (unit) => {
+        if (unit.is_base) {
+          await supabase.from('units_of_measure').update({ is_base: false }).eq('category_id', unit.category_id);
+        }
+        // 🧹 Clean payload
+        const payload = {
+          name: unit.name,
+          symbol: unit.symbol,
+          conversion_factor: unit.conversion_factor,
+          category_id: unit.category_id,
+          is_base: unit.is_base
+        };
+        const { data, error } = await supabase.from('units_of_measure').insert(payload).select().single();
+        if (error) throw error;
+        if (data) {
+          set(state => {
+            let units = state.unitsOfMeasure;
+            if (unit.is_base) {
+              units = units.map(u => u.category_id === unit.category_id ? { ...u, is_base: false } : u);
+            }
+            return { unitsOfMeasure: [...units, data].sort((a, b) => a.name.localeCompare(b.name)) };
+          });
+        }
+      },
+      updateUnitOfMeasure: async (id, unit) => {
+        // 🧹 Clean payload
+        const payload = {
+          name: unit.name,
+          symbol: unit.symbol,
+          conversion_factor: unit.conversion_factor,
+          category_id: unit.category_id,
+          is_base: unit.is_base
+        };
+
+        if (unit.is_base) {
+          const uom = get().unitsOfMeasure.find(u => u.id === id);
+          if (uom) {
+            await supabase.from('units_of_measure').update({ is_base: false }).eq('category_id', uom.category_id);
+          }
+        }
+        const { error } = await supabase.from('units_of_measure').update(payload).eq('id', id);
+        if (error) throw error;
+        set(state => {
+          let units = state.unitsOfMeasure;
+          const uom = units.find(u => u.id === id);
+          if (unit.is_base && uom) {
+            units = units.map(u => u.category_id === uom.category_id ? { ...u, is_base: false } : u);
+          }
+          return {
+            unitsOfMeasure: units.map(u => u.id === id ? { ...u, ...unit } : u).sort((a, b) => a.name.localeCompare(b.name))
+          };
+        });
+      },
+      deleteUnitOfMeasure: async (id) => {
+        const { error } = await supabase.from('units_of_measure').delete().eq('id', id);
+        if (error) throw error;
+        set(state => ({ unitsOfMeasure: state.unitsOfMeasure.filter(u => u.id !== id) }));
       },
     }),
     {

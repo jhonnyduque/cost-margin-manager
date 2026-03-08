@@ -24,13 +24,13 @@ export function useCurrency() {
     const currencyCode: CurrencyCode = (currentCompany as any)?.currency || 'USD';
     const currencyInfo = CURRENCIES.find(c => c.code === currencyCode) || CURRENCIES[0];
 
-    const formatCurrency = (value: number): string => {
-        if (isNaN(value) || !isFinite(value)) return `${currencyInfo.symbol} 0.00`;
+    const formatCurrency = (value: number, decimals: number = 2): string => {
+        if (isNaN(value) || !isFinite(value)) return `${currencyInfo.symbol} 0.${'0'.repeat(decimals)}`;
         return new Intl.NumberFormat(currencyInfo.locale, {
             style: 'currency',
             currency: currencyCode,
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals,
         }).format(value);
     };
 

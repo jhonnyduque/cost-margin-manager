@@ -2,7 +2,8 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Edit2, Search, X, History, ShoppingCart, ArrowDownToLine, Printer, Pencil, AlertCircle, Maximize2, Scissors, RotateCcw, Package, Archive, MoreVertical } from 'lucide-react';
 import { useStore, getMaterialDebt, calculateTotalFinancialDebt } from '../store';
-import { RawMaterial, Unit, MaterialBatch } from '@/types';
+import { RawMaterial, Unit, MaterialBatch, UnitOfMeasure } from '@/types';
+import { UnitConverter } from '../services/inventoryEngineV2';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -20,8 +21,9 @@ const RawMaterials: React.FC = () => {
   const {
     currentCompanyId, currentUserRole,
     rawMaterials, products, batches, movements,
+    uomCategories, unitsOfMeasure, materialTypes,
     addRawMaterial, deleteRawMaterial, archiveMaterial, updateRawMaterial,
-    addBatch, deleteBatch, updateBatch
+    addBatch, deleteBatch, updateBatch, loadUomMetadata
   } = useStore();
   const { formatCurrency, currencySymbol } = useCurrency();
 
@@ -31,7 +33,7 @@ const RawMaterials: React.FC = () => {
   const canDelete = allowedRoles.includes((currentUserRole as string) || '');
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [unitFilter, setUnitFilter] = useState<'todos' | Unit>('todos');
+  const [unitFilter, setUnitFilter] = useState<string>('todos');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [expandedMaterialId, setExpandedMaterialId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -39,29 +41,36 @@ const RawMaterials: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [editingBatchData, setEditingBatchData] = useState<MaterialBatch | null>(null);
   const [formData, setFormData] = useState<any>({
-    name: '', description: '', type: 'Tela', unit: 'metro',
-    provider: '', status: 'activa', initialQty: 0, unitCost: 0, width: 140
+    name: '', description: '', type: 'Tela',
+    category_id: '', base_unit_id: '', purchase_unit_id: '', display_unit_id: '',
+    provider: '', status: 'activa', initialQty: 0, unitCost: 0, totalCost: 0, width: 140
   });
   const [batchFormData, setBatchFormData] = useState<Partial<MaterialBatch>>({
     date: new Date().toISOString().split('T')[0],
-    provider: '', initial_quantity: 0, unit_cost: 0, reference: '', width: 140, length: 0
+    provider: '', initial_quantity: 0, unit_cost: 0, total_cost: 0, reference: '', width: 140, length: 0,
+    received_unit_id: ''
   });
   const [menuState, setMenuState] = useState<{ materialId: string; rect: DOMRect } | null>(null);
+  const [batchMenuState, setBatchMenuState] = useState<{ batchId: string; rect: DOMRect } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const batchMenuRef = useRef<HTMLDivElement>(null);
 
   // ── Click outside closes kebab menu ──
   React.useEffect(() => {
-    if (!menuState) return;
+    if (!menuState && !batchMenuState) return;
     const handler = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (target.closest('[data-kebab-trigger]')) return;
-      if (menuRef.current && !menuRef.current.contains(target)) {
-        setMenuState(null);
-      }
+      if (menuRef.current && !menuRef.current.contains(target)) setMenuState(null);
+      if (batchMenuRef.current && !batchMenuRef.current.contains(target)) setBatchMenuState(null);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [menuState]);
+  }, [menuState, batchMenuState]);
+
+  useEffect(() => {
+    loadUomMetadata();
+  }, [loadUomMetadata]);
 
   const openMenu = (materialId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -71,6 +80,16 @@ const RawMaterials: React.FC = () => {
     }
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     setMenuState({ materialId, rect });
+  };
+
+  const openBatchMenu = (batchId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (batchMenuState?.batchId === batchId) {
+      setBatchMenuState(null);
+      return;
+    }
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setBatchMenuState({ batchId, rect });
   };
 
   const filteredMaterials = rawMaterials.filter(m =>
@@ -83,14 +102,24 @@ const RawMaterials: React.FC = () => {
 
   const getBatchStats = (materialId: string) => {
     const matBatches = batches.filter(b => b.material_id === materialId);
-    const totalOriginalQty = matBatches.reduce((acc, b) => acc + b.initial_quantity, 0);
-    let totalRemainingQty = matBatches.reduce((acc, b) => acc + b.remaining_quantity, 0);
+
+    // v2 Prioritization: If base quantities exist, use them for everything.
+    const totalOriginalQty = matBatches.reduce((acc, b) => acc + ((b as any).base_initial_quantity ?? b.initial_quantity ?? 0), 0);
+    let totalRemainingQty = matBatches.reduce((acc, b) => acc + ((b as any).base_remaining_quantity ?? b.remaining_quantity ?? 0), 0);
+
     const debt = getMaterialDebt(materialId, movements).pendingQty;
     totalRemainingQty -= debt;
-    const totalValue = matBatches.reduce((acc, b) => acc + (b.unit_cost * b.initial_quantity), 0);
+
+    const totalValue = matBatches.reduce((acc, b) => {
+      const qty = (b as any).base_initial_quantity ?? b.initial_quantity ?? 0;
+      const cost = (b as any).cost_per_base_unit ?? b.unit_cost ?? 0;
+      return acc + (qty * cost);
+    }, 0);
+
     const weightedAvgCost = totalOriginalQty > 0 ? totalValue / totalOriginalQty : 0;
     const totalArea = matBatches.reduce((acc, b) => acc + (b.area || 0), 0);
     const avgCostPerM2 = totalArea > 0 ? totalValue / totalArea : 0;
+
     return { totalOriginalQty, totalRemainingQty, totalValue, weightedAvgCost, totalArea, avgCostPerM2 };
   };
 
@@ -123,15 +152,17 @@ const RawMaterials: React.FC = () => {
       name: formData.name,
       description: formData.description,
       type: formData.type,
-      unit: formData.unit,
+      category_id: formData.category_id,
+      base_unit_id: formData.base_unit_id,
+      purchase_unit_id: formData.purchase_unit_id,
+      display_unit_id: formData.display_unit_id,
       provider: formData.provider,
       status: formData.status,
       company_id: currentCompanyId,
       created_at: now,
       updated_at: now,
       deleted_at: null,
-      created_by: '', // Auto-handled by store
-      updated_by: '', // Auto-handled by store
+      unit: unitsOfMeasure.find(u => u.id === formData.purchase_unit_id)?.symbol || formData.unit,
     } as RawMaterial;
 
     try {
@@ -144,6 +175,16 @@ const RawMaterials: React.FC = () => {
             initial_quantity: formData.initialQty,
             width: formData.width || 0,
           });
+          const purchaseUom = unitsOfMeasure.find(u => u.id === formData.purchase_unit_id);
+          const baseUom = unitsOfMeasure.find(u => u.id === formData.base_unit_id);
+
+          // Ensure we use the best available factor
+          const factor = purchaseUom?.conversion_factor || 1;
+          const baseQty = formData.initialQty * factor;
+          const costPerBase = factor > 0 ? (formData.unitCost / factor) : formData.unitCost;
+
+
+
           const batch: MaterialBatch = {
             id: crypto.randomUUID(),
             material_id: materialId,
@@ -152,6 +193,11 @@ const RawMaterials: React.FC = () => {
             initial_quantity: formData.initialQty,
             remaining_quantity: formData.initialQty,
             unit_cost: formData.unitCost,
+            received_unit_id: formData.purchase_unit_id,
+            // v2 base fields
+            base_initial_quantity: baseQty,
+            base_remaining_quantity: baseQty,
+            cost_per_base_unit: costPerBase,
             reference: 'Carga Inicial',
             width: formData.width,
             length: 0,
@@ -191,14 +237,14 @@ const RawMaterials: React.FC = () => {
 
     try {
       const material = rawMaterials.find(m => m.id === expandedMaterialId);
-      const isDimensional = material?.unit === 'metro' || material?.unit === 'cm';
+      const isDimensional = (material?.type === 'Tela') && (material?.unit === 'metro' || material?.unit === 'cm');
       let finalQty = batchFormData.initial_quantity || 0;
       let finalUnitCost = batchFormData.unit_cost || 0;
       let area = 0;
 
       if (!isDimensional) {
         finalQty = batchFormData.initial_quantity || 0;
-        finalUnitCost = finalQty > 0 ? (batchFormData.unit_cost || 0) / finalQty : 0;
+        finalUnitCost = batchFormData.unit_cost || 0;
         area = 0;
       } else if (entry_mode === 'rollo') {
         area = calculateBatchArea('rollo', {
@@ -215,6 +261,14 @@ const RawMaterials: React.FC = () => {
         finalUnitCost = finalQty > 0 ? (batchFormData.unit_cost || 0) / finalQty : 0;
       }
 
+      const unitId = batchFormData.received_unit_id || material?.purchase_unit_id || material?.base_unit_id;
+      const purchaseUom = unitsOfMeasure.find(u => u.id === unitId);
+      const factor = purchaseUom?.conversion_factor || 1;
+      const baseQty = finalQty * factor;
+      const costPerBase = factor > 0 ? (finalUnitCost / factor) : finalUnitCost;
+
+
+
       // Audit trail gestionado internamente por el store (addBatch llama getActorId).
       const data: MaterialBatch = {
         ...batchFormData,
@@ -223,6 +277,11 @@ const RawMaterials: React.FC = () => {
         initial_quantity: finalQty,
         remaining_quantity: finalQty,
         unit_cost: finalUnitCost,
+        received_unit_id: unitId,
+        // v2 base fields
+        base_initial_quantity: baseQty,
+        base_remaining_quantity: baseQty,
+        cost_per_base_unit: costPerBase,
         area: area,
         entry_mode: entry_mode,
         company_id: currentCompanyId,
@@ -428,12 +487,12 @@ const RawMaterials: React.FC = () => {
           <Select
             className="w-48"
             value={unitFilter}
-            onChange={(e) => setUnitFilter(e.target.value as any)}
+            onChange={(e) => setUnitFilter(e.target.value)}
           >
             <option value="todos">Todas las unidades</option>
-            <option value="metro">Metros</option>
-            <option value="unidad">Unidades</option>
-            <option value="kg">Kilogramos</option>
+            {unitsOfMeasure.map(u => (
+              <option key={u.id} value={u.symbol}>{u.name} ({u.symbol})</option>
+            ))}
           </Select>
         </div>
       </SectionBlock>
@@ -460,7 +519,12 @@ const RawMaterials: React.FC = () => {
                   <div className="flex flex-col">
                     <span className={`${typography.uiLabel} ${colors.textSecondary}`}>Stock</span>
                     <span className={`${typography.body} font-medium ${totalRemainingQty <= 0 ? colors.statusDanger : colors.textPrimary}`}>
-                      {totalRemainingQty.toFixed(2)} <span className={`${typography.caption} ${colors.textSecondary}`}>{m.unit}s</span>
+                      {UnitConverter.formatFromBase(
+                        totalRemainingQty,
+                        unitsOfMeasure.find(u => u.id === m.display_unit_id) ||
+                        unitsOfMeasure.find(u => u.id === m.base_unit_id) ||
+                        { symbol: m.unit, conversion_factor: 1 } as any
+                      )}
                     </span>
                   </div>
                   <div className="flex flex-col items-end text-right">
@@ -528,9 +592,14 @@ const RawMaterials: React.FC = () => {
                         <span className={`${typography.text.caption} font-bold uppercase tracking-wider text-slate-500`} title={m.type}>{m.type}</span>
                       </td>
                       <td className={`${spacing.pxLg} py-3 truncate text-right`}>
-                        <div className="flex justify-end items-center" title={`Stock Actual: ${displayStock.toFixed(2)} ${m.unit}s`}>
+                        <div className="flex justify-end items-center" title={`Stock Actual (Base)`}>
                           <span className={`${typography.text.body} font-bold tabular-nums ${displayStock > 0 ? colors.statusSuccess : displayStock < 0 ? colors.statusDanger : colors.textSecondary}`}>
-                            {displayStock.toFixed(2)} <span className={`${typography.text.caption} ml-1 opacity-70`}>{m.unit}s</span>
+                            {UnitConverter.formatFromBase(
+                              displayStock,
+                              unitsOfMeasure.find(u => u.id === (m as any).display_unit_id) ||
+                              unitsOfMeasure.find(u => u.id === (m as any).base_unit_id) ||
+                              { symbol: m.unit || 'base', conversion_factor: 1 } as any
+                            )}
                           </span>
                         </div>
                       </td>
@@ -560,11 +629,10 @@ const RawMaterials: React.FC = () => {
 
                     {/* ACCORDION DESKTOP IN-LINE */}
                     {expandedMaterialId === m.id && (
-                      <tr>
-                        <td colSpan={6} className={`p-0 border-b ${colors.borderSubtle} ${colors.bgMain}/30`}>
-                          <div className={`p-6 space-y-8 animate-in fade-in slide-in-from-top-2 duration-300`}>
-
-                            {/* NEW BATCH FORM */}
+                      <tr className={`${colors.bgMain} border-b ${colors.borderStandard}`}>
+                        <td colSpan={7} className={`${spacing.pxMd} py-6`}>
+                          <div className="space-y-6">
+                            {/* FORMULARIO DE NUEVA ENTRADA (LOTES) */}
                             <div className={`no-print ${colors.bgSurface} ${radius.xl} ${spacing.pLg} ${shadows.sm}`}>
                               <div className="mb-6 flex items-center justify-between">
                                 <h4 className={`flex items-center gap-2 ${typography.uiLabel} text-indigo-700`}>
@@ -589,17 +657,44 @@ const RawMaterials: React.FC = () => {
                                     {isDimensional ? (
                                       <>
                                         {entry_mode === 'rollo' ? (
-                                          <div className="w-24"><Input label="M. Lineales" type="number" step="0.01" value={batchFormData.initial_quantity || ''} onChange={e => setBatchFormData({ ...batchFormData, initial_quantity: parseFloat(e.target.value) })} required /></div>
+                                          <>
+                                            <div className="w-24"><Input label="M. Lineales" type="number" step="0.01" value={batchFormData.initial_quantity || ''} onChange={e => {
+                                              const qty = parseFloat(e.target.value) || 0;
+                                              setBatchFormData({ ...batchFormData, initial_quantity: qty, total_cost: qty * (batchFormData.unit_cost || 0) });
+                                            }} required /></div>
+                                            <div className="w-32"><Input label="Costo / Metro (€)" type="number" step="0.0001" value={batchFormData.unit_cost || ''} onChange={e => {
+                                              const unitCost = parseFloat(e.target.value) || 0;
+                                              setBatchFormData({ ...batchFormData, unit_cost: unitCost, total_cost: (batchFormData.initial_quantity || 0) * unitCost });
+                                            }} required /></div>
+                                            <div className="w-32"><Input label="Costo Total (€)" type="number" step="0.01" value={batchFormData.total_cost || ''} onChange={e => {
+                                              const total = parseFloat(e.target.value) || 0;
+                                              const unitCost = (batchFormData.initial_quantity || 0) > 0 ? total / (batchFormData.initial_quantity || 0) : 0;
+                                              setBatchFormData({ ...batchFormData, total_cost: total, unit_cost: unitCost });
+                                            }} placeholder="Auto" /></div>
+                                          </>
                                         ) : (
-                                          <div className="w-24"><Input label="Largo (cm)" type="number" step="0.01" value={batchFormData.length || ''} onChange={e => setBatchFormData({ ...batchFormData, length: parseFloat(e.target.value) })} required /></div>
+                                          <>
+                                            <div className="w-24"><Input label={`Largo (${unitsOfMeasure.find(u => u.category_id === (unitsOfMeasure.find(un => un.symbol === 'm')?.category_id))?.symbol === 'cm' ? 'cm' : 'cm'})`} type="number" step="0.01" value={batchFormData.length || ''} onChange={e => setBatchFormData({ ...batchFormData, length: parseFloat(e.target.value) })} required /></div>
+                                            <div className="w-32"><Input label="Costo Total (€)" type="number" step="0.01" value={batchFormData.unit_cost || ''} onChange={e => setBatchFormData({ ...batchFormData, unit_cost: parseFloat(e.target.value) })} required /></div>
+                                          </>
                                         )}
-                                        <div className="w-24"><Input label="Ancho (cm)" type="number" step="1" value={batchFormData.width || ''} onChange={e => setBatchFormData({ ...batchFormData, width: parseInt(e.target.value) })} required className="text-emerald-700" /></div>
-                                        <div className="w-32"><Input label={entry_mode === 'rollo' ? 'Costo / Metro' : 'Costo Total'} type="number" step="0.01" value={batchFormData.unit_cost || ''} onChange={e => setBatchFormData({ ...batchFormData, unit_cost: parseFloat(e.target.value) })} required /></div>
+                                        <div className="w-24"><Input label="Ancho (cm)" type="number" step="1" value={batchFormData.width || ''} onChange={e => setBatchFormData({ ...batchFormData, width: parseInt(e.target.value) })} required className="text-emerald-700 font-bold" /></div>
                                       </>
                                     ) : (
                                       <>
-                                        <div className="w-32"><Input label={`Cantidad (${m.unit})`} type="number" step="0.01" value={batchFormData.initial_quantity || ''} onChange={e => setBatchFormData({ ...batchFormData, initial_quantity: parseFloat(e.target.value) })} required /></div>
-                                        <div className="w-32"><Input label="Costo Total (€)" type="number" step="0.01" value={batchFormData.unit_cost || ''} onChange={e => setBatchFormData({ ...batchFormData, unit_cost: parseFloat(e.target.value) })} required /></div>
+                                        <div className="w-32"><Input label={`Cant. (${unitsOfMeasure.find(u => u.id === m.purchase_unit_id || m.base_unit_id)?.symbol || m.unit || 'un'})`} type="number" step="0.01" value={batchFormData.initial_quantity || ''} onChange={e => {
+                                          const qty = parseFloat(e.target.value) || 0;
+                                          setBatchFormData({ ...batchFormData, initial_quantity: qty, total_cost: qty * (batchFormData.unit_cost || 0) });
+                                        }} required /></div>
+                                        <div className="w-32"><Input label="Costo Unit. (€)" type="number" step="0.0001" value={batchFormData.unit_cost || ''} onChange={e => {
+                                          const unitCost = parseFloat(e.target.value) || 0;
+                                          setBatchFormData({ ...batchFormData, unit_cost: unitCost, total_cost: (batchFormData.initial_quantity || 0) * unitCost });
+                                        }} required /></div>
+                                        <div className="w-32"><Input label="Costo Factura (€)" type="number" step="0.01" value={batchFormData.total_cost || ''} onChange={e => {
+                                          const total = parseFloat(e.target.value) || 0;
+                                          const unitCost = (batchFormData.initial_quantity || 0) > 0 ? total / (batchFormData.initial_quantity || 0) : 0;
+                                          setBatchFormData({ ...batchFormData, total_cost: total, unit_cost: unitCost });
+                                        }} placeholder="Auto" /></div>
                                       </>
                                     )}
                                     <Button type="submit" variant="primary" icon={<Plus size={16} />} className={`mb-0.5 h-10 w-full sm:w-auto ${shadows.md}`}>Añadir Lote</Button>
@@ -608,9 +703,9 @@ const RawMaterials: React.FC = () => {
                               )}
                             </div>
 
-                            {/* BATCHES TABLE IN-LINE */}
-                            <div>
-                              <div className="flex items-center justify-between mb-4 mt-8">
+                            {/* KARDEX SECTION */}
+                            <div className="space-y-4">
+                              <div className="flex items-center justify-between">
                                 <h4 className={`${typography.sectionTitle} ${colors.textPrimary}`}>Kardex de Lotes y Movimientos</h4>
                                 <Button variant="ghost" size="icon" onClick={handlePrint} className={colors.textSecondary} title="Imprimir"><Printer size={18} /></Button>
                               </div>
@@ -621,11 +716,15 @@ const RawMaterials: React.FC = () => {
                                       <th className={`${spacing.pxMd} py-3 ${typography.uiLabel} ${colors.textSecondary} w-[12%]`}>Fecha</th>
                                       <th className={`${spacing.pxMd} py-3 ${typography.uiLabel} ${colors.textSecondary} w-[10%]`}>Modo</th>
                                       <th className={`${spacing.pxMd} py-3 ${typography.uiLabel} ${colors.textSecondary} w-[18%]`}>Proveedor</th>
-                                      <th className={`${spacing.pxMd} py-3 ${typography.uiLabel} ${colors.textSecondary} w-[15%] text-right`}>Dimensiones</th>
-                                      <th className={`${spacing.pxMd} py-3 ${typography.uiLabel} ${colors.statusSuccess} w-[10%] text-right`}>Área</th>
-                                      <th className={`${spacing.pxMd} py-3 ${typography.uiLabel} ${colors.textSecondary} w-[10%] text-right`}>Costo</th>
-                                      <th className={`${spacing.pxMd} py-3 ${typography.uiLabel} text-indigo-600 w-[10%] text-right`}>/m²</th>
-                                      <th className={`${spacing.pxMd} py-3 ${typography.uiLabel} ${colors.textSecondary} w-[10%] text-right`}>Restante</th>
+                                      <th className={`${spacing.pxMd} py-3 ${typography.uiLabel} ${colors.textSecondary} w-[15%] text-right`}>{isDimensional ? 'Dimensiones' : 'Cantidad Compra'}</th>
+                                      {isDimensional && (
+                                        <>
+                                          <th className={`${spacing.pxMd} py-3 ${typography.uiLabel} ${colors.statusSuccess} w-[10%] text-right`}>Área</th>
+                                          <th className={`${spacing.pxMd} py-3 ${typography.uiLabel} text-indigo-600 w-[10%] text-right`}>/m²</th>
+                                        </>
+                                      )}
+                                      <th className={`${spacing.pxMd} py-3 ${typography.uiLabel} ${colors.textSecondary} w-[15%] text-right`}>Costo Total</th>
+                                      <th className={`${spacing.pxMd} py-3 ${typography.uiLabel} ${colors.textSecondary} w-[15%] text-right`}>Restante ({unitsOfMeasure.find(u => u.id === m.display_unit_id || m.base_unit_id)?.symbol})</th>
                                       <th className="w-[5%] text-center"></th>
                                     </tr>
                                   </thead>
@@ -636,8 +735,10 @@ const RawMaterials: React.FC = () => {
                                         : (batch.unit_cost * batch.initial_quantity);
                                       const currentCostPerM2 = isDimensional && batch.area && batch.area > 0 ? currentTotalPurchaseCost / batch.area : 0;
                                       return (
-                                        <tr key={batch.id} className="hover:bg-slate-50 transition-colors">
-                                          <td className={`${spacing.pxMd} py-2.5 tabular-nums ${typography.text.caption} font-medium`}>{batch.date}</td>
+                                        <tr key={batch.id} className="group hover:bg-slate-50 transition-colors">
+                                          <td className={`${spacing.pxMd} py-2.5 tabular-nums ${typography.text.caption} font-medium`}>
+                                            {batch.date.includes('T') ? batch.date.split('T')[0] : batch.date}
+                                          </td>
                                           <td className={`${spacing.pxMd} py-2.5`}>
                                             {isDimensional ? (
                                               <span className={`flex w-fit items-center gap-1 flex-shrink-0 ${typography.text.caption} font-bold uppercase tracking-tight ${batch.entry_mode === 'pieza' ? colors.statusWarning : colors.statusSuccess}`}>
@@ -650,53 +751,72 @@ const RawMaterials: React.FC = () => {
                                           </td>
                                           <td className={`${spacing.pxMd} py-2.5 font-medium ${typography.text.caption} truncate`} title={batch.provider}>{batch.provider}</td>
                                           <td className={`${spacing.pxMd} py-2.5 text-right flex flex-col items-end`}>
-                                            {isDimensional ? (
-                                              <>
-                                                <span className={`${typography.text.caption} font-medium ${colors.textPrimary} leading-tight`}>
-                                                  {batch.entry_mode === 'pieza' ? `${batch.length} × ${batch.width} cm` : `${batch.initial_quantity.toFixed(2)} m`}
-                                                </span>
-                                                <span className={`${typography.text.caption} font-medium ${colors.textSecondary} leading-tight`}>{batch.width} cm ancho</span>
-                                              </>
-                                            ) : (
-                                              <span className={`${colors.textSecondary} font-medium ${typography.text.caption}`}>---</span>
+                                            <span className={`${typography.text.caption} font-medium ${colors.textPrimary} leading-tight`}>
+                                              {isDimensional ? (
+                                                batch.entry_mode === 'pieza'
+                                                  ? `${batch.length} × ${batch.width} cm`
+                                                  : `${batch.initial_quantity.toFixed(2)} ${unitsOfMeasure.find(u => u.id === batch.received_unit_id)?.symbol || 'm'}`
+                                              ) : (
+                                                `${batch.initial_quantity.toFixed(2)} ${unitsOfMeasure.find(u => u.id === batch.received_unit_id)?.symbol || ''}`
+                                              )}
+                                            </span>
+                                            {isDimensional && (
+                                              <span className={`${typography.text.caption} font-medium ${colors.textSecondary} leading-tight`}>{batch.width} cm ancho</span>
                                             )}
                                           </td>
-                                          <td className={`${spacing.pxMd} py-2.5 text-right tabular-nums ${typography.text.caption} font-medium ${colors.statusSuccess}`}>{isDimensional && batch.area ? `${batch.area.toFixed(2)} m²` : '---'}</td>
+                                          {isDimensional && (
+                                            <>
+                                              <td className={`${spacing.pxMd} py-2.5 text-right tabular-nums ${typography.text.caption} font-medium ${colors.statusSuccess}`}>{batch.area ? `${batch.area.toFixed(2)} m²` : '---'}</td>
+                                              <td className={`${spacing.pxMd} py-2.5 text-right tabular-nums ${typography.text.caption} font-medium text-indigo-600`}>{currentCostPerM2 > 0 ? formatCurrency(currentCostPerM2) : '---'}</td>
+                                            </>
+                                          )}
                                           <td className={`${spacing.pxMd} py-2.5 text-right tabular-nums ${typography.text.caption} font-medium`}>{formatCurrency(currentTotalPurchaseCost)}</td>
-                                          <td className={`${spacing.pxMd} py-2.5 text-right tabular-nums ${typography.text.caption} font-medium text-indigo-600`}>{isDimensional && currentCostPerM2 > 0 ? formatCurrency(currentCostPerM2) : '---'}</td>
                                           <td className={`${spacing.pxMd} py-2.5 text-right`}>
                                             <Badge variant={batch.remaining_quantity > 0 ? 'success' : 'secondary'} className={`${typography.text.caption} tabular-nums`}>
-                                              {batch.remaining_quantity.toFixed(2)}
+                                              {UnitConverter.formatFromBase(
+                                                (batch as any).base_remaining_quantity ?? batch.remaining_quantity,
+                                                unitsOfMeasure.find(u => u.id === m.display_unit_id) ||
+                                                unitsOfMeasure.find(u => u.id === m.base_unit_id) ||
+                                                { symbol: '', conversion_factor: 1 } as any
+                                              )}
                                             </Badge>
                                           </td>
                                           <td className="px-4 py-2.5 text-center">
-                                            <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                              {canEdit && (
-                                                <button onClick={() => setEditingBatchData(batch)} className="p-1 hover:text-indigo-600" title="Editar Lote">
-                                                  <Pencil size={12} />
-                                                </button>
-                                              )}
-                                              {canDelete && (
-                                                <button onClick={async () => {
-                                                  if (!window.confirm('¿Eliminar este lote? Afectará el costeo FIFO. Esta acción no se puede deshacer.')) return;
-                                                  try { await deleteBatch(batch.id); } catch (err: any) { alert(`Error: ${translateError(err)}`); }
-                                                }} className="p-1 hover:text-red-600" title="Eliminar Lote" aria-label={`Eliminar lote del ${batch.date}`}>
-                                                  <Trash2 size={12} />
-                                                </button>
-                                              )}
+                                            <div className="flex justify-center">
+                                              <button
+                                                data-kebab-trigger
+                                                className={`rounded-lg p-1.5 transition-all border border-transparent ${batchMenuState?.batchId === batch.id ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}
+                                                onClick={(e) => openBatchMenu(batch.id, e)}
+                                                aria-label="Más opciones de lote"
+                                              >
+                                                <MoreVertical size={14} />
+                                              </button>
                                             </div>
                                           </td>
                                         </tr>
                                       );
                                     })}
                                     {/* Totals Row */}
-                                    <tr className={`${colors.bgMain} border-t-2 ${colors.borderStandard}`}>
+                                    <tr className={`${colors.bgMain} border-t-2 ${colors.borderStandard} font-bold`}>
                                       <td colSpan={3} className={`${spacing.pxMd} py-4 text-right ${typography.text.caption} ${colors.textSecondary}`}>Totales Acumulados</td>
-                                      <td className={`${spacing.pxMd} py-4 text-right ${typography.text.body} font-medium ${colors.textSecondary} tabular-nums`}>{isDimensional ? `${totalRemainingQty.toFixed(2)} m` : '---'}</td>
-                                      <td className={`${spacing.pxMd} py-4 text-right ${typography.text.body} font-medium ${colors.statusSuccess} tabular-nums`}>{isDimensional ? `${batchStatsByMaterial[m.id].totalArea.toFixed(2)} m²` : '---'}</td>
+                                      <td className={`${spacing.pxMd} py-4 text-right ${typography.text.body} font-medium ${colors.textSecondary} tabular-nums`}>
+                                        {isDimensional ? UnitConverter.format(totalRemainingQty, unitsOfMeasure.find(u => u.id === m.base_unit_id) || { symbol: '' } as any) : '---'}
+                                      </td>
+                                      {isDimensional && (
+                                        <>
+                                          <td className={`${spacing.pxMd} py-4 text-right ${typography.text.body} font-medium ${colors.statusSuccess} tabular-nums`}>{batchStatsByMaterial[m.id].totalArea.toFixed(2)} m²</td>
+                                          <td className={`${spacing.pxMd} py-4 text-right ${typography.text.body} font-medium text-indigo-600`}>{formatCurrency(batchStatsByMaterial[m.id].avgCostPerM2)}</td>
+                                        </>
+                                      )}
                                       <td className={`${spacing.pxMd} py-4 text-right ${typography.text.body} font-medium ${colors.textPrimary}`}>{formatCurrency(batchStatsByMaterial[m.id].totalValue)}</td>
-                                      <td className={`${spacing.pxMd} py-4 text-right ${typography.text.body} font-medium text-indigo-600`}>{isDimensional ? formatCurrency(batchStatsByMaterial[m.id].avgCostPerM2) : '---'}</td>
-                                      <td className={`${spacing.pxMd} py-4 text-right ${typography.text.body} font-medium ${colors.statusSuccess}`}>{totalRemainingQty.toFixed(2)}</td>
+                                      <td className={`${spacing.pxMd} py-4 text-right ${typography.text.body} font-medium ${colors.statusSuccess} tabular-nums`}>
+                                        {UnitConverter.formatFromBase(
+                                          (batchStatsByMaterial[m.id] as any).totalRemainingQty,
+                                          unitsOfMeasure.find(u => u.id === m.display_unit_id) ||
+                                          unitsOfMeasure.find(u => u.id === m.base_unit_id) ||
+                                          { symbol: '', conversion_factor: 1 } as any
+                                        )}
+                                      </td>
                                       <td></td>
                                     </tr>
                                   </tbody>
@@ -726,40 +846,117 @@ const RawMaterials: React.FC = () => {
               <Input label="Nombre" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Ej. Tela de Corazón" required />
               <div className="grid grid-cols-2 gap-3">
                 <Select label="Tipo / Categoría" value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })}>
-                  <option value="Tela">Tela</option>
-                  <option value="Hilo">Hilo</option>
-                  <option value="Herrajes">Herrajes</option>
-                  <option value="Accesorios">Accesorios</option>
-                  <option value="Otros">Otros</option>
+                  {materialTypes.length > 0 ? (
+                    materialTypes.map((t: any) => (
+                      <option key={t.id} value={t.name}>{t.name}</option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="Tela">Tela</option>
+                      <option value="Hilo">Hilo</option>
+                      <option value="Herrajes">Herrajes</option>
+                      <option value="Accesorios">Accesorios</option>
+                      <option value="Otros">Otros</option>
+                    </>
+                  )}
                 </Select>
                 <Input label="Proveedor" value={formData.provider} onChange={e => setFormData({ ...formData, provider: e.target.value })} placeholder="Ej. Textiles Premium" />
               </div>
               <Input label="Descripción" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Detalles de la materia prima..." />
               <div className="grid grid-cols-2 gap-3">
-                <Select label="Unidad de Medida" value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value as Unit })}>
-                  <option value="metro">Metro (m)</option>
-                  <option value="cm">Centímetro (cm)</option>
-                  <option value="kg">Kilogramo (kg)</option>
-                  <option value="gramo">Gramo (g)</option>
-                  <option value="unidad">Unidad (u)</option>
-                  <option value="bobina">Bobina</option>
-                  <option value="litro">Litro (L)</option>
+                <Select
+                  label="Categoría Universal"
+                  value={formData.category_id}
+                  onChange={e => {
+                    const catId = e.target.value;
+                    const firstUnit = unitsOfMeasure.find(u => u.category_id === catId && u.is_base);
+                    setFormData({
+                      ...formData,
+                      category_id: catId,
+                      base_unit_id: firstUnit?.id || '',
+                      purchase_unit_id: firstUnit?.id || '',
+                      display_unit_id: firstUnit?.id || ''
+                    });
+                  }}
+                  required
+                >
+                  <option value="">Seleccionar categoría...</option>
+                  {uomCategories.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
                 </Select>
+                <Select
+                  label="Unidad de Compra"
+                  value={formData.purchase_unit_id}
+                  onChange={e => setFormData({ ...formData, purchase_unit_id: e.target.value })}
+                  disabled={!formData.category_id}
+                  required
+                >
+                  {unitsOfMeasure
+                    .filter(u => u.category_id === formData.category_id)
+                    .map(u => (
+                      <option key={u.id} value={u.id}>{u.name} ({u.symbol})</option>
+                    ))
+                  }
+                </Select>
+                <Select
+                  label="Unidad de Visualización"
+                  value={formData.display_unit_id}
+                  onChange={e => setFormData({ ...formData, display_unit_id: e.target.value })}
+                  disabled={!formData.category_id}
+                >
+                  <option value="">Igual que compra...</option>
+                  {unitsOfMeasure
+                    .filter(u => u.category_id === formData.category_id)
+                    .map(u => (
+                      <option key={u.id} value={u.id}>{u.name} ({u.symbol})</option>
+                    ))
+                  }
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pb-2 pt-2 border-t border-slate-100">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-500">Costo/{formData.unit}</label>
-                  <Input type="number" step="0.01" value={formData.unitCost || ''} onChange={e => setFormData({ ...formData, unitCost: parseFloat(e.target.value) })} placeholder="0" disabled={!!editingId} />
+                  <label className="mb-1 block text-xs font-medium text-gray-500">Costo Unitario (€)</label>
+                  <Input
+                    type="number"
+                    step="0.000001"
+                    value={formData.unitCost || ''}
+                    onChange={e => {
+                      const unitCost = parseFloat(e.target.value) || 0;
+                      setFormData({ ...formData, unitCost, totalCost: (formData.initialQty || 0) * unitCost });
+                    }}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-500">Costo Factura (€)</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={formData.totalCost || ''}
+                    onChange={e => {
+                      const total = parseFloat(e.target.value) || 0;
+                      const unitCost = (formData.initialQty || 0) > 0 ? total / (formData.initialQty || 0) : 0;
+                      setFormData({ ...formData, totalCost: total, unitCost });
+                    }}
+                    placeholder="0.00"
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-3 items-end">
-                {formData.unit === 'metro' ? (
+                {formData.type === 'Tela' ? (
                   <div>
                     <label className="mb-1 block text-sm font-medium text-emerald-600">Ancho (cm)</label>
                     <Input type="number" step="1" value={formData.width || ''} onChange={e => setFormData({ ...formData, width: parseInt(e.target.value) })} placeholder="140" />
                   </div>
                 ) : <div />}
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-600">Cantidad</label>
-                  <Input type="number" step="0.01" value={formData.initialQty || ''} onChange={e => setFormData({ ...formData, initialQty: parseFloat(e.target.value) })} placeholder="0" disabled={!!editingId} />
+                  <label className="mb-1 block text-sm font-medium text-slate-600">Cantidad Inicial</label>
+                  <Input type="number" step="0.01" value={formData.initialQty || ''} onChange={e => {
+                    const qty = parseFloat(e.target.value) || 0;
+                    setFormData({ ...formData, initialQty: qty, totalCost: qty * (formData.unitCost || 0) });
+                  }} placeholder="0" disabled={!!editingId} />
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-600">Estado</label>
@@ -782,140 +979,192 @@ const RawMaterials: React.FC = () => {
             </form>
           </Card>
         </div>
-      )}
+      )
+      }
 
       {/* MODAL — Editar Lote */}
-      {editingBatchData && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6" style={{ backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>
-          <Card className={`w-full max-w-md max-h-[90vh] overflow-y-auto ${spacing.pLg} sm:${spacing.pLg} border ${colors.borderStandard} ${shadows.xl}`}>
-            <h4 className={`mb-6 flex items-center gap-2 ${typography.sectionTitle} ${colors.textPrimary}`}>
-              <Pencil size={20} className="text-indigo-500" /> Editar Registro
-            </h4>
-            <form onSubmit={handleEditBatchSubmit} className="space-y-4">
-              {editingBatchData.remaining_quantity < editingBatchData.initial_quantity && (
-                <div className={`flex items-start gap-3 ${radius.xl} border border-amber-100 bg-amber-50 p-4`}>
-                  <AlertCircle size={20} className="mt-0.5 shrink-0 text-amber-500" />
-                  <p className={`${typography.bodySm} font-semibold leading-tight text-amber-700`}>
-                    ESTE LOTE YA SE HA USADO. La cantidad, costo y dimensiones no son editables para mantener la coherencia FIFO.
-                  </p>
+      {
+        editingBatchData && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6" style={{ backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>
+            <Card className={`w-full max-w-md max-h-[90vh] overflow-y-auto ${spacing.pLg} sm:${spacing.pLg} border ${colors.borderStandard} ${shadows.xl}`}>
+              <h4 className={`mb-6 flex items-center gap-2 ${typography.sectionTitle} ${colors.textPrimary}`}>
+                <Pencil size={20} className="text-indigo-500" /> Editar Registro
+              </h4>
+              <form onSubmit={handleEditBatchSubmit} className="space-y-4">
+                {editingBatchData.remaining_quantity < editingBatchData.initial_quantity && (
+                  <div className={`flex items-start gap-3 ${radius.xl} border border-amber-100 bg-amber-50 p-4`}>
+                    <AlertCircle size={20} className="mt-0.5 shrink-0 text-amber-500" />
+                    <p className={`${typography.bodySm} font-semibold leading-tight text-amber-700`}>
+                      ESTE LOTE YA SE HA USADO. La cantidad, costo y dimensiones no son editables para mantener la coherencia FIFO.
+                    </p>
+                  </div>
+                )}
+                <Input label="Fecha" type="date" value={editingBatchData.date} onChange={e => setEditingBatchData({ ...editingBatchData, date: e.target.value })} required />
+                <Input label="Proveedor / Referencia" value={editingBatchData.provider} onChange={e => setEditingBatchData({ ...editingBatchData, provider: e.target.value })} />
+                {editingBatchData.entry_mode === 'pieza' ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input label="Largo (cm)" type="number" step="0.01" disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity} value={editingBatchData.length || ''} onChange={e => setEditingBatchData({ ...editingBatchData, length: parseFloat(e.target.value) })} />
+                    <Input label="Ancho (cm)" type="number" step="1" disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity} value={editingBatchData.width || ''} onChange={e => setEditingBatchData({ ...editingBatchData, width: parseInt(e.target.value) })} />
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input label="M. Lineales" type="number" step="0.01" disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity} value={editingBatchData.initial_quantity} onChange={e => setEditingBatchData({ ...editingBatchData, initial_quantity: parseFloat(e.target.value) })} />
+                    <Input label="Ancho (cm)" type="number" step="1" disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity} value={editingBatchData.width || ''} onChange={e => setEditingBatchData({ ...editingBatchData, width: parseInt(e.target.value) })} />
+                  </div>
+                )}
+                <Input
+                  label={editingBatchData.entry_mode === 'pieza' ? 'Costo Total (€)' : 'Costo Unitario (€/m)'}
+                  type="number" step="0.01"
+                  disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity}
+                  value={editingBatchData.unit_cost}
+                  onChange={e => setEditingBatchData({ ...editingBatchData, unit_cost: parseFloat(e.target.value) })}
+                />
+                <div className="flex gap-3 pt-4">
+                  <Button variant="ghost" className="flex-1" onClick={() => setEditingBatchData(null)}>Cancelar</Button>
+                  <Button type="submit" className="flex-1" variant="primary">Guardar</Button>
                 </div>
-              )}
-              <Input label="Fecha" type="date" value={editingBatchData.date} onChange={e => setEditingBatchData({ ...editingBatchData, date: e.target.value })} required />
-              <Input label="Proveedor / Referencia" value={editingBatchData.provider} onChange={e => setEditingBatchData({ ...editingBatchData, provider: e.target.value })} />
-              {editingBatchData.entry_mode === 'pieza' ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <Input label="Largo (cm)" type="number" step="0.01" disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity} value={editingBatchData.length || ''} onChange={e => setEditingBatchData({ ...editingBatchData, length: parseFloat(e.target.value) })} />
-                  <Input label="Ancho (cm)" type="number" step="1" disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity} value={editingBatchData.width || ''} onChange={e => setEditingBatchData({ ...editingBatchData, width: parseInt(e.target.value) })} />
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3">
-                  <Input label="M. Lineales" type="number" step="0.01" disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity} value={editingBatchData.initial_quantity} onChange={e => setEditingBatchData({ ...editingBatchData, initial_quantity: parseFloat(e.target.value) })} />
-                  <Input label="Ancho (cm)" type="number" step="1" disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity} value={editingBatchData.width || ''} onChange={e => setEditingBatchData({ ...editingBatchData, width: parseInt(e.target.value) })} />
-                </div>
-              )}
-              <Input
-                label={editingBatchData.entry_mode === 'pieza' ? 'Costo Total (€)' : 'Costo Unitario (€/m)'}
-                type="number" step="0.01"
-                disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity}
-                value={editingBatchData.unit_cost}
-                onChange={e => setEditingBatchData({ ...editingBatchData, unit_cost: parseFloat(e.target.value) })}
-              />
-              <div className="flex gap-3 pt-4">
-                <Button variant="ghost" className="flex-1" onClick={() => setEditingBatchData(null)}>Cancelar</Button>
-                <Button type="submit" className="flex-1" variant="primary">Guardar</Button>
-              </div>
-            </form>
-          </Card>
-        </div>
-      )}
-      {/* ── FIXED KEBAB DROPDOWN (escapes all overflow) ── */}
-      {menuState && (() => {
-        const material = rawMaterials.find(m => m.id === menuState.materialId);
-        if (!material) return null;
-        const { rect } = menuState;
-        const menuHeight = 164;
-        const openUpward = rect.bottom + menuHeight > window.innerHeight;
-        const style: React.CSSProperties = {
-          position: 'fixed',
-          right: window.innerWidth - rect.right,
-          zIndex: 9999,
-          ...(openUpward ? { bottom: window.innerHeight - rect.top + 4 } : { top: rect.bottom + 4 }),
-        };
-
-        const stats = batchStatsByMaterial[material.id] ?? getBatchStats(material.id);
-        const hasLinkedProducts = products.some(p => (p.materials ?? []).some(pm => pm.material_id === material.id));
-        const remainingStock = stats.totalRemainingQty;
-        const mustArchive = hasLinkedProducts || remainingStock > 0;
-        const archiveReason = hasLinkedProducts ? 'Vinculada a productos activos' : 'Tiene stock físico con valor en libro';
-
-        return (
-          <div ref={menuRef} className={`${radius.xl} border ${colors.borderStandard} ${colors.bgSurface} ${shadows.xl} py-1.5 min-w-[180px]`} style={style}>
-            <button
-              className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${expandedMaterialId === material.id ? 'text-indigo-700 bg-indigo-50' : `${colors.textSecondary} hover:${colors.bgMain}`} transition-colors`}
-              onClick={() => { setMenuState(null); setExpandedMaterialId(expandedMaterialId === material.id ? null : material.id); }}
-            >
-              <History size={14} className={colors.textMuted} /> {expandedMaterialId === material.id ? 'Cerrar Detalles' : 'Ver Lotes'}
-            </button>
-            <div className={`border-t ${colors.borderSubtle} my-1.5`} />
-
-            {canEdit && (
-              <button
-                className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.textSecondary} hover:${colors.bgMain} transition-colors`}
-                onClick={() => {
-                  setMenuState(null);
-                  setEditingId(material.id);
-                  setFormData({
-                    name: material.name,
-                    description: material.description || '',
-                    type: material.type,
-                    unit: material.unit,
-                    provider: material.provider || '',
-                    status: material.status,
-                    initialQty: stats.totalRemainingQty,
-                    unitCost: stats.weightedAvgCost
-                  });
-                  setIsModalOpen(true);
-                }}
-              >
-                <Edit2 size={14} className={colors.textMuted} /> Editar Material
-              </button>
-            )}
-
-            {canDelete && (
-              mustArchive ? (
-                <button
-                  className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.statusWarning} hover:${colors.bgWarning} transition-colors`}
-                  onClick={async () => {
-                    setMenuState(null);
-                    if (window.confirm(`¿Archivar "${material.name}"? Razón: ${archiveReason}. Quedará inactiva pero el historial se conserva.`)) {
-                      try { await archiveMaterial(material.id); }
-                      catch (err: any) { alert(`Error: ${translateError(err)}`); }
-                    }
-                  }}
-                >
-                  <Archive size={14} /> Archivar Insumo
-                </button>
-              ) : (
-                <button
-                  className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.statusDanger} hover:${colors.bgDanger} transition-colors`}
-                  onClick={async () => {
-                    setMenuState(null);
-                    if (window.confirm(`¿Eliminar "${material.name}"? Sin stock ni productos vinculados. Esta acción no se puede deshacer.`)) {
-                      try { await deleteRawMaterial(material.id); }
-                      catch (err: any) { alert(`No se pudo eliminar: ${translateError(err)}`); }
-                    }
-                  }}
-                >
-                  <Trash2 size={14} /> Eliminar Insumo
-                </button>
-              )
-            )}
+              </form>
+            </Card>
           </div>
-        );
-      })()}
+        )
+      }
+
+      {/* ── FIXED KEBAB DROPDOWN (escapes all overflow) ── */}
+      {
+        menuState && (() => {
+          const material = rawMaterials.find(m => m.id === menuState.materialId);
+          if (!material) return null;
+          const { rect } = menuState;
+          const menuHeight = 164;
+          const openUpward = rect.bottom + menuHeight > window.innerHeight;
+          const style: React.CSSProperties = {
+            position: 'fixed',
+            right: window.innerWidth - rect.right,
+            zIndex: 9999,
+            ...(openUpward ? { bottom: window.innerHeight - rect.top + 4 } : { top: rect.bottom + 4 }),
+          };
+
+          const stats = batchStatsByMaterial[material.id] ?? getBatchStats(material.id);
+          const hasLinkedProducts = products.some(p => (p.materials ?? []).some(pm => pm.material_id === material.id));
+          const remainingStock = stats.totalRemainingQty;
+          const mustArchive = hasLinkedProducts || remainingStock > 0;
+          const archiveReason = hasLinkedProducts ? 'Vinculada a productos activos' : 'Tiene stock físico con valor en libro';
+
+          return (
+            <div ref={menuRef} className={`${radius.xl} border ${colors.borderStandard} ${colors.bgSurface} ${shadows.xl} py-1.5 min-w-[180px]`} style={style}>
+              <button
+                className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${expandedMaterialId === material.id ? 'text-indigo-700 bg-indigo-50' : `${colors.textSecondary} hover:${colors.bgMain}`} transition-colors`}
+                onClick={() => { setMenuState(null); setExpandedMaterialId(expandedMaterialId === material.id ? null : material.id); }}
+              >
+                <History size={14} className={colors.textMuted} /> {expandedMaterialId === material.id ? 'Cerrar Detalles' : 'Ver Lotes'}
+              </button>
+              <div className={`border-t ${colors.borderSubtle} my-1.5`} />
+
+              {canEdit && (
+                <button
+                  className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.textSecondary} hover:${colors.bgMain} transition-colors`}
+                  onClick={() => {
+                    setMenuState(null);
+                    setEditingId(material.id);
+                    setFormData({
+                      name: material.name,
+                      description: material.description || '',
+                      type: material.type,
+                      category_id: material.category_id || '',
+                      base_unit_id: material.base_unit_id || '',
+                      purchase_unit_id: material.purchase_unit_id || '',
+                      display_unit_id: material.display_unit_id || '',
+                      provider: material.provider || '',
+                      status: material.status,
+                      initialQty: stats.totalRemainingQty,
+                      unitCost: stats.weightedAvgCost,
+                      totalCost: stats.totalRemainingQty * stats.weightedAvgCost
+                    });
+                    setIsModalOpen(true);
+                  }}
+                >
+                  <Edit2 size={14} className={colors.textMuted} /> Editar Material
+                </button>
+              )}
+
+              {canDelete && (
+                mustArchive ? (
+                  <button
+                    className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.statusWarning} hover:${colors.bgWarning} transition-colors`}
+                    onClick={async () => {
+                      setMenuState(null);
+                      if (window.confirm(`¿Archivar "${material.name}"? Razón: ${archiveReason}. Quedará inactiva pero el historial se conserva.`)) {
+                        try { await archiveMaterial(material.id); }
+                        catch (err: any) { alert(`Error: ${translateError(err)}`); }
+                      }
+                    }}
+                  >
+                    <Archive size={14} /> Archivar Insumo
+                  </button>
+                ) : (
+                  <button
+                    className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.statusDanger} hover:${colors.bgDanger} transition-colors`}
+                    onClick={async () => {
+                      setMenuState(null);
+                      if (window.confirm(`¿Eliminar "${material.name}"? Sin stock ni productos vinculados. Esta acción no se puede deshacer.`)) {
+                        try { await deleteRawMaterial(material.id); }
+                        catch (err: any) { alert(`No se pudo eliminar: ${translateError(err)}`); }
+                      }
+                    }}
+                  >
+                    <Trash2 size={14} /> Eliminar Insumo
+                  </button>
+                )
+              )}
+            </div>
+          );
+        })()
+      }
+
+      {/* ── FIXED BATCH KEBAB DROPDOWN ── */}
+      {
+        batchMenuState && (() => {
+          const batch = batches.find(b => b.id === batchMenuState.batchId);
+          if (!batch) return null;
+          const { rect } = batchMenuState;
+          const menuHeight = 100;
+          const openUpward = rect.bottom + menuHeight > window.innerHeight;
+          const style: React.CSSProperties = {
+            position: 'fixed',
+            right: window.innerWidth - rect.right,
+            zIndex: 9999,
+            ...(openUpward ? { bottom: window.innerHeight - rect.top + 4 } : { top: rect.bottom + 4 }),
+          };
+
+          return (
+            <div ref={batchMenuRef} className={`${radius.xl} border ${colors.borderStandard} ${colors.bgSurface} ${shadows.xl} py-1.5 min-w-[150px]`} style={style}>
+              {canEdit && (
+                <button
+                  className={`w-full flex items-center gap-2 ${spacing.pxMd} py-2 ${typography.uiLabel} font-medium ${colors.textSecondary} hover:${colors.bgMain} transition-colors`}
+                  onClick={() => { setBatchMenuState(null); setEditingBatchData(batch); }}
+                >
+                  <Pencil size={14} className={colors.textMuted} /> Editar Lote
+                </button>
+              )}
+              {canDelete && (
+                <button
+                  className={`w-full flex items-center gap-2 ${spacing.pxMd} py-2 ${typography.uiLabel} font-medium ${colors.statusDanger} hover:${colors.bgDanger} transition-colors`}
+                  onClick={async () => {
+                    setBatchMenuState(null);
+                    if (window.confirm('¿Eliminar este lote? Afectará el costeo FIFO. Esta acción no se puede deshacer.')) {
+                      try { await deleteBatch(batch.id); } catch (err: any) { alert(`Error: ${translateError(err)}`); }
+                    }
+                  }}
+                >
+                  <Trash2 size={14} /> Eliminar Lote
+                </button>
+              )}
+            </div>
+          );
+        })()
+      }
     </PageContainer>
   );
 };
 
 export default RawMaterials;
-

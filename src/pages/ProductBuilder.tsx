@@ -4,6 +4,7 @@ import { Plus, Trash2, Edit2, Search, PlayCircle, Info, Layers, TrendingUp, Chec
 import { useStore, calculateProductCost, calculateFifoCost, getFifoBreakdown, hasProductGeneratedActiveDebt } from '../store';
 import { calculateFinancialMetrics } from '@/core/financialMetricsEngine';
 import { getEffectiveQuantity, calculatePiecesAreaM2, getLatestRollWidth, calculatePiecesToLinearMeters } from '@/utils/materialCalculations';
+import { InventoryEngineV2, UnitConverter } from '../services/inventoryEngineV2';
 import { Product, ProductMaterial, Status, Unit, RawMaterial, MaterialBatch } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -42,7 +43,7 @@ interface ProductMaterialUI extends ProductMaterial {
 const ProductBuilder = () => {
   const navigate = useNavigate();
   const { id } = useParams(); // For editing an existing product
-  const { currentCompanyId, currentUserRole, products, productMovements, rawMaterials, batches, movements, addProduct, deleteProduct, discontinueProduct, updateProduct, consumeStock, consumeStockBatch } = useStore();
+  const { currentCompanyId, currentUserRole, products, productMovements, rawMaterials, batches, movements, unitsOfMeasure, addProduct, deleteProduct, discontinueProduct, updateProduct, consumeStock, consumeStockBatch } = useStore();
 
   // ✅ RBAC eliminado del frontend — ahora se aplica mediante RLS en Supabase
   // Policies: 20260303211300_rbac_role_policies_v2.sql
@@ -112,6 +113,7 @@ const ProductBuilder = () => {
           .filter(r => /^REF-\d+$/i.test(r))
           .map(r => parseInt(r.replace(/^REF-/i, ''), 10));
         const maxNum = existingRefs.length > 0 ? Math.max(...existingRefs) : 0;
+        return `REF-${String(maxNum + 1).padStart(3, '0')}`;
       })();
 
       // 🟢 CLAUDE FIX: Support duplication via router state
@@ -136,7 +138,7 @@ const ProductBuilder = () => {
   // Esto garantiza que el costo mostrado aquí sea idéntico al que guarda el store en Supabase.
   const totalCurrentCost = useMemo(() => {
     const tempProduct = { ...formData, materials: formData.materials || [] } as Product;
-    return calculateProductCost(tempProduct, batches, rawMaterials);
+    return calculateProductCost(tempProduct, batches, rawMaterials, unitsOfMeasure);
   }, [formData.materials, batches, rawMaterials]);
 
   const exactSuggestedPrice = useMemo(() => {
@@ -160,7 +162,10 @@ const ProductBuilder = () => {
     if (field === 'material_id') {
       const selectedBase = rawMaterials.find(m => m.id === value);
       if (selectedBase) {
-        materials[idx].consumption_unit = selectedBase.unit;
+        // 🟢 UOM v2: resolver símbolo desde units_of_measure, no desde el campo unit legacy
+        const displayUnit = unitsOfMeasure.find(u => u.id === selectedBase.display_unit_id)
+          || unitsOfMeasure.find(u => u.id === selectedBase.base_unit_id);
+        materials[idx].consumption_unit = displayUnit?.symbol ?? selectedBase.unit;
         materials[idx].mode = 'linear';
       }
     }
@@ -287,24 +292,35 @@ const ProductBuilder = () => {
     currencySymbol
   );
 
-  // 🟢 PHASE 3: Production Readiness — feasibility check per material
+  // 🟢 PHASE 3: Production Readiness — feasibility check per material (BASE vs BASE)
   const productionReadiness = useMemo(() => {
     const materials = formData.materials || [];
     if (materials.length === 0) return { ready: false, items: [], hasMaterials: false };
 
     const items = materials.map((pm: any) => {
       const material = rawMaterials.find(m => m.id === pm.material_id);
-      const effectiveQty = getEffectiveQuantity(pm, batches, pm.material_id);
+      const uom = unitsOfMeasure.find(u => u.symbol === pm.consumption_unit);
+
+      // 1. Obtener cantidad efectiva YA EN UNIDBASE (al pasar el uom)
+      const baseEffectiveQty = getEffectiveQuantity(pm, batches, pm.material_id, uom);
+
       const availableBatches = batches.filter(b => b.material_id === pm.material_id);
-      const totalAvailable = availableBatches.reduce((acc, b) => acc + (b.remaining_quantity || 0), 0);
-      const deficit = Math.max(0, effectiveQty - totalAvailable);
+
+      // 2. Sumar stock disponible en UNIDADES BASE
+      const totalBaseAvailable = availableBatches.reduce((acc, b) => acc + (b.base_remaining_quantity || 0), 0);
+
+      const baseDeficit = Math.max(0, baseEffectiveQty - totalBaseAvailable);
+
+      // 3. Calcular déficit en unidad de consumo para mostrar al usuario
+      const displayDeficit = uom && baseDeficit > 0 ? UnitConverter.fromBase(baseDeficit, uom) : baseDeficit;
+
       return {
         name: material?.name || 'Desconocido',
         unit: material?.unit || '',
-        required: effectiveQty,
-        available: totalAvailable,
-        deficit,
-        isCovered: deficit <= 0.0001, // floating point tolerance
+        required: getEffectiveQuantity(pm, batches, pm.material_id), // Visual qty
+        available: totalBaseAvailable,
+        deficit: displayDeficit,
+        isCovered: baseDeficit <= 0.0001,
       };
     });
 
@@ -313,7 +329,7 @@ const ProductBuilder = () => {
       items,
       hasMaterials: true,
     };
-  }, [formData.materials, batches, rawMaterials]);
+  }, [formData.materials, batches, rawMaterials, unitsOfMeasure]);
 
   const primaryActionLabel = editingId ? "Guardar Cambios" : "Crear Producto";
 
@@ -328,29 +344,33 @@ const ProductBuilder = () => {
     let maxCoveredProduction = quantity;
 
     product.materials?.forEach(pm => {
-      let qtyPerUnit = pm.quantity;
-      if (pm.mode === 'pieces' && pm.pieces) {
-        const latestBatch = batches.find(b => b.material_id === pm.material_id);
-        const width = latestBatch?.width || 140;
-        const totalAreaCm2 = pm.pieces.reduce((acc: number, p: any) => acc + (p.length * p.width), 0);
-        qtyPerUnit = (totalAreaCm2 / width) / 100;
-      }
+      const uom = unitsOfMeasure.find(u => u.symbol === pm.consumption_unit);
 
-      const availableMaterialStock = batches.filter(b => b.material_id === pm.material_id).reduce((acc, b) => acc + b.remaining_quantity, 0);
-      let possibleUnits = qtyPerUnit > 0 ? Math.floor(availableMaterialStock / qtyPerUnit) : quantity;
+      // 🟢 Stock validation in BASE UNITS using the new refactored helper
+      const baseQtyPerUnit = getEffectiveQuantity(pm, batches, pm.material_id, uom);
+      const qtyPerUnit = getEffectiveQuantity(pm, batches, pm.material_id); // Visual qty
+
+      const availableBaseStock = batches
+        .filter(b => b.material_id === pm.material_id)
+        .reduce((acc, b) => acc + (b.base_remaining_quantity || 0), 0);
+
+      let possibleUnits = baseQtyPerUnit > 0 ? Math.floor(availableBaseStock / baseQtyPerUnit) : quantity;
       if (possibleUnits < maxCoveredProduction) {
         maxCoveredProduction = Math.max(0, possibleUnits);
       }
 
       let effectiveQty = qtyPerUnit * quantity;
-      const breakdown = getFifoBreakdown(pm.material_id, effectiveQty, pm.consumption_unit, batches, rawMaterials);
-      const totalMissing = breakdown.filter(b => b.is_missing).reduce((acc, b) => acc + b.quantity_used_in_target_unit, 0);
+      // 🟢 getFifoBreakdown updated with 6th param unitsOfMeasure
+      const breakdown = getFifoBreakdown(pm.material_id, effectiveQty, pm.consumption_unit, batches, rawMaterials, unitsOfMeasure);
+      const totalMissing = breakdown.filter((b: any) => b.is_missing).reduce((acc, b) => acc + b.quantity_used, 0);
 
       breakdown.forEach(b => { totalCostForBatch += b.subtotal; });
 
       if (totalMissing > 0) {
         const material = rawMaterials.find(m => m.id === pm.material_id);
-        const lastBatchCost = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]?.unit_cost || 0;
+        // Usar cost_per_base_unit si es posible, o el legacy unit_cost del último lote
+        const lastBatch = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+        const lastBatchCost = lastBatch?.unit_cost || 0;
 
         missingItems.push({
           materialName: material?.name || 'Insumo desconocido',
@@ -491,10 +511,10 @@ const ProductBuilder = () => {
                         areaM2 = pm.quantity * (rollWidth / 100);
                       }
 
-                      const breakdown = getFifoBreakdown(pm.material_id, effectiveQty, pm.consumption_unit, batches, rawMaterials);
+                      const breakdown = getFifoBreakdown(pm.material_id, effectiveQty, pm.consumption_unit, batches, rawMaterials, unitsOfMeasure);
                       const costRow = breakdown.reduce((acc, item) => acc + item.subtotal, 0);
                       const isExpanded = expandedMaterial === idx;
-                      const hasMissingStock = breakdown.some(b => b.is_missing);
+                      const hasMissingStock = breakdown.some((b: any) => b.is_missing);
 
                       let mainBatchInfo = '';
                       if (breakdown.length > 0 && !breakdown[0].is_missing) {
@@ -513,8 +533,15 @@ const ProductBuilder = () => {
 
                       let stockInfo = '';
                       const mBatches = batches.filter(b => b.material_id === pm.material_id);
-                      const totalAvailable = mBatches.reduce((acc, b) => acc + (b.remaining_quantity || 0), 0);
-                      stockInfo = `Stock: ${totalAvailable.toFixed(2)} ${material?.unit || ''}`;
+                      const totalAvailableBase = mBatches.reduce((acc, b) => acc + (b.base_remaining_quantity || 0), 0);
+
+                      // Mostramos stock en unidad de consumo para el UI del constructor
+                      const uomForStock = unitsOfMeasure.find(u => u.symbol === pm.consumption_unit);
+                      const displayStock = (uomForStock && totalAvailableBase > 0)
+                        ? UnitConverter.fromBase(totalAvailableBase, uomForStock)
+                        : totalAvailableBase;
+
+                      stockInfo = `Stock: ${displayStock.toFixed(2)} ${pm.consumption_unit}`;
 
                       return (
                         <div key={idx} className={`overflow-hidden ${radius.xl} border transition-all ${hasMissingStock ? 'border-red-300 shadow-sm bg-red-50/20' : `${colors.borderStandard} hover:border-gray-300`}`}>
@@ -531,19 +558,20 @@ const ProductBuilder = () => {
                                 <ChevronRight size={14} className="text-slate-500 flex-shrink-0 ml-1" aria-hidden="true" />
                               </button>
 
-                              <div className="w-20 shrink-0">
+                              <div className="w-32 sm:w-40 shrink-0">
                                 {pm.mode === 'linear' ? (
                                   <div className="flex items-center rounded-lg border border-gray-200 bg-white focus-within:ring-2 focus-within:ring-indigo-100 shadow-sm overflow-hidden">
                                     <input
-                                      type="number" step="0.01" min="0"
+                                      type="number" step="0.0001" min="0"
                                       inputMode="decimal"
                                       value={pm.quantity === 0 ? '' : pm.quantity ?? ''}
                                       onChange={e => updateMaterial(idx, 'quantity', parseFloat(e.target.value) || 0)}
                                       onKeyDown={handleNumberInputKeyDown}
-                                      className={`w-full border-0 bg-transparent px-2 py-1.5 text-center ${typography.text.body} font-bold text-slate-900 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
+                                      className={`w-full border-0 bg-transparent pl-3 pr-1 py-1.5 text-right ${typography.text.body} font-bold text-slate-900 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
                                       placeholder="0"
                                       aria-label={`Cantidad de ${material?.name || 'material'}`}
                                     />
+                                    <span className="pr-3 pl-1 text-xs font-bold text-slate-400 select-none uppercase">{pm.consumption_unit}</span>
                                   </div>
                                 ) : (
                                   <div className="flex h-[32px] items-center justify-center rounded-lg border border-indigo-200 bg-indigo-50 px-2 shadow-sm">
@@ -570,13 +598,30 @@ const ProductBuilder = () => {
 
                             <div className="flex items-center justify-between w-full gap-2 px-0.5">
                               <div className="flex items-center gap-2">
-                                {isFabric && (
-                                  <div className={`flex gap-0.5 rounded border border-slate-200 bg-white p-0.5 ${typography.text.caption} uppercase leading-none overflow-hidden hidden sm:flex`}>
-                                    <button type="button" onClick={() => updateMaterial(idx, 'mode', 'linear')} className={`px-2 py-1 rounded-[3px] ${pm.mode === 'linear' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-100'} transition-colors`} aria-label="Modo metros lineales">Lin</button>
-                                    <button type="button" onClick={() => updateMaterial(idx, 'mode', 'pieces')} className={`px-2 py-1 rounded-[3px] ${pm.mode === 'pieces' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-100'} transition-colors`} aria-label="Modo piezas">Pzas</button>
-                                  </div>
-                                )}
-                                <span className={`${typography.text.caption} uppercase tracking-widest font-bold ${totalAvailable > 0 ? 'text-slate-600' : 'text-red-500'}`}>
+                                <div className={`flex gap-0.5 rounded border border-slate-200 bg-white p-0.5 ${typography.text.caption} uppercase leading-none overflow-hidden flex`}>
+                                  {isFabric ? (
+                                    <>
+                                      <button type="button" onClick={() => updateMaterial(idx, 'mode', 'linear')} className={`px-2 py-1 rounded-[3px] ${pm.mode === 'linear' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-100'} transition-colors font-bold`} aria-label="Modo metros lineales">Lin</button>
+                                      <button type="button" onClick={() => updateMaterial(idx, 'mode', 'pieces')} className={`px-2 py-1 rounded-[3px] ${pm.mode === 'pieces' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-100'} transition-colors font-bold`} aria-label="Modo piezas">Pzas</button>
+                                    </>
+                                  ) : (
+                                    /* Unit switcher for non-fabric materials within the same category */
+                                    unitsOfMeasure
+                                      .filter(u => u.category_id === material?.category_id)
+                                      .sort((a, b) => b.conversion_factor - a.conversion_factor) // Show larger units first
+                                      .map(u => (
+                                        <button
+                                          key={u.id}
+                                          type="button"
+                                          onClick={() => updateMaterial(idx, 'consumption_unit', u.symbol)}
+                                          className={`px-2 py-1 rounded-[3px] ${pm.consumption_unit === u.symbol ? 'bg-indigo-50 text-indigo-600 font-bold' : 'text-slate-500 hover:bg-slate-100'} transition-colors`}
+                                        >
+                                          {u.symbol}
+                                        </button>
+                                      ))
+                                  )}
+                                </div>
+                                <span className={`${typography.text.caption} uppercase tracking-widest font-bold ${totalAvailableBase > 0 ? 'text-slate-600' : 'text-red-500'}`}>
                                   {stockInfo}
                                 </span>
                               </div>
@@ -610,18 +655,18 @@ const ProductBuilder = () => {
                                       </thead>
                                       <tbody className="divide-y divide-gray-100">
                                         {breakdown.length > 0 ? (
-                                          breakdown.map((b, i) => (
+                                          breakdown.map((b: any, i) => (
                                             <tr key={i} className={b.is_missing ? 'bg-red-50 text-red-700' : 'text-gray-700'}>
                                               <td className="px-3 md:px-4 py-2.5 font-medium truncate max-w-[120px]">
                                                 {b.is_missing ? 'Sobreconsumo' : `Lote ${new Date(b.date).toLocaleDateString()}`}
                                               </td>
-                                              <td className="px-3 md:px-4 py-2.5 text-right font-mono text-xs">{(b.quantity || 0).toFixed(4)}</td>
-                                              <td className="px-3 md:px-4 py-2.5 text-right font-mono text-xs">{formatCurrency(b.unit_cost)}</td>
+                                              <td className="px-3 md:px-4 py-2.5 text-right font-mono text-xs">{(b.quantity_used || 0).toFixed(4)}</td>
+                                              <td className="px-3 md:px-4 py-2.5 text-right font-mono text-xs">{formatCurrency(b.unit_cost, 4)}</td>
                                               <td className="px-3 md:px-4 py-2.5 text-right font-bold tabular-nums">{formatCurrency(b.subtotal)}</td>
                                             </tr>
                                           ))
                                         ) : (() => {
-                                          const fallbackBatch = batches.filter(b => b.material_id === pm.material_id && b.remaining_quantity > 0).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
+                                          const fallbackBatch = batches.filter(b => b.material_id === pm.material_id && (b.base_remaining_quantity || 0) > 0).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
                                           if (!fallbackBatch) return null;
                                           return (
                                             <tr className="text-gray-700 italic opacity-70">
@@ -629,7 +674,7 @@ const ProductBuilder = () => {
                                                 Lote {new Date(fallbackBatch.date).toLocaleDateString()}
                                               </td>
                                               <td className="px-3 md:px-4 py-2.5 text-right font-mono text-xs text-slate-500">0.0000</td>
-                                              <td className="px-3 md:px-4 py-2.5 text-right font-mono text-xs">{formatCurrency(fallbackBatch.unit_cost || 0)}</td>
+                                              <td className="px-3 md:px-4 py-2.5 text-right font-mono text-xs">{formatCurrency(fallbackBatch.unit_cost || 0, 4)}</td>
                                               <td className="px-3 md:px-4 py-2.5 text-right font-bold tabular-nums">$0.00</td>
                                             </tr>
                                           );
@@ -931,7 +976,7 @@ const ProductBuilder = () => {
               <Button variant="danger" className="flex-1 font-black uppercase tracking-wider" onClick={() => {
                 consumeStockBatch(missingStockModal.productId, missingStockModal.quantity, missingStockModal.targetPrice).then(() => {
                   const product = products.find(p => p.id === missingStockModal.productId);
-                  const baseCost = calculateProductCost(product!, batches, rawMaterials);
+                  const baseCost = calculateProductCost(product!, batches, rawMaterials, unitsOfMeasure);
                   setMissingStockModal({ ...missingStockModal, isOpen: false });
                   setSuccessModal({ isOpen: true, productName: product?.name || '', cost: baseCost * missingStockModal.quantity, quantity: missingStockModal.quantity });
                 });
@@ -1013,11 +1058,15 @@ const ProductBuilder = () => {
                         if (selectorModal.forIndex !== null) {
                           updateMaterial(selectorModal.forIndex, 'material_id', material.id);
                         } else {
+                          // 🟢 UOM v2: resolver símbolo desde units_of_measure, no desde el campo unit legacy
+                          const displayUnit = unitsOfMeasure.find(u => u.id === material.display_unit_id)
+                            || unitsOfMeasure.find(u => u.id === material.base_unit_id);
+                          const consumptionUnit = displayUnit?.symbol ?? material.unit;
                           const newMat = {
                             material_id: material.id,
                             quantity: 1,
-                            consumption_unit: material.unit,
-                            mode: (material.unit === 'metro' ? 'linear' : 'linear') as any,
+                            consumption_unit: consumptionUnit,
+                            mode: 'linear' as any,
                             pieces: []
                           };
                           setFormData({ ...formData, materials: [...(formData.materials || []), newMat] });

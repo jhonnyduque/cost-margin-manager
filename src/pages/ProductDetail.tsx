@@ -15,14 +15,7 @@ import { translateError } from '@/utils/errorHandler';
 const ProductDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const {
-        products,
-        productMovements,
-        rawMaterials,
-        batches,
-        currentCompanyId,
-        currentUserRole
-    } = useStore();
+    const { products, productMovements, rawMaterials, batches, currentCompanyId, currentUserRole, unitsOfMeasure } = useStore();
     const { formatCurrency } = useCurrency();
     const [creatorName, setCreatorName] = useState<string>('Cargando...');
 
@@ -44,7 +37,7 @@ const ProductDetail: React.FC = () => {
     }
 
     // Calculate Metrics
-    const cost = calculateProductCost(product, batches, rawMaterials);
+    const cost = calculateProductCost(product, batches, rawMaterials, unitsOfMeasure);
     const metrics = calculateFinancialMetrics(cost, product.price, product.target_margin || 0.3);
 
     // Calculate Stock
@@ -198,7 +191,7 @@ const ProductDetail: React.FC = () => {
                                     <tbody className={`divide-y ${colors.borderSubtle}`}>
                                         {(product.materials || []).map((pm, idx) => {
                                             const material = rawMaterials.find(m => m.id === pm.material_id);
-                                            const breakdown = getFifoBreakdown(pm.material_id, pm.quantity, pm.consumption_unit, batches, rawMaterials);
+                                            const breakdown = getFifoBreakdown(pm.material_id, pm.quantity, pm.consumption_unit, batches, rawMaterials, unitsOfMeasure);
                                             const subtotal = breakdown.reduce((acc, b) => acc + b.subtotal, 0);
                                             const avgCost = pm.quantity > 0 ? subtotal / pm.quantity : 0;
 

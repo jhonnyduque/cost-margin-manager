@@ -681,84 +681,6 @@ export type Database = {
           },
         ]
       }
-      material_batches: {
-        Row: {
-          area: number | null
-          company_id: string
-          created_at: string
-          created_by: string | null
-          date: string
-          deleted_at: string | null
-          entry_mode: string | null
-          id: string
-          initial_quantity: number
-          length: number | null
-          material_id: string
-          provider: string | null
-          reference: string | null
-          remaining_quantity: number
-          unit_cost: number
-          updated_at: string
-          updated_by: string | null
-          width: number | null
-        }
-        Insert: {
-          area?: number | null
-          company_id: string
-          created_at?: string
-          created_by?: string | null
-          date?: string
-          deleted_at?: string | null
-          entry_mode?: string | null
-          id?: string
-          initial_quantity: number
-          length?: number | null
-          material_id: string
-          provider?: string | null
-          reference?: string | null
-          remaining_quantity: number
-          unit_cost: number
-          updated_at?: string
-          updated_by?: string | null
-          width?: number | null
-        }
-        Update: {
-          area?: number | null
-          company_id?: string
-          created_at?: string
-          created_by?: string | null
-          date?: string
-          deleted_at?: string | null
-          entry_mode?: string | null
-          id?: string
-          initial_quantity?: number
-          length?: number | null
-          material_id?: string
-          provider?: string | null
-          reference?: string | null
-          remaining_quantity?: number
-          unit_cost?: number
-          updated_at?: string
-          updated_by?: string | null
-          width?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "material_batches_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "material_batches_material_id_fkey"
-            columns: ["material_id"]
-            isOneToOne: false
-            referencedRelation: "raw_materials"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       product_movements: {
         Row: {
           company_id: string
@@ -869,6 +791,127 @@ export type Database = {
           },
         ]
       }
+      uom_categories: {
+        Row: {
+          id: string
+          key: string
+          name: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          key: string
+          name: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          key?: string
+          name?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      units_of_measure: {
+        Row: {
+          id: string
+          category_id: string
+          symbol: string
+          name: string
+          conversion_factor: number
+          rounding: number
+          is_base: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          category_id: string
+          symbol: string
+          name: string
+          conversion_factor: number
+          rounding?: number
+          is_base?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          category_id?: string
+          symbol?: string
+          name?: string
+          conversion_factor?: number
+          rounding?: number
+          is_base?: boolean
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "units_of_measure_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "uom_categories"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      material_unit_conversions: {
+        Row: {
+          id: string
+          material_id: string
+          from_unit_id: string
+          to_unit_id: string
+          factor: number
+          company_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          material_id: string
+          from_unit_id: string
+          to_unit_id: string
+          factor: number
+          company_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          material_id?: string
+          from_unit_id?: string
+          to_unit_id?: string
+          factor?: number
+          company_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_unit_conversions_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_unit_conversions_from_unit_id_fkey"
+            columns: ["from_unit_id"]
+            isOneToOne: false
+            referencedRelation: "units_of_measure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_unit_conversions_to_unit_id_fkey"
+            columns: ["to_unit_id"]
+            isOneToOne: false
+            referencedRelation: "units_of_measure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_unit_conversions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       raw_materials: {
         Row: {
           company_id: string
@@ -884,6 +927,10 @@ export type Database = {
           unit: string | null
           updated_at: string
           updated_by: string | null
+          category_id: string | null
+          base_unit_id: string | null
+          purchase_unit_id: string | null
+          display_unit_id: string | null
         }
         Insert: {
           company_id: string
@@ -899,6 +946,10 @@ export type Database = {
           unit?: string | null
           updated_at?: string
           updated_by?: string | null
+          category_id?: string | null
+          base_unit_id?: string | null
+          purchase_unit_id?: string | null
+          display_unit_id?: string | null
         }
         Update: {
           company_id?: string
@@ -914,6 +965,10 @@ export type Database = {
           unit?: string | null
           updated_at?: string
           updated_by?: string | null
+          category_id?: string | null
+          base_unit_id?: string | null
+          purchase_unit_id?: string | null
+          display_unit_id?: string | null
         }
         Relationships: [
           {
@@ -923,6 +978,134 @@ export type Database = {
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "raw_materials_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "uom_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raw_materials_base_unit_id_fkey"
+            columns: ["base_unit_id"]
+            isOneToOne: false
+            referencedRelation: "units_of_measure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raw_materials_purchase_unit_id_fkey"
+            columns: ["purchase_unit_id"]
+            isOneToOne: false
+            referencedRelation: "units_of_measure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raw_materials_display_unit_id_fkey"
+            columns: ["display_unit_id"]
+            isOneToOne: false
+            referencedRelation: "units_of_measure"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      material_batches: {
+        Row: {
+          id: string
+          company_id: string
+          material_id: string
+          date: string
+          provider: string | null
+          initial_quantity: number
+          remaining_quantity: number
+          unit_cost: number
+          reference: string | null
+          width: number | null
+          length: number | null
+          area: number | null
+          entry_mode: string | null
+          deleted_at: string | null
+          created_at: string
+          updated_at: string
+          created_by: string | null
+          updated_by: string | null
+          base_initial_quantity: number | null
+          base_remaining_quantity: number | null
+          base_consumed_quantity: number | null
+          cost_per_base_unit: number | null
+          received_unit_id: string | null
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          material_id: string
+          date?: string
+          provider?: string | null
+          initial_quantity: number
+          remaining_quantity: number
+          unit_cost: number
+          reference?: string | null
+          width?: number | null
+          length?: number | null
+          area?: number | null
+          entry_mode?: string | null
+          deleted_at?: string | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+          base_initial_quantity?: number | null
+          base_remaining_quantity?: number | null
+          base_consumed_quantity?: number | null
+          cost_per_base_unit?: number | null
+          received_unit_id?: string | null
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          material_id?: string
+          date?: string
+          provider?: string | null
+          initial_quantity?: number
+          remaining_quantity?: number
+          unit_cost?: number
+          reference?: string | null
+          width?: number | null
+          length?: number | null
+          area?: number | null
+          entry_mode?: string | null
+          deleted_at?: string | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+          base_initial_quantity?: number | null
+          base_remaining_quantity?: number | null
+          base_consumed_quantity?: number | null
+          cost_per_base_unit?: number | null
+          received_unit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_batches_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_batches_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "raw_materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_batches_received_unit_id_fkey"
+            columns: ["received_unit_id"]
+            isOneToOne: false
+            referencedRelation: "units_of_measure"
+            referencedColumns: ["id"]
+          }
         ]
       }
       stock_movements: {
@@ -1218,116 +1401,116 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+  | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+  ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+  : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
-    ? R
-    : never
+  ? R
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
-      }
-      ? R
-      : never
-    : never
+    DefaultSchema["Views"])
+  ? (DefaultSchema["Tables"] &
+    DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+      Row: infer R
+    }
+  ? R
+  : never
+  : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["Tables"]
+  | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+  : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
-    }
-    ? I
-    : never
+    Insert: infer I
+  }
+  ? I
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
-      }
-      ? I
-      : never
-    : never
+  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+    Insert: infer I
+  }
+  ? I
+  : never
+  : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["Tables"]
+  | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+  : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
-    }
-    ? U
-    : never
+    Update: infer U
+  }
+  ? U
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
-      }
-      ? U
-      : never
-    : never
+  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+    Update: infer U
+  }
+  ? U
+  : never
+  : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["Enums"]
+  | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+  : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never
+  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+  : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["CompositeTypes"]
+  | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+  : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
+  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+  : never
 
 export const Constants = {
   public: {

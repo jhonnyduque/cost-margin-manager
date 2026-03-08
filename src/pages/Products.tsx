@@ -17,7 +17,7 @@ import { UniversalPageHeader } from '@/components/ui/UniversalPageHeader';
 
 const Products: React.FC = () => {
   const navigate = useNavigate();
-  const { currentCompanyId, currentUserRole, products, productMovements, rawMaterials, batches, movements, addProduct, deleteProduct, discontinueProduct, updateProduct, consumeStock, consumeStockBatch } = useStore();
+  const { currentCompanyId, currentUserRole, products, productMovements, rawMaterials, batches, movements, addProduct, deleteProduct, discontinueProduct, updateProduct, consumeStock, consumeStockBatch, unitsOfMeasure } = useStore();
   // Roles allowed to perform write operations. 'super_admin' is a system role
   // defined in UserRole — previously missing from the type caused this check to
   // always return false for super admins.
@@ -65,8 +65,8 @@ const Products: React.FC = () => {
 
       let effectiveQty = qtyPerUnit * quantity;
 
-      const breakdown = getFifoBreakdown(pm.material_id, effectiveQty, pm.consumption_unit, batches, rawMaterials);
-      const totalMissing = breakdown.filter(b => b.is_missing).reduce((acc, b) => acc + b.quantity_used_in_target_unit, 0);
+      const breakdown = getFifoBreakdown(pm.material_id, effectiveQty, pm.consumption_unit, batches, rawMaterials, unitsOfMeasure);
+      const totalMissing = breakdown.filter((b: any) => b.is_missing).reduce((acc, b: any) => acc + b.quantity_used, 0);
 
       breakdown.forEach(b => { totalCostForBatch += b.subtotal; });
 
@@ -288,7 +288,7 @@ const Products: React.FC = () => {
         {/* ✅ MÓVIL - Layout Cards */}
         <div className="md:hidden space-y-4">
           {filteredProducts.map((p) => {
-            const cost = calculateProductCost(p, batches, rawMaterials);
+            const cost = calculateProductCost(p, batches, rawMaterials, unitsOfMeasure);
             const metrics = calculateFinancialMetrics(
               cost,
               p.price,
@@ -371,7 +371,7 @@ const Products: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredProducts.map((p) => {
-                  const cost = calculateProductCost(p, batches, rawMaterials);
+                  const cost = calculateProductCost(p, batches, rawMaterials, unitsOfMeasure);
                   const metrics = calculateFinancialMetrics(
                     cost,
                     p.price,
@@ -435,7 +435,7 @@ const Products: React.FC = () => {
         menuState && (() => {
           const product = products.find(pp => pp.id === menuState.productId);
           if (!product) return null;
-          const cost = calculateProductCost(product, batches, rawMaterials);
+          const cost = calculateProductCost(product, batches, rawMaterials, unitsOfMeasure);
           const { rect } = menuState;
           const menuHeight = 164;
           const openUpward = rect.bottom + menuHeight > window.innerHeight;
@@ -529,7 +529,7 @@ const Products: React.FC = () => {
                   <Button fullWidth variant="danger" onClick={() => {
                     consumeStockBatch(missingStockModal.productId, missingStockModal.quantity, missingStockModal.targetPrice).then(() => {
                       const product = products.find(p => p.id === missingStockModal.productId);
-                      const baseCost = calculateProductCost(product!, batches, rawMaterials);
+                      const baseCost = calculateProductCost(product!, batches, rawMaterials, unitsOfMeasure);
                       setMissingStockModal({ ...missingStockModal, isOpen: false });
                       setSuccessModal({ isOpen: true, productName: product?.name || '', cost: baseCost * missingStockModal.quantity, quantity: missingStockModal.quantity });
                       // 🔴 FIX: Previously missing — if production fails here the modal

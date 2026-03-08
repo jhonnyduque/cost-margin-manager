@@ -5,6 +5,9 @@ export type Enums<T extends keyof Database['public']['Enums']> = Database['publi
 
 // Domain Aliases with extensions for missing/calculated fields
 export type User = Tables<'users'>;
+export type UomCategory = Tables<'uom_categories'>;
+export type UnitOfMeasure = Tables<'units_of_measure'>;
+export type MaterialType = { id: string; name: string; created_at?: string };
 
 export type Company = Tables<'companies'> & {
   // Added to support grace period logic in AuthProvider/subscription utils
@@ -28,8 +31,24 @@ export type SubscriptionTier = 'demo' | 'starter' | 'growth' | 'scale' | 'enterp
 
 // We extend these to make certain fields optional in the UI/Logic if needed, 
 // but keeping them compatible with Database Row.
-export type RawMaterial = Tables<'raw_materials'> & { created_by?: string; updated_by?: string; deleted_at?: string | null; };
-export type MaterialBatch = Tables<'material_batches'> & { created_by?: string; updated_by?: string; deleted_at?: string | null; };
+export type RawMaterial = Tables<'raw_materials'> & {
+  created_by?: string;
+  updated_by?: string;
+  deleted_at?: string | null;
+  uom_category?: UomCategory;
+  base_unit?: UnitOfMeasure;
+  purchase_unit?: UnitOfMeasure;
+  display_unit?: UnitOfMeasure;
+};
+
+export type MaterialBatch = Tables<'material_batches'> & {
+  created_by?: string;
+  updated_by?: string;
+  deleted_at?: string | null;
+  received_unit?: UnitOfMeasure;
+};
+
+export type MaterialUnitConversion = Tables<'material_unit_conversions'>;
 
 /**
  * ⚠️ INVARIANT — StockMovement.reference field contract.
