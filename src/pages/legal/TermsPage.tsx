@@ -107,7 +107,7 @@ export default function TermsPage() {
                         <span key="2">Versión 2.0 · Enero 2026</span>
                     ]}
                     actions={
-                        <Button variant="secondary" size="sm" onClick={() => navigate('/more')} icon={<ChevronLeft size={16} />}>
+                        <Button variant="secondary" size="sm" onClick={() => navigate('/mas')} icon={<ChevronLeft size={16} />}>
                             Volver
                         </Button>
                     }

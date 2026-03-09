@@ -11,6 +11,8 @@ import Products from '@/pages/Products';
 import RawMaterials from '@/pages/RawMaterials';
 import Team from '@/pages/Team';
 import Login from '@/pages/Login';
+import Clients from '@/pages/Clients';
+import Dispatches from './pages/Dispatches';
 import NotProvisioned from '@/pages/NotProvisioned';
 import Settings from '@/pages/Settings';
 import MorePage from '@/pages/MorePage';
@@ -30,7 +32,7 @@ import PlatformAdmin from './pages/PlatformAdmin';
 import { EnvironmentsPage } from './pages/platform/EnvironmentsPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 
-// Pages - Billing ✅ NUEVOS
+// Pages - Billing
 import Billing from '@/pages/platform/Billing';
 import BillingCheckout from '@/pages/platform/BillingCheckout';
 import BillingSuccess from '@/pages/platform/BillingSuccess';
@@ -46,7 +48,6 @@ const AppContent: React.FC = () => {
     const { isLoading: isAuthLoading, user, mode, isSigningOut } = useAuth();
     const location = useLocation();
 
-    // ✅ PRIMERO: Todos los hooks SIEMPRE se ejecutan
     useEffect(() => {
         if (user) {
             const listener = notificationListener.start();
@@ -59,17 +60,28 @@ const AppContent: React.FC = () => {
     useEffect(() => {
         if (user && currentCompanyId) {
             console.log('[App] Triggering full business data load');
-            const store = useStore.getState();
-            store.loadProductsFromSupabase();
-            store.loadRawMaterialsFromSupabase();
-            store.loadBatchesFromSupabase();
-            store.loadMovementsFromSupabase();
+            const {
+                loadUomMetadata,
+                loadProductsFromSupabase,
+                loadRawMaterialsFromSupabase,
+                loadBatchesFromSupabase,
+                loadMovementsFromSupabase,
+                loadProductMovementsFromSupabase,
+                loadClientsFromSupabase,
+                loadDispatchesFromSupabase
+            } = useStore.getState();
+
+            loadUomMetadata();
+            loadProductsFromSupabase();
+            loadRawMaterialsFromSupabase();
+            loadBatchesFromSupabase();
+            loadMovementsFromSupabase();
+            loadProductMovementsFromSupabase();
+            loadClientsFromSupabase();
+            loadDispatchesFromSupabase();
         }
     }, [user, currentCompanyId]);
 
-    // ✅ SEGUNDO: Checks de estado (DESPUÉS de hooks)
-
-    // 🔥 Loading inicial
     if (isAuthLoading) {
         return (
             <div className="flex h-screen w-full flex-col items-center justify-center bg-slate-50 text-slate-500">
@@ -79,9 +91,7 @@ const AppContent: React.FC = () => {
         );
     }
 
-    // 🔥 Signing out - AHORA SÍ (después de hooks)
     if (isSigningOut) {
-        console.log('[App] Blocking routing during signout');
         return (
             <div className="flex h-screen w-full flex-col items-center justify-center bg-slate-50 text-slate-500">
                 <Loader2 className="h-10 w-10 animate-spin text-indigo-600 mb-4" />
@@ -90,23 +100,17 @@ const AppContent: React.FC = () => {
         );
     }
 
-    // -- ROUTING LOGIC --
-
-    // Public Routes
     if (location.pathname === '/login') {
         if (user) {
-            console.log('[App] User detected on /login, redirecting to dashboard');
             return <Navigate to={user.is_super_admin ? "/control-center" : "/dashboard"} replace />;
         }
         return <Login />;
     }
 
-    // Protected Routes (Require User)
     if (!user) {
         return <Navigate to="/login" replace />;
     }
 
-    // Non-Provisioned State
     const isNotProvisioned = user && !currentCompanyId && !user.is_super_admin;
     if (isNotProvisioned && location.pathname !== '/not-provisioned') {
         return <Navigate to="/not-provisioned" replace />;
@@ -116,7 +120,6 @@ const AppContent: React.FC = () => {
         return <NotProvisioned />;
     }
 
-    // -- BETO OS SHELL --
     return (
         <OSLayout>
             <Routes>
@@ -132,31 +135,45 @@ const AppContent: React.FC = () => {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/control-center" element={user.is_super_admin ? <PlatformAdmin /> : <Dashboard />} />
 
-                {/* Products */}
+                {/* Productos */}
                 <Route path="/productos" element={<Products />} />
                 <Route path="/productos/nuevo" element={<ProductBuilder />} />
                 <Route path="/productos/editar/:id" element={<ProductBuilder />} />
                 <Route path="/productos/detalle/:id" element={<ProductDetail />} />
-                <Route path="/inventario" element={<FinishedGoods />} />
+
+                {/* Inventario */}
+                <Route path="/stock" element={<FinishedGoods />} />
                 <Route path="/materias-primas" element={<RawMaterials />} />
+
+                {/* Comercial */}
+                <Route path="/clientes" element={<Clients />} />
+                <Route path="/despachos" element={<Dispatches />} />
+
+                {/* ── Módulos Próximamente ── */}
+                <Route path="/produccion" element={<PlaceholderPage />} />
+                <Route path="/compras" element={<PlaceholderPage />} />
+                <Route path="/proveedores" element={<PlaceholderPage />} />
+                <Route path="/reportes" element={<PlaceholderPage />} />
+
+                {/* Equipo */}
                 <Route path="/equipo" element={<Team />} />
                 <Route path="/platform/users" element={<Team />} />
 
-                {/* ✅ Billing & Subscription - ACTUALIZADO */}
+                {/* Billing */}
                 <Route path="/platform/billing" element={<Billing />} />
                 <Route path="/platform/billing/checkout" element={<BillingCheckout />} />
                 <Route path="/platform/billing/success" element={<BillingSuccess />} />
                 <Route path="/platform/billing/portal" element={<BillingSuccess />} />
 
-                {/* ✅ Nueva ruta: MorePage */}
-                <Route path="/more" element={<MorePage />} />
+                {/* Más */}
+                <Route path="/mas" element={<MorePage />} />
 
-                {/* ✅ Legal & Cumplimiento */}
+                {/* Legal & Cumplimiento */}
                 <Route path="/legal/privacy" element={<PrivacyPage />} />
                 <Route path="/legal/terms" element={<TermsPage />} />
                 <Route path="/legal/compliance" element={<CompliancePage />} />
 
-                {/* ✅ Soporte y Sistema */}
+                {/* Soporte y Sistema */}
                 <Route path="/help" element={<HelpPage />} />
                 <Route path="/status" element={<StatusPage />} />
 
@@ -164,8 +181,9 @@ const AppContent: React.FC = () => {
                 <Route path="/analytics" element={<PlaceholderPage />} />
                 <Route path="/settings" element={<Settings />} />
 
-                {/* Legacy / Direct Aliases */}
+                {/* Legacy */}
                 <Route path="/platform" element={<Navigate to="/control-center" replace />} />
+                <Route path="/more" element={<Navigate to="/mas" replace />} />
 
                 {/* Fallback */}
                 <Route path="*" element={<Navigate to="/" replace />} />

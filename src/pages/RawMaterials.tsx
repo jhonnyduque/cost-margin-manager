@@ -425,7 +425,6 @@ const RawMaterials: React.FC = () => {
               <>
                 <Button
                   variant="secondary"
-                  size="sm"
                   onClick={() => navigate('/productos')}
                   icon={<Package size={16} />}
                 >
@@ -433,7 +432,6 @@ const RawMaterials: React.FC = () => {
                 </Button>
                 <Button
                   variant="primary"
-                  size="sm"
                   onClick={() => {
                     setEditingId(null);
                     setFormData({ name: '', description: '', type: 'Tela', unit: 'metro', provider: '', status: 'activa', initialQty: 0, unitCost: 0, width: 140 });

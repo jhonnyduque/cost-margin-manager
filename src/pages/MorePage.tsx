@@ -2,9 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import {
-    Calculator,
-    Package,
-    Layers,
     Settings,
     HelpCircle,
     ChevronRight,
@@ -15,9 +12,11 @@ import {
     ShieldCheck,
     Search,
     Hexagon,
-    LucideIcon
+    LucideIcon,
+    Users,
+    BarChart3
 } from 'lucide-react';
-import { colors, typography, spacing } from '@/design/design-tokens';
+import { colors, typography } from '@/design/design-tokens';
 import { PageContainer, SectionBlock } from '@/components/ui/LayoutPrimitives';
 import { UniversalPageHeader } from '@/components/ui/UniversalPageHeader';
 import { Card } from '@/components/ui/Card';
@@ -33,6 +32,7 @@ interface MenuItem {
     onClick?: () => void;
     badge?: string;
     badgeVariant?: 'neutral' | 'info' | 'success' | 'warning' | 'error';
+    comingSoon?: boolean;
 }
 
 interface MenuSection {
@@ -62,6 +62,14 @@ export default function MorePage() {
             title: 'Cuenta y acceso',
             items: [
                 {
+                    label: 'Equipo',
+                    description: 'Gestión de usuarios y permisos',
+                    icon: Users,
+                    iconBg: colors.bgInfo,
+                    iconColor: colors.info,
+                    path: '/equipo'
+                },
+                {
                     label: 'Settings',
                     description: 'Preferencias y seguridad',
                     icon: Settings,
@@ -82,31 +90,16 @@ export default function MorePage() {
             ]
         },
         {
-            title: 'Módulos operativos',
+            title: 'Herramientas',
             items: [
                 {
-                    label: 'Cost Manager',
-                    description: 'Análisis financiero y márgenes',
-                    icon: Calculator,
-                    iconBg: colors.bgSuccess,
-                    iconColor: colors.success,
-                    path: '/dashboard'
-                },
-                {
-                    label: 'Productos',
-                    description: 'Catálogo y costeo FIFO',
-                    icon: Package,
-                    iconBg: colors.bgInfo,
-                    iconColor: colors.info,
-                    path: '/productos'
-                },
-                {
-                    label: 'Materias Primas',
-                    description: 'Inventario y lotes',
-                    icon: Layers,
-                    iconBg: colors.bgWarning,
-                    iconColor: colors.warning,
-                    path: '/materias-primas'
+                    label: 'Reportes',
+                    description: 'Ventas, márgenes y exportaciones',
+                    icon: BarChart3,
+                    iconBg: 'bg-emerald-50',
+                    iconColor: 'text-emerald-600',
+                    path: '/reportes',
+                    comingSoon: true
                 }
             ]
         },
@@ -180,16 +173,21 @@ export default function MorePage() {
     const MenuItemRow = ({ item }: { item: MenuItem }) => (
         <button
             onClick={() => {
+                if (item.comingSoon) return;
                 if (item.onClick) item.onClick();
                 else if (item.path) navigate(item.path);
             }}
-            className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 active:bg-slate-100 transition-colors group"
+            className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors group
+                ${item.comingSoon
+                    ? 'opacity-40 cursor-not-allowed'
+                    : 'hover:bg-slate-50 active:bg-slate-100'
+                }`}
         >
             <div className={`
                 flex size-9 items-center justify-center rounded-xl flex-shrink-0
                 ${item.iconBg} ${item.iconColor}
                 border border-white/50 shadow-sm
-                transition-transform duration-150 group-hover:scale-105
+                ${!item.comingSoon ? 'transition-transform duration-150 group-hover:scale-105' : ''}
             `}>
                 <item.icon size={16} />
             </div>
@@ -201,6 +199,11 @@ export default function MorePage() {
                     {item.badge && (
                         <Badge variant={item.badgeVariant || 'neutral'}>{item.badge}</Badge>
                     )}
+                    {item.comingSoon && (
+                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md">
+                            Pronto
+                        </span>
+                    )}
                 </div>
                 {item.description && (
                     <span className={`${typography.text.secondary} ${colors.textSecondary} truncate block`}>
@@ -208,7 +211,9 @@ export default function MorePage() {
                     </span>
                 )}
             </div>
-            <ChevronRight size={14} className={`${colors.textMuted} flex-shrink-0 transition-transform duration-150 group-hover:translate-x-0.5`} />
+            {!item.comingSoon && (
+                <ChevronRight size={14} className={`${colors.textMuted} flex-shrink-0 transition-transform duration-150 group-hover:translate-x-0.5`} />
+            )}
         </button>
     );
 
@@ -216,7 +221,6 @@ export default function MorePage() {
         <PageContainer>
             <SectionBlock>
 
-                {/* ── HEADER ────────────────────────────────────────────── */}
                 <UniversalPageHeader
                     title="Más"
                     breadcrumbs={
@@ -231,9 +235,7 @@ export default function MorePage() {
                     ]}
                 />
 
-                {/* ── TOOLBAR: profile + search en una fila ─────────────── */}
                 <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-slate-100 mb-4">
-                    {/* Profile pill compacto */}
                     <div className="flex items-center gap-2.5 px-3 py-2 bg-white rounded-xl border border-slate-100 shadow-sm flex-shrink-0">
                         <div className={`
                             flex size-8 items-center justify-center rounded-xl flex-shrink-0
@@ -257,7 +259,6 @@ export default function MorePage() {
                         </div>
                     </div>
 
-                    {/* Search */}
                     <div className="relative flex-1 min-w-[180px]">
                         <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${colors.textMuted}`} />
                         <input
@@ -270,14 +271,12 @@ export default function MorePage() {
                     </div>
                 </div>
 
-                {/* ── SECCIONES ─────────────────────────────────────────── */}
                 {filteredSections.length === 0 ? (
                     <div className="text-center py-10">
                         <p className={`${typography.text.body} ${colors.textMuted}`}>Sin resultados para "{search}"</p>
                     </div>
                 ) : (
                     <>
-                        {/* DESKTOP: grid 2 columnas */}
                         <div className="hidden lg:grid lg:grid-cols-2 gap-4">
                             {filteredSections.map((section) => (
                                 <div key={section.title}>
@@ -295,7 +294,6 @@ export default function MorePage() {
                             ))}
                         </div>
 
-                        {/* MOBILE: lista */}
                         <div className="lg:hidden space-y-4">
                             {filteredSections.map((section) => (
                                 <div key={section.title}>
@@ -315,7 +313,6 @@ export default function MorePage() {
                     </>
                 )}
 
-                {/* ── BRAND FOOTER — reemplaza Cerrar sesión ────────────── */}
                 <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
                         <Hexagon className="h-6 w-6 text-indigo-500 fill-indigo-500/10 flex-shrink-0" />

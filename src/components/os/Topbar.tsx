@@ -117,7 +117,7 @@ const PLATFORM_SECTIONS: Record<string, string> = {
     '/platform/users': 'Equipo',
     '/platform/billing': 'Facturación',
     '/settings': 'Settings',
-    '/more': 'Más',
+    '/mas': 'Más',
 };
 
 const getSectionName = (pathname: string): string | null => {

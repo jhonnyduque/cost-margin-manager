@@ -100,6 +100,7 @@ export type Product = Tables<'products'> & {
   // Format: PERCENTAGE (e.g. 30 = 30%). Use DEFAULT_TARGET_MARGIN as fallback.
   // materials is stored as Json in the DB — we cast it to ProductMaterial[] here for type safety.
   materials: ProductMaterial[] | null;
+  min_stock?: number | null;
   created_by?: string;
   updated_by?: string;
   deleted_at?: string | null;
@@ -108,3 +109,56 @@ export type Product = Tables<'products'> & {
 // Custom Type Literals (Expanded based on UI usage)
 export type Unit = 'metro' | 'cm' | 'kg' | 'gramo' | 'unidad' | 'bobina' | 'litro';
 export type Status = 'activa' | 'inactiva' | 'borrador';
+
+export interface Client {
+  id: string;
+  company_id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  tax_id?: string;
+  notes?: string;
+  status: 'activo' | 'inactivo';
+  created_at: string;
+  created_by?: string | null;
+  updated_at?: string;
+  updated_by?: string | null;
+  deleted_at?: string | null;
+}
+
+export interface DispatchItem {
+  id: string;
+  dispatch_id: string;
+  company_id: string;
+  product_id: string;
+  product_name?: string;      // snapshot al confirmar
+  quantity: number;
+  unit_price: number;
+  subtotal: number;
+  notes?: string;
+  created_at: string;
+}
+
+export interface Dispatch {
+  id: string;
+  company_id: string;
+  number: string;             // 'DESP-2026-001'
+  date: string;
+  client_id?: string | null;
+  client_name?: string | null; // snapshot al confirmar
+  notes?: string | null;
+  status: 'borrador' | 'confirmado' | 'anulado';
+  total_value: number;
+  confirmed_at?: string | null;
+  confirmed_by?: string | null;
+  cancelled_at?: string | null;
+  cancelled_by?: string | null;
+  created_at: string;
+  created_by?: string | null;
+  updated_at?: string | null;
+  updated_by?: string | null;
+  deleted_at?: string | null;
+  // relación local (no en DB)
+  items?: DispatchItem[];
+}

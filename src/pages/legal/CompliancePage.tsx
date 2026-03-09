@@ -116,7 +116,7 @@ export default function CompliancePage() {
                         <span key="2">Verificado · Enero 2026</span>
                     ]}
                     actions={
-                        <Button variant="secondary" size="sm" onClick={() => navigate('/more')} icon={<ChevronLeft size={16} />}>
+                        <Button variant="secondary" size="sm" onClick={() => navigate('/mas')} icon={<ChevronLeft size={16} />}>
                             Volver
                         </Button>
                     }

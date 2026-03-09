@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Product, RawMaterial, Unit, ProductMaterial, MaterialBatch, StockMovement, UserRole, ProductMovement, STOCK_MOVEMENT_REF, UomCategory, UnitOfMeasure, MaterialType } from '@/types';
+import { Product, RawMaterial, Unit, ProductMaterial, MaterialBatch, StockMovement, UserRole, ProductMovement, STOCK_MOVEMENT_REF, UomCategory, UnitOfMeasure, MaterialType, Client, Dispatch, DispatchItem } from '@/types';
 import { supabase } from './services/supabase';
 import { fetchProductsFromSupabase } from './services/products.service';
 import { calculatePiecesToLinearMeters, getLatestRollWidth } from '@/utils/materialCalculations';
@@ -31,7 +31,7 @@ interface AppState {
   addProduct: (product: Product) => Promise<void>;
   updateProduct: (product: Product) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
-  discontinueProduct: (id: string) => Promise<void>;
+  discontinueProduct: (id: string, status?: 'activa' | 'inactiva') => Promise<void>;
 
   loadProductsFromSupabase: () => Promise<void>;
   loadRawMaterialsFromSupabase: () => Promise<void>;
@@ -39,6 +39,13 @@ interface AppState {
   loadMovementsFromSupabase: () => Promise<void>;
   loadProductMovementsFromSupabase: () => Promise<void>;
   logout: () => void;
+
+  clients: Client[];
+  loadClientsFromSupabase: () => Promise<void>;
+  addClient: (client: Client) => Promise<void>;
+  updateClient: (client: Client) => Promise<void>;
+  deleteClient: (id: string) => Promise<void>;
+  archiveClient: (id: string) => Promise<void>;
 
   addRawMaterial: (material: RawMaterial) => Promise<void>;
   updateRawMaterial: (material: RawMaterial) => Promise<void>;
@@ -52,6 +59,7 @@ interface AppState {
   consumeStock: (productId: string) => Promise<void>;
   consumeStockBatch: (productId: string, quantity: number, targetPrice?: number) => Promise<void>;
   registerFinishedGoodOutput: (productId: string, quantity: number, type: string, reference: string) => Promise<void>;
+  registerBulkFinishedGoodOutput: (outputs: { productId: string; quantity: number; type: string; reference: string }[]) => Promise<void>;
 
   // 🔹 UOM V2 DATA
   uomCategories: UomCategory[];
@@ -71,6 +79,16 @@ interface AppState {
   addUnitOfMeasure: (unit: Partial<UnitOfMeasure>) => Promise<void>;
   updateUnitOfMeasure: (id: string, unit: Partial<UnitOfMeasure>) => Promise<void>;
   deleteUnitOfMeasure: (id: string) => Promise<void>;
+
+  // 🚚 DISPATCHES
+  dispatches: Dispatch[];
+  loadDispatchesFromSupabase: () => Promise<void>;
+  createDispatch: (dispatch: Dispatch, items: DispatchItem[]) => Promise<void>;
+  updateDispatch: (dispatch: Dispatch, items: DispatchItem[]) => Promise<void>;
+  confirmDispatch: (dispatchId: string) => Promise<void>;
+  cancelDispatch: (dispatchId: string) => Promise<void>;
+  deleteDispatch: (id: string) => Promise<void>;
+  generateDispatchNumber: () => string;
 }
 
 
@@ -211,6 +229,17 @@ export const hasProductGeneratedActiveDebt = (productId: string, movements: Stoc
   return false;
 };
 
+export const calculateProductStock = (productId: string, productMovements: ProductMovement[]) => {
+  return productMovements
+    .filter(m => m.product_id === productId)
+    .reduce((acc, mov) => {
+      if (mov.type === 'ingreso_produccion') return acc + mov.quantity;
+      if (mov.type === 'salida_venta') return acc - mov.quantity;
+      if (mov.type === 'ajuste') return acc + mov.quantity;
+      return acc;
+    }, 0);
+};
+
 export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
@@ -221,12 +250,15 @@ export const useStore = create<AppState>()(
 
       setCurrentCompany: (companyId, role) => {
         set({ currentCompanyId: companyId, currentUserRole: role });
-        get().loadUomMetadata(); // Load units first
+        // Carga de datos
+        get().loadUomMetadata();
         get().loadProductsFromSupabase();
         get().loadRawMaterialsFromSupabase();
         get().loadBatchesFromSupabase();
         get().loadMovementsFromSupabase();
         get().loadProductMovementsFromSupabase();
+        get().loadClientsFromSupabase();
+        get().loadDispatchesFromSupabase();
       },
 
       setImpersonation: (active, companyId) => {
@@ -238,6 +270,8 @@ export const useStore = create<AppState>()(
       batches: [],
       movements: [],
       productMovements: [],
+      clients: [],
+      dispatches: [],
       uomCategories: [],
       unitsOfMeasure: [],
       materialTypes: [],
@@ -318,12 +352,93 @@ export const useStore = create<AppState>()(
           currentUserRole: null,
           isImpersonating: false,
           impersonatedCompanyId: null,
+          dispatches: [],
           products: [],
           rawMaterials: [],
           batches: [],
           movements: [],
-          productMovements: []
+          productMovements: [],
+          clients: [],
         });
+      },
+
+      loadClientsFromSupabase: async () => {
+        const companyId = get().currentCompanyId;
+        if (!companyId) return;
+        const { data, error } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('company_id', companyId)
+          .is('deleted_at', null)
+          .order('name');
+        if (!error && data) set({ clients: data as Client[] });
+      },
+
+      addClient: async (client) => {
+        const companyId = get().currentCompanyId;
+        if (!companyId) return;
+        const actorId = await getActorId();
+        const { error } = await supabase.from('clients').insert({
+          id: client.id,
+          company_id: companyId,
+          name: client.name,
+          email: client.email || null,
+          phone: client.phone || null,
+          address: client.address || null,
+          tax_id: client.tax_id || null,
+          notes: client.notes || null,
+          status: client.status,
+          created_at: new Date().toISOString(),
+          created_by: actorId,
+          updated_by: actorId,
+        });
+        if (error) throw error;
+        set((state) => ({ clients: [...state.clients, client].sort((a, b) => a.name.localeCompare(b.name)) }));
+      },
+
+      updateClient: async (client) => {
+        const companyId = get().currentCompanyId;
+        if (!companyId) return;
+        const actorId = await getActorId();
+        const { error } = await supabase.from('clients').update({
+          name: client.name,
+          email: client.email || null,
+          phone: client.phone || null,
+          address: client.address || null,
+          tax_id: client.tax_id || null,
+          notes: client.notes || null,
+          status: client.status,
+          updated_at: new Date().toISOString(),
+          updated_by: actorId,
+        })
+          .eq('id', client.id)
+          .eq('company_id', companyId);
+        if (error) throw error;
+        set((state) => ({
+          clients: state.clients.map((c) => c.id === client.id ? client : c),
+        }));
+      },
+
+      deleteClient: async (id) => {
+        const actorId = await getActorId();
+        const { error } = await supabase.from('clients')
+          .update({ deleted_at: new Date().toISOString(), updated_by: actorId })
+          .eq('id', id)
+          .eq('company_id', get().currentCompanyId);
+        if (error) throw error;
+        set((state) => ({ clients: state.clients.filter((c) => c.id !== id) }));
+      },
+
+      archiveClient: async (id) => {
+        const actorId = await getActorId();
+        const { error } = await supabase.from('clients')
+          .update({ status: 'inactivo', updated_at: new Date().toISOString(), updated_by: actorId })
+          .eq('id', id)
+          .eq('company_id', get().currentCompanyId);
+        if (error) throw error;
+        set((state) => ({
+          clients: state.clients.map((c) => c.id === id ? { ...c, status: 'inactivo' } : c),
+        }));
       },
 
       addProduct: async (product) => {
@@ -338,6 +453,7 @@ export const useStore = create<AppState>()(
           reference: product.reference,
           price: product.price,
           target_margin: product.target_margin,
+          min_stock: product.min_stock ?? null,
           cost_fifo: calculateProductCost(product, get().batches, get().rawMaterials, get().unitsOfMeasure),
           materials: product.materials,
           status: product.status,
@@ -358,6 +474,7 @@ export const useStore = create<AppState>()(
             reference: product.reference,
             price: product.price,
             target_margin: product.target_margin,
+            min_stock: product.min_stock ?? null,
             materials: product.materials,
             cost_fifo: calculateProductCost(product, get().batches, get().rawMaterials, get().unitsOfMeasure),
             status: product.status,
@@ -388,15 +505,15 @@ export const useStore = create<AppState>()(
         set((state) => ({ products: state.products.filter((p) => p.id !== id) }));
       },
 
-      discontinueProduct: async (id) => {
+      discontinueProduct: async (id, status = 'inactiva') => {
         const actorId = await getActorId();
         const { error } = await supabase.from('products')
-          .update({ status: 'inactiva', updated_at: new Date().toISOString(), updated_by: actorId })
+          .update({ status: status, updated_at: new Date().toISOString(), updated_by: actorId })
           .eq('id', id)
           .eq('company_id', get().currentCompanyId);
         if (error) throw error;
         set((state) => ({
-          products: state.products.map((p) => p.id === id ? { ...p, status: 'inactiva' } : p),
+          products: state.products.map((p) => p.id === id ? { ...p, status: status } : p),
         }));
       },
 
@@ -715,7 +832,7 @@ export const useStore = create<AppState>()(
         // 🟢 AUDIT FIX #1: Persist to DB with await + error handling
         for (const batch of currentBatches) {
           const original = get().batches.find(b => b.id === batch.id);
-          if (original && (original.base_remaining_quantity !== batch.base_remaining_quantity)) {
+          if (original && (Number(original.base_remaining_quantity) !== Number(batch.base_remaining_quantity))) {
             const { error } = await supabase.from('material_batches')
               .update({
                 remaining_quantity: batch.remaining_quantity,
@@ -832,7 +949,7 @@ export const useStore = create<AppState>()(
 
         for (const batch of currentBatches) {
           const original = get().batches.find(b => b.id === batch.id);
-          if (original && (original.base_remaining_quantity !== batch.base_remaining_quantity)) {
+          if (original && (Number(original.base_remaining_quantity) !== Number(batch.base_remaining_quantity))) {
             const { error } = await supabase.from('material_batches')
               .update({
                 remaining_quantity: batch.remaining_quantity,
@@ -898,6 +1015,37 @@ export const useStore = create<AppState>()(
 
         set(state => ({
           productMovements: [newMovement, ...state.productMovements]
+        }));
+      },
+
+      registerBulkFinishedGoodOutput: async (outputs) => {
+        const companyId = get().currentCompanyId;
+        if (!companyId) throw new Error("No hay compañía activa");
+
+        const newMovements: ProductMovement[] = outputs.map(out => {
+          const inMovements = get().productMovements.filter(m => m.product_id === out.productId && m.type === 'ingreso_produccion');
+          const avgCost = inMovements.length > 0
+            ? inMovements.reduce((acc, m) => acc + (m.quantity * m.unit_cost), 0) / inMovements.reduce((acc, m) => acc + m.quantity, 0)
+            : 0;
+
+          return {
+            id: crypto.randomUUID(),
+            company_id: companyId,
+            product_id: out.productId,
+            type: out.type as any,
+            quantity: out.quantity,
+            unit_cost: avgCost,
+            reference: out.reference,
+            created_at: new Date().toISOString(),
+            produced_with_debt: false
+          };
+        });
+
+        const { error } = await supabase.from('product_movements').insert(newMovements);
+        if (error) throw error;
+
+        set(state => ({
+          productMovements: [...newMovements, ...state.productMovements]
         }));
       },
 
@@ -991,6 +1139,256 @@ export const useStore = create<AppState>()(
         const { error } = await supabase.from('units_of_measure').delete().eq('id', id);
         if (error) throw error;
         set(state => ({ unitsOfMeasure: state.unitsOfMeasure.filter(u => u.id !== id) }));
+      },
+
+      // 🚚 DISPATCHES IMPLEMENTATION
+      generateDispatchNumber: () => {
+        const year = new Date().getFullYear();
+        const existing = get().dispatches
+          .filter(d => d.number.startsWith(`DESP-${year}-`))
+          .map(d => parseInt(d.number.split('-')[2] || '0', 10))
+          .filter(n => !isNaN(n));
+        const next = existing.length > 0 ? Math.max(...existing) + 1 : 1;
+        return `DESP-${year}-${String(next).padStart(3, '0')}`;
+      },
+
+      loadDispatchesFromSupabase: async () => {
+        const companyId = get().currentCompanyId;
+        if (!companyId) return;
+
+        const { data: dispatchData, error } = await supabase
+          .from('dispatches')
+          .select('*')
+          .eq('company_id', companyId)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false });
+
+        if (error || !dispatchData) return;
+
+        const { data: itemsData } = await supabase
+          .from('dispatch_items')
+          .select('*')
+          .eq('company_id', companyId);
+
+        const dispatches = dispatchData.map(d => ({
+          ...d,
+          items: (itemsData || []).filter(i => i.dispatch_id === d.id)
+        }));
+
+        set({ dispatches: dispatches as Dispatch[] });
+      },
+
+      createDispatch: async (dispatch, items) => {
+        const companyId = get().currentCompanyId;
+        if (!companyId) return;
+        const actorId = await getActorId();
+
+        const { error: dispatchError } = await supabase.from('dispatches').insert({
+          id: dispatch.id,
+          company_id: companyId,
+          number: dispatch.number,
+          date: dispatch.date,
+          client_id: dispatch.client_id || null,
+          client_name: dispatch.client_name || null,
+          notes: dispatch.notes || null,
+          status: 'borrador',
+          total_value: dispatch.total_value,
+          created_at: new Date().toISOString(),
+          created_by: actorId,
+          updated_by: actorId,
+        });
+        if (dispatchError) throw dispatchError;
+
+        if (items.length > 0) {
+          const { error: itemsError } = await supabase.from('dispatch_items').insert(
+            items.map(item => ({
+              id: item.id,
+              dispatch_id: dispatch.id,
+              company_id: companyId,
+              product_id: item.product_id,
+              product_name: item.product_name || null,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              subtotal: item.subtotal,
+              notes: item.notes || null,
+              created_at: new Date().toISOString(),
+            }))
+          );
+          if (itemsError) throw itemsError;
+        }
+
+        const newDispatch = { ...dispatch, items, status: 'borrador' as const };
+        set(state => ({ dispatches: [newDispatch, ...state.dispatches] }));
+      },
+
+      updateDispatch: async (dispatch, items) => {
+        const companyId = get().currentCompanyId;
+        if (!companyId) return;
+        const actorId = await getActorId();
+
+        const { error: dispatchError } = await supabase.from('dispatches').update({
+          date: dispatch.date,
+          client_id: dispatch.client_id || null,
+          client_name: dispatch.client_name || null,
+          notes: dispatch.notes || null,
+          total_value: dispatch.total_value,
+          updated_at: new Date().toISOString(),
+          updated_by: actorId,
+        })
+          .eq('id', dispatch.id)
+          .eq('company_id', companyId);
+        if (dispatchError) throw dispatchError;
+
+        await supabase.from('dispatch_items')
+          .delete()
+          .eq('dispatch_id', dispatch.id)
+          .eq('company_id', companyId);
+
+        if (items.length > 0) {
+          await supabase.from('dispatch_items').insert(
+            items.map(item => ({
+              id: item.id,
+              dispatch_id: dispatch.id,
+              company_id: companyId,
+              product_id: item.product_id,
+              product_name: item.product_name || null,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              subtotal: item.subtotal,
+              notes: item.notes || null,
+              created_at: new Date().toISOString(),
+            }))
+          );
+        }
+
+        set(state => ({
+          dispatches: state.dispatches.map(d =>
+            d.id === dispatch.id ? { ...dispatch, items } : d
+          )
+        }));
+      },
+
+      confirmDispatch: async (dispatchId) => {
+        const companyId = get().currentCompanyId;
+        const actorId = await getActorId();
+        const now = new Date().toISOString();
+
+        const dispatch = get().dispatches.find(d => d.id === dispatchId);
+        if (!dispatch || dispatch.status !== 'borrador') return;
+
+        const items = dispatch.items || [];
+
+        for (const item of items) {
+          const movements = get().productMovements.filter(m => m.product_id === item.product_id);
+          const stock = movements.reduce((acc, m) => {
+            if (m.type === 'ingreso_produccion') return acc + m.quantity;
+            if (m.type === 'salida_venta') return acc - m.quantity;
+            if (m.type === 'ajuste') return acc + m.quantity;
+            return acc;
+          }, 0);
+          if (item.quantity > stock) {
+            const product = get().products.find(p => p.id === item.product_id);
+            throw new Error(`Stock insuficiente para "${product?.name || item.product_id}". Disponible: ${stock}, requerido: ${item.quantity}`);
+          }
+        }
+
+        const { error } = await supabase.from('dispatches').update({
+          status: 'confirmado',
+          confirmed_at: now,
+          confirmed_by: actorId,
+          client_name: dispatch.client_id
+            ? (get().clients.find(c => c.id === dispatch.client_id)?.name || dispatch.client_name)
+            : dispatch.client_name,
+          updated_at: now,
+          updated_by: actorId,
+        })
+          .eq('id', dispatchId)
+          .eq('company_id', companyId);
+        if (error) throw error;
+
+        const newMovements = items.map(item => ({
+          id: crypto.randomUUID(),
+          company_id: companyId,
+          product_id: item.product_id,
+          type: 'salida_venta',
+          quantity: item.quantity,
+          unit_cost: item.unit_price,
+          reference: `Despacho ${dispatch.number}`,
+          created_at: now,
+          produced_with_debt: false,
+        }));
+
+        const { error: movError } = await supabase.from('product_movements').insert(newMovements);
+        if (movError) throw movError;
+
+        set(state => ({
+          dispatches: state.dispatches.map(d =>
+            d.id === dispatchId
+              ? { ...d, status: 'confirmado', confirmed_at: now, confirmed_by: actorId }
+              : d
+          ),
+          productMovements: [...newMovements, ...state.productMovements] as any,
+        }));
+      },
+
+      cancelDispatch: async (dispatchId) => {
+        const companyId = get().currentCompanyId;
+        const actorId = await getActorId();
+        const now = new Date().toISOString();
+
+        const dispatch = get().dispatches.find(d => d.id === dispatchId);
+        if (!dispatch) return;
+
+        const { error } = await supabase.from('dispatches').update({
+          status: 'anulado',
+          cancelled_at: now,
+          cancelled_by: actorId,
+          updated_at: now,
+          updated_by: actorId,
+        })
+          .eq('id', dispatchId)
+          .eq('company_id', companyId);
+        if (error) throw error;
+
+        let reversals: any[] = [];
+        if (dispatch.status === 'confirmado') {
+          const items = dispatch.items || [];
+          reversals = items.map(item => ({
+            id: crypto.randomUUID(),
+            company_id: companyId,
+            product_id: item.product_id,
+            type: 'ajuste',
+            quantity: item.quantity,
+            unit_cost: item.unit_price,
+            reference: `Anulación ${dispatch.number}`,
+            created_at: now,
+            produced_with_debt: false,
+          }));
+          await supabase.from('product_movements').insert(reversals);
+        }
+
+        set(state => ({
+          dispatches: state.dispatches.map(d =>
+            d.id === dispatchId ? { ...d, status: 'anulado', cancelled_at: now, cancelled_by: actorId } : d
+          ),
+          productMovements: reversals.length > 0
+            ? [...reversals, ...state.productMovements] as any
+            : state.productMovements,
+        }));
+      },
+
+      deleteDispatch: async (id) => {
+        const actorId = await getActorId();
+        const dispatch = get().dispatches.find(d => d.id === id);
+        if (dispatch?.status !== 'borrador') {
+          throw new Error('Solo se pueden eliminar despachos en estado borrador.');
+        }
+        const { error } = await supabase.from('dispatches')
+          .update({ deleted_at: new Date().toISOString(), updated_by: actorId })
+          .eq('id', id)
+          .eq('company_id', get().currentCompanyId);
+        if (error) throw error;
+        set(state => ({ dispatches: state.dispatches.filter(d => d.id !== id) }));
       },
     }),
     {

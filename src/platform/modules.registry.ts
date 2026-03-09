@@ -1,4 +1,8 @@
-import { LayoutDashboard, Layers, Users, CreditCard, Bot, BarChart3, Settings, Package, Beaker, Boxes } from 'lucide-react';
+import {
+    LayoutDashboard, Layers, Users, CreditCard, Bot, BarChart3,
+    Settings, Package, Beaker, Boxes, Contact2, Truck,
+    Factory, ShoppingCart, Building2
+} from 'lucide-react';
 
 export const MODULES = {
     // ── Tenant Modules (company users) ──
@@ -10,6 +14,15 @@ export const MODULES = {
         requiredCapability: 'view_costs',
         tenantOnly: true
     },
+    production: {
+        id: 'production',
+        name: 'Producción',
+        path: '/produccion',
+        icon: Factory,
+        requiredCapability: 'view_products',
+        tenantOnly: true,
+        comingSoon: true
+    },
     products: {
         id: 'products',
         name: 'Productos',
@@ -20,8 +33,8 @@ export const MODULES = {
     },
     finished_goods: {
         id: 'finished_goods',
-        name: 'Inventario',
-        path: '/inventario',
+        name: 'Stock',
+        path: '/stock',
         icon: Boxes,
         requiredCapability: 'view_products',
         tenantOnly: true
@@ -34,12 +47,46 @@ export const MODULES = {
         requiredCapability: 'view_raw_materials',
         tenantOnly: true
     },
-    team: {
-        id: 'team',
-        name: 'Equipo',
-        path: '/equipo',
-        icon: Users,
+    purchases: {
+        id: 'purchases',
+        name: 'Compras',
+        path: '/compras',
+        icon: ShoppingCart,
+        requiredCapability: 'view_raw_materials',
+        tenantOnly: true,
+        comingSoon: true
+    },
+    suppliers: {
+        id: 'suppliers',
+        name: 'Proveedores',
+        path: '/proveedores',
+        icon: Building2,
+        requiredCapability: 'view_raw_materials',
+        tenantOnly: true,
+        comingSoon: true
+    },
+    clients: {
+        id: 'clients',
+        name: 'Clientes',
+        path: '/clientes',
+        icon: Contact2,
         requiredCapability: 'view_team',
+        tenantOnly: true
+    },
+    dispatches: {
+        id: 'dispatches',
+        name: 'Despachos',
+        path: '/despachos',
+        icon: Truck,
+        requiredCapability: 'view_products',
+        tenantOnly: true
+    },
+    settings: {
+        id: 'settings',
+        name: 'Settings',
+        path: '/settings',
+        icon: Settings,
+        requiredCapability: 'configure_system',
         tenantOnly: true
     },
 
@@ -92,14 +139,6 @@ export const MODULES = {
         icon: BarChart3,
         requiredCapability: 'view_costs'
     },
-    settings: {
-        id: 'settings',
-        name: 'Settings',
-        path: '/settings',
-        icon: Settings,
-        requiredCapability: 'configure_system'
-    }
 } as const;
 
 export type ModuleKey = keyof typeof MODULES;
-

@@ -162,7 +162,7 @@ export default function HelpPage() {
                         <span key="2">Soporte disponible lun–vie 9h–18h (CET)</span>
                     ]}
                     actions={
-                        <Button variant="secondary" size="sm" onClick={() => navigate('/more')} icon={<ChevronLeft size={16} />}>
+                        <Button variant="secondary" size="sm" onClick={() => navigate('/mas')} icon={<ChevronLeft size={16} />}>
                             Volver
                         </Button>
                     }

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Edit2, Search, PlayCircle, Info, Layers, TrendingUp, CheckCircle2, X, ChevronRight, AlertTriangle, RotateCcw, Ruler, History, Copy, Package, PackageSearch, Printer, Archive, MoreVertical } from 'lucide-react';
-import { useStore, calculateProductCost, calculateFifoCost, getFifoBreakdown, hasProductGeneratedActiveDebt } from '../store';
+import { useStore, calculateProductCost, calculateFifoCost, getFifoBreakdown, hasProductGeneratedActiveDebt, calculateProductStock } from '../store';
 import { calculateFinancialMetrics } from '@/core/financialMetricsEngine';
 import { Product, Unit, RawMaterial, MaterialBatch, DEFAULT_TARGET_MARGIN } from '@/types';
 import { Button } from '@/components/ui/Button';
@@ -58,12 +58,12 @@ const Products: React.FC = () => {
       }
 
       const availableMaterialStock = batches.filter(b => b.material_id === pm.material_id).reduce((acc, b) => acc + b.remaining_quantity, 0);
-      let possibleUnits = qtyPerUnit > 0 ? Math.floor(availableMaterialStock / qtyPerUnit) : quantity;
+      const possibleUnits = qtyPerUnit > 0 ? Math.floor(availableMaterialStock / qtyPerUnit) : quantity;
       if (possibleUnits < maxCoveredProduction) {
         maxCoveredProduction = Math.max(0, possibleUnits);
       }
 
-      let effectiveQty = qtyPerUnit * quantity;
+      const effectiveQty = qtyPerUnit * quantity;
 
       const breakdown = getFifoBreakdown(pm.material_id, effectiveQty, pm.consumption_unit, batches, rawMaterials, unitsOfMeasure);
       const totalMissing = breakdown.filter((b: any) => b.is_missing).reduce((acc, b: any) => acc + b.quantity_used, 0);
@@ -115,7 +115,8 @@ const Products: React.FC = () => {
     p.reference.toLowerCase().includes(searchTerm.toLowerCase())
   ).filter(p => {
     if (statusFilter === 'todos') return true;
-    return p.status === statusFilter;
+    const currentStatus = p.status || 'activa'; // 🔴 FIX: Fallback a activa para productos antiguos sin estado
+    return currentStatus === statusFilter;
   });
 
   const handleDuplicate = (product: Product) => {
@@ -230,7 +231,6 @@ const Products: React.FC = () => {
               <>
                 <Button
                   variant="secondary"
-                  size="sm"
                   onClick={() => navigate('/materias-primas')}
                   icon={<Layers size={16} />}
                 >
@@ -238,7 +238,6 @@ const Products: React.FC = () => {
                 </Button>
                 <Button
                   variant="primary"
-                  size="sm"
                   onClick={() => navigate('/productos/nuevo')}
                   icon={<Plus size={16} />}
                 >
@@ -250,15 +249,15 @@ const Products: React.FC = () => {
         />
 
         {/* UNIFIED TOOLBAR */}
-        <div className="flex flex-wrap items-center gap-4 pt-6 mt-6 border-t border-slate-100 no-print">
-          <div className="relative flex-1 min-w-[300px]">
+        <div className="no-print mt-6 flex flex-wrap items-center gap-4 border-t border-slate-100 pt-6">
+          <div className="relative min-w-[300px] flex-1">
             <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 ${colors.textMuted}`} />
             <input
               type="text"
               placeholder="Buscar por nombre o SKU..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl ${typography.text.body} transition-all focus:ring-2 focus:ring-indigo-500 focus:bg-white`}
+              className={`h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 ${typography.text.body} transition-all focus:bg-white focus:ring-2 focus:ring-indigo-500`}
             />
           </div>
 
@@ -286,7 +285,7 @@ const Products: React.FC = () => {
 
       <div className="space-y-4">
         {/* ✅ MÓVIL - Layout Cards */}
-        <div className="md:hidden space-y-4">
+        <div className="space-y-4 md:hidden">
           {filteredProducts.map((p) => {
             const cost = calculateProductCost(p, batches, rawMaterials, unitsOfMeasure);
             const metrics = calculateFinancialMetrics(
@@ -299,13 +298,13 @@ const Products: React.FC = () => {
             return (
               <Card key={p.id} className="border border-slate-200">
                 <Card.Header className="mb-4">
-                  <div className="flex items-start gap-3 flex-1 min-w-0" onClick={() => navigate(`/productos/detalle/${p.id}`)}>
+                  <div className="flex min-w-0 flex-1 items-start gap-3" onClick={() => navigate(`/productos/detalle/${p.id}`)}>
                     <input
                       type="checkbox"
                       checked={selectedIds.has(p.id)}
                       onChange={(e) => { e.stopPropagation(); toggleSelect(p.id); }}
                       onClick={(e) => e.stopPropagation()}
-                      className={`mt-1 h-4 w-4 rounded-md accent-indigo-600 shrink-0`}
+                      className={`mt-1 size-4 shrink-0 rounded-md accent-indigo-600`}
                       aria-label={`Seleccionar ${p.name}`}
                     />
                     <div className="min-w-0">
@@ -318,22 +317,28 @@ const Products: React.FC = () => {
                   </span>
                 </Card.Header>
 
-                <Card.Content className="grid grid-cols-2 gap-4 bg-slate-50/50 rounded-xl p-4 border border-slate-100">
+                <Card.Content className="grid grid-cols-3 gap-4 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
                   <div className="flex flex-col">
-                    <span className={`${typography.text.caption} text-slate-500 font-bold uppercase`}>Costo (FIFO)</span>
+                    <span className={`${typography.text.caption} font-bold uppercase text-slate-500`}>Stock</span>
+                    <span className={`${typography.text.body} font-bold ${colors.textPrimary}`}>
+                      {calculateProductStock(p.id, productMovements)}
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <span className={`${typography.text.caption} font-bold uppercase text-slate-500`}>Costo (FIFO)</span>
                     <span className={`${typography.text.body} font-bold ${colors.textPrimary}`}>{formatCurrency(cost)}</span>
                   </div>
                   <div className="flex flex-col items-end text-right">
-                    <span className={`${typography.text.caption} text-slate-500 font-bold uppercase`}>Precio Venta</span>
+                    <span className={`${typography.text.caption} font-bold uppercase text-slate-500`}>Precio Venta</span>
                     <span className={`${typography.text.body} font-black text-indigo-600`}>{formatCurrency(p.price)}</span>
                   </div>
                 </Card.Content>
 
-                <Card.Footer className="mt-4 pt-4 flex justify-end">
+                <Card.Footer className="mt-4 flex justify-end border-t border-slate-100 pt-4">
                   <div className="relative">
                     <button
                       data-kebab-trigger
-                      className="rounded-lg p-2 transition-colors hover:bg-slate-100 text-slate-400"
+                      className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100"
                       onClick={(e) => openMenu(p.id, e)}
                       aria-label="Más opciones"
                     >
@@ -349,24 +354,25 @@ const Products: React.FC = () => {
         {/* ✅ ESCRITORIO - Tabla normal */}
         <div id="print-area" className="hidden md:block">
           <div className={`table-container rounded-2xl ${colors.bgSurface} border ${colors.borderStandard} overflow-hidden ${shadows.sm}`}>
-            <table className="w-full text-left table-fixed">
+            <table className="w-full table-fixed text-left">
               <thead className={`${colors.bgMain} border-b ${colors.borderStandard}`}>
                 <tr>
-                  <th className={`w-[48px] ${spacing.pxLg} py-4`}>
+                  <th className={`w-12 ${spacing.pxLg} py-4`}>
                     <input
                       type="checkbox"
                       checked={filteredProducts.length > 0 && selectedIds.size === filteredProducts.length}
                       onChange={toggleSelectAll}
-                      className={`h-4 w-4 rounded accent-indigo-600`}
+                      className={`size-4 rounded accent-indigo-600`}
                       aria-label="Seleccionar todos"
                     />
                   </th>
-                  <th className={`w-[28%] ${spacing.pxLg} py-4 truncate ${typography.text.caption} text-slate-500 font-bold uppercase`}>Producto</th>
-                  <th className={`w-[18%] ${spacing.pxLg} py-4 truncate ${typography.text.caption} text-slate-500 font-bold uppercase`}>Referencia / SKU</th>
-                  <th className={`w-[14%] ${spacing.pxLg} py-4 text-right truncate ${typography.text.caption} text-slate-500 font-bold uppercase`}>Costo (FIFO)</th>
-                  <th className={`w-[14%] ${spacing.pxLg} py-4 text-right truncate ${typography.text.caption} text-slate-500 font-bold uppercase`}>Precio Venta</th>
-                  <th className={`w-[10%] ${spacing.pxLg} py-4 text-center truncate ${typography.text.caption} text-slate-500 font-bold uppercase`}>Margen</th>
-                  <th className={`w-[16%] min-w-[120px] ${spacing.pxLg} py-4 text-center ${typography.text.caption} text-slate-500 font-bold uppercase`}>Acciones</th>
+                  <th className={`w-[22%] ${spacing.pxLg} truncate py-4 ${typography.text.caption} font-bold uppercase text-slate-500`}>Producto</th>
+                  <th className={`w-[14%] ${spacing.pxLg} truncate py-4 ${typography.text.caption} font-bold uppercase text-slate-500`}>Referencia / SKU</th>
+                  <th className={`w-[10%] ${spacing.pxLg} truncate py-4 text-right ${typography.text.caption} font-bold uppercase text-slate-500`}>Stock</th>
+                  <th className={`w-[13%] ${spacing.pxLg} truncate py-4 text-right ${typography.text.caption} font-bold uppercase text-slate-500`}>Costo (FIFO)</th>
+                  <th className={`w-[13%] ${spacing.pxLg} truncate py-4 text-right ${typography.text.caption} font-bold uppercase text-slate-500`}>Precio Venta</th>
+                  <th className={`w-[10%] ${spacing.pxLg} truncate py-4 text-center ${typography.text.caption} font-bold uppercase text-slate-500`}>Margen</th>
+                  <th className={`w-[13%] min-w-[120px] ${spacing.pxLg} py-4 text-center ${typography.text.caption} font-bold uppercase text-slate-500`}>Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -386,34 +392,39 @@ const Products: React.FC = () => {
                           type="checkbox"
                           checked={selectedIds.has(p.id)}
                           onChange={() => toggleSelect(p.id)}
-                          className={`h-4 w-4 rounded accent-indigo-600`}
+                          className={`size-4 rounded accent-indigo-600`}
                           aria-label={`Seleccionar ${p.name}`}
                         />
                       </td>
                       <td
-                        className={`${spacing.pxLg} py-4 ${typography.text.body} font-black ${colors.textPrimary} truncate cursor-pointer hover:text-indigo-600 transition-colors capitalize`}
+                        className={`${spacing.pxLg} py-4 ${typography.text.body} font-black ${colors.textPrimary} cursor-pointer truncate capitalize transition-colors hover:text-indigo-600`}
                         title={p.name}
                         onClick={() => navigate(`/productos/detalle/${p.id}`)}
                       >
                         {p.name}
                       </td>
-                      <td className={`${spacing.pxLg} py-4 ${typography.text.secondary} text-slate-500 truncate font-bold tabular-nums`} title={p.reference || '---'}>
+                      <td className={`${spacing.pxLg} py-4 ${typography.text.secondary} truncate font-bold tabular-nums text-slate-500`} title={p.reference || '---'}>
                         {p.reference || '---'}
                       </td>
+                      <td className={`${spacing.pxLg} py-4 text-right ${typography.text.body} font-bold tabular-nums ${colors.textPrimary}`}>
+                        {calculateProductStock(p.id, productMovements)}
+                      </td>
+
+
                       <td className={`${spacing.pxLg} py-4 text-right ${typography.text.body} font-bold ${colors.textPrimary} truncate tabular-nums`}>
                         {formatCurrency(cost)}
                       </td>
-                      <td className={`${spacing.pxLg} py-4 text-right ${typography.text.body} font-bold text-indigo-600 truncate tabular-nums`}>
+                      <td className={`${spacing.pxLg} py-4 text-right ${typography.text.body} truncate font-bold tabular-nums text-indigo-600`}>
                         {formatCurrency(p.price)}
                       </td>
                       <td className={`${spacing.pxLg} py-4 text-center ${typography.text.body} font-bold tabular-nums ${metrics.realMargin >= (p.target_margin ?? DEFAULT_TARGET_MARGIN) / 100 ? colors.statusSuccess : colors.statusWarning}`}>
                         {(metrics.realMargin * 100).toFixed(1)}%
                       </td>
                       <td className={`${spacing.pxLg} py-4`}>
-                        <div className="flex justify-center items-center">
+                        <div className="flex items-center justify-center">
                           <button
                             data-kebab-trigger
-                            className={`rounded-lg p-2 transition-all border border-transparent ${menuState?.productId === p.id ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}
+                            className={`rounded-lg border border-transparent p-2 transition-all ${menuState?.productId === p.id ? 'border-indigo-200 bg-indigo-100 text-indigo-700' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}
                             onClick={(e) => openMenu(p.id, e)}
                             aria-label="Más opciones"
                           >
@@ -447,28 +458,28 @@ const Products: React.FC = () => {
           };
           return (
             <div ref={menuRef} className={`${radius.xl} border ${colors.borderStandard} ${colors.bgSurface} ${shadows.xl} py-1.5`} style={style}>
-              <button className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.textSecondary} hover:${colors.bgMain} transition-colors`} onClick={() => { setMenuState(null); navigate(`/productos/detalle/${product.id}`); }}>
+              <button className={`flex w-full items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.textSecondary} hover:${colors.bgMain} transition-colors`} onClick={() => { setMenuState(null); navigate(`/productos/detalle/${product.id}`); }}>
                 <History size={14} className={colors.textMuted} /> Ver Historial
               </button>
               <div className={`border-t ${colors.borderSubtle} my-1.5`} />
-              <button className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.statusSuccess} hover:${colors.bgSuccess} transition-colors`} onClick={() => { setMenuState(null); setProductionModal({ isOpen: true, productId: product.id, productName: product.name, quantity: 1, targetPrice: product.price, cost }); }}>
+              <button className={`flex w-full items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.statusSuccess} hover:${colors.bgSuccess} transition-colors`} onClick={() => { setMenuState(null); setProductionModal({ isOpen: true, productId: product.id, productName: product.name, quantity: 1, targetPrice: product.price, cost }); }}>
                 <PlayCircle size={14} /> Producir
               </button>
-              <button className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.textSecondary} hover:${colors.bgMain} transition-colors`} onClick={() => { setMenuState(null); navigate(`/productos/editar/${product.id}`); }}>
+              <button className={`flex w-full items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.textSecondary} hover:${colors.bgMain} transition-colors`} onClick={() => { setMenuState(null); navigate(`/productos/editar/${product.id}`); }}>
                 <Edit2 size={14} className={colors.textMuted} /> Editar
               </button>
               {canCreate && (
-                <button className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.textSecondary} hover:${colors.bgMain} transition-colors`} onClick={() => { setMenuState(null); handleDuplicate(product); }}>
+                <button className={`flex w-full items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.textSecondary} hover:${colors.bgMain} transition-colors`} onClick={() => { setMenuState(null); handleDuplicate(product); }}>
                   <Copy size={14} className={colors.textMuted} /> Duplicar
                 </button>
               )}
               {product.status === 'activa' && (
-                <button className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.textSecondary} hover:${colors.bgMain} transition-colors`} onClick={() => handleDiscontinue(product.id)}>
+                <button className={`flex w-full items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.textSecondary} hover:${colors.bgMain} transition-colors`} onClick={() => handleDiscontinue(product.id)}>
                   <Archive size={14} className={colors.textMuted} /> Discontinuar
                 </button>
               )}
               <div className={`border-t ${colors.borderSubtle} my-1.5`} />
-              <button className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.statusDanger} hover:${colors.bgDanger} transition-colors`} onClick={() => handleDelete(product.id)}>
+              <button className={`flex w-full items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.statusDanger} hover:${colors.bgDanger} transition-colors`} onClick={() => handleDelete(product.id)}>
                 <Trash2 size={14} /> Eliminar
               </button>
             </div>
@@ -479,10 +490,10 @@ const Products: React.FC = () => {
       {/* ── BATCH TOOLBAR ── */}
       {
         selectedIds.size > 0 && (
-          <div className={`fixed bottom-0 left-0 right-0 z-50 border-t ${colors.borderStandard} ${colors.bgSurface} ${shadows.xl} no-print`}>
-            <div className={`max-w-7xl mx-auto ${spacing.pxLg} py-3 flex items-center justify-between`}>
+          <div className={`fixed inset-x-0 bottom-0 z-50 border-t ${colors.borderStandard} ${colors.bgSurface} ${shadows.xl} no-print`}>
+            <div className={`mx-auto max-w-7xl ${spacing.pxLg} flex items-center justify-between py-3`}>
               <div className="flex items-center gap-3">
-                <input type="checkbox" checked readOnly className={`h-4 w-4 ${radius.sm} accent-indigo-600`} />
+                <input type="checkbox" checked readOnly className={`size-4 ${radius.sm} accent-indigo-600`} />
                 <span className={`${typography.body} font-semibold ${colors.textPrimary}`}>{selectedIds.size} seleccionado{selectedIds.size > 1 ? 's' : ''}</span>
               </div>
               <div className="flex items-center gap-2">
@@ -543,7 +554,7 @@ const Products: React.FC = () => {
             )}
 
             {successModal && successModal.isOpen && (
-              <Card className="w-full max-w-sm p-8 text-center space-y-6">
+              <Card className="w-full max-w-sm space-y-6 p-8 text-center">
                 <CheckCircle2 size={48} className="mx-auto text-emerald-500" />
                 <h3 className={typography.sectionTitle}>¡Producción Exitosa!</h3>
                 <p className={`${typography.body} text-gray-600`}>El lote ha sido ingresado al inventario.</p>

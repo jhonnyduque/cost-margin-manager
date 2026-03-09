@@ -39,7 +39,7 @@ const NAV_ITEMS: NavItem[] = [
     },
     {
         label: 'Más',
-        path: '/more',
+        path: '/mas',
         icon: Menu,
     },
 ];
@@ -67,7 +67,7 @@ const TENANT_NAV_ITEMS: NavItem[] = [
     },
     {
         label: 'Más',
-        path: '/more',
+        path: '/mas',
         icon: Menu,
     },
 ];

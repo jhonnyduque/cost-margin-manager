@@ -125,7 +125,7 @@ export default function StatusPage() {
                         <span key="2">Actualizado: {new Date().toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}</span>
                     ]}
                     actions={
-                        <Button variant="secondary" size="sm" onClick={() => navigate('/more')} icon={<ChevronLeft size={16} />}>
+                        <Button variant="secondary" size="sm" onClick={() => navigate('/mas')} icon={<ChevronLeft size={16} />}>
                             Volver
                         </Button>
                     }

@@ -1,141 +1,152 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Search, X, History, ShoppingCart, ArrowDownToLine, Printer, Pencil, AlertCircle, Maximize2, Scissors, RotateCcw, Package, Archive, MoreVertical, ArrowUpRight, PackageSearch, FileDown, ChevronUp, ChevronDown, AlertTriangle } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+    Search, History, Printer, PackageSearch, FileDown,
+    ChevronUp, ChevronDown, Package, LayoutDashboard,
+    ArrowUpRight, ArrowDownRight, ClipboardList, Info,
+    Clock, Tag, Truck, Filter, AlertCircle, Layers
+} from 'lucide-react';
 import { useStore } from '../store';
 import { colors, typography, spacing, radius, shadows } from '@/design/design-tokens';
 import { PageContainer, SectionBlock } from '@/components/ui/LayoutPrimitives';
 import { UniversalPageHeader } from '@/components/ui/UniversalPageHeader';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { useCurrency } from '@/hooks/useCurrency';
-import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/Badge';
-import { Select } from '@/components/ui/Select';
 
 const FinishedGoods: React.FC = () => {
-    const { products, productMovements, movements, rawMaterials } = useStore();
-    const { formatCurrency } = useCurrency();
+    const {
+        products, productMovements, dispatches,
+        rawMaterials, unitsOfMeasure, currentCompanyId
+    } = useStore();
     const navigate = useNavigate();
+    const { formatCurrency } = useCurrency();
     const [searchTerm, setSearchTerm] = useState('');
     const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
-    const [expandedMovementId, setExpandedMovementId] = useState<string | null>(null);
-    const [isSaving, setIsSaving] = useState(false);
+    const [statusFilter, setStatusFilter] = useState<'all' | 'low' | 'with_stock'>('all');
+    const [kardexPeriod, setKardexPeriod] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
 
-    const [outputModal, setOutputModal] = useState<{
-        isOpen: boolean;
-        productId: string;
-        productName: string;
-        currentStock: number;
-        quantity: number;
-        type: string;
-        reference: string;
-    }>({
-        isOpen: false,
-        productId: '',
-        productName: '',
-        currentStock: 0,
-        quantity: 1,
-        type: 'salida_venta',
-        reference: ''
-    });
+    // ── CALCULATION ENGINE 2.0 ──
+    const stockStats = useMemo(() => {
+        return products.map(product => {
+            const movements = productMovements.filter(m => m.product_id === product.id);
 
-    const [menuState, setMenuState] = useState<{ productId: string; rect: DOMRect } | null>(null);
-    const menuRef = useRef<HTMLDivElement>(null);
+            // 1. Physical Stock (What's in the shelf)
+            const physical = movements.reduce((acc, m) => {
+                if (m.type === 'ingreso_produccion') return acc + m.quantity;
+                if (m.type === 'salida_venta') return acc - m.quantity;
+                if (m.type === 'ajuste') return acc + m.quantity;
+                return acc;
+            }, 0);
 
-    // ── Click outside closes kebab menu ──
-    useEffect(() => {
-        if (!menuState) return;
-        const handler = (e: MouseEvent) => {
-            const target = e.target as HTMLElement;
-            if (target.closest('[data-kebab-trigger]')) return;
-            if (menuRef.current && !menuRef.current.contains(target)) {
-                setMenuState(null);
-            }
-        };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-    }, [menuState]);
+            // 2. Reserved Stock (In Borrador Dispatches)
+            const reserved = dispatches
+                .filter(d => d.status === 'borrador')
+                .flatMap(d => d.items || [])
+                .filter(i => i.product_id === product.id)
+                .reduce((acc, i) => acc + i.quantity, 0);
 
-    const openMenu = (productId: string, e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (menuState?.productId === productId) {
-            setMenuState(null);
-            return;
-        }
-        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-        setMenuState({ productId, rect });
-    };
+            // 3. Available Stock
+            const available = physical - reserved;
 
-    const getProductStock = (productId: string) => {
-        const movements = productMovements.filter(m => m.product_id === productId);
-        const inQty = movements.filter(m => m.type === 'ingreso_produccion').reduce((acc, m) => acc + m.quantity, 0);
-        const outQty = movements.filter(m => ['salida_venta', 'salida_manual', 'merma'].includes(m.type)).reduce((acc, m) => acc + m.quantity, 0);
-        const adjQty = movements.filter(m => m.type === 'ajuste').reduce((acc, m) => acc + (m.quantity || 0), 0);
+            // 4. Valuation (FIFO approximation using Physical stock)
+            const entries = movements
+                .filter(m => m.type === 'ingreso_produccion')
+                .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
-        // Simplification: adjQty positive means more stock, negative means less.
-        return inQty - outQty + adjQty;
-    };
+            const exits = movements
+                .filter(m => m.type === 'salida_venta')
+                .reduce((acc, m) => acc + m.quantity, 0);
 
-    const getProductAvgCost = (productId: string) => {
-        const movements = productMovements.filter(m => m.product_id === productId && m.type === 'ingreso_produccion');
-        if (movements.length === 0) return 0;
+            let remainingExits = exits;
+            const productionLots = entries.map(entry => {
+                const consumed = Math.min(entry.quantity, remainingExits);
+                remainingExits = Math.max(0, remainingExits - consumed);
+                const remaining = entry.quantity - consumed;
+                return {
+                    id: entry.id,
+                    date: entry.created_at,
+                    initial: entry.quantity,
+                    remaining,
+                    unit_cost: entry.unit_cost,
+                    valuation: remaining * entry.unit_cost,
+                    reference: entry.reference || '',
+                    isExhausted: remaining === 0,
+                };
+            });
 
-        const totalCost = movements.reduce((acc, m) => acc + (m.quantity * m.unit_cost), 0);
-        const totalQty = movements.reduce((acc, m) => acc + m.quantity, 0);
+            const avgCost = entries.length > 0
+                ? entries.reduce((acc, m) => acc + (m.quantity * m.unit_cost), 0) / entries.reduce((acc, m) => acc + m.quantity, 0)
+                : 0;
 
-        return totalQty > 0 ? totalCost / totalQty : 0;
-    };
+            return {
+                id: product.id,
+                name: product.name,
+                reference: product.reference,
+                physical,
+                reserved,
+                available,
+                avgCost,
+                totalValuation: physical * avgCost,
+                productionLots
+            };
+        });
+    }, [products, productMovements, dispatches]);
 
-    const filteredProducts = useMemo(() => {
-        if (!searchTerm.trim()) return [];
-        const term = searchTerm.toLowerCase();
-        return products.filter(p =>
-            p.name.toLowerCase().includes(term) ||
-            (p.reference && p.reference.toLowerCase().includes(term)) ||
-            p.price.toString().includes(term)
-        );
-    }, [products, searchTerm]);
-
-    const handleConfirmOutput = async () => {
-        setIsSaving(true);
-        try {
-            await useStore.getState().registerFinishedGoodOutput(
-                outputModal.productId,
-                outputModal.quantity < 0 ? outputModal.quantity * -1 : outputModal.quantity, // Enforce positive sum for ledger since 'type' defines direction
-                outputModal.type,
-                outputModal.reference
+    const filteredData = useMemo(() => {
+        let data = stockStats;
+        if (searchTerm.trim()) {
+            const term = searchTerm.toLowerCase();
+            data = data.filter(s =>
+                s.name.toLowerCase().includes(term) ||
+                (s.reference && s.reference.toLowerCase().includes(term))
             );
-            setOutputModal(prev => ({ ...prev, isOpen: false }));
-        } catch (error: any) {
-            alert(error.message);
-        } finally {
-            setIsSaving(false);
         }
+        if (statusFilter === 'with_stock') data = data.filter(s => s.physical > 0);
+        if (statusFilter === 'low') data = data.filter(s => s.physical > 0 && s.physical < 5); // Example threshold
+        return data;
+    }, [stockStats, searchTerm, statusFilter]);
+
+    const globalValuation = useMemo(() =>
+        filteredData.reduce((acc, s) => acc + s.totalValuation, 0)
+        , [filteredData]);
+
+    const pendingDispatchesCount = useMemo(() =>
+        dispatches.filter(d => d.status === 'borrador').length
+        , [dispatches]);
+
+    const filterByPeriod = (date: string) => {
+        if (kardexPeriod === 'all') return true;
+        const days = kardexPeriod === '7d' ? 7 : kardexPeriod === '30d' ? 30 : 90;
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - days);
+        return new Date(date) >= cutoff;
     };
 
     return (
         <PageContainer>
             <SectionBlock>
                 <UniversalPageHeader
-                    title="Inventario de Terminado"
+                    title="Stock & Kardex"
                     breadcrumbs={
                         <>
                             <span>BETO OS</span>
                             <span>/</span>
-                            <span className={colors.textPrimary}>Producto Terminado</span>
+                            <span className={colors.textPrimary}>Módulo Stock</span>
                         </>
                     }
                     metadata={[
-                        <span key="1">Valuación y Existencia Física</span>,
-                        <span key="2">{products.length} productos registrados</span>
+                        <span key="1" className="font-bold text-indigo-600">Valuación Total: {formatCurrency(globalValuation)}</span>,
+                        <span key="2" className="flex items-center gap-1">
+                            <Truck size={14} className="text-amber-500" />
+                            {pendingDispatchesCount} Despachos Reservando Stock
+                        </span>
                     ]}
                     actions={
                         <>
-                            <Button variant="secondary" size="sm" onClick={() => window.print()} icon={<Printer size={16} />}>
-                                IMPRIMIR
-                            </Button>
-                            <Button variant="primary" size="sm" onClick={() => navigate('/products')} icon={<PackageSearch size={16} />}>
-                                CATÁLOGO
+                            <Button variant="secondary" onClick={() => window.print()} icon={<Printer size={16} />}>
+                                REPORTE
                             </Button>
                         </>
                     }
@@ -146,361 +157,312 @@ const FinishedGoods: React.FC = () => {
                         <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 ${colors.textMuted}`} />
                         <input
                             type="text"
-                            placeholder="Buscar producto, referencia..."
+                            placeholder="Filtrar por nombre o referencia de producto..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className={`w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl ${typography.text.body} transition-all focus:ring-2 focus:ring-indigo-500 focus:bg-white`}
+                            className={`w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl ${typography.text.body} transition-all focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:outline-none`}
                         />
                     </div>
-                    <Button variant="ghost" className="text-slate-500" title="Exportar CSV" icon={<FileDown size={20} />} />
+                    <div className="flex items-center gap-3">
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value as any)}
+                            className={`h-11 px-4 border border-slate-200 ${radius.xl} bg-white text-sm font-medium text-slate-600 focus:ring-2 focus:ring-indigo-500/10 outline-none`}
+                        >
+                            <option value="all">Todos los productos</option>
+                            <option value="with_stock">Solo con existencias</option>
+                            <option value="low">Stock Bajo (&lt; 5 und)</option>
+                        </select>
+                        <Button variant="ghost" className="text-slate-500" icon={<FileDown size={20} />} />
+                    </div>
                 </div>
             </SectionBlock>
 
-            {!searchTerm.trim() ? (
-                <Card className="flex flex-col items-center justify-center p-16 text-center border-dashed border-2 bg-gray-50/50">
-                    <div className="h-20 w-20 bg-indigo-50 text-indigo-300 rounded-full flex items-center justify-center mb-6 shadow-inner">
-                        <PackageSearch size={40} />
-                    </div>
-                    <h3 className={`${typography.sectionTitle} text-gray-900 mb-2`}>Buscador Inteligente</h3>
-                    <p className="text-gray-500 text-sm max-w-md mx-auto">
-                        Utiliza la barra de búsqueda superior indicando el nombre, SKU o precio de tu producto para revelar sus existencias físicas y movimientos de inventario.
-                    </p>
-                </Card>
-            ) : (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                    {filteredProducts.length === 0 ? (
-                        <div className="p-12 text-center text-gray-500">
-                            No se encontraron coincidencias para "<span className="font-bold">{searchTerm}</span>".
+            <div className="mt-8 space-y-6">
+                {filteredData.length === 0 ? (
+                    <Card className="flex flex-col items-center justify-center p-16 text-center border-dashed border-2 bg-slate-50/50">
+                        <div className="h-20 w-20 bg-indigo-50 text-indigo-300 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                            <PackageSearch size={40} />
                         </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full border-collapse text-left">
-                                <thead className={`bg-slate-50 ${typography.text.caption} text-slate-500 font-bold uppercase border-b border-slate-100`}>
-                                    <tr>
-                                        <th className="px-6 py-4">Producto</th>
-                                        <th className="px-6 py-4 text-center">Stock Disponible</th>
-                                        <th className="px-6 py-4 text-right">Costo Promedio Lotes</th>
-                                        <th className="px-6 py-4 text-right">Valorización Total</th>
-                                        <th className="px-6 py-4 text-center">Movimientos</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {filteredProducts.map(p => {
-                                        const stock = getProductStock(p.id);
-                                        const avgCost = getProductAvgCost(p.id);
-                                        const isExpanded = expandedProductId === p.id;
-                                        const pMovements = productMovements.filter(m => m.product_id === p.id).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                        <h3 className={`${typography.sectionTitle} text-slate-900 mb-2`}>Sin resultados</h3>
+                        <p className="text-slate-500 text-sm max-w-md mx-auto">
+                            No encontramos productos que coincidan con tu búsqueda o filtros actuales.
+                        </p>
+                    </Card>
+                ) : (
+                    <div className={`${radius['2xl']} border ${colors.borderStandard} overflow-hidden ${shadows.sm} bg-white`}>
+                        <table className="w-full text-left">
+                            <thead className={`bg-slate-50 ${typography.text.caption} text-slate-500 font-bold uppercase border-b ${colors.borderStandard}`}>
+                                <tr>
+                                    <th className="px-6 py-4">Producto / SKU</th>
+                                    <th className="px-6 py-4 text-right">Físico</th>
+                                    <th className="px-6 py-4 text-right">Reservado</th>
+                                    <th className="px-6 py-4 text-right bg-indigo-50/30">Disponible</th>
+                                    <th className="px-6 py-4 text-right">Costo Promedio</th>
+                                    <th className="px-6 py-4 text-right">Valuación</th>
+                                    <th className="px-6 py-4 w-12"></th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {filteredData.map(stat => {
+                                    const product = products.find(p => p.id === stat.id);
+                                    const isLowStock = product?.min_stock != null && stat.available <= product.min_stock;
+                                    const isExpanded = expandedProductId === stat.id;
+                                    const movements = productMovements
+                                        .filter(m => m.product_id === stat.id && filterByPeriod(m.created_at))
+                                        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                                    const reservedDispatches = dispatches
+                                        .filter(d => d.status === 'borrador' && (d.items || []).some(i => i.product_id === stat.id));
 
-                                        return (
-                                            <React.Fragment key={p.id}>
-                                                <tr className="hover:bg-indigo-50/30 transition-colors group">
-                                                    <td className="px-6 py-4">
-                                                        <p className={`${typography.text.body} font-black ${colors.textPrimary} group-hover:text-indigo-700 transition-colors capitalize`}>{p.name}</p>
-                                                        <p className={`${typography.text.caption} font-bold text-slate-400 uppercase tracking-wider mt-0.5`}>{p.reference || 'SIN REF'}</p>
-                                                    </td>
-                                                    <td className="px-6 py-4 text-center">
-                                                        <span className={`inline-flex items-center px-3 py-1 rounded-full ${typography.uiLabel} ${stock > 0 ? 'bg-emerald-100 text-emerald-800' : stock < 0 ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600'}`}>
-                                                            {stock} und.
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4 text-right font-mono font-bold text-slate-600">
-                                                        {formatCurrency(avgCost)}
-                                                    </td>
-                                                    <td className="px-6 py-4 text-right">
-                                                        <span className={`${typography.text.body} font-black text-indigo-600 tabular-nums`}>
-                                                            {formatCurrency(stock * avgCost)}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4 text-center">
-                                                        <div className="flex justify-center items-center">
-                                                            <button
-                                                                data-kebab-trigger
-                                                                className={`rounded-lg p-2 transition-all border border-transparent ${menuState?.productId === p.id ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}
-                                                                onClick={(e) => openMenu(p.id, e)}
-                                                                aria-label="Más opciones"
-                                                            >
-                                                                <MoreVertical size={18} />
-                                                            </button>
+                                    return (
+                                        <React.Fragment key={stat.id}>
+                                            <tr
+                                                className={`hover:bg-slate-50/50 cursor-pointer transition-colors ${isExpanded ? 'bg-indigo-50/30' : ''}`}
+                                                onClick={() => setExpandedProductId(isExpanded ? null : stat.id)}
+                                            >
+                                                <td className="px-6 py-5">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`p-2 bg-slate-100 ${radius.lg} text-slate-400`}>
+                                                            <Package size={20} />
                                                         </div>
-                                                    </td>
-                                                </tr>
+                                                        <div>
+                                                            <p className={`${typography.text.body} font-black ${colors.textPrimary} capitalize`}>{stat.name}</p>
+                                                            <div className="flex flex-col">
+                                                                <p className={`${typography.text.caption} font-bold text-slate-400 uppercase tracking-widest`}>{stat.reference || 'SIN SKU'}</p>
+                                                                {isLowStock && (
+                                                                    <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-black text-amber-600 uppercase tracking-widest">
+                                                                        <AlertCircle size={10} /> Stock Mínimo
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-5 text-right font-bold text-slate-600">
+                                                    {stat.physical}
+                                                </td>
+                                                <td className="px-6 py-5 text-right font-bold text-slate-500 tabular-nums">
+                                                    <span className={stat.reserved > 0 ? 'text-amber-600' : colors.textMuted}>
+                                                        {stat.reserved > 0 ? stat.reserved : '---'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-5 text-right">
+                                                    <span className={`text-sm font-bold tabular-nums flex items-center justify-end gap-1.5 ${stat.available > 0 ? colors.statusSuccess : stat.available < 0 ? colors.statusDanger : colors.textMuted}`}>
+                                                        {stat.available < 0 && <AlertCircle size={14} />}
+                                                        {stat.available}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-5 text-right tabular-nums text-slate-600 font-medium">
+                                                    {formatCurrency(stat.avgCost)}
+                                                </td>
+                                                <td className="px-6 py-5 text-right tabular-nums font-black text-slate-900">
+                                                    {formatCurrency(stat.totalValuation)}
+                                                </td>
+                                                <td className="px-6 py-5 text-center">
+                                                    {isExpanded ? <ChevronUp size={20} className="text-indigo-500" /> : <ChevronDown size={20} className="text-slate-300" />}
+                                                </td>
+                                            </tr>
 
-                                                {isExpanded && (
-                                                    <tr className="bg-slate-50 border-b border-gray-200 shadow-inner">
-                                                        <td colSpan={5} className="p-0">
-                                                            <div className="px-6 py-6 ring-1 ring-inset ring-black/5">
-                                                                <h4 className={`${typography.uiLabel} text-slate-500 mb-4 flex items-center gap-2`}>
-                                                                    <History size={12} /> Kardex de Movimientos
-                                                                </h4>
-                                                                {pMovements.length > 0 ? (
-                                                                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                                                                        <table className="w-full text-sm text-left">
-                                                                            <thead className={`bg-slate-50 text-slate-500 border-b ${typography.uiLabel} uppercase tracking-wider`}>
+                                            {isExpanded && (
+                                                <tr className="bg-slate-50/50">
+                                                    <td colSpan={7} className="p-0 border-b border-indigo-100">
+                                                        <div className="px-8 py-8 animate-in slide-in-from-top-2 duration-300">
+                                                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+                                                                {/* ── COL 1: KARDEX TIMELINE ── */}
+                                                                <div className="lg:col-span-12">
+                                                                    <div className="flex items-center justify-between mb-6">
+                                                                        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                                                            <History size={16} className="text-indigo-400" /> Histórico de Movimientos (Kardex)
+                                                                        </h4>
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className="flex items-center gap-4 text-[11px] font-bold text-slate-400 uppercase">
+                                                                                <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-500"></div> Entrada</span>
+                                                                                <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-amber-500"></div> Salida</span>
+                                                                            </div>
+                                                                            <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+                                                                                {(['7d', '30d', '90d', 'all'] as const).map((period) => (
+                                                                                    <button
+                                                                                        key={period}
+                                                                                        onClick={(e) => { e.stopPropagation(); setKardexPeriod(period); }}
+                                                                                        className={`
+                                                                                            px-3 py-1 rounded-lg text-[11px] font-bold transition-all
+                                                                                            ${kardexPeriod === period
+                                                                                                ? 'bg-white text-indigo-600 shadow-sm'
+                                                                                                : 'text-slate-500 hover:text-slate-700'}
+                                                                                        `}
+                                                                                    >
+                                                                                        {period === '7d' ? '7 días' : period === '30d' ? '30 días' : period === '90d' ? '90 días' : 'Todo'}
+                                                                                    </button>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div className="space-y-3">
+                                                                        {/* 1. Show Reservations First */}
+                                                                        {reservedDispatches.map(d => (
+                                                                            <div key={d.id} className={`flex items-center justify-between p-4 ${radius.xl} bg-white border-l-4 border-amber-300 shadow-sm border border-slate-100`}>
+                                                                                <div className="flex items-center gap-4">
+                                                                                    <div className="p-2 bg-amber-50 text-amber-500 rounded-lg">
+                                                                                        <Clock size={18} />
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <p className="text-sm font-bold text-slate-700">Reserva por Despacho #{d.number}</p>
+                                                                                        <p className="text-[11px] text-slate-400 font-medium">Estado: BORRADOR &bull; Cliente: {d.client_name || 'Sin Cliente'}</p>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div className="flex items-center gap-6">
+                                                                                    <div className="text-right">
+                                                                                        <p className="text-sm font-black text-amber-600">-{d.items?.find(i => i.product_id === stat.id)?.quantity} und</p>
+                                                                                        <p className="text-[10px] text-slate-400 uppercase font-bold">Reservado</p>
+                                                                                    </div>
+                                                                                    <Button
+                                                                                        variant="ghost"
+                                                                                        size="sm"
+                                                                                        onClick={(e) => { e.stopPropagation(); navigate('/despachos'); }}
+                                                                                        icon={<Truck size={14} />}
+                                                                                    >
+                                                                                        GESTIONAR
+                                                                                    </Button>
+                                                                                </div>
+                                                                            </div>
+                                                                        ))}
+
+                                                                        {/* 2. Show Confirmed Movements */}
+                                                                        {movements.map(m => {
+                                                                            const isIncoming = m.type === 'ingreso_produccion' || (m.type === 'ajuste' && m.quantity > 0);
+                                                                            return (
+                                                                                <div key={m.id} className={`flex items-center justify-between p-4 ${radius.xl} bg-white shadow-sm border border-slate-100 hover:border-slate-300 transition-all`}>
+                                                                                    <div className="flex items-center gap-4">
+                                                                                        <div className={`p-2 ${isIncoming ? 'bg-emerald-50 text-emerald-500 border-emerald-100' : 'bg-slate-50 text-slate-500 border-slate-100'} border rounded-lg`}>
+                                                                                            {isIncoming ? <ArrowDownRight size={18} /> : <ArrowUpRight size={18} />}
+                                                                                        </div>
+                                                                                        <div>
+                                                                                            <p className="text-sm font-bold text-slate-800">
+                                                                                                {m.type === 'ingreso_produccion' ? 'Ingreso por Producción' :
+                                                                                                    m.type === 'salida_venta' ? 'Salida por Venta' :
+                                                                                                        m.type === 'ajuste' ? 'Ajuste de Almacén' : m.reference}
+                                                                                            </p>
+                                                                                            <p className="text-[11px] text-slate-400 font-medium">
+                                                                                                {new Date(m.created_at).toLocaleString()} &bull; {m.reference || 'Sin Referencia'}
+                                                                                            </p>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <div className="text-right">
+                                                                                        <p className={`text-sm font-black ${isIncoming ? 'text-emerald-600' : 'text-slate-600'}`}>
+                                                                                            {isIncoming ? '+' : '-'}{Math.abs(m.quantity)} und
+                                                                                        </p>
+                                                                                        <p className="text-[10px] text-slate-400 uppercase font-bold">Costo: {formatCurrency(m.unit_cost)}</p>
+                                                                                    </div>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+
+                                                                        {movements.length === 0 && reservedDispatches.length === 0 && (
+                                                                            <div className="text-center py-10 bg-white border border-dashed border-slate-200 rounded-2xl">
+                                                                                <Info className="mx-auto text-slate-300 mb-2" size={24} />
+                                                                                <p className="text-sm text-slate-400 font-medium">
+                                                                                    {kardexPeriod === 'all'
+                                                                                        ? 'No se registran movimientos históricos para este producto.'
+                                                                                        : `Sin movimientos en los últimos ${kardexPeriod === '7d' ? '7' : kardexPeriod === '30d' ? '30' : '90'} días. Prueba con "Todo".`
+                                                                                    }
+                                                                                </p>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* ── LOTES DE PRODUCCIÓN FIFO ── */}
+                                                                <div className="lg:col-span-12 mt-4 pt-6 border-t border-slate-100">
+                                                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 mb-4">
+                                                                        <Layers size={14} className="text-indigo-400" /> Lotes de Producción (First-In, First-Out)
+                                                                    </h4>
+
+                                                                    <div className="bg-white border border-slate-100 rounded-xl overflow-hidden">
+                                                                        <table className="w-full text-left">
+                                                                            <thead className="bg-slate-50/50 border-b border-slate-100">
                                                                                 <tr>
-                                                                                    <th className="px-4 py-3">Fecha</th>
-                                                                                    <th className="px-4 py-3">Tipo</th>
-                                                                                    <th className="px-4 py-3 text-right">Cant.</th>
-                                                                                    <th className="px-4 py-3 text-right">Costo U.</th>
-                                                                                    <th className="px-4 py-3">Referencia</th>
+                                                                                    <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Fecha Ingreso</th>
+                                                                                    <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Referencia</th>
+                                                                                    <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Inicial</th>
+                                                                                    <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Restante</th>
+                                                                                    <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Costo Unit.</th>
+                                                                                    <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Valuación</th>
+                                                                                    <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Estado</th>
                                                                                 </tr>
                                                                             </thead>
-                                                                            <tbody className="divide-y divide-gray-100">
-                                                                                {pMovements.map(m => (
-                                                                                    <React.Fragment key={m.id}>
-                                                                                        <tr className="hover:bg-slate-50/50">
-                                                                                            <td className={`px-4 py-3 ${typography.text.caption} font-bold text-slate-500 tabular-nums`}>
-                                                                                                {new Date(m.created_at).toLocaleString()}
+                                                                            <tbody className="divide-y divide-slate-50">
+                                                                                {stat.productionLots.length === 0 ? (
+                                                                                    <tr>
+                                                                                        <td colSpan={7} className="px-4 py-10 text-center text-slate-400 text-xs font-medium">
+                                                                                            No hay registros de producción para este producto.
+                                                                                        </td>
+                                                                                    </tr>
+                                                                                ) : (
+                                                                                    stat.productionLots.map(lot => (
+                                                                                        <tr key={lot.id} className={`transition-colors ${lot.isExhausted ? 'opacity-40' : 'hover:bg-slate-50/30'}`}>
+                                                                                            <td className="px-4 py-3 text-xs font-medium text-slate-600">
+                                                                                                {new Date(lot.date).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                                                                             </td>
-                                                                                            <td className="px-4 py-3">
-                                                                                                <div className="flex flex-col gap-1 items-start">
-                                                                                                    <Badge variant={m.type === 'ingreso_produccion' ? 'success' : 'warning'}>
-                                                                                                        {(m.type as string).replace('_', ' ').toUpperCase()}
-                                                                                                    </Badge>
-                                                                                                    {m.produced_with_debt && (
-                                                                                                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-50 text-red-600 ${typography.text.caption} font-bold border border-red-100/50`} title="Este lote se produjo asumiendo faltantes de insumos (Deuda de Inventario)">
-                                                                                                            ⚠️ CON DEUDA
-                                                                                                        </span>
-                                                                                                    )}
-                                                                                                </div>
+                                                                                            <td className="px-4 py-3 text-xs text-slate-500 max-w-[160px] truncate" title={lot.reference}>
+                                                                                                {lot.reference || '—'}
                                                                                             </td>
-                                                                                            <td className={`px-4 py-3 text-right ${typography.text.body} font-black ${m.type === 'ingreso_produccion' ? 'text-emerald-600' : 'text-slate-600'} tabular-nums`}>
-                                                                                                {m.type === 'ingreso_produccion' ? '+' : '-'}{m.quantity}
+                                                                                            <td className="px-4 py-3 text-center text-xs font-medium text-slate-500">
+                                                                                                {lot.initial} und
                                                                                             </td>
-                                                                                            <td className={`px-4 py-3 text-right ${typography.text.body} font-bold text-slate-600 tabular-nums`}>
-                                                                                                {formatCurrency(m.unit_cost)}
+                                                                                            <td className="px-4 py-3 text-center">
+                                                                                                <span className={`text-xs font-black ${lot.isExhausted ? 'text-slate-400' : 'text-emerald-600'}`}>
+                                                                                                    {lot.remaining} und
+                                                                                                </span>
                                                                                             </td>
-                                                                                            <td className={`px-4 py-3 ${typography.text.body} text-slate-600`}>
-                                                                                                <div className="flex items-center justify-between gap-4">
-                                                                                                    <span className="truncate max-w-[150px] font-medium" title={m.reference || ''}>{m.reference || '-'}</span>
-                                                                                                    {m.type === 'ingreso_produccion' && (
-                                                                                                        <Button
-                                                                                                            variant="ghost"
-                                                                                                            size="sm"
-                                                                                                            onClick={() => setExpandedMovementId(expandedMovementId === m.id ? null : m.id)}
-                                                                                                            className={`font-bold ${expandedMovementId === m.id ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:text-indigo-600 hover:bg-indigo-50/50'}`}
-                                                                                                        >
-                                                                                                            {expandedMovementId === m.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />} DETALLE
-                                                                                                        </Button>
-                                                                                                    )}
-                                                                                                </div>
+                                                                                            <td className="px-4 py-3 text-right text-xs font-bold text-slate-600">
+                                                                                                {formatCurrency(lot.unit_cost)}
+                                                                                            </td>
+                                                                                            <td className="px-4 py-3 text-right text-xs font-black text-slate-900">
+                                                                                                {lot.isExhausted ? '—' : formatCurrency(lot.valuation)}
+                                                                                            </td>
+                                                                                            <td className="px-4 py-3 text-center">
+                                                                                                {lot.isExhausted ? (
+                                                                                                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Agotado</span>
+                                                                                                ) : (
+                                                                                                    <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Activo</span>
+                                                                                                )}
                                                                                             </td>
                                                                                         </tr>
-                                                                                        {expandedMovementId === m.id && m.type === 'ingreso_produccion' && (
-                                                                                            <tr className="bg-slate-50/50">
-                                                                                                <td colSpan={5} className="p-0 border-b border-slate-100">
-                                                                                                    <div className="px-8 py-6 bg-white shadow-inner">
-                                                                                                        <h5 className={`${typography.text.caption} text-slate-400 font-bold uppercase tracking-widest flex items-center gap-2 mb-4`}>
-                                                                                                            <PackageSearch size={14} /> Desglose de Consumo (Lote Producción)
-                                                                                                        </h5>
-                                                                                                        <div className="overflow-x-auto rounded-xl border border-slate-100">
-                                                                                                            <table className="w-full text-left">
-                                                                                                                <thead className={`bg-slate-50 ${typography.text.caption} text-slate-500 font-bold uppercase`}>
-                                                                                                                    <tr>
-                                                                                                                        <th className="px-4 py-3">Insumo Consumido</th>
-                                                                                                                        <th className="px-4 py-3 text-right">Cantidad</th>
-                                                                                                                        <th className="px-4 py-3 text-center">Estado de Cobertura</th>
-                                                                                                                        <th className="px-4 py-3 text-right">Costo Asumido</th>
-                                                                                                                    </tr>
-                                                                                                                </thead>
-                                                                                                                <tbody className="divide-y divide-slate-50">
-                                                                                                                    {movements.filter(sm => sm.date === m.created_at && ['egreso', 'egreso_asumido'].includes(sm.type)).map((sm) => {
-                                                                                                                        const material = rawMaterials.find(rm => rm.id === sm.material_id);
-                                                                                                                        return (
-                                                                                                                            <tr key={sm.id} className="hover:bg-slate-50/50">
-                                                                                                                                <td className={`px-4 py-3 ${typography.text.body} font-black text-slate-700 capitalize`}>
-                                                                                                                                    {material?.name || 'Insumo Eliminado'}
-                                                                                                                                </td>
-                                                                                                                                <td className={`px-4 py-3 text-right ${typography.text.body} font-bold text-slate-600 tabular-nums`}>
-                                                                                                                                    {sm.quantity.toFixed(2)} <span className="text-[10px] text-slate-400 uppercase">{material?.unit || ''}</span>
-                                                                                                                                </td>
-                                                                                                                                <td className="px-4 py-3 text-center">
-                                                                                                                                    <Badge variant={sm.type === 'egreso_asumido' ? 'danger' : 'success'}>
-                                                                                                                                        {sm.type === 'egreso_asumido' ? 'DEUDA TÉCNICA' : 'CUBIERTO'}
-                                                                                                                                    </Badge>
-                                                                                                                                </td>
-                                                                                                                                <td className={`px-4 py-3 text-right ${typography.text.body} font-black ${sm.type === 'egreso_asumido' ? 'text-red-600' : 'text-indigo-600'} tabular-nums`}>
-                                                                                                                                    {formatCurrency(sm.quantity * sm.unit_cost)}
-                                                                                                                                </td>
-                                                                                                                            </tr>
-                                                                                                                        );
-                                                                                                                    })}
-                                                                                                                </tbody>
-                                                                                                            </table>
-                                                                                                        </div>
-                                                                                                    </div>
-                                                                                                </td>
-                                                                                            </tr>
-                                                                                        )}
-                                                                                    </React.Fragment>
-                                                                                ))}
+                                                                                    ))
+                                                                                )}
                                                                             </tbody>
                                                                         </table>
                                                                     </div>
-                                                                ) : (
-                                                                    <p className="text-sm text-slate-500 text-center py-4 bg-white rounded-lg border border-dashed border-gray-200">
-                                                                        No hay movimientos registrados para este producto.
-                                                                    </p>
-                                                                )}
+                                                                </div>
+
                                                             </div>
-                                                        </td>
-                                                    </tr>
-                                                )
-                                                }
-                                            </React.Fragment>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
-            )
-            }
-
-            {
-                outputModal.isOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-                        <Card className="w-full max-w-md shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200 p-0">
-                            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                                <h2 className={`${typography.text.section} flex items-center gap-2 text-slate-800`}>
-                                    <ArrowUpRight className="text-orange-500" />
-                                    Registrar Salida
-                                </h2>
-                                <Button variant="ghost" size="icon" onClick={() => setOutputModal(prev => ({ ...prev, isOpen: false }))} className="text-slate-400 hover:text-slate-600 transition-colors">
-                                    <X size={24} />
-                                </Button>
-                            </div>
-
-                            <div className="p-6 space-y-6">
-                                <div>
-                                    <p className={`${typography.text.caption} text-slate-400 font-bold uppercase tracking-widest mb-1`}>Producto a retirar</p>
-                                    <p className={`${typography.text.title} text-slate-800 leading-tight`}>{outputModal.productName}</p>
-                                    <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 rounded-lg border border-indigo-100">
-                                        <span className={`${typography.text.caption} text-indigo-400 font-bold uppercase`}>Stock Físico:</span>
-                                        <span className={`${typography.text.body} font-black ${outputModal.currentStock > 0 ? 'text-indigo-600' : 'text-red-500'} tabular-nums`}>{outputModal.currentStock} und.</span>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="col-span-1">
-                                        <label className={`block ${typography.text.caption} text-slate-500 font-bold uppercase mb-2`}>CANTIDAD</label>
-                                        <Input
-                                            type="number"
-                                            min="1"
-                                            step="1"
-                                            value={outputModal.quantity || ''}
-                                            onChange={(e) => setOutputModal(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
-                                            className={`${typography.text.title} text-slate-800 font-black h-12`}
-                                            fullWidth
-                                        />
-                                    </div>
-                                    <div className="col-span-1">
-                                        <label className={`block ${typography.text.caption} text-slate-500 font-bold uppercase mb-2`}>TIPO DE SALIDA</label>
-                                        <Select
-                                            value={outputModal.type}
-                                            onChange={(e) => setOutputModal(prev => ({ ...prev, type: e.target.value }))}
-                                            className="h-12"
-                                        >
-                                            <option value="salida_venta">Venta (Normal)</option>
-                                            <option value="merma">Merma / Pérdida</option>
-                                            <option value="salida_manual">Salida Manual</option>
-                                            <option value="ajuste">Ajuste de Stock</option>
-                                        </Select>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className={`block ${typography.text.caption} text-slate-500 font-bold uppercase mb-2`}>REFERENCIA / NOTA (OPCIONAL)</label>
-                                    <Input
-                                        placeholder="Ej: Factura #0012, Dañado en almacén..."
-                                        value={outputModal.reference}
-                                        onChange={(e) => setOutputModal(prev => ({ ...prev, reference: e.target.value }))}
-                                        className="h-11"
-                                        fullWidth
-                                    />
-                                </div>
-
-                                {/* Backorder / Debt Alert */}
-                                {outputModal.quantity > outputModal.currentStock && (
-                                    <div className="p-4 rounded-xl bg-orange-50 border border-orange-200 flex items-start gap-3 animate-pulse">
-                                        <AlertTriangle className="text-orange-500 flex-shrink-0 mt-0.5" size={20} />
-                                        <div>
-                                            <h4 className={`${typography.text.body} font-black text-orange-800 uppercase text-[11px]`}>Deuda de Stock Detectada</h4>
-                                            <p className={`${typography.text.caption} text-orange-700 mt-1 leading-relaxed font-medium`}>
-                                                Estás retirando más unidades de las que posees físicamente. Esto dejará tu stock en <span className="font-black font-mono">{(outputModal.currentStock - outputModal.quantity).toString()}</span> generando una <span className="font-black">Deuda de Producto</span>.
-                                            </p>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex flex-col gap-3">
-                                <Button
-                                    variant={outputModal.quantity > outputModal.currentStock ? "danger" : "primary"}
-                                    onClick={handleConfirmOutput}
-                                    isLoading={isSaving}
-                                    fullWidth
-                                    size="lg"
-                                >
-                                    {outputModal.quantity > outputModal.currentStock ? `Aceptar y Generar Deuda` : `Confirmar Salida`}
-                                </Button>
-                                <Button variant="ghost" fullWidth className="text-slate-400 font-bold" onClick={() => setOutputModal(prev => ({ ...prev, isOpen: false }))}>
-                                    CANCELAR REGISTRO
-                                </Button>
-                            </div>
-                        </Card>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
                     </div>
-                )
-            }
-            {/* ── FIXED KEBAB DROPDOWN (escapes all overflow) ── */}
-            {menuState && (() => {
-                const product = products.find(pp => pp.id === menuState.productId);
-                if (!product) return null;
-                const { rect } = menuState;
-                const menuHeight = 120;
-                const openUpward = rect.bottom + menuHeight > window.innerHeight;
-                const style: React.CSSProperties = {
-                    position: 'fixed',
-                    right: window.innerWidth - rect.right,
-                    zIndex: 9999,
-                    ...(openUpward ? { bottom: window.innerHeight - rect.top + 4 } : { top: rect.bottom + 4 }),
-                };
-                const stock = getProductStock(product.id);
-                const pMovements = productMovements.filter(m => m.product_id === product.id);
+                )}
+            </div>
 
-                return (
-                    <div ref={menuRef} className={`${radius.xl} border ${colors.borderStandard} ${colors.bgSurface} ${shadows.xl} py-1.5 min-w-[180px]`} style={style}>
-                        <button
-                            className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${expandedProductId === product.id ? 'bg-indigo-50 text-indigo-700' : `${colors.textSecondary} hover:${colors.bgMain}`} transition-colors`}
-                            onClick={() => { setMenuState(null); setExpandedProductId(expandedProductId === product.id ? null : product.id); }}
-                        >
-                            <History size={14} className={colors.textMuted} /> Histórico ({pMovements.length})
-                        </button>
-                        <div className={`border-t ${colors.borderSubtle} my-1.5`} />
-                        <button
-                            className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium text-orange-600 hover:bg-orange-50 transition-colors`}
-                            onClick={() => {
-                                setMenuState(null);
-                                setOutputModal({
-                                    isOpen: true,
-                                    productId: product.id,
-                                    productName: product.name,
-                                    currentStock: stock,
-                                    quantity: 1,
-                                    type: 'salida_venta',
-                                    reference: ''
-                                });
-                            }}
-                        >
-                            <ArrowUpRight size={14} /> Registrar Salida
-                        </button>
-                    </div>
-                );
-            })()}
+            <style>{`
+                @media print {
+                    .no-print { display: none !important; }
+                    body { background: white; }
+                    table { border: none !important; box-shadow: none !important; }
+                }
+            `}</style>
         </PageContainer>
     );
 };
 
 export default FinishedGoods;
+
 
 
