@@ -162,3 +162,67 @@ export interface Dispatch {
   // relación local (no en DB)
   items?: DispatchItem[];
 }
+export interface Supplier {
+  id: string;
+  company_id: string;
+  name: string;
+  tax_id?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  payment_terms_days?: number | null;
+  status: 'activo' | 'inactivo' | 'bloqueado';
+  notes?: string | null;
+  created_by?: string | null;
+  updated_by?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SupplierMaterial {
+  id: string;
+  supplier_id: string;
+  raw_material_id: string;
+  company_id: string;
+}
+
+export interface PurchaseOrderItem {
+    id: string;
+    purchase_order_id: string;
+    company_id: string;
+    raw_material_id?: string | null;
+    raw_material_name: string;
+    quantity: number;
+    received_quantity?: number | null;
+    unit_price: number;
+    received_unit_price?: number | null;
+    unit: string;
+    subtotal: number;
+    notes?: string | null;
+    created_at: string;
+}
+
+export interface PurchaseOrder {
+    id: string;
+    company_id: string;
+    number: string;                     // 'OC-2026-001'
+    supplier_id?: string | null;
+    supplier_name?: string | null;
+    date: string;
+    expected_date?: string | null;
+    status: 'borrador' | 'confirmada' | 'recibida' | 'anulada';
+    notes?: string | null;
+    total_value: number;
+    confirmed_at?: string | null;
+    confirmed_by?: string | null;
+    received_at?: string | null;
+    received_by?: string | null;
+    cancelled_at?: string | null;
+    cancelled_by?: string | null;
+    created_by?: string | null;
+    updated_by?: string | null;
+    created_at: string;
+    updated_at: string;
+    // relación local (no en DB)
+    items?: PurchaseOrderItem[];
+}

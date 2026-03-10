@@ -26,6 +26,8 @@ import StatusPage from '@/pages/StatusPage';
 import FinishedGoods from '@/pages/FinishedGoods';
 import ProductBuilder from '@/pages/ProductBuilder';
 import ProductDetail from '@/pages/ProductDetail';
+import Suppliers from '@/pages/Suppliers';
+import Purchases from '@/pages/Purchases';
 
 // Pages (New in Src)
 import PlatformAdmin from './pages/PlatformAdmin';
@@ -68,7 +70,10 @@ const AppContent: React.FC = () => {
                 loadMovementsFromSupabase,
                 loadProductMovementsFromSupabase,
                 loadClientsFromSupabase,
-                loadDispatchesFromSupabase
+                loadDispatchesFromSupabase,
+                loadSuppliersFromSupabase,
+                loadSupplierMaterialsFromSupabase,
+                loadPurchaseOrdersFromSupabase
             } = useStore.getState();
 
             loadUomMetadata();
@@ -79,6 +84,9 @@ const AppContent: React.FC = () => {
             loadProductMovementsFromSupabase();
             loadClientsFromSupabase();
             loadDispatchesFromSupabase();
+            loadSuppliersFromSupabase();
+            loadSupplierMaterialsFromSupabase();
+            loadPurchaseOrdersFromSupabase();
         }
     }, [user, currentCompanyId]);
 
@@ -151,8 +159,8 @@ const AppContent: React.FC = () => {
 
                 {/* ── Módulos Próximamente ── */}
                 <Route path="/produccion" element={<PlaceholderPage />} />
-                <Route path="/compras" element={<PlaceholderPage />} />
-                <Route path="/proveedores" element={<PlaceholderPage />} />
+                <Route path="/compras" element={<Purchases />} />
+                <Route path="/proveedores" element={<Suppliers />} />
                 <Route path="/reportes" element={<PlaceholderPage />} />
 
                 {/* Equipo */}

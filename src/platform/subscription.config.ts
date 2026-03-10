@@ -30,7 +30,18 @@ export const subscriptionConfig = {
         starter: {
             label: 'Starter',
             seat_limit: 4,
-            enabledModules: ['dashboard', 'products', 'finished_goods', 'raw_materials', 'clients', 'dispatches', 'team', 'settings'],
+            enabledModules: [
+                'dashboard',
+                'products',
+                'finished_goods',
+                'raw_materials',
+                'purchases',
+                'suppliers',
+                'clients',
+                'dispatches',
+                'team',
+                'settings'
+            ],
             allowedCapabilities: [
                 'view_costs', 'edit_costs',
                 'view_products', 'edit_products',

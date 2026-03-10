@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Product, RawMaterial, Unit, ProductMaterial, MaterialBatch, StockMovement, UserRole, ProductMovement, STOCK_MOVEMENT_REF, UomCategory, UnitOfMeasure, MaterialType, Client, Dispatch, DispatchItem } from '@/types';
+import { Product, RawMaterial, Unit, ProductMaterial, MaterialBatch, StockMovement, UserRole, ProductMovement, STOCK_MOVEMENT_REF, UomCategory, UnitOfMeasure, MaterialType, Client, Dispatch, DispatchItem, Supplier, SupplierMaterial, PurchaseOrder, PurchaseOrderItem } from '@/types';
 import { supabase } from './services/supabase';
 import { fetchProductsFromSupabase } from './services/products.service';
 import { calculatePiecesToLinearMeters, getLatestRollWidth } from '@/utils/materialCalculations';
@@ -89,6 +89,25 @@ interface AppState {
   cancelDispatch: (dispatchId: string) => Promise<void>;
   deleteDispatch: (id: string) => Promise<void>;
   generateDispatchNumber: () => string;
+
+  // 🤝 SUPPLIERS
+  suppliers: Supplier[];
+  supplierMaterials: SupplierMaterial[];
+  loadSuppliersFromSupabase: () => Promise<void>;
+  loadSupplierMaterialsFromSupabase: () => Promise<void>;
+  addSupplier: (supplier: Omit<Supplier, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updateSupplier: (id: string, updates: Partial<Supplier>) => Promise<void>;
+  archiveSupplier: (id: string, status: 'activo' | 'inactivo' | 'bloqueado') => Promise<void>;
+  syncSupplierMaterials: (supplier_id: string, raw_material_ids: string[]) => Promise<void>;
+
+  // 📝 PURCHASE ORDERS (OC)
+  purchaseOrders: PurchaseOrder[];
+  loadPurchaseOrdersFromSupabase: () => Promise<void>;
+  addPurchaseOrder: (order: Omit<PurchaseOrder, 'id' | 'created_at' | 'updated_at' | 'total_value' | 'items'>, items: Omit<PurchaseOrderItem, 'id' | 'created_at' | 'subtotal'>[]) => Promise<void>;
+  updatePurchaseOrder: (id: string, updates: Partial<PurchaseOrder>) => Promise<void>;
+  confirmPurchaseOrder: (id: string) => Promise<void>;
+  cancelPurchaseOrder: (id: string) => Promise<void>;
+  receivePurchaseOrder: (id: string, receivedItems: { item_id: string; received_quantity: number; received_unit_price: number; purchase_unit_id?: string; width?: number | null }[]) => Promise<void>;
 }
 
 
@@ -259,6 +278,9 @@ export const useStore = create<AppState>()(
         get().loadProductMovementsFromSupabase();
         get().loadClientsFromSupabase();
         get().loadDispatchesFromSupabase();
+        get().loadSuppliersFromSupabase();
+        get().loadSupplierMaterialsFromSupabase();
+        get().loadPurchaseOrdersFromSupabase();
       },
 
       setImpersonation: (active, companyId) => {
@@ -275,6 +297,9 @@ export const useStore = create<AppState>()(
       uomCategories: [],
       unitsOfMeasure: [],
       materialTypes: [],
+      suppliers: [],
+      supplierMaterials: [],
+      purchaseOrders: [],
 
       loadUomMetadata: async () => {
         const { data: catData } = await supabase.from('uom_categories').select('*').order('name');
@@ -359,6 +384,9 @@ export const useStore = create<AppState>()(
           movements: [],
           productMovements: [],
           clients: [],
+          suppliers: [],
+          supplierMaterials: [],
+          purchaseOrders: [],
         });
       },
 
@@ -1389,6 +1417,315 @@ export const useStore = create<AppState>()(
           .eq('company_id', get().currentCompanyId);
         if (error) throw error;
         set(state => ({ dispatches: state.dispatches.filter(d => d.id !== id) }));
+      },
+
+      // 🤝 SUPPLIERS IMPLEMENTATION
+      loadSuppliersFromSupabase: async () => {
+        const { currentCompanyId } = get();
+        if (!currentCompanyId) return;
+        const { data, error } = await supabase
+          .from('suppliers')
+          .select('*')
+          .eq('company_id', currentCompanyId)
+          .order('name', { ascending: true });
+        if (!error && data) set({ suppliers: data });
+      },
+
+      loadSupplierMaterialsFromSupabase: async () => {
+        const { currentCompanyId } = get();
+        if (!currentCompanyId) return;
+        const { data, error } = await supabase
+          .from('supplier_materials')
+          .select('*')
+          .eq('company_id', currentCompanyId);
+        if (!error && data) set({ supplierMaterials: data });
+      },
+
+      addSupplier: async (supplier: Omit<Supplier, 'id' | 'created_at' | 'updated_at'>) => {
+        const { currentCompanyId } = get();
+        const user = (await supabase.auth.getUser()).data.user;
+        if (!currentCompanyId || !user) return;
+        const { data, error } = await supabase
+          .from('suppliers')
+          .insert({ ...supplier, company_id: currentCompanyId, created_by: user.id, updated_by: user.id })
+          .select()
+          .single();
+        if (!error && data) set(state => ({ suppliers: [...state.suppliers, data] }));
+      },
+
+      updateSupplier: async (id: string, updates: Partial<Supplier>) => {
+        const user = (await supabase.auth.getUser()).data.user;
+        if (!user) return;
+        const { data, error } = await supabase
+          .from('suppliers')
+          .update({ ...updates, updated_by: user.id, updated_at: new Date().toISOString() })
+          .eq('id', id)
+          .select()
+          .single();
+        if (!error && data) set(state => ({
+          suppliers: state.suppliers.map(s => s.id === id ? data : s)
+        }));
+      },
+
+      archiveSupplier: async (id: string, status: 'activo' | 'inactivo' | 'bloqueado') => {
+        const user = (await supabase.auth.getUser()).data.user;
+        if (!user) return;
+        const { data, error } = await supabase
+          .from('suppliers')
+          .update({ status, updated_by: user.id, updated_at: new Date().toISOString() })
+          .eq('id', id)
+          .select()
+          .single();
+        if (!error && data) set(state => ({
+          suppliers: state.suppliers.map(s => s.id === id ? data : s)
+        }));
+      },
+
+      syncSupplierMaterials: async (supplier_id: string, raw_material_ids: string[]) => {
+        const { currentCompanyId } = get();
+        if (!currentCompanyId) return;
+        // Borrar relaciones existentes
+        await supabase.from('supplier_materials').delete().eq('supplier_id', supplier_id);
+        // Insertar nuevas
+        if (raw_material_ids.length > 0) {
+          const rows = raw_material_ids.map(raw_material_id => ({
+            supplier_id,
+            raw_material_id,
+            company_id: currentCompanyId
+          }));
+          await supabase.from('supplier_materials').insert(rows);
+        }
+        // Recargar
+        const { data } = await supabase
+          .from('supplier_materials')
+          .select('*')
+          .eq('company_id', currentCompanyId);
+        if (data) set({ supplierMaterials: data });
+      },
+
+      // 📝 PURCHASE ORDERS IMPLEMENTATION
+      loadPurchaseOrdersFromSupabase: async () => {
+        const { currentCompanyId } = get();
+        if (!currentCompanyId) return;
+        const { data: orders, error } = await supabase
+          .from('purchase_orders')
+          .select('*')
+          .eq('company_id', currentCompanyId)
+          .order('created_at', { ascending: false });
+        if (error || !orders) return;
+
+        const { data: items } = await supabase
+          .from('purchase_order_items')
+          .select('*')
+          .eq('company_id', currentCompanyId);
+
+        const ordersWithItems = orders.map(o => ({
+          ...o,
+          items: (items || []).filter(i => i.purchase_order_id === o.id)
+        }));
+        set({ purchaseOrders: ordersWithItems });
+      },
+
+      addPurchaseOrder: async (order, items) => {
+        const { currentCompanyId } = get();
+        const user = (await supabase.auth.getUser()).data.user;
+        if (!currentCompanyId || !user) return;
+
+        const { count } = await supabase
+          .from('purchase_orders')
+          .select('*', { count: 'exact', head: true })
+          .eq('company_id', currentCompanyId);
+        const year = new Date().getFullYear();
+        const number = `OC-${year}-${String((count || 0) + 1).padStart(3, '0')}`;
+
+        const total_value = items.reduce((sum, i) => sum + i.quantity * i.unit_price, 0);
+
+        const { data: newOrder, error } = await supabase
+          .from('purchase_orders')
+          .insert({ ...order, company_id: currentCompanyId, number, total_value, created_by: user.id, updated_by: user.id })
+          .select()
+          .single();
+        if (error || !newOrder) return;
+
+        const itemRows = items.map(i => ({ ...i, purchase_order_id: newOrder.id, company_id: currentCompanyId }));
+        const { data: savedItems } = await supabase
+          .from('purchase_order_items')
+          .insert(itemRows)
+          .select();
+
+        set(state => ({
+          purchaseOrders: [{ ...newOrder, items: savedItems || [] }, ...state.purchaseOrders]
+        }));
+      },
+
+      updatePurchaseOrder: async (id, updates) => {
+        const user = (await supabase.auth.getUser()).data.user;
+        if (!user) return;
+        const { data, error } = await supabase
+          .from('purchase_orders')
+          .update({ ...updates, updated_by: user.id, updated_at: new Date().toISOString() })
+          .eq('id', id)
+          .select()
+          .single();
+        if (!error && data) set(state => ({
+          purchaseOrders: state.purchaseOrders.map(o => o.id === id ? { ...data, items: o.items } : o)
+        }));
+      },
+
+      confirmPurchaseOrder: async (id) => {
+        const user = (await supabase.auth.getUser()).data.user;
+        if (!user) return;
+        const { data, error } = await supabase
+          .from('purchase_orders')
+          .update({
+            status: 'confirmada',
+            confirmed_at: new Date().toISOString(),
+            confirmed_by: user.id,
+            updated_by: user.id,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', id)
+          .select()
+          .single();
+        if (!error && data) set(state => ({
+          purchaseOrders: state.purchaseOrders.map(o => o.id === id ? { ...data, items: o.items } : o)
+        }));
+      },
+
+      cancelPurchaseOrder: async (id) => {
+        const user = (await supabase.auth.getUser()).data.user;
+        if (!user) return;
+        const { data, error } = await supabase
+          .from('purchase_orders')
+          .update({
+            status: 'anulada',
+            cancelled_at: new Date().toISOString(),
+            cancelled_by: user.id,
+            updated_by: user.id,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', id)
+          .select()
+          .single();
+        if (!error && data) set(state => ({
+          purchaseOrders: state.purchaseOrders.map(o => o.id === id ? { ...data, items: o.items } : o)
+        }));
+      },
+
+      receivePurchaseOrder: async (id, receivedItems) => {
+        const { currentCompanyId } = get();
+        const user = (await supabase.auth.getUser()).data.user;
+        if (!currentCompanyId || !user) return;
+
+        const order = get().purchaseOrders.find(o => o.id === id);
+        if (!order || !order.items) return;
+
+        // 1. Actualizar received_quantity y received_unit_price en cada ítem
+        for (const ri of receivedItems) {
+          await supabase
+            .from('purchase_order_items')
+            .update({
+              received_quantity: ri.received_quantity,
+              received_unit_price: ri.received_unit_price
+            })
+            .eq('id', ri.item_id);
+        }
+
+        // 2. Crear un material_batch por cada ítem recibido vía addBatch
+        // Conversión UoM: cantidad y precio se convierten de unidad de compra a unidad base
+        const now = new Date().toISOString();
+        for (const ri of receivedItems) {
+          const item = order.items.find(i => i.id === ri.item_id);
+          if (!item || !item.raw_material_id) continue;
+
+          const material = get().rawMaterials.find(m => m.id === item.raw_material_id);
+          const baseUnitId = material?.base_unit_id ?? null;
+
+          // Resolver la unidad de compra y su factor de conversión
+          let purchaseUnitId = ri.purchase_unit_id || '';
+          let conversionFactor = 1;
+
+          if (purchaseUnitId) {
+            const purchaseUnit = get().unitsOfMeasure.find(u => u.id === purchaseUnitId);
+            conversionFactor = purchaseUnit?.conversion_factor || 1;
+          } else {
+            // Fallback: buscar por símbolo + categoría del material
+            const baseUnit = baseUnitId ? get().unitsOfMeasure.find(u => u.id === baseUnitId) : null;
+            if (baseUnit?.category_id && item.unit) {
+              const match = get().unitsOfMeasure.find(u =>
+                u.category_id === baseUnit.category_id && u.symbol === item.unit
+              );
+              if (match) {
+                purchaseUnitId = match.id;
+                conversionFactor = match.conversion_factor;
+              }
+            }
+          }
+
+          // Calcular valores base
+          // baseQty = received_quantity × conversion_factor
+          // costPerBase = received_unit_price / conversion_factor
+          const baseQty = ri.received_quantity * conversionFactor;
+          const costPerBase = conversionFactor > 0 ? ri.received_unit_price / conversionFactor : ri.received_unit_price;
+
+          // Determinar entry_mode y calcular área si hay width
+          const hasWidth = ri.width && ri.width > 0;
+          const entryMode = hasWidth ? 'rollo' : 'pieza';
+          // Área en m²: baseQty (en cm) × width (en cm) / 10000
+          const area = hasWidth ? (baseQty * ri.width!) / 10000 : null;
+
+          await get().addBatch({
+            id: crypto.randomUUID(),
+            company_id: currentCompanyId,
+            material_id: item.raw_material_id,
+            date: order.date,
+            provider: order.supplier_name || 'Compra OC',
+            // Display fields (en unidad de compra — metros, kg, etc.)
+            initial_quantity: ri.received_quantity,
+            remaining_quantity: ri.received_quantity,
+            unit_cost: ri.received_unit_price,
+            // Base fields (en unidad base — cm, g, etc.)
+            base_initial_quantity: baseQty,
+            base_remaining_quantity: baseQty,
+            base_consumed_quantity: 0,
+            cost_per_base_unit: costPerBase,
+            // Metadata
+            reference: order.number,
+            received_unit_id: purchaseUnitId || baseUnitId,
+            width: ri.width || null,
+            length: null,
+            area: area,
+            entry_mode: entryMode,
+            deleted_at: null,
+            created_at: now,
+            updated_at: now,
+          } as any);
+        }
+
+        // 3. Marcar orden como recibida
+        const { data, error } = await supabase
+          .from('purchase_orders')
+          .update({
+            status: 'recibida',
+            received_at: now,
+            received_by: user.id,
+            updated_by: user.id,
+            updated_at: now
+          })
+          .eq('id', id)
+          .select()
+          .single();
+
+        if (!error && data) {
+          await get().loadBatchesFromSupabase();
+          await get().loadMovementsFromSupabase();
+
+          set(state => ({
+            purchaseOrders: state.purchaseOrders.map(o =>
+              o.id === id ? { ...data, items: o.items } : o
+            )
+          }));
+        }
       },
     }),
     {

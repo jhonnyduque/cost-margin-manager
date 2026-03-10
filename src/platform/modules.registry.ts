@@ -53,8 +53,7 @@ export const MODULES = {
         path: '/compras',
         icon: ShoppingCart,
         requiredCapability: 'view_raw_materials',
-        tenantOnly: true,
-        comingSoon: true
+        tenantOnly: true
     },
     suppliers: {
         id: 'suppliers',
@@ -63,7 +62,6 @@ export const MODULES = {
         icon: Building2,
         requiredCapability: 'view_raw_materials',
         tenantOnly: true,
-        comingSoon: true
     },
     clients: {
         id: 'clients',
