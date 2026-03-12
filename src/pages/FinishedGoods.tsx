@@ -137,9 +137,9 @@ const FinishedGoods: React.FC = () => {
                         </>
                     }
                     metadata={[
-                        <span key="1" className="font-bold text-indigo-600">Valuación Total: {formatCurrency(globalValuation)}</span>,
+                        <span key="1" className="font-bold text-slate-800">Valuación Total: {formatCurrency(globalValuation)}</span>,
                         <span key="2" className="flex items-center gap-1">
-                            <Truck size={14} className="text-amber-500" />
+                            <Truck size={14} className="text-slate-500" />
                             {pendingDispatchesCount} Despachos Reservando Stock
                         </span>
                     ]}
@@ -181,7 +181,7 @@ const FinishedGoods: React.FC = () => {
             <div className="mt-8 space-y-6">
                 {filteredData.length === 0 ? (
                     <Card className="flex flex-col items-center justify-center p-16 text-center border-dashed border-2 bg-slate-50/50">
-                        <div className="h-20 w-20 bg-indigo-50 text-indigo-300 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                        <div className="h-20 w-20 bg-slate-100 text-slate-300 rounded-full flex items-center justify-center mb-6 shadow-inner">
                             <PackageSearch size={40} />
                         </div>
                         <h3 className={`${typography.sectionTitle} text-slate-900 mb-2`}>Sin resultados</h3>
@@ -197,7 +197,7 @@ const FinishedGoods: React.FC = () => {
                                     <th className="px-6 py-4">Producto / SKU</th>
                                     <th className="px-6 py-4 text-right">Físico</th>
                                     <th className="px-6 py-4 text-right">Reservado</th>
-                                    <th className="px-6 py-4 text-right bg-indigo-50/30">Disponible</th>
+                                    <th className="px-6 py-4 text-right bg-slate-50/30">Disponible</th>
                                     <th className="px-6 py-4 text-right">Costo Promedio</th>
                                     <th className="px-6 py-4 text-right">Valuación</th>
                                     <th className="px-6 py-4 w-12"></th>
@@ -217,7 +217,7 @@ const FinishedGoods: React.FC = () => {
                                     return (
                                         <React.Fragment key={stat.id}>
                                             <tr
-                                                className={`hover:bg-slate-50/50 cursor-pointer transition-colors ${isExpanded ? 'bg-indigo-50/30' : ''}`}
+                                                className={`hover:bg-slate-50/50 cursor-pointer transition-colors ${isExpanded ? 'bg-slate-50/50' : ''}`}
                                                 onClick={() => setExpandedProductId(isExpanded ? null : stat.id)}
                                             >
                                                 <td className="px-6 py-5">
@@ -230,7 +230,7 @@ const FinishedGoods: React.FC = () => {
                                                             <div className="flex flex-col">
                                                                 <p className={`${typography.text.caption} font-bold text-slate-400 uppercase tracking-widest`}>{stat.reference || 'SIN SKU'}</p>
                                                                 {isLowStock && (
-                                                                    <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-black text-amber-600 uppercase tracking-widest">
+                                                                    <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-black text-slate-500 uppercase tracking-widest">
                                                                         <AlertCircle size={10} /> Stock Mínimo
                                                                     </span>
                                                                 )}
@@ -242,7 +242,7 @@ const FinishedGoods: React.FC = () => {
                                                     {stat.physical}
                                                 </td>
                                                 <td className="px-6 py-5 text-right font-bold text-slate-500 tabular-nums">
-                                                    <span className={stat.reserved > 0 ? 'text-amber-600' : colors.textMuted}>
+                                                    <span className={stat.reserved > 0 ? 'text-slate-600' : colors.textMuted}>
                                                         {stat.reserved > 0 ? stat.reserved : '---'}
                                                     </span>
                                                 </td>
@@ -259,7 +259,7 @@ const FinishedGoods: React.FC = () => {
                                                     {formatCurrency(stat.totalValuation)}
                                                 </td>
                                                 <td className="px-6 py-5 text-center">
-                                                    {isExpanded ? <ChevronUp size={20} className="text-indigo-500" /> : <ChevronDown size={20} className="text-slate-300" />}
+                                                    {isExpanded ? <ChevronUp size={20} className="text-slate-600" /> : <ChevronDown size={20} className="text-slate-300" />}
                                                 </td>
                                             </tr>
 
@@ -273,12 +273,12 @@ const FinishedGoods: React.FC = () => {
                                                                 <div className="lg:col-span-12">
                                                                     <div className="flex items-center justify-between mb-6">
                                                                         <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                                                            <History size={16} className="text-indigo-400" /> Histórico de Movimientos (Kardex)
+                                                                            <History size={16} className="text-slate-500" /> Histórico de Movimientos (Kardex)
                                                                         </h4>
                                                                         <div className="flex items-center gap-3">
                                                                             <div className="flex items-center gap-4 text-[11px] font-bold text-slate-400 uppercase">
-                                                                                <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-500"></div> Entrada</span>
-                                                                                <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-amber-500"></div> Salida</span>
+                                                                                <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-slate-600"></div> Entrada</span>
+                                                                                <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-slate-400"></div> Salida</span>
                                                                             </div>
                                                                             <div className="flex items-center bg-slate-100 p-1 rounded-xl">
                                                                                 {(['7d', '30d', '90d', 'all'] as const).map((period) => (
@@ -304,7 +304,7 @@ const FinishedGoods: React.FC = () => {
                                                                         {reservedDispatches.map(d => (
                                                                             <div key={d.id} className={`flex items-center justify-between p-4 ${radius.xl} bg-white border-l-4 border-amber-300 shadow-sm border border-slate-100`}>
                                                                                 <div className="flex items-center gap-4">
-                                                                                    <div className="p-2 bg-amber-50 text-amber-500 rounded-lg">
+                                                                                    <div className="p-2 bg-slate-100 text-slate-500 rounded-lg">
                                                                                         <Clock size={18} />
                                                                                     </div>
                                                                                     <div>
@@ -314,7 +314,7 @@ const FinishedGoods: React.FC = () => {
                                                                                 </div>
                                                                                 <div className="flex items-center gap-6">
                                                                                     <div className="text-right">
-                                                                                        <p className="text-sm font-black text-amber-600">-{d.items?.find(i => i.product_id === stat.id)?.quantity} und</p>
+                                                                                        <p className="text-sm font-black text-slate-600">-{d.items?.find(i => i.product_id === stat.id)?.quantity} und</p>
                                                                                         <p className="text-[10px] text-slate-400 uppercase font-bold">Reservado</p>
                                                                                     </div>
                                                                                     <Button
@@ -335,7 +335,7 @@ const FinishedGoods: React.FC = () => {
                                                                             return (
                                                                                 <div key={m.id} className={`flex items-center justify-between p-4 ${radius.xl} bg-white shadow-sm border border-slate-100 hover:border-slate-300 transition-all`}>
                                                                                     <div className="flex items-center gap-4">
-                                                                                        <div className={`p-2 ${isIncoming ? 'bg-emerald-50 text-emerald-500 border-emerald-100' : 'bg-slate-50 text-slate-500 border-slate-100'} border rounded-lg`}>
+                                                                                        <div className={`p-2 ${isIncoming ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-slate-50 text-slate-500 border-slate-100'} border rounded-lg`}>
                                                                                             {isIncoming ? <ArrowDownRight size={18} /> : <ArrowUpRight size={18} />}
                                                                                         </div>
                                                                                         <div>
@@ -350,7 +350,7 @@ const FinishedGoods: React.FC = () => {
                                                                                         </div>
                                                                                     </div>
                                                                                     <div className="text-right">
-                                                                                        <p className={`text-sm font-black ${isIncoming ? 'text-emerald-600' : 'text-slate-600'}`}>
+                                                                                        <p className={`text-sm font-black ${isIncoming ? 'text-slate-700' : 'text-slate-600'}`}>
                                                                                             {isIncoming ? '+' : '-'}{Math.abs(m.quantity)} und
                                                                                         </p>
                                                                                         <p className="text-[10px] text-slate-400 uppercase font-bold">Costo: {formatCurrency(m.unit_cost)}</p>
@@ -376,7 +376,7 @@ const FinishedGoods: React.FC = () => {
                                                                 {/* ── LOTES DE PRODUCCIÓN FIFO ── */}
                                                                 <div className="lg:col-span-12 mt-4 pt-6 border-t border-slate-100">
                                                                     <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 mb-4">
-                                                                        <Layers size={14} className="text-indigo-400" /> Lotes de Producción (First-In, First-Out)
+                                                                        <Layers size={14} className="text-slate-500" /> Lotes de Producción (First-In, First-Out)
                                                                     </h4>
 
                                                                     <div className="bg-white border border-slate-100 rounded-xl overflow-hidden">
@@ -412,7 +412,7 @@ const FinishedGoods: React.FC = () => {
                                                                                                 {lot.initial} und
                                                                                             </td>
                                                                                             <td className="px-4 py-3 text-center">
-                                                                                                <span className={`text-xs font-black ${lot.isExhausted ? 'text-slate-400' : 'text-emerald-600'}`}>
+                                                                                                <span className={`text-xs font-black ${lot.isExhausted ? 'text-slate-400' : 'text-slate-700'}`}>
                                                                                                     {lot.remaining} und
                                                                                                 </span>
                                                                                             </td>
@@ -426,7 +426,7 @@ const FinishedGoods: React.FC = () => {
                                                                                                 {lot.isExhausted ? (
                                                                                                     <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Agotado</span>
                                                                                                 ) : (
-                                                                                                    <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Activo</span>
+                                                                                                    <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Activo</span>
                                                                                                 )}
                                                                                             </td>
                                                                                         </tr>

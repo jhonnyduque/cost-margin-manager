@@ -79,7 +79,7 @@ export default function Settings() {
                             <Card.Header
                                 title="Información Personal"
                                 description="Datos públicos y credenciales de acceso."
-                                icon={<User className="text-indigo-600" size={20} />}
+                                icon={<User className="text-slate-500" size={20} />}
                             />
                             <Card.Content className="space-y-6 pt-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -119,7 +119,7 @@ export default function Settings() {
                                 </div>
 
                                 {profileMessage && (
-                                    <div className={`p-4 rounded-xl font-bold text-sm ${profileMessage.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'}`}>
+                                    <div className={`p-4 rounded-xl font-bold text-sm ${profileMessage.type === 'success' ? 'bg-slate-50 text-slate-700 border border-slate-200' : 'bg-slate-50 text-slate-600 border border-slate-200'}`}>
                                         {profileMessage.type === 'success' ? '✓ ' : '! '}{profileMessage.text}
                                     </div>
                                 )}
@@ -142,7 +142,7 @@ export default function Settings() {
                                 <Card.Header
                                     title="Suscripción y Límites"
                                     description="Estado actual de tu plan y consumo de recursos."
-                                    icon={<CreditCard className="text-indigo-600" size={20} />}
+                                    icon={<CreditCard className="text-slate-500" size={20} />}
                                 />
                                 <Card.Content className="pt-4">
                                     <LimitIndicator />
@@ -158,7 +158,7 @@ export default function Settings() {
                     <div className="space-y-6">
                         {/* SEGURIDAD Placeholder */}
                         <SectionPlaceholder
-                            icon={<Lock size={20} className="text-indigo-600" />}
+                            icon={<Lock size={20} className="text-slate-500" />}
                             title="Seguridad Avanzada"
                             description="2FA y control de dispositivos."
                             items={[
@@ -170,7 +170,7 @@ export default function Settings() {
                         {/* BRANDING (Super Admin) or COMPANY PROFILE */}
                         {isSuperAdmin ? (
                             <SectionPlaceholder
-                                icon={<Palette size={20} className="text-indigo-600" />}
+                                icon={<Palette size={20} className="text-slate-500" />}
                                 title="Identidad Visual"
                                 description="Logo y colores globales."
                                 items={[
@@ -180,7 +180,7 @@ export default function Settings() {
                             />
                         ) : isOwnerOrManager && (
                             <SectionPlaceholder
-                                icon={<Building2 size={20} className="text-indigo-600" />}
+                                icon={<Building2 size={20} className="text-slate-500" />}
                                 title="Empresa"
                                 description="Ajustes organizacionales."
                                 items={[
@@ -192,7 +192,7 @@ export default function Settings() {
 
                         {isSuperAdmin && (
                             <SectionPlaceholder
-                                icon={<Layers size={20} className="text-indigo-600" />}
+                                icon={<Layers size={20} className="text-slate-500" />}
                                 title="Configuración de Planes"
                                 description="Estructura de precios y límites."
                                 items={[
@@ -263,7 +263,7 @@ function NotificationSettings() {
             <Card.Header
                 title="Canales de Notificación"
                 description="Controla dónde quieres recibir las alertas críticas."
-                icon={<Bell className="text-indigo-600" size={20} />}
+                icon={<Bell className="text-slate-500" size={20} />}
             />
             <Card.Content className="space-y-2 pt-4">
                 {Object.entries(eventLabels).map(([key, label]) => {

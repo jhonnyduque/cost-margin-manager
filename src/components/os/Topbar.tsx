@@ -13,6 +13,7 @@ import {
     AlertOctagon
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { UserRole } from '@/types';
 import { useStore } from '@/store';
 import { supabase } from '@/services/supabase';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -101,9 +102,23 @@ const getUserDisplayName = (user: any): string => {
 /**
  * Obtiene label de rol para badge
  */
-const getUserRoleLabel = (user: any, mode: string): string => {
-    if (user?.is_super_admin) return 'Super Admin';
+const ROLE_LABELS: Record<UserRole, string> = {
+    owner: 'Owner',
+    admin: 'Admin',
+    manager: 'Manager',
+    operator: 'Operator',
+    viewer: 'Viewer',
+    super_admin: 'Super Admin',
+};
+
+const getUserRoleLabel = (
+    user: any,
+    mode: string,
+    userRole: UserRole | null
+): string => {
+    if (user?.is_super_admin) return ROLE_LABELS.super_admin;
     if (mode === 'platform') return 'Platform';
+    if (userRole) return ROLE_LABELS[userRole] || userRole;
     return 'Member';
 };
 
@@ -177,7 +192,7 @@ const formatRelativeTime = (date: string) => {
 // ============================================================================
 
 export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
-    const { user, currentCompany, mode, exitImpersonation, setIsSigningOut, resetState } = useAuth();
+    const { user, currentCompany, userRole, mode, exitImpersonation, setIsSigningOut, resetState } = useAuth();
     const logout = useStore(state => state.logout);
     const navigate = useNavigate();
     const location = useLocation();
@@ -196,7 +211,7 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
     // ✅ Calcular user info una vez por render
     const userInitials = getUserInitials(user);
     const userDisplayName = getUserDisplayName(user);
-    const userRole = getUserRoleLabel(user, mode);
+    const userRoleLabel = getUserRoleLabel(user, mode, userRole);
 
     useEffect(() => {
         const loadInitialData = async () => {
@@ -638,7 +653,7 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
                                     ? 'bg-purple-100 text-purple-700'
                                     : 'bg-slate-100 text-slate-600'}
                             `}>
-                                {userRole}
+                                {userRoleLabel}
                             </span>
                         </div>
 
@@ -668,7 +683,7 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
                                             ? 'bg-purple-100 text-purple-700'
                                             : 'bg-slate-100 text-slate-600'}
                                     `}>
-                                        {userRole}
+                                        {userRoleLabel}
                                     </span>
                                 </div>
                             </div>
@@ -724,3 +739,4 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
         </header>
     );
 };
+

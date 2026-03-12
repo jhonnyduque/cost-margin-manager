@@ -12,7 +12,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
-    const { user } = useAuth();
+    const { user, userRole } = useAuth();
     const { enabledModules } = useSubscription();
 
     useEffect(() => {
@@ -83,9 +83,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
                         if (!mod.superAdminOnly) return null;
                     }
 
-                    // Tenant: comingSoon siempre visible, resto filtrado por plan
+                    // Tenant: comingSoon siempre visible, resto filtrado por plan y permisos
                     if (!user?.is_super_admin) {
                         if (mod.superAdminOnly) return null;
+                        if (mod.id === 'settings' || mod.id === 'analytics') return null;
+                        if (mod.id === 'billing' && !['owner', 'admin', 'manager'].includes(userRole || '')) {
+                            return null;
+                        }
                         if (!mod.comingSoon) {
                             const isEnabled = enabledModules.includes('*') || enabledModules.includes(mod.id);
                             if (!isEnabled) return null;

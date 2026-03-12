@@ -3,18 +3,22 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { subscriptionConfig, PlanKey } from '@/platform/subscription.config';
-import { Check, Loader2, ArrowRight, Building2, Users, Zap, BadgeCheck } from 'lucide-react';
+import {
+    Check, Loader2, ArrowRight, Building2, Users,
+    Zap, BadgeCheck, CalendarClock, ExternalLink,
+    AlertTriangle, RefreshCw
+} from 'lucide-react';
 import { typography } from '@/design/typography';
 
-// ✅ Mapa inverso planKey → priceId, construido una sola vez fuera del componente
+// ── Mapa inverso planKey → priceId ───────────────────────────────────────────
 const planToPriceId = Object.entries(subscriptionConfig.priceToPlan).reduce(
     (acc, [priceId, planKey]) => ({ ...acc, [planKey]: priceId }),
     {} as Record<PlanKey, string>
 );
 
-// ✅ Claves válidas para validación en frontend
 const VALID_PLAN_KEYS: PlanKey[] = ['demo', 'starter', 'growth', 'scale', 'enterprise'];
 
+// ── Types ────────────────────────────────────────────────────────────────────
 interface Plan {
     key: PlanKey;
     name: string;
@@ -26,6 +30,16 @@ interface Plan {
     stripePriceId: string;
 }
 
+interface SubscriptionStatus {
+    has_subscription: boolean;
+    plan_key: string | null;
+    status: 'active' | 'trialing' | 'past_due' | 'unpaid' | 'incomplete' | 'canceled' | 'incomplete_expired' | null;
+    current_period_end: number | null;  // Unix timestamp
+    cancel_at_period_end: boolean;
+    portal_url: string | null;  // ya no se usa en UI — mantenido por compatibilidad con Edge Function anterior
+}
+
+// ── Plans data ───────────────────────────────────────────────────────────────
 const plans: Plan[] = [
     {
         key: 'demo',
@@ -115,78 +129,109 @@ const plans: Plan[] = [
     }
 ];
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function formatRenewalDate(timestamp: number): string {
+    return new Date(timestamp * 1000).toLocaleDateString('es-ES', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+    });
+}
+
+function getDaysUntilRenewal(timestamp: number): number {
+    const now = Date.now();
+    const end = timestamp * 1000;
+    return Math.max(0, Math.ceil((end - now) / (1000 * 60 * 60 * 24)));
+}
+
+// ── Component ────────────────────────────────────────────────────────────────
 export default function BillingCheckout() {
     const { user, currentCompany } = useAuth();
     const navigate = useNavigate();
+
     const [loadingPlanKey, setLoadingPlanKey] = useState<PlanKey | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+    // Estado de suscripción desde Stripe
+    const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
+    const [subLoading, setSubLoading] = useState(true);
+    const [portalLoading, setPortalLoading] = useState(false);
+
     const currentPlanKey = currentCompany?.subscription_tier as PlanKey | undefined;
 
-    // ✅ Obtener company_id desde currentCompany o desde la URL
-    // SuperAdmin tiene currentCompany = null pero la URL contiene ?company=uuid
     const companyId = currentCompany?.id
         ?? new URLSearchParams(window.location.search).get('company')
         ?? undefined;
 
-    // Manejar retorno de Stripe con query params
+    // ── Cargar estado de suscripción desde Stripe ────────────────────────────
+    useEffect(() => {
+        if (!companyId) { setSubLoading(false); return; }
+
+        const fetchStatus = async () => {
+            setSubLoading(true);
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!session) { setSubLoading(false); return; }
+
+                const functionsUrl = import.meta.env.VITE_SUPABASE_URL + '/functions/v1';
+                const res = await fetch(`${functionsUrl}/get-subscription-status`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session.access_token}`,
+                        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+                    },
+                    body: JSON.stringify({ company_id: companyId }),
+                });
+
+                if (res.ok) {
+                    const data: SubscriptionStatus = await res.json();
+                    setSubStatus(data);
+                }
+            } catch (err) {
+                console.error('[BillingCheckout] Failed to fetch subscription status:', err);
+            } finally {
+                setSubLoading(false);
+            }
+        };
+
+        fetchStatus();
+    }, [companyId]);
+
+    // ── Manejar retorno de Stripe ────────────────────────────────────────────
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
-        const success = params.get('success');
-        const canceled = params.get('canceled');
 
-        if (success === 'true') {
+        if (params.get('success') === 'true') {
             setSuccessMessage('¡Suscripción activada con éxito! Tu plan ya está activo.');
             window.history.replaceState({}, document.title, window.location.pathname);
         }
-
-        if (canceled === 'true') {
+        if (params.get('canceled') === 'true') {
             setError('Pago cancelado. Puedes intentarlo de nuevo cuando quieras.');
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        if (params.get('already_active') === 'true') {
+            setSuccessMessage('Ya tienes este plan activo.');
             window.history.replaceState({}, document.title, window.location.pathname);
         }
     }, []);
 
+    // ── Suscribirse / cambiar plan ───────────────────────────────────────────
     const handleSubscribe = async (plan: Plan) => {
-        if (plan.key === 'demo') {
-            navigate('/dashboard');
-            return;
-        }
-
-        if (!VALID_PLAN_KEYS.includes(plan.key)) {
-            setError('Plan no válido.');
-            return;
-        }
-
-        if (!plan.stripePriceId) {
-            setError(`El plan ${plan.name} no está configurado correctamente.`);
-            return;
-        }
-
-        if (!companyId) {
-            setError('No se pudo identificar la empresa. Recarga la página e inténtalo de nuevo.');
-            return;
-        }
+        if (plan.key === 'demo') { navigate('/dashboard'); return; }
+        if (!VALID_PLAN_KEYS.includes(plan.key)) { setError('Plan no válido.'); return; }
+        if (!plan.stripePriceId) { setError(`El plan ${plan.name} no está configurado correctamente.`); return; }
+        if (!companyId) { setError('No se pudo identificar la empresa. Recarga la página.'); return; }
 
         setLoadingPlanKey(plan.key);
         setError(null);
         setSuccessMessage(null);
 
         try {
-            console.log('[BillingCheckout] Creating checkout session for plan:', plan.key, '| company:', companyId);
-
-            // ✅ getSession() sin rotación de token
             const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            if (sessionError || !session) throw new Error('Sesión expirada. Por favor, inicia sesión de nuevo.');
 
-            if (sessionError || !session) {
-                console.error('[BillingCheckout] No active session:', sessionError);
-                throw new Error('Sesión expirada. Por favor, inicia sesión de nuevo.');
-            }
-
-            console.log('[BillingCheckout] Session validated, user:', session.user.id);
-
-            // ✅ Fetch directo para garantizar control total del Authorization header
-            // supabase.functions.invoke puede sobreescribir el header con el anon key
             const functionsUrl = import.meta.env.VITE_SUPABASE_URL + '/functions/v1';
             const response = await fetch(`${functionsUrl}/create-checkout-session`, {
                 method: 'POST',
@@ -204,21 +249,15 @@ export default function BillingCheckout() {
 
             if (!response.ok) {
                 const errBody = await response.json().catch(() => ({}));
-                console.error('[BillingCheckout] Edge Function error:', errBody);
                 throw new Error(errBody?.message || errBody?.error || 'Error al crear sesión de checkout');
             }
 
             const data = await response.json();
+            if (!data?.url) throw new Error('No se recibió URL de checkout');
 
-            if (!data?.url) {
-                throw new Error('No se recibió URL de checkout');
-            }
-
-            console.log('[BillingCheckout] Redirecting to Stripe:', data.url);
             window.location.href = data.url;
 
         } catch (err: any) {
-            console.error('[BillingCheckout] Subscription error:', err);
             setError(err.message || 'Error al procesar la suscripción. Inténtalo de nuevo.');
         } finally {
             setLoadingPlanKey(null);
@@ -229,11 +268,51 @@ export default function BillingCheckout() {
         window.location.href = 'mailto:sales@beto.com?subject=Solicitud%20Plan%20Enterprise';
     };
 
+    // ── Abrir Customer Portal — URL generada en el momento del click ────────
+    const handleOpenPortal = async () => {
+        if (!companyId) return;
+        setPortalLoading(true);
+        setError(null);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) throw new Error('Sesión expirada.');
+
+            const functionsUrl = import.meta.env.VITE_SUPABASE_URL + '/functions/v1';
+            const res = await fetch(`${functionsUrl}/create-portal-session`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+                },
+                body: JSON.stringify({ company_id: companyId }),
+            });
+
+            if (!res.ok) {
+                const errBody = await res.json().catch(() => ({}));
+                throw new Error(errBody?.error || 'No se pudo abrir el portal.');
+            }
+
+            const { url } = await res.json();
+            if (!url) throw new Error('No se recibió URL del portal.');
+
+            // Redirigir en la misma pestaña — evita bloqueo de popups
+            window.location.href = url;
+
+        } catch (err: any) {
+            setError(err.message || 'Error al abrir el portal de facturación.');
+        } finally {
+            setPortalLoading(false);
+        }
+    };
+
     const isCurrentPlan = (planKey: PlanKey) => currentPlanKey === planKey;
     const isLoading = (planKey: PlanKey) => loadingPlanKey === planKey;
 
+    // ── Render ───────────────────────────────────────────────────────────────
     return (
         <div className="animate-in fade-in space-y-8 duration-700">
+
             {/* Header */}
             <header>
                 <h1 className={`${typography.pageTitle} text-gray-900`}>
@@ -246,6 +325,91 @@ export default function BillingCheckout() {
                 </p>
             </header>
 
+            {/* ── Bloque de estado de suscripción ─────────────────────────── */}
+            {subLoading ? (
+                <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 p-5">
+                    <Loader2 size={18} className="animate-spin text-gray-400" />
+                    <span className={`${typography.bodySm} text-gray-500`}>
+                        Cargando estado de suscripción...
+                    </span>
+                </div>
+            ) : subStatus?.has_subscription && subStatus.current_period_end ? (
+                (() => {
+                    const daysLeft = getDaysUntilRenewal(subStatus.current_period_end);
+                    const renewalDate = formatRenewalDate(subStatus.current_period_end);
+                    const isExpiringSoon = daysLeft <= 7;
+                    const isCanceling = subStatus.cancel_at_period_end;
+
+                    return (
+                        <div className={`rounded-2xl border p-5 ${isCanceling
+                                ? 'border-amber-100 bg-amber-50'
+                                : isExpiringSoon
+                                    ? 'border-orange-100 bg-orange-50'
+                                    : 'border-indigo-100 bg-indigo-50'
+                            }`}>
+                            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex items-start gap-4">
+                                    {/* Icon */}
+                                    <div className={`flex size-10 shrink-0 items-center justify-center rounded-full ${isCanceling
+                                            ? 'bg-amber-100 text-amber-600'
+                                            : isExpiringSoon
+                                                ? 'bg-orange-100 text-orange-600'
+                                                : 'bg-indigo-100 text-indigo-600'
+                                        }`}>
+                                        {isCanceling
+                                            ? <AlertTriangle size={18} />
+                                            : <CalendarClock size={18} />}
+                                    </div>
+
+                                    {/* Info */}
+                                    <div>
+                                        {isCanceling ? (
+                                            <>
+                                                <p className={`font-bold text-amber-800 ${typography.body}`}>
+                                                    Suscripción cancelada — acceso hasta el {renewalDate}
+                                                </p>
+                                                <p className={`${typography.bodySm} text-amber-700 mt-0.5`}>
+                                                    Tu plan seguirá activo por {daysLeft} día{daysLeft !== 1 ? 's' : ''} más.
+                                                    Puedes reactivarlo desde el portal de facturación.
+                                                </p>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <p className={`font-bold ${isExpiringSoon ? 'text-orange-800' : 'text-indigo-800'} ${typography.body}`}>
+                                                    {isExpiringSoon
+                                                        ? `Renovación en ${daysLeft} día${daysLeft !== 1 ? 's' : ''}`
+                                                        : `Próxima renovación: ${renewalDate}`}
+                                                </p>
+                                                <p className={`${typography.bodySm} mt-0.5 ${isExpiringSoon ? 'text-orange-700' : 'text-indigo-600'}`}>
+                                                    {isExpiringSoon
+                                                        ? `Se renovará automáticamente el ${renewalDate}.`
+                                                        : `Tu suscripción se renueva automáticamente cada mes.`}
+                                                </p>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Portal button — URL generada en el click, no al cargar */}
+                                <button
+                                    onClick={handleOpenPortal}
+                                    disabled={portalLoading}
+                                    className={`inline-flex shrink-0 items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-bold transition-all hover:shadow-sm active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed ${isCanceling
+                                            ? 'border-amber-200 bg-white text-amber-700 hover:bg-amber-50'
+                                            : 'border-indigo-200 bg-white text-indigo-700 hover:bg-indigo-50'
+                                        }`}
+                                >
+                                    {portalLoading
+                                        ? <Loader2 size={14} className="animate-spin" />
+                                        : <ExternalLink size={14} />}
+                                    {portalLoading ? 'Abriendo...' : 'Gestionar suscripción'}
+                                </button>
+                            </div>
+                        </div>
+                    );
+                })()
+            ) : null}
+
             {/* Banner éxito */}
             {successMessage && (
                 <div className="animate-in slide-in-from-top-4 flex items-start gap-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-emerald-700">
@@ -256,13 +420,8 @@ export default function BillingCheckout() {
                         <p className="font-bold">¡Éxito!</p>
                         <p className={`${typography.bodySm}`}>{successMessage}</p>
                     </div>
-                    <button
-                        onClick={() => setSuccessMessage(null)}
-                        className="p-1 opacity-50 hover:opacity-100"
-                        aria-label="Cerrar mensaje de éxito"
-                    >
-                        ✕
-                    </button>
+                    <button onClick={() => setSuccessMessage(null)}
+                        className="p-1 opacity-50 hover:opacity-100" aria-label="Cerrar">✕</button>
                 </div>
             )}
 
@@ -274,13 +433,8 @@ export default function BillingCheckout() {
                         <p className="font-bold">Error al procesar</p>
                         <p className={`${typography.bodySm}`}>{error}</p>
                     </div>
-                    <button
-                        onClick={() => setError(null)}
-                        className="p-1 opacity-50 hover:opacity-100"
-                        aria-label="Cerrar mensaje de error"
-                    >
-                        ✕
-                    </button>
+                    <button onClick={() => setError(null)}
+                        className="p-1 opacity-50 hover:opacity-100" aria-label="Cerrar">✕</button>
                 </div>
             )}
 
@@ -294,10 +448,10 @@ export default function BillingCheckout() {
                         <div
                             key={plan.key}
                             className={`relative flex flex-col rounded-3xl border bg-white transition-shadow ${plan.recommended
-                                ? 'border-indigo-200 shadow-xl ring-2 ring-indigo-600'
-                                : isCurrent
-                                    ? 'border-emerald-200 ring-2 ring-emerald-500'
-                                    : 'border-gray-200 shadow-sm hover:shadow-md'
+                                    ? 'border-indigo-200 shadow-xl ring-2 ring-indigo-600'
+                                    : isCurrent
+                                        ? 'border-emerald-200 ring-2 ring-emerald-500'
+                                        : 'border-gray-200 shadow-sm hover:shadow-md'
                                 }`}
                         >
                             {isCurrent && (
@@ -363,7 +517,6 @@ export default function BillingCheckout() {
                                     <button
                                         disabled
                                         className="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 font-bold text-emerald-700"
-                                        aria-label={`Plan ${plan.name} ya está activo`}
                                     >
                                         <BadgeCheck size={18} />
                                         Plan Activo
@@ -372,7 +525,6 @@ export default function BillingCheckout() {
                                     <button
                                         onClick={handleContactSales}
                                         className="flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 font-bold text-gray-700 transition-all hover:bg-gray-50 active:scale-95"
-                                        aria-label="Contactar ventas para plan Enterprise"
                                     >
                                         <Building2 size={18} />
                                         Contactar Ventas
@@ -382,20 +534,13 @@ export default function BillingCheckout() {
                                         onClick={() => handleSubscribe(plan)}
                                         disabled={isPlanLoading}
                                         className={`flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 font-bold transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${plan.recommended
-                                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700'
-                                            : 'bg-gray-900 text-white hover:bg-gray-800'
+                                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700'
+                                                : 'bg-gray-900 text-white hover:bg-gray-800'
                                             }`}
-                                        aria-label={
-                                            isPlanLoading
-                                                ? 'Procesando suscripción'
-                                                : `Suscribirse al plan ${plan.name}`
-                                        }
                                     >
-                                        {isPlanLoading ? (
-                                            <Loader2 size={18} className="animate-spin" />
-                                        ) : (
-                                            <ArrowRight size={18} />
-                                        )}
+                                        {isPlanLoading
+                                            ? <Loader2 size={18} className="animate-spin" />
+                                            : <ArrowRight size={18} />}
                                         {isPlanLoading
                                             ? 'Procesando...'
                                             : plan.price === 0

@@ -80,7 +80,7 @@ const SupplierModal: React.FC<SupplierModalProps> = ({ isOpen, onClose, editingS
                 {/* Header */}
                 <div className={`flex items-center justify-between ${spacing.pxLg} ${spacing.pyMd} border-b border-slate-100 bg-slate-50/50`}>
                     <h3 className={`${typography.sectionTitle} flex items-center gap-2`}>
-                        <Building2 size={20} className="text-indigo-500" />
+                        <Building2 size={20} className="text-slate-500" />
                         {editingSupplier ? 'Editar Proveedor' : 'Nuevo Proveedor'}
                     </h3>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">

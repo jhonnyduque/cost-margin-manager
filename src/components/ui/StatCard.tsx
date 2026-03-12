@@ -51,7 +51,7 @@ export const StatCard: React.FC<StatCardProps> = ({
                         {value}
                     </span>
                     {trend && (
-                        <span className={`${typography.caption} font-bold ${trend.positive ? 'text-emerald-600' : 'text-red-500'}`}>
+                        <span className={`${typography.caption} font-bold ${trend.positive ? 'text-slate-700' : 'text-slate-500'}`}>
                             {trend.positive ? '+' : ''}{trend.value}%
                         </span>
                     )}
@@ -62,7 +62,7 @@ export const StatCard: React.FC<StatCardProps> = ({
                 )}
 
                 {onClick && (
-                    <p className={`${typography.caption} text-indigo-500 font-bold mt-2 uppercase tracking-wider`}>Ver detalles →</p>
+                    <p className={`${typography.caption} text-slate-500 font-bold mt-2 uppercase tracking-wider`}>Ver detalles →</p>
                 )}
             </Wrapper>
         </Card>

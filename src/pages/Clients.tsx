@@ -144,7 +144,7 @@ const Clients: React.FC = () => {
                         placeholder="Buscar por nombre, email o identificación..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className={`w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl ${typography.text.body} transition-all focus:ring-2 focus:ring-indigo-500 focus:bg-white`}
+                        className={`w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl ${typography.text.body} transition-all focus:ring-2 focus:ring-slate-400 focus:bg-white`}
                     />
                 </div>
             </SectionBlock>
@@ -179,9 +179,9 @@ const Clients: React.FC = () => {
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {filteredClients.map(c => (
-                                    <tr key={c.id} className="hover:bg-indigo-50/30 transition-colors group">
+                                    <tr key={c.id} className="hover:bg-slate-50/80 transition-colors group">
                                         <td className="px-6 py-4">
-                                            <p className={`${typography.text.body} font-black ${colors.textPrimary} group-hover:text-indigo-700 transition-colors`}>{c.name}</p>
+                                            <p className={`${typography.text.body} font-black ${colors.textPrimary} group-hover:text-slate-700 transition-colors`}>{c.name}</p>
                                             <div className="flex items-center gap-1.5 mt-1">
                                                 <MapPin size={12} className="text-slate-400" />
                                                 <span className={`${typography.text.caption} text-slate-500 truncate max-w-[200px]`}>{c.address || 'Sin dirección'}</span>
@@ -211,21 +211,21 @@ const Clients: React.FC = () => {
                                             <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button
                                                     onClick={() => openModal(c)}
-                                                    className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                                    className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all"
                                                     title="Editar cliente"
                                                 >
                                                     <Edit2 size={18} />
                                                 </button>
                                                 <button
                                                     onClick={() => toggleStatus(c)}
-                                                    className={`p-2 ${c.status === 'activo' ? 'text-slate-400 hover:text-orange-600 hover:bg-orange-50' : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'} rounded-lg transition-all`}
+                                                    className={`p-2 ${c.status === 'activo' ? 'text-slate-400 hover:text-slate-600 hover:bg-slate-100' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'} rounded-lg transition-all`}
                                                     title={c.status === 'activo' ? 'Archivar' : 'Reactivar'}
                                                 >
                                                     <Archive size={18} />
                                                 </button>
                                                 <button
                                                     onClick={() => handleDelete(c.id, c.name)}
-                                                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                                    className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all"
                                                     title="Eliminar permanentemente"
                                                 >
                                                     <Trash2 size={18} />
@@ -323,7 +323,7 @@ const Clients: React.FC = () => {
                                 <span className={typography.text.caption}>Estado:</span>
                                 <button
                                     onClick={() => setModal(prev => ({ ...prev, formData: { ...prev.formData, status: prev.formData.status === 'activo' ? 'inactivo' : 'activo' } }))}
-                                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${modal.formData.status === 'activo' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}
+                                    className={`px-3 py-1 rounded-full text-xs font-bold border transition-all ${modal.formData.status === 'activo' ? 'text-slate-800 border-slate-300' : 'text-slate-400 border-slate-200'}`}
                                 >
                                     {modal.formData.status === 'activo' ? 'ACTIVO' : 'INACTIVO'}
                                 </button>

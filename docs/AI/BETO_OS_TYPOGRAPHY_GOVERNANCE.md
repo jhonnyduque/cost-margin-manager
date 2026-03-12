@@ -317,4 +317,32 @@ Failure to comply will block merge requests.
 
 ---
 
+# 13. BUTTON GOVERNANCE (GOV-BTN-001)
+
+Buttons must maintain absolute consistency in dimensions and geometry.
+
+### 13.1 Geometry
+- **Radius**: Must use `tokens.radius.md` (8px).
+- **Shape**: Rectangular with softened corners.
+- **Prohibited**: `rounded-full` (pills) for standard action buttons.
+
+### 13.2 Fixed Heights
+To ensure alignment across different pages, buttons must use fixed heights:
+
+| Size | Height | Tailwind |
+|------|--------|----------|
+| sm   | 32px   | `h-8`    |
+| base | 40px   | `h-10`   |
+| lg   | 48px   | `h-12`   |
+
+### 13.3 Minimum Width
+- All buttons must have a **minimum width of 120px** (`min-w-[120px]`) to maintain visual rhythm, unless they are `icon` only.
+- Buttons grow horizontally if the content exceeds the minimum width.
+
+### 13.4 Primary Action Color
+- The primary action color is strictly **Indigo 600** (`bg-indigo-600`).
+- Hover state: `hover:brightness-110`.
+
+---
+
 BETO OS Design Governance

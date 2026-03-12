@@ -24,7 +24,7 @@ export const subscriptionConfig = {
         demo: {
             label: 'Demo',
             seat_limit: 3,
-            enabledModules: ['dashboard'],
+            enabledModules: ['dashboard', 'billing'],
             allowedCapabilities: ['view_costs'] as Capability[]
         },
         starter: {
@@ -40,7 +40,8 @@ export const subscriptionConfig = {
                 'clients',
                 'dispatches',
                 'team',
-                'settings'
+                'settings',
+                'billing'
             ],
             allowedCapabilities: [
                 'view_costs', 'edit_costs',

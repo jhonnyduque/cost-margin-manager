@@ -305,7 +305,7 @@ const ProductDetail: React.FC = () => {
                                         className={`flex w-full items-center gap-2 ${spacing.pxMd} py-2 ${typography.uiLabel} font-medium ${product.status === 'activa' ? colors.statusDanger : colors.statusSuccess} hover:${colors.bgMain} transition-colors`}
                                         onClick={handleDiscontinue}
                                     >
-                                        <Archive size={16} className={product.status === 'activa' ? 'text-red-400' : 'text-emerald-500'} />
+                                        <Archive size={16} className={product.status === 'activa' ? 'text-slate-400' : 'text-slate-600'} />
                                         {product.status === 'activa' ? 'Discontinuar' : 'Activar'}
                                     </button>
                                 </div>
@@ -374,7 +374,7 @@ const ProductDetail: React.FC = () => {
                             <div className="flex items-center justify-between mb-6">
                                 <div className="flex flex-col">
                                     <h3 className={`${typography.sectionTitle} ${colors.textPrimary} flex items-center gap-2`}>
-                                        <Layers size={18} className="text-indigo-500" /> Composición & Auditoría FIFO
+                                        <Layers size={18} className="text-slate-500" /> Composición & Auditoría FIFO
                                     </h3>
                                     <p className={`${typography.caption} ${colors.textSecondary}`}>Desglose técnico de insumos y costos actuales por lotes.</p>
                                 </div>
@@ -431,7 +431,7 @@ const ProductDetail: React.FC = () => {
                         <Card className={`${spacing.pLg} ${radius.xl} ${shadows.sm} border ${colors.borderStandard} ${colors.bgSurface}`}>
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className={`${typography.sectionTitle} ${colors.textPrimary} flex items-center gap-2`}>
-                                    <History size={18} className="text-indigo-500" /> Kardex de Movimientos
+                                    <History size={18} className="text-slate-500" /> Kardex de Movimientos
                                 </h3>
                                 <Badge variant="secondary" className={colors.bgMain}>{relevantMovements.length} registros</Badge>
                             </div>
@@ -461,10 +461,10 @@ const ProductDetail: React.FC = () => {
                                                     </td>
                                                     <td className="px-4 py-3">
                                                         <span className={`inline-flex items-center px-2 py-0.5 ${radius.sm} text-[10px] font-bold uppercase tracking-widest
-                                                            ${mov.type === 'ingreso_produccion' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
-                                                                mov.type === 'salida_venta' ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' :
-                                                                    mov.type === 'ajuste' && mov.quantity > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
-                                                                        mov.type === 'ajuste' && mov.quantity < 0 ? 'bg-red-50 text-red-700 border border-red-100' :
+                                                            ${mov.type === 'ingreso_produccion' ? 'bg-slate-100 text-slate-700 border border-slate-200' :
+                                                                mov.type === 'salida_venta' ? 'bg-slate-50 text-slate-600 border border-slate-200' :
+                                                                    mov.type === 'ajuste' && mov.quantity > 0 ? 'bg-slate-100 text-slate-700 border border-slate-200' :
+                                                                        mov.type === 'ajuste' && mov.quantity < 0 ? 'bg-slate-50 text-slate-500 border border-slate-200' :
                                                                             'bg-slate-100 text-slate-600 border border-slate-200'}`}
                                                         >
                                                             {mov.type === 'ingreso_produccion' ? 'Producción' :
@@ -497,8 +497,8 @@ const ProductDetail: React.FC = () => {
                     {productionModal.isOpen && (
                         <Card className={`w-full max-w-md ${spacing.pLg} ${shadows.xl} border-0 ${colors.bgSurface} animate-in zoom-in-95 duration-200`}>
                             <div className="text-center space-y-2 mb-6">
-                                <div className="h-16 w-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <Package size={32} className="text-indigo-600" />
+                                <div className="h-16 w-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Package size={32} className="text-slate-500" />
                                 </div>
                                 <h3 className={`${typography.text.section} ${colors.textPrimary}`}>Nuevo Lote de Producción</h3>
                                 <p className={`${typography.text.caption} ${colors.textSecondary} uppercase font-bold tracking-widest`}>{product.name}</p>
@@ -511,7 +511,7 @@ const ProductDetail: React.FC = () => {
                                         ref={quantityInputRef}
                                         type="number"
                                         min="1"
-                                        className={`w-full h-12 rounded-xl border border-slate-200 px-4 text-center text-xl font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+                                        className={`w-full h-12 rounded-xl border border-slate-200 px-4 text-center text-xl font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-400`}
                                         value={productionModal.quantity}
                                         onChange={e => setProductionModal({ ...productionModal, quantity: Number(e.target.value) || 1 })}
                                     />
@@ -538,17 +538,17 @@ const ProductDetail: React.FC = () => {
                     {/* Modal Deuda de Inventario */}
                     {missingStockModal.isOpen && (
                         <Card className={`w-full max-w-xl ${spacing.pLg} ${shadows.xl} border-2 border-red-100 ${colors.bgSurface} space-y-6 animate-in zoom-in-95 duration-200`}>
-                            <div className="flex items-center gap-4 text-red-600">
-                                <div className="h-14 w-14 bg-red-50 rounded-3xl flex items-center justify-center">
+                            <div className="flex items-center gap-4 text-slate-600">
+                                <div className="h-14 w-14 bg-slate-100 rounded-3xl flex items-center justify-center">
                                     <AlertTriangle size={32} />
                                 </div>
                                 <div>
                                     <h3 className={`${typography.text.section} leading-tight`}>Déficit de Inventario</h3>
-                                    <p className={`${typography.text.caption} text-red-400 uppercase font-black tracking-widest`}>ALERTA DE DEUDA</p>
+                                    <p className={`${typography.text.caption} text-slate-500 uppercase font-black tracking-widest`}>ALERTA DE DEUDA</p>
                                 </div>
                             </div>
-                            <div className="p-4 bg-red-50/50 rounded-2xl border border-red-100">
-                                <p className={`${typography.text.body} text-red-800 font-medium`}>
+                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                                <p className={`${typography.text.body} text-slate-600 font-medium`}>
                                     No tienes stock suficiente de algunos insumos. Se registrará una <span className="font-black underline">deuda técnica</span> en tu inventario.
                                 </p>
                             </div>
@@ -573,8 +573,8 @@ const ProductDetail: React.FC = () => {
                     {/* Modal Éxito */}
                     {successModal && successModal.isOpen && (
                         <Card className="w-full max-w-sm p-10 text-center space-y-6 animate-in zoom-in-95 duration-300 border-2 border-emerald-100 bg-white shadow-2xl rounded-3xl">
-                            <div className="h-24 w-24 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-2">
-                                <CheckCircle2 size={56} className="text-emerald-500" />
+                            <div className="h-24 w-24 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                                <CheckCircle2 size={56} className="text-slate-600" />
                             </div>
                             <div className="space-y-2">
                                 <h3 className={`${typography.text.section} text-slate-900 font-black`}>¡Éxito!</h3>

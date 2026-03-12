@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
-import { UserPlus, Trash2, Shield, Building2, Search, Printer, Users } from 'lucide-react';
-import { colors, typography, spacing, shadows } from '@/design/design-tokens';
+import { UserPlus, Trash2, Shield, Search, Printer } from 'lucide-react';
+import { colors, typography } from '@/design/design-tokens';
 import { EntityList } from '../components/entity/EntityList';
 import { Button } from '@/components/ui/Button';
 import { AppModal } from '../components/ui/AppModal';
@@ -26,14 +26,22 @@ interface TeamMember {
 }
 
 const ROLE_VARIANT: Record<string, "neutral" | "warning" | "error" | "info" | "success"> = {
-    'manager': 'info',
-    'operator': 'neutral',
-    'viewer': 'neutral',
-    'super_admin': 'warning'
+    admin: 'warning',
+    owner: 'warning',
+    manager: 'info',
+    operator: 'neutral',
+    viewer: 'neutral',
+    super_admin: 'warning'
 };
 
+const INVITE_ROLE_OPTIONS = [
+    { value: 'manager', label: 'Manager (Admin)' },
+    { value: 'operator', label: 'Operador (Escritura)' },
+    { value: 'viewer', label: 'Lector (Solo Consulta)' },
+] as const;
+
 export default function Team() {
-    const { user, session, currentCompany, userRole, isLoading: authLoading } = useAuth();
+    const { user, currentCompany, userRole, isLoading: authLoading } = useAuth();
     const [members, setMembers] = useState<TeamMember[]>([]);
     const [maxUsers, setMaxUsers] = useState(3);
     const [loading, setLoading] = useState(true);
@@ -55,13 +63,35 @@ export default function Team() {
     const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
     const isSuperAdmin = user != null && !currentCompany;
-    const allowedRoles = ['super_admin', 'admin', 'owner', 'manager'];
-    const canCreate = allowedRoles.includes(userRole || '') || isSuperAdmin;
-    const canEdit = allowedRoles.includes(userRole || '') || isSuperAdmin;
-    const canDelete = allowedRoles.includes(userRole || '') || isSuperAdmin;
+    const actorRole = isSuperAdmin ? 'super_admin' : (userRole || null);
+    const canCreate = ['super_admin', 'owner', 'admin', 'manager'].includes(actorRole || '');
+    const canEdit = ['super_admin', 'owner', 'admin', 'manager'].includes(actorRole || '');
+    const canDelete = ['super_admin', 'owner', 'admin'].includes(actorRole || '');
     const currentUsersCount = members.length;
     const isAtLimit = !isSuperAdmin && currentUsersCount >= maxUsers;
     const percentageUsed = Math.min(100, (currentUsersCount / maxUsers) * 100);
+
+    const canManageRole = (targetRole: string, action: 'edit' | 'delete') => {
+        if (isSuperAdmin) return true;
+        if (actorRole === 'owner') return ['admin', 'manager', 'operator', 'viewer'].includes(targetRole);
+        if (actorRole === 'admin') return ['manager', 'operator', 'viewer'].includes(targetRole);
+        if (actorRole === 'manager') {
+            if (action === 'delete') return false;
+            return ['operator', 'viewer'].includes(targetRole);
+        }
+        return false;
+    };
+
+    const inviteRoleOptions = INVITE_ROLE_OPTIONS.filter((option) => {
+        if (isSuperAdmin) return true;
+        if (actorRole === 'owner' || actorRole === 'admin') return true;
+        if (actorRole === 'manager') return option.value !== 'manager';
+        return false;
+    });
+
+    const editRoleOptions = editingMember
+        ? inviteRoleOptions.filter((option) => canManageRole(editingMember.role, 'edit'))
+        : inviteRoleOptions;
 
     const filteredMembers = useMemo(() => {
         if (!searchQuery.trim()) return members;
@@ -80,6 +110,18 @@ export default function Team() {
             if (currentCompany) fetchMaxUsers();
         }
     }, [authLoading, user?.id, currentCompany?.id]);
+
+    useEffect(() => {
+        if (inviteRoleOptions.length > 0 && !inviteRoleOptions.some((option) => option.value === newUserRole)) {
+            setNewUserRole(inviteRoleOptions[0].value);
+        }
+    }, [inviteRoleOptions, newUserRole]);
+
+    useEffect(() => {
+        if (editingMember && editRoleOptions.length > 0 && !editRoleOptions.some((option) => option.value === editRole)) {
+            setEditRole(editRoleOptions[0].value);
+        }
+    }, [editingMember, editRoleOptions, editRole]);
 
     const fetchMaxUsers = async () => {
         if (!currentCompany) return;
@@ -118,10 +160,10 @@ export default function Team() {
     };
 
     const handleCreateUser = async () => {
-        if (isAtLimit) return;
+        if (isAtLimit || inviteRoleOptions.length === 0) return;
         try {
             setLoading(true);
-            const { data, error } = await supabase.functions.invoke('beto-manage-team', {
+            const { error } = await supabase.functions.invoke('beto-manage-team', {
                 body: {
                     action: 'create',
                     email: newUserEmail,
@@ -138,6 +180,7 @@ export default function Team() {
             setNewUserEmail('');
             setNewUserFullName('');
             setNewUserPassword('');
+            setNewUserRole(inviteRoleOptions[0].value);
             setShowCreateModal(false);
             fetchMembers();
         } catch (error: any) {
@@ -236,7 +279,7 @@ export default function Team() {
                 label: 'Estado',
                 render: (m: TeamMember) => (
                     <div className="flex items-center gap-2">
-                        <div className={`size-2 rounded-full ${m.is_active ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                        <div className={`size-2 rounded-full ${m.is_active ? 'bg-slate-600' : 'bg-slate-300'}`} />
                         <span className={`${typography.text.caption} ${colors.textSecondary} font-bold`}>
                             {m.is_active ? 'ACTIVO' : 'INACTIVO'}
                         </span>
@@ -245,8 +288,25 @@ export default function Team() {
             }
         ],
         actions: [
-            { id: 'edit', label: 'Editar', icon: <Shield size={18} />, onClick: (m: any) => { setEditingMember(m); setEditName(m.full_name || ''); setEditRole(m.role); } },
-            { id: 'delete', label: 'Eliminar', icon: <Trash2 size={18} />, color: 'text-red-500', onClick: (m: any) => handleDeleteUser(m.user_id) }
+            {
+                id: 'edit',
+                label: 'Editar',
+                icon: <Shield size={18} />,
+                onClick: (m: TeamMember) => {
+                    setEditingMember(m);
+                    setEditName(m.full_name || '');
+                    setEditRole(m.role);
+                },
+                isVisible: (m: TeamMember) => canEdit && canManageRole(m.role, 'edit')
+            },
+            {
+                id: 'delete',
+                label: 'Eliminar',
+                icon: <Trash2 size={18} />,
+                color: 'text-red-500',
+                onClick: (m: TeamMember) => handleDeleteUser(m.user_id),
+                isVisible: (m: TeamMember) => canDelete && canManageRole(m.role, 'delete')
+            }
         ]
     };
 
@@ -284,16 +344,18 @@ export default function Team() {
                             <Button variant="secondary" size="sm" onClick={() => window.print()} icon={<Printer size={16} />}>
                                 IMPRIMIR
                             </Button>
-                            <Button
-                                variant="primary"
-                                size="sm"
-                                onClick={() => setShowCreateModal(true)}
-                                disabled={isAtLimit}
-                                isLoading={loading}
-                                icon={<UserPlus size={16} />}
-                            >
-                                INVITAR MIEMBRO
-                            </Button>
+                            {canCreate && (
+                                <Button
+                                    variant="primary"
+                                    size="sm"
+                                    onClick={() => setShowCreateModal(true)}
+                                    disabled={isAtLimit}
+                                    isLoading={loading}
+                                    icon={<UserPlus size={16} />}
+                                >
+                                    INVITAR MIEMBRO
+                                </Button>
+                            )}
                         </>
                     }
                 />
@@ -306,18 +368,18 @@ export default function Team() {
                             placeholder="Buscar miembro o rol..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className={`w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl ${typography.text.body} transition-all focus:ring-2 focus:ring-indigo-500 focus:bg-white`}
+                            className={`w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl ${typography.text.body} transition-all focus:ring-2 focus:ring-slate-400 focus:bg-white`}
                         />
                     </div>
                 </div>
 
                 {statusMessage && (
-                    <Card className={statusMessage.type === 'success' ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}>
-                        <div className="flex items-center gap-3">
-                            <div className={`p-1 rounded-full ${statusMessage.type === 'success' ? 'bg-emerald-200 text-emerald-800' : 'bg-red-200 text-red-800'}`}>
+                    <Card className="bg-slate-50 border-slate-200">
+                        <div className="flex items-center gap-3 p-4">
+                            <div className="p-1 rounded-full bg-slate-200 text-slate-700">
                                 {statusMessage.type === 'success' ? '✓' : '!'}
                             </div>
-                            <p className={`${typography.text.body} font-bold ${statusMessage.type === 'success' ? 'text-emerald-800' : 'text-red-800'}`}>
+                            <p className={`${typography.text.body} font-bold text-slate-700`}>
                                 {statusMessage.text}
                             </p>
                             <button onClick={() => setStatusMessage(null)} className="ml-auto opacity-40 hover:opacity-100">✕</button>
@@ -347,23 +409,23 @@ export default function Team() {
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5 col-span-2 md:col-span-1">
                         <label className={`${typography.text.caption} font-black ${colors.textSecondary} uppercase px-1`}>Nombre Completo</label>
-                        <input type="text" className="w-full h-11 px-4 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-indigo-500" value={newUserFullName} onChange={(e) => setNewUserFullName(e.target.value)} placeholder="Ej. Alex Smith" />
+                        <input type="text" className="w-full h-11 px-4 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-slate-400" value={newUserFullName} onChange={(e) => setNewUserFullName(e.target.value)} placeholder="Ej. Alex Smith" />
                     </div>
                     <div className="space-y-1.5 col-span-2 md:col-span-1">
                         <label className={`${typography.text.caption} font-black ${colors.textSecondary} uppercase px-1`}>Rol Sugerido</label>
-                        <select className="w-full h-11 px-4 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-indigo-500 capitalize" value={newUserRole} onChange={(e: any) => setNewUserRole(e.target.value)}>
-                            <option value="manager">Manager (Admin)</option>
-                            <option value="operator">Operador (Escritura)</option>
-                            <option value="viewer">Lector (Solo Consulta)</option>
+                        <select className="w-full h-11 px-4 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-slate-400 capitalize" value={newUserRole} onChange={(e: any) => setNewUserRole(e.target.value)}>
+                            {inviteRoleOptions.map((option) => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
                         </select>
                     </div>
                     <div className="space-y-1.5 col-span-2">
                         <label className={`${typography.text.caption} font-black ${colors.textSecondary} uppercase px-1`}>Correo Corporativo</label>
-                        <input type="email" className="w-full h-11 px-4 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-indigo-500" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} placeholder="alex@empresa.com" />
+                        <input type="email" className="w-full h-11 px-4 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-slate-400" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} placeholder="alex@empresa.com" />
                     </div>
                     <div className="space-y-1.5 col-span-2">
                         <label className={`${typography.text.caption} font-black ${colors.textSecondary} uppercase px-1`}>Contraseña Temporal</label>
-                        <input type="password" title="Mínimo 6 caracteres" className="w-full h-11 px-4 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-indigo-500" value={newUserPassword} onChange={(e) => setNewUserPassword(e.target.value)} />
+                        <input type="password" title="Mínimo 6 caracteres" className="w-full h-11 px-4 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-slate-400" value={newUserPassword} onChange={(e) => setNewUserPassword(e.target.value)} />
                     </div>
                 </div>
             </AppModal>
@@ -381,19 +443,24 @@ export default function Team() {
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5 col-span-2 md:col-span-1">
                             <label className={`${typography.text.caption} font-black ${colors.textSecondary} uppercase px-1`}>Nombre</label>
-                            <input type="text" className="w-full h-11 px-4 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-indigo-500" value={editName} onChange={(e) => setEditName(e.target.value)} />
+                            <input type="text" className="w-full h-11 px-4 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-slate-400" value={editName} onChange={(e) => setEditName(e.target.value)} />
                         </div>
                         <div className="space-y-1.5 col-span-2 md:col-span-1">
                             <label className={`${typography.text.caption} font-black ${colors.textSecondary} uppercase px-1`}>Rol de Sistema</label>
-                            <select className="w-full h-11 px-4 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-indigo-500" value={editRole} onChange={(e) => setEditRole(e.target.value)} disabled={editingMember.user_id === user?.id}>
-                                <option value="manager">Manager</option>
-                                <option value="operator">Operador</option>
-                                <option value="viewer">Lector</option>
+                            <select
+                                className="w-full h-11 px-4 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-slate-400"
+                                value={editRole}
+                                onChange={(e) => setEditRole(e.target.value)}
+                                disabled={editingMember.user_id === user?.id || !canManageRole(editingMember.role, 'edit')}
+                            >
+                                {editRoleOptions.map((option) => (
+                                    <option key={option.value} value={option.value}>{option.label.replace(' (Admin)', '')}</option>
+                                ))}
                             </select>
                         </div>
                         <div className="space-y-1.5 col-span-2">
                             <label className={`${typography.text.caption} font-black ${colors.textSecondary} uppercase px-1`}>Nueva Contraseña (Opcional)</label>
-                            <input type="password" placeholder="••••••••" className="w-full h-11 px-4 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-indigo-500" value={editPassword} onChange={(e) => setEditPassword(e.target.value)} />
+                            <input type="password" placeholder="••••••••" className="w-full h-11 px-4 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-slate-400" value={editPassword} onChange={(e) => setEditPassword(e.target.value)} />
                         </div>
                     </div>
                 </AppModal>

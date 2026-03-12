@@ -449,22 +449,22 @@ const RawMaterials: React.FC = () => {
         {/* Financial Governance Banner */}
         {totalFinancialDebt > 0 && (
           <div className="mt-6">
-            <Card className="bg-rose-50 border-rose-100">
+            <Card className="bg-slate-50/80 border-slate-200">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="size-12 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600 shadow-sm">
-                    <AlertCircle size={24} />
+                  <div className="size-10 rounded-lg bg-slate-200/60 flex items-center justify-center text-slate-500">
+                    <AlertCircle size={20} />
                   </div>
                   <div>
-                    <h3 className={`${typography.text.body} font-black text-rose-900`}>Deuda de Inventario Detectada</h3>
-                    <p className={`${typography.text.caption} text-rose-600 font-bold uppercase tracking-tight`}>
+                    <h3 className={`${typography.text.body} font-bold text-slate-700`}>Deuda de Inventario Detectada</h3>
+                    <p className={`${typography.text.caption} text-slate-500 font-medium`}>
                       Producciones realizadas sin respaldo físico. Regularice para integridad contable.
                     </p>
                   </div>
                 </div>
                 <div className="hidden sm:flex flex-col items-end">
-                  <span className={`${typography.text.caption} text-rose-500 font-black`}>VALORIZACIÓN ESTIMADA</span>
-                  <span className={`${typography.text.title} text-rose-700 font-black`}>{formatCurrency(totalFinancialDebt)}</span>
+                  <span className={`${typography.text.caption} text-slate-400 font-bold uppercase`}>Valorización Estimada</span>
+                  <span className={`${typography.text.title} text-slate-800 font-black`}>{formatCurrency(totalFinancialDebt)}</span>
                 </div>
               </div>
             </Card>
@@ -479,7 +479,7 @@ const RawMaterials: React.FC = () => {
               placeholder="Buscar por nombre o proveedor..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl ${typography.text.body} transition-all focus:ring-2 focus:ring-indigo-500 focus:bg-white`}
+              className={`w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl ${typography.text.body} transition-all focus:ring-2 focus:ring-slate-400 focus:bg-white`}
             />
           </div>
           <Select
@@ -615,7 +615,7 @@ const RawMaterials: React.FC = () => {
                         <div className="flex justify-end items-center">
                           <button
                             data-kebab-trigger
-                            className={`rounded-lg p-2 transition-all border border-transparent ${menuState?.materialId === m.id ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}
+                            className={`rounded-lg p-2 transition-all border border-transparent ${menuState?.materialId === m.id ? 'bg-slate-200 text-slate-700 border-slate-300' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}
                             onClick={(e) => openMenu(m.id, e)}
                             aria-label="Más opciones"
                           >
@@ -633,7 +633,7 @@ const RawMaterials: React.FC = () => {
                             {/* FORMULARIO DE NUEVA ENTRADA (LOTES) */}
                             <div className={`no-print ${colors.bgSurface} ${radius.xl} ${spacing.pLg} ${shadows.sm}`}>
                               <div className="mb-6 flex items-center justify-between">
-                                <h4 className={`flex items-center gap-2 ${typography.uiLabel} text-indigo-700`}>
+                                <h4 className={`flex items-center gap-2 ${typography.uiLabel} text-slate-700`}>
                                   <ShoppingCart size={16} /> Registrar Nueva Entrada Física
                                 </h4>
                                 {isDimensional && (
@@ -676,7 +676,7 @@ const RawMaterials: React.FC = () => {
                                             <div className="w-32"><Input label="Costo Total (€)" type="number" step="0.01" value={batchFormData.unit_cost || ''} onChange={e => setBatchFormData({ ...batchFormData, unit_cost: parseFloat(e.target.value) })} required /></div>
                                           </>
                                         )}
-                                        <div className="w-24"><Input label="Ancho (cm)" type="number" step="1" value={batchFormData.width || ''} onChange={e => setBatchFormData({ ...batchFormData, width: parseInt(e.target.value) })} required className="text-emerald-700 font-bold" /></div>
+                                        <div className="w-24"><Input label="Ancho (cm)" type="number" step="1" value={batchFormData.width || ''} onChange={e => setBatchFormData({ ...batchFormData, width: parseInt(e.target.value) })} required className="text-slate-700 font-bold" /></div>
                                       </>
                                     ) : (
                                       <>
@@ -718,7 +718,7 @@ const RawMaterials: React.FC = () => {
                                       {isDimensional && (
                                         <>
                                           <th className={`${spacing.pxMd} py-3 ${typography.uiLabel} ${colors.statusSuccess} w-[10%] text-right`}>Área</th>
-                                          <th className={`${spacing.pxMd} py-3 ${typography.uiLabel} text-indigo-600 w-[10%] text-right`}>/m²</th>
+                                          <th className={`${spacing.pxMd} py-3 ${typography.uiLabel} text-slate-600 w-[10%] text-right`}>/m²</th>
                                         </>
                                       )}
                                       <th className={`${spacing.pxMd} py-3 ${typography.uiLabel} ${colors.textSecondary} w-[15%] text-right`}>Costo Total</th>
@@ -765,7 +765,7 @@ const RawMaterials: React.FC = () => {
                                           {isDimensional && (
                                             <>
                                               <td className={`${spacing.pxMd} py-2.5 text-right tabular-nums ${typography.text.caption} font-medium ${colors.statusSuccess}`}>{batch.area ? `${batch.area.toFixed(2)} m²` : '---'}</td>
-                                              <td className={`${spacing.pxMd} py-2.5 text-right tabular-nums ${typography.text.caption} font-medium text-indigo-600`}>{currentCostPerM2 > 0 ? formatCurrency(currentCostPerM2) : '---'}</td>
+                                              <td className={`${spacing.pxMd} py-2.5 text-right tabular-nums ${typography.text.caption} font-medium text-slate-600`}>{currentCostPerM2 > 0 ? formatCurrency(currentCostPerM2) : '---'}</td>
                                             </>
                                           )}
                                           <td className={`${spacing.pxMd} py-2.5 text-right tabular-nums ${typography.text.caption} font-medium`}>{formatCurrency(currentTotalPurchaseCost)}</td>
@@ -783,7 +783,7 @@ const RawMaterials: React.FC = () => {
                                             <div className="flex justify-center">
                                               <button
                                                 data-kebab-trigger
-                                                className={`rounded-lg p-1.5 transition-all border border-transparent ${batchMenuState?.batchId === batch.id ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}
+                                                className={`rounded-lg p-1.5 transition-all border border-transparent ${batchMenuState?.batchId === batch.id ? 'bg-slate-200 text-slate-700 border-slate-300' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}
                                                 onClick={(e) => openBatchMenu(batch.id, e)}
                                                 aria-label="Más opciones de lote"
                                               >
@@ -803,7 +803,7 @@ const RawMaterials: React.FC = () => {
                                       {isDimensional && (
                                         <>
                                           <td className={`${spacing.pxMd} py-4 text-right ${typography.text.body} font-medium ${colors.statusSuccess} tabular-nums`}>{batchStatsByMaterial[m.id].totalArea.toFixed(2)} m²</td>
-                                          <td className={`${spacing.pxMd} py-4 text-right ${typography.text.body} font-medium text-indigo-600`}>{formatCurrency(batchStatsByMaterial[m.id].avgCostPerM2)}</td>
+                                          <td className={`${spacing.pxMd} py-4 text-right ${typography.text.body} font-medium text-slate-600`}>{formatCurrency(batchStatsByMaterial[m.id].avgCostPerM2)}</td>
                                         </>
                                       )}
                                       <td className={`${spacing.pxMd} py-4 text-right ${typography.text.body} font-medium ${colors.textPrimary}`}>{formatCurrency(batchStatsByMaterial[m.id].totalValue)}</td>
@@ -867,13 +867,18 @@ const RawMaterials: React.FC = () => {
                   value={formData.category_id}
                   onChange={e => {
                     const catId = e.target.value;
-                    const firstUnit = unitsOfMeasure.find(u => u.category_id === catId && u.is_base);
+                    const baseUnit = unitsOfMeasure.find(u => u.category_id === catId && u.is_base);
+                    // Auto-asignar la unidad más natural (m, L, kg, und) para compra y visualización
+                    const largestUnit = unitsOfMeasure
+                      .filter(u => u.category_id === catId)
+                      .sort((a, b) => b.conversion_factor - a.conversion_factor)[0];
+                    const purchaseDisplayUnit = largestUnit || baseUnit;
                     setFormData({
                       ...formData,
                       category_id: catId,
-                      base_unit_id: firstUnit?.id || '',
-                      purchase_unit_id: firstUnit?.id || '',
-                      display_unit_id: firstUnit?.id || ''
+                      base_unit_id: baseUnit?.id || '',
+                      purchase_unit_id: purchaseDisplayUnit?.id || '',
+                      display_unit_id: purchaseDisplayUnit?.id || ''
                     });
                   }}
                   required
@@ -883,34 +888,20 @@ const RawMaterials: React.FC = () => {
                     <option key={cat.id} value={cat.id}>{cat.name}</option>
                   ))}
                 </Select>
-                <Select
-                  label="Unidad de Compra"
-                  value={formData.purchase_unit_id}
-                  onChange={e => setFormData({ ...formData, purchase_unit_id: e.target.value })}
-                  disabled={!formData.category_id}
-                  required
-                >
-                  {unitsOfMeasure
+                {formData.category_id && (() => {
+                  const selectedUnit = unitsOfMeasure
                     .filter(u => u.category_id === formData.category_id)
-                    .map(u => (
-                      <option key={u.id} value={u.id}>{u.name} ({u.symbol})</option>
-                    ))
-                  }
-                </Select>
-                <Select
-                  label="Unidad de Visualización"
-                  value={formData.display_unit_id}
-                  onChange={e => setFormData({ ...formData, display_unit_id: e.target.value })}
-                  disabled={!formData.category_id}
-                >
-                  <option value="">Igual que compra...</option>
-                  {unitsOfMeasure
-                    .filter(u => u.category_id === formData.category_id)
-                    .map(u => (
-                      <option key={u.id} value={u.id}>{u.name} ({u.symbol})</option>
-                    ))
-                  }
-                </Select>
+                    .sort((a, b) => b.conversion_factor - a.conversion_factor)[0];
+                  return (
+                    <div className="flex items-end pb-1">
+                      <div className={`w-full h-11 px-4 ${radius.xl} bg-slate-50 border ${colors.borderStandard} flex items-center gap-2 text-sm text-slate-600`}>
+                        <span className="font-bold text-slate-700">{selectedUnit?.symbol?.toUpperCase()}</span>
+                        <span className="text-slate-400">|</span>
+                        <span>{selectedUnit?.name}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="grid grid-cols-2 gap-3 pb-2 pt-2 border-t border-slate-100">
@@ -945,7 +936,7 @@ const RawMaterials: React.FC = () => {
               <div className="grid grid-cols-3 gap-3 items-end">
                 {formData.type === 'Tela' ? (
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-emerald-600">Ancho (cm)</label>
+                    <label className="mb-1 block text-sm font-medium text-slate-600">Ancho (cm)</label>
                     <Input type="number" step="1" value={formData.width || ''} onChange={e => setFormData({ ...formData, width: parseInt(e.target.value) })} placeholder="140" />
                   </div>
                 ) : <div />}
@@ -961,9 +952,9 @@ const RawMaterials: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, status: formData.status === 'activa' ? 'inactiva' : 'activa' })}
-                    className={`w-full flex items-center justify-center gap-2 ${radius.xl} px-3 py-2.5 ${typography.uiLabel} font-bold transition-all active:scale-95 ${formData.status === 'activa' ? `${colors.bgSuccess} ${colors.statusSuccess} ring-1 ring-emerald-200` : `${colors.bgMain} ${colors.textSecondary} ring-1 ${colors.borderStandard}`}`}
+                    className={`w-full flex items-center justify-center gap-2 ${radius.xl} px-3 py-2.5 ${typography.uiLabel} font-bold transition-all active:scale-95 ${formData.status === 'activa' ? `${colors.bgSuccess} ${colors.statusSuccess} ring-1 ring-slate-200` : `${colors.bgMain} ${colors.textSecondary} ring-1 ${colors.borderStandard}`}`}
                   >
-                    <div className={`size-2.5 rounded-full transition-colors ${formData.status === 'activa' ? 'bg-emerald-500' : colors.textMuted}`} />
+                    <div className={`size-2.5 rounded-full transition-colors ${formData.status === 'activa' ? 'bg-slate-600' : colors.textMuted}`} />
                     {formData.status === 'activa' ? 'Activa' : 'Inactiva'}
                   </button>
                 </div>
@@ -986,13 +977,13 @@ const RawMaterials: React.FC = () => {
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6" style={{ backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>
             <Card className={`w-full max-w-md max-h-[90vh] overflow-y-auto ${spacing.pLg} sm:${spacing.pLg} border ${colors.borderStandard} ${shadows.xl}`}>
               <h4 className={`mb-6 flex items-center gap-2 ${typography.sectionTitle} ${colors.textPrimary}`}>
-                <Pencil size={20} className="text-indigo-500" /> Editar Registro
+                <Pencil size={20} className="text-slate-500" /> Editar Registro
               </h4>
               <form onSubmit={handleEditBatchSubmit} className="space-y-4">
                 {editingBatchData.remaining_quantity < editingBatchData.initial_quantity && (
                   <div className={`flex items-start gap-3 ${radius.xl} border border-amber-100 bg-amber-50 p-4`}>
-                    <AlertCircle size={20} className="mt-0.5 shrink-0 text-amber-500" />
-                    <p className={`${typography.bodySm} font-semibold leading-tight text-amber-700`}>
+                    <AlertCircle size={20} className="mt-0.5 shrink-0 text-slate-500" />
+                    <p className={`${typography.bodySm} font-semibold leading-tight text-slate-600`}>
                       ESTE LOTE YA SE HA USADO. La cantidad, costo y dimensiones no son editables para mantener la coherencia FIFO.
                     </p>
                   </div>
@@ -1051,7 +1042,7 @@ const RawMaterials: React.FC = () => {
           return (
             <div ref={menuRef} className={`${radius.xl} border ${colors.borderStandard} ${colors.bgSurface} ${shadows.xl} py-1.5 min-w-[180px]`} style={style}>
               <button
-                className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${expandedMaterialId === material.id ? 'text-indigo-700 bg-indigo-50' : `${colors.textSecondary} hover:${colors.bgMain}`} transition-colors`}
+                className={`w-full flex items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${expandedMaterialId === material.id ? 'text-slate-800 bg-slate-100' : `${colors.textSecondary} hover:${colors.bgMain}`} transition-colors`}
                 onClick={() => { setMenuState(null); setExpandedMaterialId(expandedMaterialId === material.id ? null : material.id); }}
               >
                 <History size={14} className={colors.textMuted} /> {expandedMaterialId === material.id ? 'Cerrar Detalles' : 'Ver Lotes'}

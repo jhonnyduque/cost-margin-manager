@@ -7,6 +7,50 @@ const corsHeaders = {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
+const ASSIGNABLE_ROLES = ['manager', 'operator', 'viewer'] as const
+
+type AssignableRole = typeof ASSIGNABLE_ROLES[number]
+
+const canInviteRole = (
+    actorRole: string | null | undefined,
+    roleToAssign: string,
+    isPlatformAdmin: boolean,
+) => {
+    if (isPlatformAdmin) return ASSIGNABLE_ROLES.includes(roleToAssign as AssignableRole)
+    if (actorRole === 'owner' || actorRole === 'admin') {
+        return ASSIGNABLE_ROLES.includes(roleToAssign as AssignableRole)
+    }
+    if (actorRole === 'manager') {
+        return roleToAssign === 'operator' || roleToAssign === 'viewer'
+    }
+    return false
+}
+
+const canManageTargetRole = (
+    actorRole: string | null | undefined,
+    targetRole: string | null | undefined,
+    isPlatformAdmin: boolean,
+) => {
+    if (isPlatformAdmin) return true
+    if (!actorRole || !targetRole) return false
+    if (actorRole === 'owner') return ['admin', 'manager', 'operator', 'viewer'].includes(targetRole)
+    if (actorRole === 'admin') return ['manager', 'operator', 'viewer'].includes(targetRole)
+    if (actorRole === 'manager') return ['operator', 'viewer'].includes(targetRole)
+    return false
+}
+
+const canDeleteTargetRole = (
+    actorRole: string | null | undefined,
+    targetRole: string | null | undefined,
+    isPlatformAdmin: boolean,
+) => {
+    if (isPlatformAdmin) return true
+    if (!actorRole || !targetRole) return false
+    if (actorRole === 'owner') return ['admin', 'manager', 'operator', 'viewer'].includes(targetRole)
+    if (actorRole === 'admin') return ['manager', 'operator', 'viewer'].includes(targetRole)
+    return false
+}
+
 serve(async (req) => {
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders, status: 200 })
@@ -24,7 +68,6 @@ serve(async (req) => {
             }
         )
 
-        // 1. Get Requester Info
         const authHeader = req.headers.get('Authorization')
         if (!authHeader) throw new Error('Missing Authorization header')
 
@@ -34,11 +77,9 @@ serve(async (req) => {
 
         if (authError || !requester) throw new Error('Invalid token')
 
-        // 2. Parse Payload + AUTO-DETECT company_id
         const payload = await req.json()
         const { action = 'create', company_id: payloadCompanyId } = payload
 
-        // 🔧 AUTO-FIX: Si el frontend no manda company_id, lo sacamos del usuario logueado
         let company_id = payloadCompanyId
         if (!company_id) {
             const { data: membership, error: membError } = await supabaseClient
@@ -59,32 +100,41 @@ serve(async (req) => {
             console.log(`[TEAM] company_id received from payload: ${company_id}`)
         }
 
-        // 3. Authorization Check
-        const { data: membership, error: membError } = await supabaseClient
+        const { data: membership } = await supabaseClient
             .from('company_members')
             .select('role')
             .eq('company_id', company_id)
             .eq('user_id', requester.id)
             .single()
 
-        const isPlatformAdmin = !!requester.app_metadata?.is_super_admin
-        const isCompanyAdmin = ['admin', 'owner'].includes(membership?.role)
+        const { data: requesterRecord } = await supabaseClient
+            .from('users')
+            .select('is_super_admin')
+            .eq('id', requester.id)
+            .single()
 
-        if (!isPlatformAdmin && !isCompanyAdmin) {
+        const requesterRole = membership?.role
+        const isPlatformAdmin = requesterRecord?.is_super_admin === true
+        const canCreateMembers = isPlatformAdmin || ['owner', 'admin', 'manager'].includes(requesterRole ?? '')
+        const canUpdateMembers = isPlatformAdmin || ['owner', 'admin', 'manager'].includes(requesterRole ?? '')
+        const canDeleteMembers = isPlatformAdmin || ['owner', 'admin'].includes(requesterRole ?? '')
+
+        if (!isPlatformAdmin && !requesterRole) {
             throw new Error('Access Denied: Insufficient permissions.')
         }
 
-        // 🔧 FIX: Obtener max_users desde subscription_plans (dinámico por plan)
         const { data: companyData, error: companyError } = await supabaseClient
             .from('companies')
-            .select('subscription_tier')
+            .select('subscription_tier, seat_limit')
             .eq('id', company_id)
             .single()
 
-        let SEAT_LIMIT = 3 // fallback seguro
-        if (companyError || !companyData?.subscription_tier) {
-            console.warn('[TEAM] Could not fetch subscription_tier, using default 3')
-        } else {
+        let SEAT_LIMIT = 3
+        if (companyError || !companyData) {
+            console.warn('[TEAM] Could not fetch company billing context, using default 3')
+        } else if (companyData.seat_limit && companyData.seat_limit > 0) {
+            SEAT_LIMIT = companyData.seat_limit
+        } else if (companyData.subscription_tier) {
             const { data: planData, error: planError } = await supabaseClient
                 .from('subscription_plans')
                 .select('max_users')
@@ -97,9 +147,8 @@ serve(async (req) => {
                 SEAT_LIMIT = planData.max_users
             }
         }
-        console.log(`[TEAM] Seat limit for company ${company_id}: ${SEAT_LIMIT} (tier: ${companyData?.subscription_tier})`)
+        console.log(`[TEAM] Seat limit effective for company ${company_id}: ${SEAT_LIMIT} (tier: ${companyData?.subscription_tier})`)
 
-        // 4. Action Routing
         if (action === 'create') {
             const { email, role, password, full_name } = payload
 
@@ -107,7 +156,14 @@ serve(async (req) => {
                 throw new Error('Missing required fields para creación.')
             }
 
-            // 🔧 FIX: Usar SEAT_LIMIT dinámico
+            if (!canCreateMembers) {
+                throw new Error('Access Denied: You cannot invite team members.')
+            }
+
+            if (!canInviteRole(requesterRole, role, isPlatformAdmin)) {
+                throw new Error(`Access Denied: You cannot assign role "${role}".`)
+            }
+
             const { count, error: countError } = await supabaseClient
                 .from('company_members')
                 .select('*', { count: 'exact', head: true })
@@ -121,10 +177,9 @@ serve(async (req) => {
 
             console.log(`[TEAM] Creating user ${email} for company ${company_id}`)
 
-            // ✅ FIX 1: Verificar si el email ya existe en la tabla users
             const { data: existingUser } = await supabaseClient
                 .from('users')
-                .select('id, email')
+                .select('id, email, full_name')
                 .eq('email', email)
                 .single()
 
@@ -135,7 +190,6 @@ serve(async (req) => {
                 console.log(`[TEAM] User with email ${email} already exists in users table, reusing ID: ${existingUser.id}`)
                 newUserId = existingUser.id
 
-                // Actualizar el nombre si es necesario
                 if (full_name && existingUser.full_name !== full_name) {
                     const { error: updateError } = await supabaseClient
                         .from('users')
@@ -147,7 +201,6 @@ serve(async (req) => {
                     }
                 }
             } else {
-                // Crear usuario nuevo en auth
                 const { data: userData, error: userError } = await supabaseClient.auth.admin.createUser({
                     email,
                     password,
@@ -160,20 +213,17 @@ serve(async (req) => {
                 newUserId = userData.user.id
                 userJustCreated = true
 
-                // ✅ FIX 2: Upsert en la tabla users (el trigger handle_new_auth_user
-                // puede crear el row antes, pero SIN full_name — el upsert lo corrige)
                 const nameToSave = full_name || email.split('@')[0]
                 const { error: usersUpsertError } = await supabaseClient
                     .from('users')
                     .upsert({
                         id: newUserId,
-                        email: email,
+                        email,
                         full_name: nameToSave
                     }, { onConflict: 'id' })
 
                 if (usersUpsertError) {
                     console.error('[TEAM] Error upserting into users table:', usersUpsertError)
-                    // Fallback: intentar actualizar solo el nombre
                     await supabaseClient
                         .from('users')
                         .update({ full_name: nameToSave })
@@ -182,10 +232,9 @@ serve(async (req) => {
                 }
             }
 
-            // ✅ FIX 3: Verificar si ya existe la membership antes de insertar
             const { data: existingMembership } = await supabaseClient
                 .from('company_members')
-                .select('id')
+                .select('id, role')
                 .eq('user_id', newUserId)
                 .eq('company_id', company_id)
                 .single()
@@ -193,7 +242,10 @@ serve(async (req) => {
             if (existingMembership) {
                 console.log(`[TEAM] Membership already exists for user ${newUserId} in company ${company_id}`)
 
-                // Actualizar el role si es diferente
+                if (!canManageTargetRole(requesterRole, existingMembership.role, isPlatformAdmin)) {
+                    throw new Error('Access Denied: You cannot modify this member.')
+                }
+
                 if (role && existingMembership.role !== role) {
                     const { error: updateError } = await supabaseClient
                         .from('company_members')
@@ -206,18 +258,16 @@ serve(async (req) => {
                     }
                 }
             } else {
-                // Insertar en company_members
                 const { error: insertError } = await supabaseClient
                     .from('company_members')
                     .insert({
                         company_id,
                         user_id: newUserId,
-                        role: role,
+                        role,
                         is_active: true
                     })
 
                 if (insertError) {
-                    // Solo eliminar el usuario auth si lo acabamos de crear
                     if (userJustCreated) {
                         await supabaseClient.auth.admin.deleteUser(newUserId)
                     }
@@ -230,10 +280,28 @@ serve(async (req) => {
             return new Response(JSON.stringify({ success: true, status: 'created' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
         }
 
-        // ... (el resto de las acciones delete, update, bulk se mantienen igual)
         if (action === 'delete') {
             const { target_user_id } = payload
             if (!target_user_id) throw new Error('Missing target_user_id for deletion')
+
+            if (!canDeleteMembers) {
+                throw new Error('Access Denied: You cannot delete team members.')
+            }
+
+            const { data: targetMembership, error: targetMembershipError } = await supabaseClient
+                .from('company_members')
+                .select('role')
+                .eq('user_id', target_user_id)
+                .eq('company_id', company_id)
+                .single()
+
+            if (targetMembershipError || !targetMembership) {
+                throw new Error('Target member not found.')
+            }
+
+            if (!canDeleteTargetRole(requesterRole, targetMembership.role, isPlatformAdmin)) {
+                throw new Error('Access Denied: You cannot delete this member.')
+            }
 
             console.log(`[TEAM] Deleting user ${target_user_id} from company ${company_id}`)
 
@@ -252,10 +320,32 @@ serve(async (req) => {
             const { target_user_id, role, full_name, password } = payload
             if (!target_user_id) throw new Error('Missing target_user_id for update')
 
+            if (!canUpdateMembers) {
+                throw new Error('Access Denied: You cannot update team members.')
+            }
+
+            const { data: targetMembership, error: targetMembershipError } = await supabaseClient
+                .from('company_members')
+                .select('role')
+                .eq('user_id', target_user_id)
+                .eq('company_id', company_id)
+                .single()
+
+            if (targetMembershipError || !targetMembership) {
+                throw new Error('Target member not found.')
+            }
+
+            if (!canManageTargetRole(requesterRole, targetMembership.role, isPlatformAdmin)) {
+                throw new Error('Access Denied: You cannot update this member.')
+            }
+
             console.log(`[TEAM] Updating user ${target_user_id} in company ${company_id}`)
 
-            // 1. Update Membership Role
             if (role) {
+                if (!canInviteRole(requesterRole, role, isPlatformAdmin)) {
+                    throw new Error(`Access Denied: You cannot assign role "${role}".`)
+                }
+
                 const { data: currentMemb } = await supabaseClient
                     .from('company_members')
                     .select('role')
@@ -274,7 +364,6 @@ serve(async (req) => {
                 }
             }
 
-            // 2. Update Public Profile
             if (full_name) {
                 const { error: publicErr } = await supabaseClient
                     .from('users')
@@ -283,7 +372,6 @@ serve(async (req) => {
                 if (publicErr) throw publicErr
             }
 
-            // 3. Update Auth Metadata / Password
             const authUpdates: any = {}
             if (full_name) authUpdates.user_metadata = { full_name }
             if (password) authUpdates.password = password
@@ -303,6 +391,26 @@ serve(async (req) => {
             const { user_ids } = payload
             if (!user_ids || !Array.isArray(user_ids)) throw new Error('Missing user_ids array')
 
+            if (!canUpdateMembers) {
+                throw new Error('Access Denied: You cannot archive team members.')
+            }
+
+            const { data: targetMemberships, error: targetMembershipsError } = await supabaseClient
+                .from('company_members')
+                .select('user_id, role')
+                .in('user_id', user_ids)
+                .eq('company_id', company_id)
+
+            if (targetMembershipsError) throw targetMembershipsError
+
+            const forbiddenTarget = (targetMemberships ?? []).find((member) =>
+                !canManageTargetRole(requesterRole, member.role, isPlatformAdmin)
+            )
+
+            if (forbiddenTarget) {
+                throw new Error('Access Denied: You cannot archive one or more selected members.')
+            }
+
             console.log(`[TEAM] Archiving users: ${user_ids.join(', ')}`)
 
             const { error: archError } = await supabaseClient
@@ -318,6 +426,26 @@ serve(async (req) => {
         if (action === 'bulk_delete') {
             const { user_ids } = payload
             if (!user_ids || !Array.isArray(user_ids)) throw new Error('Missing user_ids array')
+
+            if (!canDeleteMembers) {
+                throw new Error('Access Denied: You cannot delete team members.')
+            }
+
+            const { data: targetMemberships, error: targetMembershipsError } = await supabaseClient
+                .from('company_members')
+                .select('user_id, role')
+                .in('user_id', user_ids)
+                .eq('company_id', company_id)
+
+            if (targetMembershipsError) throw targetMembershipsError
+
+            const forbiddenTarget = (targetMemberships ?? []).find((member) =>
+                !canDeleteTargetRole(requesterRole, member.role, isPlatformAdmin)
+            )
+
+            if (forbiddenTarget) {
+                throw new Error('Access Denied: You cannot delete one or more selected members.')
+            }
 
             console.log(`[TEAM] Deleting multiple users: ${user_ids.join(', ')}`)
 

@@ -14,7 +14,14 @@ import {
     Hexagon,
     LucideIcon,
     Users,
-    BarChart3
+    BarChart3,
+    Boxes,
+    ShoppingCart,
+    Building2,
+    Contact2,
+    Truck,
+    Bot,
+    CreditCard,
 } from 'lucide-react';
 import { colors, typography } from '@/design/design-tokens';
 import { PageContainer, SectionBlock } from '@/components/ui/LayoutPrimitives';
@@ -70,6 +77,14 @@ export default function MorePage() {
                     path: '/equipo'
                 },
                 {
+                    label: 'Facturación',
+                    description: 'Suscripción, planes y pagos',
+                    icon: CreditCard,
+                    iconBg: 'bg-indigo-50',
+                    iconColor: 'text-indigo-600',
+                    path: '/platform/billing'
+                },
+                {
                     label: 'Settings',
                     description: 'Preferencias y seguridad',
                     icon: Settings,
@@ -90,6 +105,59 @@ export default function MorePage() {
             ]
         },
         {
+            title: 'Operación extendida',
+            items: [
+                {
+                    label: 'Stock',
+                    description: 'Inventario de productos terminados',
+                    icon: Boxes,
+                    iconBg: 'bg-amber-50',
+                    iconColor: 'text-amber-600',
+                    path: '/stock'
+                },
+                {
+                    label: 'Compras',
+                    description: 'Órdenes y abastecimiento',
+                    icon: ShoppingCart,
+                    iconBg: 'bg-orange-50',
+                    iconColor: 'text-orange-600',
+                    path: '/compras'
+                },
+                {
+                    label: 'Proveedores',
+                    description: 'Gestión de proveedores y acuerdos',
+                    icon: Building2,
+                    iconBg: 'bg-slate-100',
+                    iconColor: 'text-slate-600',
+                    path: '/proveedores'
+                },
+                {
+                    label: 'Clientes',
+                    description: 'Base comercial y contactos',
+                    icon: Contact2,
+                    iconBg: 'bg-violet-50',
+                    iconColor: 'text-violet-600',
+                    path: '/clientes'
+                },
+                {
+                    label: 'Despachos',
+                    description: 'Entregas y salidas operativas',
+                    icon: Truck,
+                    iconBg: 'bg-cyan-50',
+                    iconColor: 'text-cyan-600',
+                    path: '/despachos'
+                },
+                {
+                    label: 'AI Consultants',
+                    description: 'Asistencia inteligente para decisiones',
+                    icon: Bot,
+                    iconBg: 'bg-fuchsia-50',
+                    iconColor: 'text-fuchsia-600',
+                    path: '/ai'
+                }
+            ]
+        },
+        {
             title: 'Herramientas',
             items: [
                 {
@@ -100,6 +168,14 @@ export default function MorePage() {
                     iconColor: 'text-emerald-600',
                     path: '/reportes',
                     comingSoon: true
+                },
+                {
+                    label: 'Analytics',
+                    description: 'Métricas y análisis del negocio',
+                    icon: Activity,
+                    iconBg: 'bg-cyan-50',
+                    iconColor: 'text-cyan-600',
+                    path: '/analytics'
                 }
             ]
         },
@@ -220,7 +296,6 @@ export default function MorePage() {
     return (
         <PageContainer>
             <SectionBlock>
-
                 <UniversalPageHeader
                     title="Más"
                     breadcrumbs={
@@ -294,7 +369,7 @@ export default function MorePage() {
                             ))}
                         </div>
 
-                        <div className="lg:hidden space-y-4">
+                        <div className="lg:hidden space-y-4 pb-20">
                             {filteredSections.map((section) => (
                                 <div key={section.title}>
                                     <p className={`${typography.text.caption} ${colors.textMuted} px-1 mb-2`}>
@@ -327,7 +402,6 @@ export default function MorePage() {
                         v1.0.0 · {new Date().getFullYear()}
                     </span>
                 </div>
-
             </SectionBlock>
         </PageContainer>
     );

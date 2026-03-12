@@ -17,9 +17,9 @@ import SupplierModal from '@/components/suppliers/SupplierModal';
 import SupplierMaterialsModal from '@/components/suppliers/SupplierMaterialsModal';
 
 const statusConfig = {
-    activo: { label: 'Activo', class: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
-    inactivo: { label: 'Inactivo', class: 'text-slate-600 bg-slate-50 border-slate-200' },
-    bloqueado: { label: 'Bloqueado', class: 'text-red-700 bg-red-50 border-red-200' },
+    activo: { label: 'Activo', class: 'text-slate-800' },
+    inactivo: { label: 'Inactivo', class: 'text-slate-400' },
+    bloqueado: { label: 'Bloqueado', class: 'text-slate-400' },
 };
 
 export default function Suppliers() {
@@ -74,15 +74,15 @@ export default function Suppliers() {
                     }
                     metadata={[
                         <span key="1" className="flex items-center gap-1">
-                            <Building2 size={14} className="text-emerald-500" />
+                            <Building2 size={14} className="text-slate-500" />
                             {stats.active} activos
                         </span>,
                         <span key="2" className="flex items-center gap-1">
-                            <Package size={14} className="text-indigo-500" />
+                            <Package size={14} className="text-slate-500" />
                             {stats.withMaterials} con materiales
                         </span>,
                         <span key="3" className="flex items-center gap-1">
-                            <CreditCard size={14} className="text-amber-500" />
+                            <CreditCard size={14} className="text-slate-500" />
                             {stats.withCredit} con crédito
                         </span>
                     ]}
@@ -100,13 +100,13 @@ export default function Suppliers() {
 
                 <div className="flex flex-col sm:flex-row items-center gap-4 mt-8">
                     <div className="relative flex-1 group w-full">
-                        <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 ${colors.textMuted} group-focus-within:text-indigo-500 transition-colors`} />
+                        <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 ${colors.textMuted} group-focus-within:text-slate-600 transition-colors`} />
                         <input
                             type="text"
                             placeholder="Buscar por nombre, email o identificación..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className={`w-full h-11 pl-11 pr-4 bg-white border border-slate-200 rounded-xl ${typography.text.body} transition-all focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none`}
+                            className={`w-full h-11 pl-11 pr-4 bg-white border border-slate-200 rounded-xl ${typography.text.body} transition-all focus:ring-2 focus:ring-slate-400/10 focus:border-slate-400 outline-none`}
                         />
                     </div>
                     <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -114,7 +114,7 @@ export default function Suppliers() {
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value as any)}
-                            className={`h-11 px-4 bg-white border border-slate-200 rounded-xl ${typography.text.body} focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none min-w-[140px] appearance-none`}
+                            className={`h-11 px-4 bg-white border border-slate-200 rounded-xl ${typography.text.body} focus:ring-2 focus:ring-slate-400/10 focus:border-slate-400 outline-none min-w-[140px] appearance-none`}
                         >
                             <option value="all">Todos los estados</option>
                             <option value="activo">Activos</option>
@@ -166,12 +166,12 @@ export default function Suppliers() {
                                     return (
                                         <React.Fragment key={supplier.id}>
                                             <tr
-                                                className={`hover:bg-slate-50/80 transition-colors group cursor-pointer ${isExpanded ? 'bg-indigo-50/20' : ''}`}
+                                                className={`hover:bg-slate-50/80 transition-colors group cursor-pointer ${isExpanded ? 'bg-slate-50/50' : ''}`}
                                                 onClick={() => setExpandedSupplierId(isExpanded ? null : supplier.id)}
                                             >
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="size-10 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center font-bold border border-slate-200 group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors">
+                                                        <div className="size-10 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center font-bold border border-slate-200 group-hover:bg-slate-200 group-hover:text-slate-600 transition-colors">
                                                             {supplier.name.charAt(0).toUpperCase()}
                                                         </div>
                                                         <div>
@@ -207,9 +207,9 @@ export default function Suppliers() {
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     {(supplier.payment_terms_days || 0) > 0 ? (
-                                                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-100 w-fit">
+                                                        <div className="flex items-center gap-1.5 text-slate-600 w-fit">
                                                             <Clock size={12} />
-                                                            <span className="text-[10px] font-black uppercase text-amber-700">{supplier.payment_terms_days} DÍAS</span>
+                                                            <span className="text-[10px] font-black uppercase text-slate-600">{supplier.payment_terms_days} DÍAS</span>
                                                         </div>
                                                     ) : (
                                                         <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Contado</span>
@@ -221,13 +221,13 @@ export default function Suppliers() {
                                                     </Badge>
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase border ${status.class}`}>
+                                                    <span className={`text-[10px] font-black uppercase ${status.class}`}>
                                                         {status.label}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
                                                     <div className="flex items-center justify-end">
-                                                        <div className={`p-2 rounded-lg ${isExpanded ? 'bg-indigo-100 text-indigo-600' : 'text-slate-300 group-hover:text-slate-500'}`}>
+                                                        <div className={`p-2 rounded-lg ${isExpanded ? 'bg-slate-200 text-slate-700' : 'text-slate-300 group-hover:text-slate-500'}`}>
                                                             {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                                                         </div>
                                                     </div>
@@ -261,7 +261,7 @@ export default function Suppliers() {
                                                                     </Button>
                                                                 )}
                                                                 {supplier.status !== 'bloqueado' && (
-                                                                    <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50 hover:text-red-700" icon={<Ban size={14} />} onClick={(e) => { e.stopPropagation(); archiveSupplier(supplier.id, 'bloqueado'); }}>
+                                                                    <Button variant="ghost" size="sm" className="text-slate-500 hover:bg-slate-100 hover:text-slate-700" icon={<Ban size={14} />} onClick={(e) => { e.stopPropagation(); archiveSupplier(supplier.id, 'bloqueado'); }}>
                                                                         BLOQUEAR
                                                                     </Button>
                                                                 )}
@@ -294,7 +294,7 @@ export default function Suppliers() {
                                                                         <div className="flex flex-wrap gap-2">
                                                                             {linkedMaterials.map(m => (
                                                                                 <span key={m.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 shadow-sm">
-                                                                                    <div className="size-1.5 rounded-full bg-indigo-400" />
+                                                                                    <div className="size-1.5 rounded-full bg-slate-400" />
                                                                                     {m.name}
                                                                                 </span>
                                                                             ))}

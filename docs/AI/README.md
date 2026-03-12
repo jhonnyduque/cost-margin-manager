@@ -1,4 +1,4 @@
-﻿# BETO OS — AI Documentation
+# BETO OS — AI Documentation
 
 This folder is the governance and skill system for BETO OS.
 
@@ -11,3 +11,6 @@ This folder is the governance and skill system for BETO OS.
 
 ## Rule
 Any change to product, UI, backend, billing or messaging must comply with MASTER_SYSTEM.
+
+## Related Governance
+- Navigation governance: ../NAVIGATION_GOVERNANCE.md

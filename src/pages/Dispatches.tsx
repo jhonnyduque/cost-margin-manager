@@ -52,19 +52,19 @@ const Dispatches: React.FC = () => {
         switch (status) {
             case 'confirmado':
                 return (
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 ${radius.full} text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200`}>
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-800">
                         <CheckCircle2 size={12} /> Confirmado
                     </span>
                 );
             case 'anulado':
                 return (
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 ${radius.full} text-xs font-semibold bg-rose-100 text-rose-700 border border-rose-200`}>
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400">
                         <XCircle size={12} /> Anulado
                     </span>
                 );
             case 'borrador':
                 return (
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 ${radius.full} text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200`}>
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500">
                         <Clock size={12} /> Borrador
                     </span>
                 );
@@ -108,11 +108,11 @@ const Dispatches: React.FC = () => {
                     </div>
                     <div className={`p-4 ${colors.bgSurface} ${radius.xl} border ${colors.borderStandard} ${shadows.sm}`}>
                         <p className={`${typography.uiLabel} ${colors.textMuted}`}>Borradores</p>
-                        <p className="text-2xl font-bold text-blue-600">{dispatches.filter(d => d.status === 'borrador').length}</p>
+                        <p className="text-2xl font-bold text-slate-800">{dispatches.filter(d => d.status === 'borrador').length}</p>
                     </div>
                     <div className={`p-4 ${colors.bgSurface} ${radius.xl} border ${colors.borderStandard} ${shadows.sm}`}>
                         <p className={`${typography.uiLabel} ${colors.textMuted}`}>Confirmados</p>
-                        <p className="text-2xl font-bold text-emerald-600">{dispatches.filter(d => d.status === 'confirmado').length}</p>
+                        <p className="text-2xl font-bold text-slate-800">{dispatches.filter(d => d.status === 'confirmado').length}</p>
                     </div>
                     <div className={`p-4 ${colors.bgSurface} ${radius.xl} border ${colors.borderStandard} ${shadows.sm}`}>
                         <p className={`${typography.uiLabel} ${colors.textMuted}`}>Valor Total</p>
@@ -136,7 +136,7 @@ const Dispatches: React.FC = () => {
                                 className={`
                                     w-full h-11 pl-11 pr-4 rounded-xl
                                     bg-slate-50 border ${colors.borderStandard}
-                                    focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500
+                                    focus:bg-white focus:ring-2 focus:ring-slate-400/20 focus:border-slate-400
                                     transition-all outline-none text-slate-700
                                 `}
                             />
@@ -151,7 +151,7 @@ const Dispatches: React.FC = () => {
                                     className={`
                                         px-4 py-1.5 rounded-lg text-sm font-medium transition-all
                                         ${filterStatus === status
-                                            ? 'bg-white text-indigo-600 shadow-sm'
+                                            ? 'bg-white text-slate-800 shadow-sm'
                                             : 'text-slate-500 hover:text-slate-700'}
                                     `}
                                 >
@@ -209,7 +209,7 @@ const Dispatches: React.FC = () => {
                                     {filteredDispatches.map((dispatch) => (
                                         <tr key={dispatch.id} className="group hover:bg-slate-50/80 transition-colors">
                                             <td className="px-6 py-4">
-                                                <span className="font-mono text-sm font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
+                                                <span className="font-mono text-sm font-bold text-slate-700">
                                                     {dispatch.number}
                                                 </span>
                                             </td>
@@ -232,7 +232,7 @@ const Dispatches: React.FC = () => {
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <span className={`px-2 py-1 ${radius.md} bg-slate-100 text-slate-600 text-xs font-bold`}>
+                                                <span className="text-sm font-bold text-slate-600 tabular-nums">
                                                     {dispatch.items?.length || 0}
                                                 </span>
                                             </td>
@@ -250,7 +250,7 @@ const Dispatches: React.FC = () => {
                                                         <>
                                                             <button
                                                                 onClick={() => handleEdit(dispatch)}
-                                                                className={`p-2 ${radius.lg} text-blue-600 hover:bg-blue-50 transition-colors`}
+                                                                className={`p-2 ${radius.lg} text-slate-600 hover:bg-slate-100 transition-colors`}
                                                                 title="Editar borrador"
                                                             >
                                                                 <Edit size={18} />
@@ -265,7 +265,7 @@ const Dispatches: React.FC = () => {
                                                                         }
                                                                     }
                                                                 }}
-                                                                className={`p-2 ${radius.lg} text-emerald-600 hover:bg-emerald-50 transition-colors`}
+                                                                className={`p-2 ${radius.lg} text-slate-600 hover:bg-slate-100 transition-colors`}
                                                                 title="Confirmar Despacho"
                                                             >
                                                                 <CheckCircle2 size={18} />
@@ -276,7 +276,7 @@ const Dispatches: React.FC = () => {
                                                                         await deleteDispatch(dispatch.id);
                                                                     }
                                                                 }}
-                                                                className={`p-2 ${radius.lg} text-rose-600 hover:bg-rose-50 transition-colors`}
+                                                                className={`p-2 ${radius.lg} text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors`}
                                                                 title="Eliminar borrador"
                                                             >
                                                                 <Trash2 size={18} />
@@ -286,7 +286,7 @@ const Dispatches: React.FC = () => {
                                                         <>
                                                             <button
                                                                 onClick={() => handleView(dispatch)}
-                                                                className={`p-2 ${radius.lg} text-indigo-600 hover:bg-indigo-50 transition-colors`}
+                                                                className={`p-2 ${radius.lg} text-slate-600 hover:bg-slate-100 transition-colors`}
                                                                 title="Ver Detalle"
                                                             >
                                                                 <Eye size={18} />
@@ -298,7 +298,7 @@ const Dispatches: React.FC = () => {
                                                                             await cancelDispatch(dispatch.id);
                                                                         }
                                                                     }}
-                                                                    className={`p-2 ${radius.lg} text-rose-600 hover:bg-rose-50 transition-colors`}
+                                                                    className={`p-2 ${radius.lg} text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors`}
                                                                     title="Anular Despacho"
                                                                 >
                                                                     <Ban size={18} />

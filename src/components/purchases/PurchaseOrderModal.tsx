@@ -202,12 +202,12 @@ const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({ isOpen, onClose
                 <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                     <div>
                         <h3 className={`${typography.sectionTitle} flex items-center gap-2`}>
-                            <ShoppingCart size={20} className="text-indigo-500" />
+                            <ShoppingCart size={20} className="text-slate-500" />
                             {editingOrder ? 'Editar Orden de Compra' : 'Nueva Orden de Compra'}
                         </h3>
                         {editingOrder && (
                             <p className="text-xs text-slate-500 font-medium mt-1">
-                                Editando: <span className="text-indigo-600 font-bold font-mono">{editingOrder.number}</span>
+                                Editando: <span className="text-slate-700 font-bold font-mono">{editingOrder.number}</span>
                             </p>
                         )}
                     </div>
@@ -289,16 +289,16 @@ const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({ isOpen, onClose
                                     return (
                                         <div key={item.id} className={`p-4 ${colors.bgSurface} ${radius.xl} border ${colors.borderSubtle} relative group`}>
                                             <div className="flex items-center gap-2 mb-3">
-                                                <span className="text-[10px] font-black text-indigo-500 bg-indigo-50 size-6 rounded-full flex items-center justify-center">
+                                                <span className="text-[10px] font-black text-slate-500 bg-slate-100 size-6 rounded-full flex items-center justify-center">
                                                     {index + 1}
                                                 </span>
                                                 <span className="text-xs font-bold text-slate-400 uppercase flex-1">
                                                     {item.raw_material_name || 'Nuevo Ítem'}
-                                                    {item.unit && <span className="ml-2 text-[10px] font-black text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded">{item.unit.toUpperCase()}</span>}
+                                                    {item.unit && <span className="ml-2 text-[10px] font-black text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{item.unit.toUpperCase()}</span>}
                                                 </span>
                                                 <button
                                                     onClick={() => handleRemoveItem(item.id)}
-                                                    className="p-1 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                                    className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
                                                 >
                                                     <Trash2 size={14} />
                                                 </button>
@@ -341,7 +341,7 @@ const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({ isOpen, onClose
                                                 {/* Cantidad */}
                                                 <div>
                                                     <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
-                                                        Cant. {selectedUnit && <span className="text-indigo-500">({selectedUnit.symbol})</span>}
+                                                        Cant. {selectedUnit && <span className="text-slate-500">({selectedUnit.symbol})</span>}
                                                     </label>
                                                     <input
                                                         type="number"
@@ -358,7 +358,7 @@ const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({ isOpen, onClose
                                                 {/* Precio Unitario */}
                                                 <div>
                                                     <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
-                                                        P.U. {selectedUnit && <span className="text-indigo-500">(/{selectedUnit.symbol})</span>}
+                                                        P.U. {selectedUnit && <span className="text-slate-500">(/{selectedUnit.symbol})</span>}
                                                     </label>
                                                     <input
                                                         type="number"
@@ -389,9 +389,9 @@ const PurchaseOrderModal: React.FC<PurchaseOrderModalProps> = ({ isOpen, onClose
 
                     {/* Section 3: Summary */}
                     {items.length > 0 && (
-                        <div className={`p-4 ${radius.xl} bg-indigo-50/50 border border-indigo-100 flex items-center justify-between`}>
-                            <span className="text-sm font-bold text-indigo-800 uppercase">Total de la Orden</span>
-                            <span className="text-xl font-black text-indigo-700 tabular-nums">
+                        <div className={`p-4 ${radius.xl} bg-slate-50 border border-slate-200 flex items-center justify-between`}>
+                            <span className="text-sm font-bold text-slate-800 uppercase">Total de la Orden</span>
+                            <span className="text-xl font-black text-slate-800 tabular-nums">
                                 ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                         </div>

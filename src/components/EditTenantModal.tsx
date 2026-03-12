@@ -175,9 +175,9 @@ const EditTenantModal: React.FC<EditTenantModalProps> = ({ isOpen, company, onCl
                                         <div className="h-2 w-2 rounded-full bg-red-500" />
                                     )}
                                     <span className="capitalize">{status}</span>
-                                    {company.current_period_ends_at && (
+                                    {company.current_period_end && (
                                         <span className="ml-auto text-xs text-slate-500">
-                                            Vence: {new Date(company.current_period_ends_at).toLocaleDateString()}
+                                            Vence: {new Date(company.current_period_end).toLocaleDateString()}
                                         </span>
                                     )}
                                 </div>
@@ -264,3 +264,4 @@ const EditTenantModal: React.FC<EditTenantModalProps> = ({ isOpen, company, onCl
 };
 
 export default EditTenantModal;
+

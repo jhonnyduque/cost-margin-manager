@@ -11,6 +11,7 @@ import Products from '@/pages/Products';
 import RawMaterials from '@/pages/RawMaterials';
 import Team from '@/pages/Team';
 import Login from '@/pages/Login';
+import Explore from './pages/Explore';
 import Clients from '@/pages/Clients';
 import Dispatches from './pages/Dispatches';
 import NotProvisioned from '@/pages/NotProvisioned';
@@ -47,7 +48,7 @@ import { notificationListener } from '@/services/eventListeners/notificationList
 
 const AppContent: React.FC = () => {
     const currentCompanyId = useStore(state => state.currentCompanyId);
-    const { isLoading: isAuthLoading, user, mode, isSigningOut } = useAuth();
+    const { isLoading: isAuthLoading, user, userRole, mode, isSigningOut } = useAuth();
     const location = useLocation();
 
     useEffect(() => {
@@ -115,6 +116,10 @@ const AppContent: React.FC = () => {
         return <Login />;
     }
 
+    if (location.pathname === '/explore') {
+        return <Explore />;
+    }
+
     if (!user) {
         return <Navigate to="/login" replace />;
     }
@@ -127,6 +132,8 @@ const AppContent: React.FC = () => {
     if (location.pathname === '/not-provisioned') {
         return <NotProvisioned />;
     }
+
+    const canAccessBilling = user.is_super_admin || ['owner', 'admin', 'manager'].includes(userRole || '');
 
     return (
         <OSLayout>
@@ -164,14 +171,15 @@ const AppContent: React.FC = () => {
                 <Route path="/reportes" element={<PlaceholderPage />} />
 
                 {/* Equipo */}
+                <Route path="/login" element={<Login />} />
                 <Route path="/equipo" element={<Team />} />
                 <Route path="/platform/users" element={<Team />} />
 
                 {/* Billing */}
-                <Route path="/platform/billing" element={<Billing />} />
-                <Route path="/platform/billing/checkout" element={<BillingCheckout />} />
-                <Route path="/platform/billing/success" element={<BillingSuccess />} />
-                <Route path="/platform/billing/portal" element={<BillingSuccess />} />
+                <Route path="/platform/billing" element={canAccessBilling ? <Billing /> : <Navigate to="/dashboard" replace />} />
+                <Route path="/platform/billing/checkout" element={canAccessBilling ? <BillingCheckout /> : <Navigate to="/dashboard" replace />} />
+                <Route path="/platform/billing/success" element={canAccessBilling ? <BillingSuccess /> : <Navigate to="/dashboard" replace />} />
+                <Route path="/platform/billing/portal" element={canAccessBilling ? <BillingSuccess /> : <Navigate to="/dashboard" replace />} />
 
                 {/* Más */}
                 <Route path="/mas" element={<MorePage />} />

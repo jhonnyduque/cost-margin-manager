@@ -28,15 +28,15 @@ export const Button: React.FC<ButtonProps> = ({
     ${radius.md}
     transition-all duration-200
     outline-none whitespace-nowrap
-    focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600
+    focus:ring-2 focus:ring-indigo-500/20 focus:ring-offset-1
     active:scale-[0.98]
   `;
 
     const sizeClasses = {
-        base: `${spacing.pxLg} py-2 text-[13px] font-bold uppercase tracking-wider`,
-        sm: `${spacing.pxMd} py-1.5 text-[11px] font-black uppercase tracking-widest`,
-        lg: `${spacing.pxXl} py-2.5 text-[14px] font-bold uppercase tracking-wide`,
-        icon: "p-2 aspect-square"
+        base: `min-w-[120px] h-10 px-6 text-[13px] font-bold uppercase tracking-wider`,
+        sm: `min-w-[100px] h-8 px-4 text-[11px] font-black uppercase tracking-widest`,
+        lg: `min-w-[140px] h-12 px-8 text-[14px] font-bold uppercase tracking-wide`,
+        icon: "h-10 w-10 aspect-square"
     };
 
     const layoutClasses = `
@@ -46,7 +46,7 @@ export const Button: React.FC<ButtonProps> = ({
 
     const variantClasses: Record<ButtonVariant, string> = {
         primary: `
-      ${colors.bgBrand} ${colors.textInverted}
+      bg-indigo-600 ${colors.textInverted}
       hover:brightness-110
       border border-transparent
       ${shadows.sm}

@@ -1,13 +1,13 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Layers, Users, CreditCard, Settings, Menu } from 'lucide-react';
+import { LayoutDashboard, Layers, Users, CreditCard, Menu, Factory, Beaker } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 /**
- * MobileBottomNav — v2.4 with 5th "More" tab
+ * MobileBottomNav — compact icon-only mobile navigation
  * 
  * SuperAdmin: Home | Entornos | Equipo | Billing | Más
- * Tenant:     Home | Productos | Equipo | Settings | Más
+ * Tenant:     Home | Productos | Producción | Materias Primas | Más
  */
 
 interface NavItem {
@@ -56,14 +56,14 @@ const TENANT_NAV_ITEMS: NavItem[] = [
         icon: Layers,
     },
     {
-        label: 'Equipo',
-        path: '/equipo',
-        icon: Users,
+        label: 'Producción',
+        path: '/produccion',
+        icon: Factory,
     },
     {
-        label: 'Settings',
-        path: '/settings',
-        icon: Settings,
+        label: 'Materias Primas',
+        path: '/materias-primas',
+        icon: Beaker,
     },
     {
         label: 'Más',
@@ -82,48 +82,39 @@ export const MobileBottomNav: React.FC = () => {
         <nav
             className="
                 fixed bottom-0 left-0 right-0 z-50
-                bg-white border-t border-slate-200
+                bg-white/95 backdrop-blur border-t border-slate-200
                 safe-area-bottom lg:hidden
             "
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+            aria-label="Navegación principal móvil"
         >
-            <div className="flex items-stretch justify-around h-16">
+            <div className="flex items-center justify-around h-16 px-2">
                 {items.map((item) => {
                     const Icon = item.icon;
                     const isActive = location.pathname === item.path ||
-                        (item.path !== '/' && location.pathname.startsWith(item.path));
+                        (item.path !== '/' && item.path !== '/mas' && location.pathname.startsWith(item.path));
 
                     return (
                         <NavLink
                             key={item.path}
                             to={item.path}
+                            aria-label={item.label}
+                            title={item.label}
                             className={`
-                                flex flex-col items-center justify-center flex-1
-                                min-h-[44px] min-w-[44px]
-                                transition-colors duration-200
+                                relative flex items-center justify-center w-12 h-12 rounded-2xl
+                                transition-all duration-200
                                 ${isActive
-                                    ? 'text-indigo-600'
-                                    : 'text-slate-500 active:text-slate-600'
+                                    ? 'text-indigo-600 bg-indigo-50'
+                                    : 'text-slate-500 active:text-slate-600 active:bg-slate-100'
                                 }
                             `}
                         >
                             <Icon
                                 size={22}
-                                className={`
-                                    transition-transform duration-200
-                                    ${isActive ? 'scale-110' : ''}
-                                `}
+                                className={`transition-transform duration-200 ${isActive ? 'scale-110' : ''}`}
                             />
-                            <span
-                                className={`
-                                    text-xs mt-1 font-medium leading-none
-                                    ${isActive ? 'text-indigo-600' : 'text-slate-500'}
-                                `}
-                            >
-                                {item.label}
-                            </span>
                             {isActive && (
-                                <div className="w-1 h-1 rounded-full bg-indigo-600 mt-0.5" />
+                                <div className="absolute bottom-1.5 w-1 h-1 rounded-full bg-indigo-600" />
                             )}
                         </NavLink>
                     );

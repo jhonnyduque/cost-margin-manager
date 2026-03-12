@@ -126,11 +126,11 @@ const ReceiveOrderModal: React.FC<ReceiveOrderModalProps> = ({ isOpen, onClose, 
                 <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                     <div>
                         <h3 className={`${typography.sectionTitle} flex items-center gap-2`}>
-                            <Truck size={20} className="text-emerald-500" />
+                            <Truck size={20} className="text-slate-500" />
                             Recepción de Mercancía
                         </h3>
                         <div className="flex items-center gap-3 mt-1.5">
-                            <span className="font-mono text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{order.number}</span>
+                            <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">{order.number}</span>
                             {order.supplier_name && (
                                 <span className="text-xs font-medium text-slate-500">
                                     Proveedor: <span className="text-slate-700 font-bold">{order.supplier_name}</span>
@@ -147,9 +147,9 @@ const ReceiveOrderModal: React.FC<ReceiveOrderModalProps> = ({ isOpen, onClose, 
                 <div className="p-6 space-y-5 max-h-[65vh] overflow-y-auto">
                     {/* Warning Banner */}
                     {hasDifferences && (
-                        <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-                            <AlertTriangle size={18} className="text-amber-500 mt-0.5 shrink-0" />
-                            <p className="text-sm text-amber-800 font-medium">
+                        <div className="flex items-start gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                            <AlertTriangle size={18} className="text-slate-500 mt-0.5 shrink-0" />
+                            <p className="text-sm text-slate-600 font-medium">
                                 Las cantidades recibidas difieren de las ordenadas. Se registrarán los valores reales.
                             </p>
                         </div>
@@ -165,11 +165,11 @@ const ReceiveOrderModal: React.FC<ReceiveOrderModalProps> = ({ isOpen, onClose, 
                                 <div key={item.item_id} className={`${colors.bgSurface} ${radius.xl} border ${colors.borderStandard} overflow-hidden`}>
                                     {/* Item Header */}
                                     <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center gap-2">
-                                        <Package size={14} className="text-indigo-500" />
-                                        <span className="text-sm font-bold text-slate-700">{item.raw_material_name}</span>
-                                        <span className="text-[10px] font-black text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded">{item.unit.toUpperCase()}</span>
+                                        <Package size={14} className="text-slate-500" />
+                                        <span className="text-sm font-bold text-slate-700 truncate">{item.raw_material_name}</span>
+                                        <span className="text-[10px] font-black text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{item.unit.toUpperCase()}</span>
                                         {item.is_textile && (
-                                            <span className="text-[10px] font-black text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                            <span className="text-[10px] font-black text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded flex items-center gap-1">
                                                 <Ruler size={10} /> TELA
                                             </span>
                                         )}
@@ -194,7 +194,7 @@ const ReceiveOrderModal: React.FC<ReceiveOrderModalProps> = ({ isOpen, onClose, 
 
                                             {/* Recibido */}
                                             <div>
-                                                <label className="block text-[10px] font-bold text-emerald-600 uppercase mb-1">Cant. Recibida ({item.unit})</label>
+                                                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Cant. Recibida ({item.unit})</label>
                                                 <input
                                                     type="number"
                                                     min="0.01"
@@ -206,7 +206,7 @@ const ReceiveOrderModal: React.FC<ReceiveOrderModalProps> = ({ isOpen, onClose, 
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block text-[10px] font-bold text-emerald-600 uppercase mb-1">P.U. Recibido (/{item.unit})</label>
+                                                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">P.U. Recibido (/{item.unit})</label>
                                                 <input
                                                     type="number"
                                                     min="0.01"
@@ -221,7 +221,7 @@ const ReceiveOrderModal: React.FC<ReceiveOrderModalProps> = ({ isOpen, onClose, 
                                             {/* Ancho — solo para telas */}
                                             {item.is_textile && (
                                                 <div>
-                                                    <label className="block text-[10px] font-bold text-emerald-600 uppercase mb-1 flex items-center gap-1">
+                                                    <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1 flex items-center gap-1">
                                                         <Ruler size={10} /> Ancho (cm)
                                                     </label>
                                                     <input
@@ -232,7 +232,7 @@ const ReceiveOrderModal: React.FC<ReceiveOrderModalProps> = ({ isOpen, onClose, 
                                                         onChange={(e) => handleItemChange(item.item_id, 'width', parseInt(e.target.value) || 0)}
                                                         onFocus={(e) => { if (e.target.value === '0') e.target.value = ''; }}
                                                         placeholder="140"
-                                                        className="w-full h-9 px-3 rounded-lg bg-white border border-emerald-200 text-sm tabular-nums outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-emerald-700 font-bold"
+                                                        className="w-full h-9 px-3 rounded-lg bg-white border border-slate-200 text-sm tabular-nums outline-none focus:ring-2 focus:ring-slate-400/20 focus:border-slate-400 text-slate-700 font-bold"
                                                     />
                                                 </div>
                                             )}
@@ -240,7 +240,7 @@ const ReceiveOrderModal: React.FC<ReceiveOrderModalProps> = ({ isOpen, onClose, 
                                             {/* Subtotal */}
                                             <div>
                                                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Subtotal</label>
-                                                <div className="h-9 px-3 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center text-sm font-bold text-indigo-700 tabular-nums">
+                                                <div className="h-9 px-3 rounded-lg bg-slate-50 border border-slate-200 flex items-center text-sm font-bold text-slate-700 tabular-nums">
                                                     ${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </div>
                                             </div>
@@ -252,9 +252,9 @@ const ReceiveOrderModal: React.FC<ReceiveOrderModalProps> = ({ isOpen, onClose, 
                     </div>
 
                     {/* Total Summary */}
-                    <div className={`p-4 ${radius.xl} bg-indigo-50/50 border border-indigo-100 flex items-center justify-between`}>
-                        <span className="text-sm font-bold text-indigo-800 uppercase">Total Recibido</span>
-                        <span className="text-xl font-black text-indigo-700 tabular-nums">
+                    <div className={`p-4 ${radius.xl} bg-slate-50 border border-slate-200 flex items-center justify-between`}>
+                        <span className="text-sm font-bold text-slate-800 uppercase">Total Recibido</span>
+                        <span className="text-xl font-black text-slate-800 tabular-nums">
                             ${totalReceived.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                     </div>

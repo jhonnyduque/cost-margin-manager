@@ -459,7 +459,7 @@ const ProductBuilder = () => {
                 {/* ── SECCIÓN 1: INFORMACIÓN GENERAL ── */}
                 <Card className={`${spacing.pMd} sm:${spacing.pMd} lg:${spacing.pLg} ${shadows.sm} border ${colors.borderStandard} ${colors.bgSurface}`}>
                   <h2 className={`${typography.text.section} ${colors.textPrimary} mb-6 flex items-center gap-2 border-b border-slate-50 pb-4`}>
-                    <Package size={parseInt(typography.icon.md)} className="text-indigo-500" aria-hidden="true" /> 1. Información General
+                    <Package size={parseInt(typography.icon.md)} className="text-slate-500" aria-hidden="true" /> 1. Información General
                   </h2>
                   <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                     <Input
@@ -484,7 +484,7 @@ const ProductBuilder = () => {
                 <Card className={`${spacing.pMd} sm:${spacing.pMd} lg:${spacing.pLg} ${shadows.sm} border ${colors.borderStandard} ${colors.bgSurface}`}>
                   <div className="mb-6 flex flex-col justify-between gap-4 border-b border-slate-50 pb-4 sm:flex-row sm:items-center">
                     <h2 className={`${typography.text.section} ${colors.textPrimary} flex items-center gap-2`}>
-                      <RotateCcw size={parseInt(typography.icon.md)} className="text-indigo-500" aria-hidden="true" /> 2. Receta de Producción
+                      <RotateCcw size={parseInt(typography.icon.md)} className="text-slate-500" aria-hidden="true" /> 2. Receta de Producción
                     </h2>
                     <div className="flex items-center gap-4">
                       <p className={`${typography.text.caption} ${colors.textSecondary} mt-0.5 hidden font-bold uppercase tracking-wider sm:block`}>Composición Técnica del Producto</p>
@@ -497,8 +497,8 @@ const ProductBuilder = () => {
                   <div className="space-y-4">
                     {(formData.materials || []).length === 0 && (
                       <div className={`px-4 py-8 text-center ${typography.text.body} rounded-xl border-2 border-dashed border-slate-200 text-slate-500`}>
-                        <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-indigo-50">
-                          <PackageSearch size={24} className="text-indigo-400" />
+                        <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-slate-100">
+                          <PackageSearch size={24} className="text-slate-400" />
                         </div>
                         Aún no hay materias primas asignadas.<br />
                         Añade materiales para armar tu receta.
@@ -552,7 +552,7 @@ const ProductBuilder = () => {
                       stockInfo = `Stock: ${displayStock.toFixed(2)} ${pm.consumption_unit}`;
 
                       return (
-                        <div key={idx} className={`overflow-hidden ${radius.xl} border transition-all ${hasMissingStock ? 'border-red-300 bg-red-50/20 shadow-sm' : `${colors.borderStandard} hover:border-gray-300`}`}>
+                        <div key={idx} className={`overflow-hidden ${radius.xl} border transition-all ${hasMissingStock ? 'border-slate-300 bg-slate-50/20 shadow-sm' : `${colors.borderStandard} hover:border-gray-300`}`}>
                           <div className={`flex flex-col gap-2 ${colors.bgMain} relative border-b p-3 ${colors.borderSubtle} last:border-b-0`}>
 
                             <div className="flex w-full items-center justify-between gap-2">
@@ -582,8 +582,8 @@ const ProductBuilder = () => {
                                     <span className="select-none pl-1 pr-3 text-xs font-bold uppercase text-slate-400">{pm.consumption_unit}</span>
                                   </div>
                                 ) : (
-                                  <div className="flex h-8 items-center justify-center rounded-lg border border-indigo-200 bg-indigo-50 px-2 shadow-sm">
-                                    <span className={`${typography.text.body} font-bold text-indigo-700`}>{areaM2.toFixed(2)}m²</span>
+                                  <div className="flex h-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2 shadow-sm">
+                                    <span className={`${typography.text.body} font-bold text-slate-700`}>{areaM2.toFixed(2)}m²</span>
                                   </div>
                                 )}
                               </div>
@@ -592,13 +592,13 @@ const ProductBuilder = () => {
                                 <button type="button" onClick={() => setExpandedMaterial(isExpanded ? null : idx)} className={`rounded p-1.5 transition-colors ${isExpanded ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-600'}`} title="Desglose FIFO" aria-label={isExpanded ? 'Ocultar desglose FIFO' : 'Mostrar desglose FIFO'}>
                                   <Info size={18} aria-hidden="true" />
                                 </button>
-                                <button type="button" onClick={() => removeMaterial(idx)} className="rounded p-1.5 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-500" aria-label={`Eliminar ${material?.name || 'material'} de la receta`}>
+                                <button type="button" onClick={() => removeMaterial(idx)} className="rounded p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-600" aria-label={`Eliminar ${material?.name || 'material'} de la receta`}>
                                   <Trash2 size={18} aria-hidden="true" />
                                 </button>
                               </div>
 
                               <div className="flex shrink-0 flex-col items-end">
-                                <span className={`${typography.text.caption} font-bold tabular-nums leading-none ${hasMissingStock ? 'text-red-600' : 'text-slate-900'}`} title={hasMissingStock ? 'Stock insuficiente' : mainBatchInfo}>
+                                <span className={`${typography.text.caption} font-bold tabular-nums leading-none ${hasMissingStock ? 'text-slate-500' : 'text-slate-900'}`} title={hasMissingStock ? 'Stock insuficiente' : mainBatchInfo}>
                                   {formatCurrency(costRow)}
                                 </span>
                               </div>
@@ -629,18 +629,18 @@ const ProductBuilder = () => {
                                       ))
                                   )}
                                 </div>
-                                <span className={`${typography.text.caption} font-bold uppercase tracking-widest ${totalAvailableBase > 0 ? 'text-slate-600' : 'text-red-500'}`}>
+                                <span className={`${typography.text.caption} font-bold uppercase tracking-widest ${totalAvailableBase > 0 ? 'text-slate-600' : 'text-slate-400'}`}>
                                   {stockInfo}
                                 </span>
                               </div>
                               <div className="flex items-center">
                                 {mainBatchInfo && !hasMissingStock && (
-                                  <span className={`${typography.text.caption} max-w-[180px] truncate font-medium text-emerald-600`} title={mainBatchInfo}>
+                                  <span className={`${typography.text.caption} max-w-[180px] truncate font-medium text-slate-600`} title={mainBatchInfo}>
                                     {mainBatchInfo}
                                   </span>
                                 )}
                                 {hasMissingStock && (
-                                  <span className={`${typography.text.caption} flex items-center gap-1 rounded bg-red-50 px-1.5 py-0.5 font-bold uppercase leading-none tracking-widest text-red-500`}><AlertTriangle size={10} aria-hidden="true" /> Falta Stock</span>
+                                  <span className={`${typography.text.caption} flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 font-bold uppercase leading-none tracking-widest text-slate-500`}><AlertTriangle size={10} aria-hidden="true" /> Falta Stock</span>
                                 )}
                               </div>
                             </div>
@@ -664,7 +664,7 @@ const ProductBuilder = () => {
                                       <tbody className="divide-y divide-gray-100">
                                         {breakdown.length > 0 ? (
                                           breakdown.map((b: any, i) => (
-                                            <tr key={i} className={b.is_missing ? 'bg-red-50 text-red-700' : 'text-gray-700'}>
+                                            <tr key={i} className={b.is_missing ? 'bg-slate-50 text-slate-500' : 'text-gray-700'}>
                                               <td className="py-2.5 max-w-[120px] truncate px-3 font-medium md:px-4">
                                                 {b.is_missing ? 'Sobreconsumo' : `Lote ${new Date(b.date).toLocaleDateString()}`}
                                               </td>
@@ -696,22 +696,22 @@ const ProductBuilder = () => {
                               {pm.mode === 'pieces' && (
                                 <div className="space-y-4">
                                   <div className="flex items-center justify-between">
-                                    <h5 className={`flex items-center gap-2 ${typography.text.caption} font-bold uppercase tracking-widest text-indigo-500`}><Ruler size={14} aria-hidden="true" /> Trazado de Piezas</h5>
+                                    <h5 className={`flex items-center gap-2 ${typography.text.caption} font-bold uppercase tracking-widest text-slate-500`}><Ruler size={14} aria-hidden="true" /> Trazado de Piezas</h5>
                                     <Button variant="secondary" onClick={() => addPiece(idx)} className="h-7 px-2 text-xs">Añadir Pieza</Button>
                                   </div>
                                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                                     {(pm.pieces || []).map((piece: any, pIdx: number) => (
-                                      <div key={pIdx} className="flex items-center gap-2 rounded-lg border border-indigo-100 bg-indigo-50/30 p-2 shadow-sm">
+                                      <div key={pIdx} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/30 p-2 shadow-sm">
                                         <div className="flex-1">
-                                          <label className={`${typography.text.caption} mb-0.5 block font-bold uppercase text-indigo-500`}>Largo</label>
-                                          <input type="number" step="0.1" inputMode="decimal" aria-label={`Largo pieza ${pIdx + 1}`} className={`w-full rounded border border-slate-200 bg-white px-2 py-1 ${typography.text.body} font-bold outline-none focus:ring-1 focus:ring-indigo-300`} value={piece.length} onChange={e => updatePiece(idx, pIdx, 'length', parseFloat(e.target.value) || 0)} onKeyDown={handleNumberInputKeyDown} />
+                                          <label className={`${typography.text.caption} mb-0.5 block font-bold uppercase text-slate-500`}>Largo</label>
+                                          <input type="number" step="0.1" inputMode="decimal" aria-label={`Largo pieza ${pIdx + 1}`} className={`w-full rounded border border-slate-200 bg-white px-2 py-1 ${typography.text.body} font-bold outline-none focus:ring-1 focus:ring-slate-300`} value={piece.length} onChange={e => updatePiece(idx, pIdx, 'length', parseFloat(e.target.value) || 0)} onKeyDown={handleNumberInputKeyDown} />
                                         </div>
                                         <span className="mt-4 text-slate-500" aria-hidden="true">×</span>
                                         <div className="flex-1">
-                                          <label className={`${typography.text.caption} mb-0.5 block font-bold uppercase text-indigo-500`}>Ancho</label>
-                                          <input type="number" step="0.1" inputMode="decimal" aria-label={`Ancho pieza ${pIdx + 1}`} className={`w-full rounded border border-gray-200 bg-white px-2 py-1 ${typography.text.body} font-bold outline-none focus:ring-1 focus:ring-indigo-300`} value={piece.width} onChange={e => updatePiece(idx, pIdx, 'width', parseFloat(e.target.value) || 0)} onKeyDown={handleNumberInputKeyDown} />
+                                          <label className={`${typography.text.caption} mb-0.5 block font-bold uppercase text-slate-500`}>Ancho</label>
+                                          <input type="number" step="0.1" inputMode="decimal" aria-label={`Ancho pieza ${pIdx + 1}`} className={`w-full rounded border border-gray-200 bg-white px-2 py-1 ${typography.text.body} font-bold outline-none focus:ring-1 focus:ring-slate-300`} value={piece.width} onChange={e => updatePiece(idx, pIdx, 'width', parseFloat(e.target.value) || 0)} onKeyDown={handleNumberInputKeyDown} />
                                         </div>
-                                        <button type="button" onClick={() => removePiece(idx, pIdx)} className="mt-4 px-1 text-slate-500 hover:text-red-500" aria-label={`Eliminar pieza ${pIdx + 1}`}><X size={16} aria-hidden="true" /></button>
+                                        <button type="button" onClick={() => removePiece(idx, pIdx)} className="mt-4 px-1 text-slate-500 hover:text-slate-400" aria-label={`Eliminar pieza ${pIdx + 1}`}><X size={16} aria-hidden="true" /></button>
                                       </div>
                                     ))}
                                   </div>
@@ -728,14 +728,14 @@ const ProductBuilder = () => {
                 {/* ── SECCIÓN 3: COSTOS & PRECIO ── */}
                 <Card className={`${spacing.pMd} sm:${spacing.pMd} lg:${spacing.pLg} ${shadows.sm} border ${colors.borderStandard} ${colors.bgSurface}`}>
                   <h2 className={`${typography.text.section} mb-4 flex items-center gap-2`}>
-                    <TrendingUp size={parseInt(typography.icon.sm)} className="text-indigo-500" aria-hidden="true" /> 3. Configuración de Precios
+                    <TrendingUp size={parseInt(typography.icon.sm)} className="text-slate-500" aria-hidden="true" /> 3. Configuración de Precios
                   </h2>
 
                   {(formData.materials || []).length === 0 ? (
                     <div className="flex flex-col gap-6">
-                      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-indigo-100 bg-indigo-50/50 p-6 text-center sm:p-8">
-                        <div className="mb-4 rounded-full bg-white p-3 shadow-sm">
-                          <TrendingUp className="text-indigo-400" size={28} />
+                      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center sm:p-8">
+                        <div className="mx-auto mb-2 flex size-10 items-center justify-center rounded-full bg-slate-100">
+                          <TrendingUp className="text-slate-400" size={28} />
                         </div>
                         <h4 className="mb-2 text-base font-semibold text-gray-800">Diseña tu receta primero</h4>
                         <p className="mb-2 max-w-sm text-sm leading-relaxed text-gray-500">
@@ -764,26 +764,26 @@ const ProductBuilder = () => {
                       <div className="space-y-1.5">
                         <label className={typography.text.caption}>Precio Final</label>
                         <div className="relative">
-                          <span className={`absolute left-4 top-1/2 -translate-y-1/2 ${typography.text.body} font-bold leading-none ${metrics.priceState === 'loss' ? 'text-red-500' : metrics.priceState === 'warning' ? 'text-amber-500' : 'text-slate-800'}`}>{currencySymbol}</span>
+                          <span className={`absolute left-4 top-1/2 -translate-y-1/2 ${typography.text.body} font-bold leading-none ${metrics.priceState === 'loss' ? 'text-slate-500' : metrics.priceState === 'warning' ? 'text-slate-500' : 'text-slate-800'}`}>{currencySymbol}</span>
                           <input
                             type="number" step="0.01"
                             inputMode="decimal"
                             value={formData.price === 0 ? '' : formData.price ?? ''}
                             onChange={e => setFormData({ ...formData, price: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
                             onKeyDown={handleNumberInputKeyDown}
-                            className={`py-2.5 w-full rounded-lg border pl-9 pr-4 ${typography.text.body} font-bold tabular-nums outline-none transition-colors ${metrics.priceState === 'loss' ? 'border-red-300 bg-red-50 text-red-700 focus:border-red-400 focus:ring-red-100' : metrics.priceState === 'warning' ? 'border-amber-300 bg-amber-50 text-amber-800 focus:border-amber-400 focus:ring-amber-100' : 'border-gray-200 bg-gray-50 text-slate-900 focus:border-indigo-400 focus:bg-white focus:ring-indigo-100'} focus:ring-2`}
+                            className={`py-2.5 w-full rounded-lg border pl-9 pr-4 ${typography.text.body} font-bold tabular-nums outline-none transition-colors ${metrics.priceState === 'loss' ? 'border-slate-300 bg-slate-50 text-slate-700 focus:border-slate-400 focus:ring-slate-100' : metrics.priceState === 'warning' ? 'border-slate-300 bg-slate-50 text-slate-800 focus:border-slate-400 focus:ring-slate-100' : 'border-gray-200 bg-gray-50 text-slate-900 focus:border-slate-400 focus:bg-white focus:ring-slate-100'} focus:ring-2`}
                           />
                         </div>
                       </div>
 
-                      <button type="button" onClick={() => setFormData({ ...formData, price: exactSuggestedPrice })} className="py-2.5 group flex flex-col items-center justify-center gap-1 rounded-xl border border-gray-200 bg-white px-2 text-center transition-all hover:border-indigo-300 hover:bg-indigo-50 hover:shadow-sm">
-                        <span className={`${typography.text.caption} text-slate-600 group-hover:text-indigo-500`}>Exacto</span>
-                        <span className={`${typography.text.caption} font-semibold tabular-nums leading-none text-slate-900 transition-colors group-hover:text-indigo-700`}>{formatCurrency(exactSuggestedPrice)}</span>
+                      <button type="button" onClick={() => setFormData({ ...formData, price: exactSuggestedPrice })} className="py-2.5 group flex flex-col items-center justify-center gap-1 rounded-xl border border-gray-200 bg-white px-2 text-center transition-all hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm">
+                        <span className={`${typography.text.caption} text-slate-600 group-hover:text-slate-700`}>Exacto</span>
+                        <span className={`${typography.text.caption} font-semibold tabular-nums leading-none text-slate-900 transition-colors group-hover:text-slate-800`}>{formatCurrency(exactSuggestedPrice)}</span>
                       </button>
 
-                      <button type="button" onClick={() => setFormData({ ...formData, price: commercialSuggestedPrice })} className="py-2.5 group flex flex-col items-center justify-center gap-1 rounded-xl border border-emerald-100 bg-emerald-50/50 px-2 text-center transition-all hover:border-emerald-300 hover:bg-emerald-100 hover:shadow-sm">
-                        <span className={`${typography.text.caption} text-emerald-600/80 group-hover:text-emerald-600`}>Redondeo</span>
-                        <span className={`${typography.text.caption} font-semibold tabular-nums leading-none text-emerald-700 transition-colors group-hover:text-emerald-800`}>{formatCurrency(commercialSuggestedPrice)}</span>
+                      <button type="button" onClick={() => setFormData({ ...formData, price: commercialSuggestedPrice })} className="py-2.5 group flex flex-col items-center justify-center gap-1 rounded-xl border border-slate-200 bg-slate-50/50 px-2 text-center transition-all hover:border-slate-300 hover:bg-slate-100 hover:shadow-sm">
+                        <span className={`${typography.text.caption} text-slate-500 group-hover:text-slate-600`}>Redondeo</span>
+                        <span className={`${typography.text.caption} font-semibold tabular-nums leading-none text-slate-700 transition-colors group-hover:text-slate-800`}>{formatCurrency(commercialSuggestedPrice)}</span>
                       </button>
                     </div>
                   )}
@@ -815,7 +815,7 @@ const ProductBuilder = () => {
             <div className="lg:top-24 mt-6 w-full lg:sticky lg:z-10 lg:mt-0 lg:w-[360px]">
               <Card className={`${radius.xl} ${spacing.pMd} lg:${spacing.pLg} ${shadows.sm} border ${colors.borderStandard} ${colors.bgSurface}`}>
                 <h2 className={`flex ${typography.text.caption} ${colors.textSecondary} mb-4 items-center gap-2 font-bold uppercase lg:mb-6`}>
-                  <Layers size={14} className="text-indigo-500" /> Resumen Comercial
+                  <Layers size={14} className="text-slate-500" /> Resumen Comercial
                 </h2>
 
                 <div className="space-y-3 lg:space-y-4">
@@ -829,7 +829,7 @@ const ProductBuilder = () => {
                       <div className={`flex items-center justify-between ${radius.xl} ${colors.bgMain} px-4 py-3`}>
                         <span className={`${typography.text.caption} ${colors.textSecondary} font-bold`}>Margen real</span>
                         <div className="flex items-baseline gap-1.5">
-                          <span className={`${typography.text.body} font-bold leading-none ${metrics.priceState === 'loss' ? colors.statusDanger : metrics.priceState === 'warning' ? 'text-amber-500' : metrics.targetStatus === 'increase_required' ? 'text-amber-500' : colors.statusSuccess}`}>
+                          <span className={`${typography.text.body} font-bold leading-none ${metrics.priceState === 'loss' ? colors.statusDanger : metrics.priceState === 'warning' ? 'text-slate-500' : metrics.targetStatus === 'increase_required' ? 'text-slate-500' : colors.statusSuccess}`}>
                             {metrics.marginDisplay}
                           </span>
                         </div>

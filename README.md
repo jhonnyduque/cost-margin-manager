@@ -8,6 +8,11 @@ This contains everything you need to run your app locally.
 
 View your app in AI Studio: https://ai.studio/apps/drive/1psSgEvsFVdw7AJPZKQo3ZR8KizWwGHqX
 
+## Project Governance
+
+- Navigation governance: [docs/NAVIGATION_GOVERNANCE.md](docs/NAVIGATION_GOVERNANCE.md)
+- AI governance: [docs/AI/README.md](docs/AI/README.md)
+
 ## Run Locally
 
 **Prerequisites:**  Node.js

@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import Stripe from 'https://esm.sh/stripe@14.21.0';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
+import { pickRelevantSubscription } from '../_shared/billing-shared.ts';
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -8,42 +9,36 @@ const corsHeaders = {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-// 🔧 Logging estructurado
-const log = {
-    info: (msg: string, meta?: Record<string, any>) => {
-        console.log(JSON.stringify({
-            level: 'info',
-            msg,
-            ...meta,
-            ts: new Date().toISOString()
-        }));
-    },
-    error: (msg: string, meta?: Record<string, any>) => {
-        console.error(JSON.stringify({
-            level: 'error',
-            msg,
-            ...meta,
-            ts: new Date().toISOString()
-        }));
-    },
-    warn: (msg: string, meta?: Record<string, any>) => {
-        console.warn(JSON.stringify({
-            level: 'warn',
-            msg,
-            ...meta,
-            ts: new Date().toISOString()
-        }));
+const unixToIso = (value: number | null | undefined): string | null => {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+        return null;
     }
+
+    const date = new Date(value * 1000);
+    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+};
+
+const log = {
+    info: (msg: string, meta?: Record<string, unknown>) => {
+        console.log(JSON.stringify({ level: 'info', msg, ...meta, ts: new Date().toISOString() }));
+    },
+    warn: (msg: string, meta?: Record<string, unknown>) => {
+        console.warn(JSON.stringify({ level: 'warn', msg, ...meta, ts: new Date().toISOString() }));
+    },
+    error: (msg: string, meta?: Record<string, unknown>) => {
+        console.error(JSON.stringify({ level: 'error', msg, ...meta, ts: new Date().toISOString() }));
+    },
 };
 
 serve(async (req) => {
-    // Handle CORS preflight
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders, status: 200 });
     }
 
+    let event: Stripe.Event | null = null;
+    let eventRecordId: string | null = null;
+
     try {
-        // 1. Initialize Supabase with service role
         const supabase = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -55,7 +50,6 @@ serve(async (req) => {
             }
         );
 
-        // 2. Initialize Stripe
         const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
         const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET');
 
@@ -67,45 +61,83 @@ serve(async (req) => {
             throw new Error('STRIPE_WEBHOOK_SECRET not configured');
         }
 
-        const stripe = new Stripe(stripeSecretKey, {
-            apiVersion: '2024-06-20',
-        });
-
-        // 3. Get the signature from headers
+        const stripe = new Stripe(stripeSecretKey, { apiVersion: '2024-06-20' });
         const signature = req.headers.get('stripe-signature');
         if (!signature) {
             throw new Error('Missing stripe-signature header');
         }
 
-        // 4. Verify webhook signature
-        let event: Stripe.Event;
-
+        const body = await req.text();
         try {
-            const body = await req.text();
             event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
         } catch (err: any) {
-            log.error('Webhook signature verification failed', {
-                error: err.message
-            });
+            log.error('Webhook signature verification failed', { error: err.message });
             return new Response(
                 JSON.stringify({ error: `Webhook Error: ${err.message}` }),
                 { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
         }
 
-        log.info('Webhook event received', {
-            type: event.type,
-            id: event.id
-        });
+        const { data: insertedEvent, error: eventInsertError } = await supabase
+            .from('subscription_events')
+            .insert({
+                stripe_event_id: event.id,
+                event_type: event.type,
+                payload: event,
+                status: 'pending',
+            })
+            .select('id')
+            .single();
 
-        // 5. Handle the event
+        if (eventInsertError) {
+            const duplicate = eventInsertError.code === '23505' || eventInsertError.message?.includes('duplicate key');
+            if (duplicate) {
+                log.info('Webhook event already processed', { event_id: event.id, event_type: event.type });
+                return new Response(
+                    JSON.stringify({ received: true, duplicate: true, event_id: event.id, event_type: event.type }),
+                    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                );
+            }
+
+            throw eventInsertError;
+        }
+
+        eventRecordId = insertedEvent?.id ?? null;
         const eventType = event.type;
         const eventData = event.data.object as Stripe.Subscription | Stripe.Invoice | Stripe.Customer;
 
-        // ✅ FIX: Helper actualizado para buscar por stripe_customer_id (no por subscription_id)
+        const updateEventRecord = async (updates: Record<string, unknown>) => {
+            if (!eventRecordId) {
+                return;
+            }
+
+            const { error } = await supabase
+                .from('subscription_events')
+                .update(updates)
+                .eq('id', eventRecordId);
+
+            if (error) {
+                log.error('Failed to update subscription_events row', { event_id: event?.id, error: error.message });
+            }
+        };
+
+        const findCompanyByCustomerId = async (customerId: string) => {
+            const { data, error } = await supabase
+                .from('companies')
+                .select('id, name, slug, stripe_customer_id, subscription_tier, current_period_end, seat_limit')
+                .eq('stripe_customer_id', customerId)
+                .single();
+
+            if (error || !data) {
+                throw new Error(`Company not found for customer: ${customerId}`);
+            }
+
+            return data;
+        };
+
         const updateCompanySubscription = async (
             customerId: string,
-            updates: Record<string, any>
+            updates: Record<string, unknown>
         ) => {
             const { error } = await supabase
                 .from('companies')
@@ -117,323 +149,281 @@ serve(async (req) => {
             }
         };
 
-        // Helper to find company by Stripe customer ID
-        const findCompanyByCustomerId = async (customerId: string) => {
-            const { data, error } = await supabase
-                .from('companies')
-                .select('id, name, slug')
-                .eq('stripe_customer_id', customerId)
-                .single();
-
-            if (error || !data) {
-                throw new Error(`Company not found for customer: ${customerId}`);
-            }
-
-            return data;
-        };
-
-        // 🔧 Helper to get seat_limit from subscription_plans
         const getPlanSeatLimit = async (planSlug: string): Promise<number> => {
             const { data } = await supabase
                 .from('subscription_plans')
                 .select('max_users')
                 .eq('slug', planSlug)
                 .single();
+
             return data?.max_users || 5;
         };
 
-        // 🔔 Event Handlers
+        const resolveCompanyContext = async (customerId: string) => {
+            const company = await findCompanyByCustomerId(customerId);
+            await updateEventRecord({ company_id: company.id });
+            return company;
+        };
+
+        log.info('Webhook event received', { event_id: event.id, event_type: eventType });
+
         switch (eventType) {
-
-            // ██████████████████████████████████████████████████████████
-            // SUBSCRIPTION EVENTS
-            // ██████████████████████████████████████████████████████████
-
             case 'customer.subscription.created': {
                 const subscription = eventData as Stripe.Subscription;
+                const company = await resolveCompanyContext(subscription.customer as string);
+                const planKey = subscription.metadata.plan_key || company.subscription_tier || 'starter';
 
-                log.info('Subscription created', {
-                    subscription_id: subscription.id,
-                    customer_id: subscription.customer,
-                    status: subscription.status,
-                    plan: subscription.items.data[0]?.plan.id
-                });
-
-                const company = await findCompanyByCustomerId(
-                    subscription.customer as string
-                );
-
-                // ✅ FIX: Pasar customer ID, no subscription ID
-                const planKey = subscription.metadata.plan_key || 'starter';
                 await updateCompanySubscription(subscription.customer as string, {
                     stripe_subscription_id: subscription.id,
                     subscription_status: subscription.status,
                     subscription_tier: planKey,
-                    seat_limit: await getPlanSeatLimit(planKey),
+                    seat_limit: await getEffectiveSeatLimit(company, planKey),
+                    cancel_at_period_end: subscription.cancel_at_period_end,
+                    current_period_end: unixToIso(subscription.current_period_end),
+                    stripe_price_id: subscription.items.data[0]?.price?.id ?? null,
+                    grace_period_ends_at: null,
                     updated_at: new Date().toISOString()
                 });
 
-                log.info('Subscription created - Company updated', {
+                log.info('Subscription created - company updated', {
+                    event_id: event.id,
                     company_id: company.id,
-                    company_name: company.name
+                    customer_id: subscription.customer,
+                    subscription_id: subscription.id,
                 });
-
                 break;
             }
 
             case 'customer.subscription.updated': {
                 const subscription = eventData as Stripe.Subscription;
+                const company = await resolveCompanyContext(subscription.customer as string);
+                const planKey = subscription.metadata.plan_key || company.subscription_tier || 'starter';
 
-                log.info('Subscription updated', {
-                    subscription_id: subscription.id,
-                    status: subscription.status,
-                    current_period_end: subscription.current_period_end
-                });
-
-                const company = await findCompanyByCustomerId(
-                    subscription.customer as string
-                );
-
-                // ✅ FIX: Pasar customer ID, no subscription ID + fallback seguro
-                const planKeyUpdated = subscription.metadata.plan_key || 'starter';
                 await updateCompanySubscription(subscription.customer as string, {
+                    stripe_subscription_id: subscription.id,
                     subscription_status: subscription.status,
-                    subscription_tier: planKeyUpdated,
-                    seat_limit: await getPlanSeatLimit(planKeyUpdated),
+                    subscription_tier: planKey,
+                    seat_limit: await getEffectiveSeatLimit(company, planKey),
+                    cancel_at_period_end: subscription.cancel_at_period_end,
+                    current_period_end: unixToIso(subscription.current_period_end),
+                    stripe_price_id: subscription.items.data[0]?.price?.id ?? null,
+                    grace_period_ends_at: subscription.status === 'past_due'
+                        ? unixToIso(subscription.current_period_end)
+                        : null,
                     updated_at: new Date().toISOString()
                 });
 
-                log.info('Subscription updated - Company updated', {
-                    company_id: company.id
+                log.info('Subscription updated - company updated', {
+                    event_id: event.id,
+                    company_id: company.id,
+                    customer_id: subscription.customer,
+                    subscription_id: subscription.id,
+                    status: subscription.status,
                 });
-
                 break;
             }
 
             case 'customer.subscription.deleted': {
                 const subscription = eventData as Stripe.Subscription;
+                const customerId = subscription.customer as string;
+                const company = await resolveCompanyContext(customerId);
 
-                log.warn('Subscription deleted', {
-                    subscription_id: subscription.id,
-                    customer_id: subscription.customer
+                const remainingSubs = await stripe.subscriptions.list({
+                    customer: customerId,
+                    status: 'all',
+                    limit: 10,
+                    expand: ['data.items.data.price'],
                 });
-
-                const company = await findCompanyByCustomerId(
-                    subscription.customer as string
+                const survivingSub = pickRelevantSubscription(
+                    remainingSubs.data.filter((sub) => sub.id !== subscription.id && sub.status !== 'canceled')
                 );
 
-                // ✅ FIX: Pasar customer ID, no subscription ID
-                await updateCompanySubscription(subscription.customer as string, {
-                    subscription_status: 'canceled',
-                    stripe_subscription_id: null,
-                    subscription_tier: 'demo',
-                    updated_at: new Date().toISOString()
-                });
+                if (survivingSub) {
+                    const planKey = survivingSub.metadata.plan_key || company.subscription_tier || 'starter';
+                    await updateCompanySubscription(customerId, {
+                        stripe_subscription_id: survivingSub.id,
+                        subscription_status: survivingSub.status,
+                        subscription_tier: planKey,
+                        seat_limit: await getEffectiveSeatLimit(company, planKey),
+                        cancel_at_period_end: survivingSub.cancel_at_period_end,
+                        current_period_end: unixToIso(survivingSub.current_period_end),
+                        stripe_price_id: survivingSub.items.data[0]?.price?.id ?? null,
+                        updated_at: new Date().toISOString()
+                    });
 
-                log.error('Subscription deleted - Company downgraded to demo', {
-                    company_id: company.id,
-                    company_name: company.name
-                });
+                    log.info('Subscription deleted - surviving subscription applied', {
+                        event_id: event.id,
+                        company_id: company.id,
+                        deleted_subscription_id: subscription.id,
+                        surviving_subscription_id: survivingSub.id,
+                    });
+                } else {
+                    await updateCompanySubscription(customerId, {
+                        subscription_status: 'canceled',
+                        stripe_subscription_id: null,
+                        subscription_tier: 'demo',
+                        cancel_at_period_end: false,
+                        current_period_end: null,
+                        stripe_price_id: null,
+                        grace_period_ends_at: null,
+                        updated_at: new Date().toISOString()
+                    });
 
+                    log.warn('Subscription deleted - company downgraded to demo', {
+                        event_id: event.id,
+                        company_id: company.id,
+                        deleted_subscription_id: subscription.id,
+                    });
+                }
                 break;
             }
 
-            case 'customer.subscription.paused': {
-                const subscription = eventData as Stripe.Subscription;
-
-                log.warn('Subscription paused', {
-                    subscription_id: subscription.id,
-                    customer_id: subscription.customer
-                });
-
-                // ✅ FIX: Pasar customer ID, no subscription ID
-                await updateCompanySubscription(subscription.customer as string, {
-                    subscription_status: 'past_due',
-                    updated_at: new Date().toISOString()
-                });
-
-                break;
-            }
-
+            case 'customer.subscription.paused':
             case 'customer.subscription.resumed': {
                 const subscription = eventData as Stripe.Subscription;
+                const company = await resolveCompanyContext(subscription.customer as string);
+                const status = eventType === 'customer.subscription.paused' ? 'past_due' : subscription.status;
 
-                log.info('Subscription resumed', {
-                    subscription_id: subscription.id,
-                    customer_id: subscription.customer
-                });
-
-                // ✅ FIX: Pasar customer ID, no subscription ID
                 await updateCompanySubscription(subscription.customer as string, {
-                    subscription_status: 'active',
+                    subscription_status: status,
                     updated_at: new Date().toISOString()
                 });
 
+                log.info('Subscription lifecycle event applied', {
+                    event_id: event.id,
+                    company_id: company.id,
+                    customer_id: subscription.customer,
+                    status,
+                });
                 break;
             }
-
-            // ██████████████████████████████████████████████████████████
-            // INVOICE EVENTS
-            // ██████████████████████████████████████████████████████████
 
             case 'invoice.payment_succeeded': {
                 const invoice = eventData as Stripe.Invoice;
-
-                log.info('Invoice payment succeeded', {
-                    invoice_id: invoice.id,
-                    subscription_id: invoice.subscription,
-                    amount_paid: invoice.amount_paid,
-                    currency: invoice.currency
-                });
-
                 if (invoice.subscription) {
-                    const subscription = await stripe.subscriptions.retrieve(
-                        invoice.subscription as string
-                    );
+                    const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string, {
+                        expand: ['items.data.price'],
+                    });
+                    const company = await resolveCompanyContext(subscription.customer as string);
+                    const planKey = subscription.metadata.plan_key || company.subscription_tier || 'starter';
 
-                    const company = await findCompanyByCustomerId(
-                        subscription.customer as string
-                    );
-
-                    // ✅ FIX: Pasar customer ID, no subscription ID
                     await updateCompanySubscription(subscription.customer as string, {
-                        subscription_status: 'active',
+                        stripe_subscription_id: subscription.id,
+                        subscription_status: subscription.status,
+                        subscription_tier: planKey,
+                        seat_limit: await getEffectiveSeatLimit(company, planKey),
+                        cancel_at_period_end: subscription.cancel_at_period_end,
+                        current_period_end: unixToIso(subscription.current_period_end),
+                        stripe_price_id: subscription.items.data[0]?.price?.id ?? null,
+                        grace_period_ends_at: null,
                         last_payment_date: new Date().toISOString(),
                         updated_at: new Date().toISOString()
                     });
 
-                    log.info('Invoice payment succeeded - Subscription active', {
-                        company_id: company.id
+                    log.info('Invoice payment succeeded - company activated', {
+                        event_id: event.id,
+                        company_id: company.id,
+                        subscription_id: subscription.id,
                     });
                 }
-
                 break;
             }
 
             case 'invoice.payment_failed': {
                 const invoice = eventData as Stripe.Invoice;
-
-                log.error('Invoice payment failed', {
-                    invoice_id: invoice.id,
-                    subscription_id: invoice.subscription,
-                    amount_due: invoice.amount_due,
-                    next_payment_attempt: invoice.next_payment_attempt
-                });
-
                 if (invoice.subscription) {
-                    const subscription = await stripe.subscriptions.retrieve(
-                        invoice.subscription as string
-                    );
+                    const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string, {
+                        expand: ['items.data.price'],
+                    });
+                    const company = await resolveCompanyContext(subscription.customer as string);
+                    const periodEndIso = subscription.current_period_end
+                        ? unixToIso(subscription.current_period_end)
+                        : company.current_period_end;
 
-                    const company = await findCompanyByCustomerId(
-                        subscription.customer as string
-                    );
-
-                    const gracePeriodEnds = new Date();
-                    gracePeriodEnds.setDate(gracePeriodEnds.getDate() + 7);
-
-                    // ✅ FIX: Pasar customer ID, no subscription ID
                     await updateCompanySubscription(subscription.customer as string, {
                         subscription_status: 'past_due',
-                        grace_period_ends_at: gracePeriodEnds.toISOString(),
+                        current_period_end: periodEndIso,
+                        grace_period_ends_at: periodEndIso,
                         updated_at: new Date().toISOString()
                     });
 
-                    log.warn('Invoice payment failed - Grace period started', {
+                    log.warn('Invoice payment failed - company marked past_due', {
+                        event_id: event.id,
                         company_id: company.id,
-                        grace_period_ends: gracePeriodEnds.toISOString()
+                        subscription_id: subscription.id,
+                        grace_period_ends_at: periodEndIso,
                     });
                 }
-
                 break;
             }
 
             case 'invoice.payment_action_required': {
                 const invoice = eventData as Stripe.Invoice;
-
                 log.warn('Invoice payment action required', {
+                    event_id: event.id,
                     invoice_id: invoice.id,
                     subscription_id: invoice.subscription,
-                    hosted_invoice_url: invoice.hosted_invoice_url
                 });
-
                 break;
             }
 
-            // ██████████████████████████████████████████████████████████
-            // CUSTOMER EVENTS
-            // ██████████████████████████████████████████████████████████
-
             case 'customer.updated': {
                 const customer = eventData as Stripe.Customer;
-
-                log.info('Customer updated', {
-                    customer_id: customer.id,
-                    email: customer.email
-                });
-
+                const company = await resolveCompanyContext(customer.id);
                 await supabase
                     .from('companies')
-                    .update({
-                        updated_at: new Date().toISOString()
-                    })
+                    .update({ updated_at: new Date().toISOString() })
                     .eq('stripe_customer_id', customer.id);
 
+                log.info('Customer updated', {
+                    event_id: event.id,
+                    company_id: company.id,
+                    customer_id: customer.id,
+                });
                 break;
             }
 
             case 'customer.deleted': {
                 const customer = eventData as Stripe.Customer;
-
-                log.warn('Customer deleted', {
-                    customer_id: customer.id
-                });
-
+                const company = await resolveCompanyContext(customer.id);
                 await supabase
                     .from('companies')
                     .update({
                         stripe_customer_id: null,
                         stripe_subscription_id: null,
+                        stripe_price_id: null,
                         subscription_status: 'canceled',
                         updated_at: new Date().toISOString()
                     })
                     .eq('stripe_customer_id', customer.id);
 
+                log.warn('Customer deleted - company billing detached', {
+                    event_id: event.id,
+                    company_id: company.id,
+                    customer_id: customer.id,
+                });
                 break;
             }
-
-            // ██████████████████████████████████████████████████████████
-            // CHECKOUT SESSION EVENTS
-            // ██████████████████████████████████████████████████████████
 
             case 'checkout.session.completed': {
                 const session = eventData as Stripe.Checkout.Session;
-
                 log.info('Checkout session completed', {
-                    session_id: session.id,
+                    event_id: event.id,
                     customer_id: session.customer,
                     subscription_id: session.subscription,
-                    mode: session.mode
+                    company_id: session.metadata?.company_id,
                 });
-
                 break;
             }
 
-            // ██████████████████████████████████████████████████████████
-            // DEFAULT CASE
-            // ██████████████████████████████████████████████████████████
-
             default:
-                log.warn(`Unhandled event type: ${eventType}`);
+                log.warn('Unhandled event type', { event_id: event.id, event_type: eventType });
         }
 
-        // 6. Return success response
+        await updateEventRecord({ status: 'processed', processed_at: new Date().toISOString() });
+
         return new Response(
-            JSON.stringify({
-                received: true,
-                event_type: eventType,
-                event_id: event.id
-            }),
+            JSON.stringify({ received: true, event_type: eventType, event_id: event.id }),
             {
                 status: 200,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -442,14 +432,30 @@ serve(async (req) => {
 
     } catch (error: any) {
         log.error('Webhook processing error', {
+            event_id: event?.id,
             error: error.message,
-            stack: error.stack
+            stack: error.stack,
         });
 
+        if (eventRecordId) {
+            const supabase = createClient(
+                Deno.env.get('SUPABASE_URL') ?? '',
+                Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+                { auth: { autoRefreshToken: false, persistSession: false } }
+            );
+
+            await supabase
+                .from('subscription_events')
+                .update({
+                    status: 'failed',
+                    error_message: error.message || 'Webhook processing failed',
+                    processed_at: new Date().toISOString(),
+                })
+                .eq('id', eventRecordId);
+        }
+
         return new Response(
-            JSON.stringify({
-                error: error.message || 'Webhook processing failed'
-            }),
+            JSON.stringify({ error: error.message || 'Webhook processing failed' }),
             {
                 status: 400,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -457,3 +463,5 @@ serve(async (req) => {
         );
     }
 });
+
+

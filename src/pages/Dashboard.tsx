@@ -27,6 +27,14 @@ const SEV_BADGE: Record<string, "error" | "warning" | "neutral"> = {
   bajo: "neutral",
 };
 
+const SIGNAL_TYPE_LABEL: Record<string, string> = {
+  debt: 'Inventario',
+  margin_drift: 'Margen',
+  stock_break: 'Stock',
+  dead_stock: 'Capital',
+  price_below_cost: 'Precio',
+};
+
 const STATUS_CFG: Record<ProtectionStatus, { Icon: typeof Shield; variant: "success" | "warning" | "error"; label: string }> = {
   PROTEGIDO: { Icon: Shield, variant: 'success', label: 'PROTEGIDO' },
   EN_RIESGO: { Icon: ShieldAlert, variant: 'warning', label: 'EN RIESGO' },
@@ -51,9 +59,6 @@ const AlertRow: React.FC<{ action: ProtectedAction; onNavigate: (r: string) => v
       onClick={() => setExpanded(e => !e)}
     >
       <div className={`${spacing.pxLg} py-4 flex items-center gap-4`}>
-        <div className={`hidden sm:flex items-center justify-center w-10 h-10 rounded-xl ${badgeVariant === 'error' ? colors.bgDanger : badgeVariant === 'warning' ? colors.bgWarning : colors.bgInfo} ${badgeVariant === 'error' ? colors.danger : badgeVariant === 'warning' ? colors.warning : colors.info}`}>
-          <AlertTriangle size={20} />
-        </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
@@ -66,7 +71,7 @@ const AlertRow: React.FC<{ action: ProtectedAction; onNavigate: (r: string) => v
                 {confidence === 'high' ? 'Confianza Alta' : confidence === 'medium' ? 'Confianza Media' : 'Datos Limitados'}
               </div>
             )}
-            <p className={`${typography.text.secondary} ${colors.textMuted} font-bold`}>#{action.id.slice(-4)}</p>
+            <p className={`${typography.text.secondary} ${colors.textMuted} font-bold`}>{SIGNAL_TYPE_LABEL[action.signal.type] || action.signal.type}</p>
           </div>
           <p className={`${typography.text.body} font-bold ${colors.textPrimary} tracking-tight`}>{action.title}</p>
         </div>
@@ -200,15 +205,10 @@ const Dashboard: React.FC = () => {
               Oportunidades de Protección
             </h2>
           </div>
-          {report.topActions.length > 0 && (
-            <p className={`${typography.text.caption} ${colors.textMuted} font-bold italic`}>
-              ↕ CLIC PARA EVALUAR ESCENARIOS
-            </p>
-          )}
         </div>
 
         {report.topActions.length > 0 ? (
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {report.topActions.map(action => (
               <AlertRow key={action.id} action={action} onNavigate={navigate} />
             ))}
@@ -249,7 +249,7 @@ const Dashboard: React.FC = () => {
             ) : (
               <Button
                 variant="secondary"
-                size="base"
+                size="lg"
                 className="!bg-white/10 !text-white hover:!bg-white/20 !border-white/20"
                 onClick={fetchAi}
                 isLoading={loadingAi}

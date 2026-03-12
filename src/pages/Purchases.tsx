@@ -14,10 +14,10 @@ import PurchaseOrderModal from '@/components/purchases/PurchaseOrderModal';
 import ReceiveOrderModal from '@/components/purchases/ReceiveOrderModal';
 
 const statusConfig = {
-    borrador: { label: 'Borrador', icon: Clock, class: 'text-slate-700 bg-slate-100 border-slate-200' },
-    confirmada: { label: 'Confirmada', icon: CheckCircle2, class: 'text-blue-700 bg-blue-50 border-blue-200' },
-    recibida: { label: 'Recibida', icon: Package, class: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
-    anulada: { label: 'Anulada', icon: XCircle, class: 'text-rose-700 bg-rose-50 border-rose-200' },
+    borrador: { label: 'Borrador', icon: Clock, class: 'text-slate-400' },
+    confirmada: { label: 'Confirmada', icon: CheckCircle2, class: 'text-slate-600' },
+    recibida: { label: 'Recibida', icon: Package, class: 'text-slate-800' },
+    anulada: { label: 'Anulada', icon: XCircle, class: 'text-slate-400' },
 };
 
 const Purchases: React.FC = () => {
@@ -122,11 +122,11 @@ const Purchases: React.FC = () => {
                     </div>
                     <div className={`p-4 ${colors.bgSurface} ${radius.xl} border ${colors.borderStandard} ${shadows.sm}`}>
                         <p className={`${typography.uiLabel} ${colors.textMuted}`}>Confirmadas</p>
-                        <p className="text-2xl font-bold text-blue-600">{stats.confirmed}</p>
+                        <p className="text-2xl font-bold text-slate-800">{stats.confirmed}</p>
                     </div>
                     <div className={`p-4 ${colors.bgSurface} ${radius.xl} border ${colors.borderStandard} ${shadows.sm}`}>
                         <p className={`${typography.uiLabel} ${colors.textMuted}`}>Recibidas</p>
-                        <p className="text-2xl font-bold text-emerald-600">{stats.received}</p>
+                        <p className="text-2xl font-bold text-slate-800">{stats.received}</p>
                     </div>
                     <div className={`p-4 ${colors.bgSurface} ${radius.xl} border ${colors.borderStandard} ${shadows.sm}`}>
                         <p className={`${typography.uiLabel} ${colors.textMuted}`}>Valor Total</p>
@@ -146,7 +146,7 @@ const Purchases: React.FC = () => {
                                 placeholder="Buscar por número o proveedor..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className={`w-full h-11 pl-11 pr-4 rounded-xl bg-slate-50 border ${colors.borderStandard} focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none text-slate-700`}
+                                className={`w-full h-11 pl-11 pr-4 rounded-xl bg-slate-50 border ${colors.borderStandard} focus:bg-white focus:ring-2 focus:ring-slate-400/20 focus:border-slate-400 transition-all outline-none text-slate-700`}
                             />
                         </div>
                         <div className="hidden lg:flex items-center bg-slate-100 p-1 rounded-xl">
@@ -154,7 +154,7 @@ const Purchases: React.FC = () => {
                                 <button
                                     key={status}
                                     onClick={() => setFilterStatus(status)}
-                                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${filterStatus === status ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${filterStatus === status ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
                                     {status.charAt(0).toUpperCase() + status.slice(1)}
                                 </button>
@@ -214,7 +214,7 @@ const Purchases: React.FC = () => {
                                                     onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}
                                                 >
                                                     <td className="px-6 py-4">
-                                                        <span className="font-mono text-sm font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
+                                                        <span className="font-mono text-sm font-bold text-slate-700">
                                                             {order.number}
                                                         </span>
                                                     </td>
@@ -230,7 +230,7 @@ const Purchases: React.FC = () => {
                                                         <div className="text-sm text-slate-500">{order.expected_date || '—'}</div>
                                                     </td>
                                                     <td className="px-6 py-4 text-center">
-                                                        <span className={`px-2 py-1 ${radius.md} bg-slate-100 text-slate-600 text-xs font-bold`}>
+                                                        <span className="text-sm font-bold text-slate-600 tabular-nums">
                                                             {order.items?.length || 0}
                                                         </span>
                                                     </td>
@@ -240,7 +240,7 @@ const Purchases: React.FC = () => {
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4">
-                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 ${radius.pill} text-xs font-semibold border ${sc.class}`}>
+                                                        <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${sc.class}`}>
                                                             <StatusIcon size={12} /> {sc.label}
                                                         </span>
                                                     </td>

@@ -115,11 +115,10 @@ export const MODULES = {
     },
     billing: {
         id: 'billing',
-        name: 'Billing',
+        name: 'Facturación',
         path: '/platform/billing',
         icon: CreditCard,
-        requiredCapability: 'view_costs',
-        superAdminOnly: true
+        requiredCapability: 'view_costs'
     },
 
     // ── Shared Modules ──

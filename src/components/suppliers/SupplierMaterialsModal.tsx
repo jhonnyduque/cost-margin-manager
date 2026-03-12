@@ -64,10 +64,10 @@ const SupplierMaterialsModal: React.FC<SupplierMaterialsModalProps> = ({ isOpen,
                 <div className={`p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50`}>
                     <div>
                         <h3 className={`${typography.sectionTitle} flex items-center gap-2`}>
-                            <Link2 size={20} className="text-indigo-500" />
+                            <Link2 size={20} className="text-slate-500" />
                             Vincular Materias Primas
                         </h3>
-                        <p className="text-xs text-slate-500 font-medium mt-1">Proveedor: <span className="text-indigo-600 font-bold">{supplier.name}</span></p>
+                        <p className="text-xs text-slate-500 font-medium mt-1">Proveedor: <span className="text-slate-700 font-bold">{supplier.name}</span></p>
                     </div>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">
                         <X size={24} />
@@ -77,7 +77,7 @@ const SupplierMaterialsModal: React.FC<SupplierMaterialsModalProps> = ({ isOpen,
                 {/* Search & Counter */}
                 <div className="p-4 border-b border-slate-50 space-y-3">
                     <div className="relative group">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-600 transition-colors" />
                         <input
                             type="text"
                             placeholder="Buscar materia prima..."
@@ -93,7 +93,7 @@ const SupplierMaterialsModal: React.FC<SupplierMaterialsModalProps> = ({ isOpen,
                         {selectedIds.length > 0 && (
                             <button 
                                 onClick={() => setSelectedIds([])}
-                                className="text-[10px] font-bold text-indigo-500 hover:text-indigo-700 uppercase"
+                                className="text-[10px] font-bold text-slate-500 hover:text-slate-700 uppercase"
                             >
                                 Limpiar todo
                             </button>
@@ -117,7 +117,7 @@ const SupplierMaterialsModal: React.FC<SupplierMaterialsModalProps> = ({ isOpen,
                                 <div 
                                     key={material.id}
                                     onClick={() => toggleMaterial(material.id)}
-                                    className={`flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${isSelected ? 'bg-indigo-50/50' : 'hover:bg-slate-50'}`}
+                                    className={`flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${isSelected ? 'bg-slate-50' : 'hover:bg-slate-50'}`}
                                 >
                                     <div className={`size-5 rounded border flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300 bg-white'}`}>
                                         {isSelected && <CheckCircle2 size={12} className="text-white" />}
@@ -126,7 +126,7 @@ const SupplierMaterialsModal: React.FC<SupplierMaterialsModalProps> = ({ isOpen,
                                         {material.name.charAt(0).toUpperCase()}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className={`text-sm font-bold truncate ${isSelected ? 'text-indigo-900' : 'text-slate-700'}`}>
+                                        <p className={`text-sm font-bold truncate ${isSelected ? 'text-slate-800' : 'text-slate-700'}`}>
                                             {material.name}
                                         </p>
                                         <p className="text-[10px] text-slate-400 font-medium uppercase">

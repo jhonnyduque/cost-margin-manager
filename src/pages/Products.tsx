@@ -257,7 +257,7 @@ const Products: React.FC = () => {
               placeholder="Buscar por nombre o SKU..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className={`h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 ${typography.text.body} transition-all focus:bg-white focus:ring-2 focus:ring-indigo-500`}
+              className={`h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 ${typography.text.body} transition-all focus:bg-white focus:ring-2 focus:ring-slate-400`}
             />
           </div>
 
@@ -330,7 +330,7 @@ const Products: React.FC = () => {
                   </div>
                   <div className="flex flex-col items-end text-right">
                     <span className={`${typography.text.caption} font-bold uppercase text-slate-500`}>Precio Venta</span>
-                    <span className={`${typography.text.body} font-black text-indigo-600`}>{formatCurrency(p.price)}</span>
+                    <span className={`${typography.text.body} font-black text-slate-800`}>{formatCurrency(p.price)}</span>
                   </div>
                 </Card.Content>
 
@@ -386,7 +386,7 @@ const Products: React.FC = () => {
                     (p.target_margin ?? DEFAULT_TARGET_MARGIN) / 100
                   );
                   return (
-                    <tr key={p.id} className={`group transition-all hover:bg-slate-50/50 ${selectedIds.has(p.id) ? `bg-indigo-50/30` : colors.bgSurface}`}>
+                    <tr key={p.id} className={`group transition-all hover:bg-slate-50/50 ${selectedIds.has(p.id) ? `bg-slate-50` : colors.bgSurface}`}>
                       <td className={`${spacing.pxLg} py-4`}>
                         <input
                           type="checkbox"
@@ -397,7 +397,7 @@ const Products: React.FC = () => {
                         />
                       </td>
                       <td
-                        className={`${spacing.pxLg} py-4 ${typography.text.body} font-black ${colors.textPrimary} cursor-pointer truncate capitalize transition-colors hover:text-indigo-600`}
+                        className={`${spacing.pxLg} py-4 ${typography.text.body} font-black ${colors.textPrimary} cursor-pointer truncate capitalize transition-colors hover:text-slate-600`}
                         title={p.name}
                         onClick={() => navigate(`/productos/detalle/${p.id}`)}
                       >
@@ -414,7 +414,7 @@ const Products: React.FC = () => {
                       <td className={`${spacing.pxLg} py-4 text-right ${typography.text.body} font-bold ${colors.textPrimary} truncate tabular-nums`}>
                         {formatCurrency(cost)}
                       </td>
-                      <td className={`${spacing.pxLg} py-4 text-right ${typography.text.body} truncate font-bold tabular-nums text-indigo-600`}>
+                      <td className={`${spacing.pxLg} py-4 text-right ${typography.text.body} truncate font-bold tabular-nums text-slate-800`}>
                         {formatCurrency(p.price)}
                       </td>
                       <td className={`${spacing.pxLg} py-4 text-center ${typography.text.body} font-bold tabular-nums ${metrics.realMargin >= (p.target_margin ?? DEFAULT_TARGET_MARGIN) / 100 ? colors.statusSuccess : colors.statusWarning}`}>
@@ -424,7 +424,7 @@ const Products: React.FC = () => {
                         <div className="flex items-center justify-center">
                           <button
                             data-kebab-trigger
-                            className={`rounded-lg border border-transparent p-2 transition-all ${menuState?.productId === p.id ? 'border-indigo-200 bg-indigo-100 text-indigo-700' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}
+                            className={`rounded-lg border border-transparent p-2 transition-all ${menuState?.productId === p.id ? 'border-slate-300 bg-slate-200 text-slate-700' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}
                             onClick={(e) => openMenu(p.id, e)}
                             aria-label="Más opciones"
                           >
@@ -555,7 +555,7 @@ const Products: React.FC = () => {
 
             {successModal && successModal.isOpen && (
               <Card className="w-full max-w-sm space-y-6 p-8 text-center">
-                <CheckCircle2 size={48} className="mx-auto text-emerald-500" />
+                <CheckCircle2 size={48} className="mx-auto text-slate-600" />
                 <h3 className={typography.sectionTitle}>¡Producción Exitosa!</h3>
                 <p className={`${typography.body} text-gray-600`}>El lote ha sido ingresado al inventario.</p>
                 <Button fullWidth onClick={() => setSuccessModal(null)}>Entendido</Button>
