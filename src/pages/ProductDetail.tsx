@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit2, PlayCircle, Archive, Trash2, Package, CheckCircle2, Copy, Layers, History, TrendingUp, Search, AlertTriangle, MoreVertical, Printer, X } from 'lucide-react';
+import { ArrowLeft, Edit2, PlayCircle, Archive, Trash2, Package, CheckCircle2, Copy, Layers, History, MoreVertical, Printer } from 'lucide-react';
 import { useStore, calculateProductCost, getFifoBreakdown, calculateProductStock } from '../store';
 import { supabase } from '../services/supabase';
 import { calculateFinancialMetrics } from '../core/financialMetricsEngine';
@@ -23,33 +23,7 @@ const ProductDetail: React.FC = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const toggleButtonRef = useRef<HTMLButtonElement>(null);
-    const quantityInputRef = useRef<HTMLInputElement>(null);
 
-    const [productionModal, setProductionModal] = useState<{ isOpen: boolean; quantity: number; targetPrice: number }>({
-        isOpen: false,
-        quantity: 1,
-        targetPrice: 0
-    });
-
-    const [missingStockModal, setMissingStockModal] = useState<{
-        isOpen: boolean;
-        missingItems: any[];
-        quantity: number;
-        targetPrice: number;
-        maxCoveredProduction: number;
-        fullBreakdown: any[];
-        showFullBreakdown: boolean;
-    }>({
-        isOpen: false,
-        missingItems: [],
-        quantity: 0,
-        targetPrice: 0,
-        maxCoveredProduction: 0,
-        fullBreakdown: [],
-        showFullBreakdown: false
-    });
-
-    const [successModal, setSuccessModal] = useState<{ isOpen: boolean; productName: string; cost: number; quantity: number } | null>(null);
 
     const allowedRoles = ['super_admin', 'admin', 'owner', 'manager'];
     const canEdit = allowedRoles.includes((currentUserRole as string) || '');
@@ -85,15 +59,6 @@ const ProductDetail: React.FC = () => {
         resolveCreator();
     }, [product?.created_by]);
 
-    // 🟢 UX FIX: Auto-seleccionar cantidad al abrir el modal de producción
-    useEffect(() => {
-        if (productionModal.isOpen && quantityInputRef.current) {
-            setTimeout(() => {
-                quantityInputRef.current?.focus();
-                quantityInputRef.current?.select();
-            }, 50);
-        }
-    }, [productionModal.isOpen]);
 
     // ── LÓGICA DEL MENÚ Y CLICK OUTSIDE ──
     useEffect(() => {
@@ -148,87 +113,6 @@ const ProductDetail: React.FC = () => {
 
     const currentStock = calculateProductStock(product.id, productMovements);
 
-    // ── LÓGICA DE PRODUCCIÓN ──
-    const handleConfirmProduction = async () => {
-        const { quantity, targetPrice } = productionModal;
-        if (!product || quantity <= 0) return;
-
-        const missingItems: any[] = [];
-        const fullBreakdown: any[] = [];
-        let totalCostForBatch = 0;
-        let maxCoveredProduction = quantity;
-
-        product.materials?.forEach(pm => {
-            let qtyPerUnit = pm.quantity;
-
-            // Lógica para Telas/Piezas
-            if (pm.mode === 'pieces' && pm.pieces) {
-                const latestBatch = batches.find(b => b.material_id === pm.material_id);
-                const width = latestBatch?.width || 140;
-                const totalAreaCm2 = pm.pieces.reduce((acc: number, p: any) => acc + (p.length * p.width), 0);
-                qtyPerUnit = (totalAreaCm2 / width) / 100;
-            }
-
-            const availableMaterialStock = batches.filter(b => b.material_id === pm.material_id).reduce((acc, b) => acc + b.remaining_quantity, 0);
-            const possibleUnits = qtyPerUnit > 0 ? Math.floor(availableMaterialStock / qtyPerUnit) : quantity;
-            if (possibleUnits < maxCoveredProduction) {
-                maxCoveredProduction = Math.max(0, possibleUnits);
-            }
-
-            const effectiveQty = qtyPerUnit * quantity;
-
-            const breakdown = getFifoBreakdown(pm.material_id, effectiveQty, pm.consumption_unit, batches, rawMaterials, unitsOfMeasure);
-            const totalMissing = breakdown.filter((b: any) => b.is_missing).reduce((acc, b: any) => acc + b.quantity_used, 0);
-
-            breakdown.forEach(b => { totalCostForBatch += b.subtotal; });
-
-            if (totalMissing > 0) {
-                const material = rawMaterials.find(m => m.id === pm.material_id);
-                const lastBatchCost = batches.find(b => b.material_id === pm.material_id)?.unit_cost || 0;
-
-                missingItems.push({
-                    materialName: material?.name || 'Insumo desconocido',
-                    missingQuantity: totalMissing,
-                    unit: pm.consumption_unit,
-                    unitCost: lastBatchCost,
-                    totalDebt: lastBatchCost * totalMissing
-                });
-            }
-
-            const material = rawMaterials.find(m => m.id === pm.material_id);
-            const coveredQty = effectiveQty - totalMissing;
-            const lastBatchCost = batches.find(b => b.material_id === pm.material_id)?.unit_cost || 0;
-
-            fullBreakdown.push({
-                materialName: material?.name || 'Insumo desconocido',
-                requiredQuantity: effectiveQty,
-                coveredQuantity: coveredQty,
-                missingQuantity: totalMissing,
-                unit: pm.consumption_unit,
-                unitCost: lastBatchCost
-            });
-        });
-
-        if (missingItems.length > 0) {
-            setMissingStockModal({
-                isOpen: true,
-                missingItems,
-                quantity,
-                targetPrice,
-                maxCoveredProduction,
-                fullBreakdown,
-                showFullBreakdown: false
-            });
-            setProductionModal({ ...productionModal, isOpen: false });
-        } else {
-            useStore.getState().consumeStockBatch(product.id, quantity, targetPrice).then(() => {
-                setProductionModal({ ...productionModal, isOpen: false });
-                setSuccessModal({ isOpen: true, productName: product.name, cost: totalCostForBatch, quantity });
-            }).catch(err => {
-                alert('Error registrando producción: ' + err.message);
-            });
-        }
-    };
 
     return (
         <div className={`space-y-6 ${colors.bgMain} min-h-screen pb-12`}>
@@ -273,7 +157,7 @@ const ProductDetail: React.FC = () => {
                                 <div ref={menuRef} className={`absolute right-0 mt-2 w-56 ${radius.xl} border ${colors.borderStandard} ${colors.bgSurface} ${shadows.xl} py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100`}>
                                     <button
                                         className={`flex w-full items-center gap-2 ${spacing.pxMd} py-2 ${typography.uiLabel} font-bold ${colors.statusSuccess} hover:${colors.bgSuccess} transition-colors`}
-                                        onClick={() => { setIsMenuOpen(false); setProductionModal({ isOpen: true, quantity: 1, targetPrice: product.price || 0 }); }}
+                                        onClick={() => { setIsMenuOpen(false); navigate(`/produccion?productId=${product.id}`); }}
                                     >
                                         <PlayCircle size={16} /> Producir
                                     </button>
@@ -490,103 +374,6 @@ const ProductDetail: React.FC = () => {
                 </div>
             </div>
 
-            {/* ── MODALS OPERATIVOS (Producción Mágica) ── */}
-            {(missingStockModal.isOpen || productionModal.isOpen || (successModal && successModal.isOpen)) && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-                    {/* Modal Producción */}
-                    {productionModal.isOpen && (
-                        <Card className={`w-full max-w-md ${spacing.pLg} ${shadows.xl} border-0 ${colors.bgSurface} animate-in zoom-in-95 duration-200`}>
-                            <div className="text-center space-y-2 mb-6">
-                                <div className="h-16 w-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <Package size={32} className="text-slate-500" />
-                                </div>
-                                <h3 className={`${typography.text.section} ${colors.textPrimary}`}>Nuevo Lote de Producción</h3>
-                                <p className={`${typography.text.caption} ${colors.textSecondary} uppercase font-bold tracking-widest`}>{product.name}</p>
-                            </div>
-
-                            <div className="space-y-4 bg-slate-50 p-4 rounded-2xl border border-slate-100 mb-6">
-                                <div>
-                                    <label className={`block ${typography.uiLabel} font-bold text-slate-500 mb-1.5`}>CANTIDAD A FABRICAR</label>
-                                    <input
-                                        ref={quantityInputRef}
-                                        type="number"
-                                        min="1"
-                                        className={`w-full h-12 rounded-xl border border-slate-200 px-4 text-center text-xl font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-400`}
-                                        value={productionModal.quantity}
-                                        onChange={e => setProductionModal({ ...productionModal, quantity: Number(e.target.value) || 1 })}
-                                    />
-                                </div>
-                                <div className="flex justify-between items-center px-1">
-                                    <span className={`${typography.text.caption} text-slate-500 font-bold uppercase`}>Costo Total Est.</span>
-                                    <span className={`${typography.text.body} font-black text-slate-900 text-lg`}>
-                                        {formatCurrency(cost * productionModal.quantity)}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div className="flex flex-col gap-3">
-                                <Button variant="primary" fullWidth size="lg" className="uppercase font-black tracking-widest" onClick={handleConfirmProduction} icon={<CheckCircle2 size={20} />}>
-                                    Confirmar {productionModal.quantity} {productionModal.quantity === 1 ? 'unidad' : 'unidades'}
-                                </Button>
-                                <Button variant="ghost" fullWidth className="font-bold text-slate-400" onClick={() => setProductionModal({ ...productionModal, isOpen: false })}>
-                                    Cancelar
-                                </Button>
-                            </div>
-                        </Card>
-                    )}
-
-                    {/* Modal Deuda de Inventario */}
-                    {missingStockModal.isOpen && (
-                        <Card className={`w-full max-w-xl ${spacing.pLg} ${shadows.xl} border-2 border-red-100 ${colors.bgSurface} space-y-6 animate-in zoom-in-95 duration-200`}>
-                            <div className="flex items-center gap-4 text-slate-600">
-                                <div className="h-14 w-14 bg-slate-100 rounded-3xl flex items-center justify-center">
-                                    <AlertTriangle size={32} />
-                                </div>
-                                <div>
-                                    <h3 className={`${typography.text.section} leading-tight`}>Déficit de Inventario</h3>
-                                    <p className={`${typography.text.caption} text-slate-500 uppercase font-black tracking-widest`}>ALERTA DE DEUDA</p>
-                                </div>
-                            </div>
-                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                                <p className={`${typography.text.body} text-slate-600 font-medium`}>
-                                    No tienes stock suficiente de algunos insumos. Se registrará una <span className="font-black underline">deuda técnica</span> en tu inventario.
-                                </p>
-                            </div>
-                            <div className="flex gap-4 pt-2">
-                                <Button variant="ghost" className="flex-1 font-bold text-slate-500" onClick={() => setMissingStockModal({ ...missingStockModal, isOpen: false })}>
-                                    Cancelar
-                                </Button>
-                                <Button fullWidth variant="danger" className="flex-1 font-black uppercase tracking-wider" onClick={() => {
-                                    useStore.getState().consumeStockBatch(product.id, missingStockModal.quantity, missingStockModal.targetPrice).then(() => {
-                                        setMissingStockModal({ ...missingStockModal, isOpen: false });
-                                        setSuccessModal({ isOpen: true, productName: product.name, cost: cost * missingStockModal.quantity, quantity: missingStockModal.quantity });
-                                    }).catch(err => {
-                                        alert('Error registrando producción con deuda: ' + err.message);
-                                    });
-                                }}>
-                                    Aceptar y Generar Deuda
-                                </Button>
-                            </div>
-                        </Card>
-                    )}
-
-                    {/* Modal Éxito */}
-                    {successModal && successModal.isOpen && (
-                        <Card className="w-full max-w-sm p-10 text-center space-y-6 animate-in zoom-in-95 duration-300 border-2 border-emerald-100 bg-white shadow-2xl rounded-3xl">
-                            <div className="h-24 w-24 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                                <CheckCircle2 size={56} className="text-slate-600" />
-                            </div>
-                            <div className="space-y-2">
-                                <h3 className={`${typography.text.section} text-slate-900 font-black`}>¡Éxito!</h3>
-                                <p className={`${typography.text.body} text-slate-500`}>El lote ha sido ingresado al inventario correctamente.</p>
-                            </div>
-                            <Button fullWidth size="lg" variant="primary" onClick={() => setSuccessModal(null)} className="font-black uppercase tracking-widest">
-                                Entendido
-                            </Button>
-                        </Card>
-                    )}
-                </div>
-            )}
         </div>
     );
 };

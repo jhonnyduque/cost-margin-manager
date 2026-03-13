@@ -1,14 +1,7 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Layers, Users, CreditCard, Menu, Factory, Beaker } from 'lucide-react';
+import { LayoutDashboard, Globe, CreditCard, Zap, Tags, Menu, Factory, Beaker, Layers } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-
-/**
- * MobileBottomNav — compact icon-only mobile navigation
- * 
- * SuperAdmin: Home | Entornos | Equipo | Billing | Más
- * Tenant:     Home | Productos | Producción | Materias Primas | Más
- */
 
 interface NavItem {
     label: string;
@@ -16,31 +9,31 @@ interface NavItem {
     icon: React.FC<{ size?: number; className?: string }>;
 }
 
-const NAV_ITEMS: NavItem[] = [
+const SUPER_ADMIN_NAV_ITEMS: NavItem[] = [
     {
-        label: 'Home',
-        path: '/control-center',
+        label: 'Resumen',
+        path: '/control-center?tab=overview',
         icon: LayoutDashboard,
     },
     {
-        label: 'Entornos',
-        path: '/platform/environments',
-        icon: Layers,
+        label: 'Empresas',
+        path: '/control-center?tab=tenants',
+        icon: Globe,
     },
     {
-        label: 'Equipo',
-        path: '/platform/users',
-        icon: Users,
-    },
-    {
-        label: 'Billing',
-        path: '/platform/billing',
+        label: 'Finanzas',
+        path: '/control-center?tab=billing',
         icon: CreditCard,
     },
     {
-        label: 'Más',
-        path: '/mas',
-        icon: Menu,
+        label: 'Operaciones',
+        path: '/control-center?tab=ops',
+        icon: Zap,
+    },
+    {
+        label: 'Taxonomias',
+        path: '/control-center?tab=taxonomies',
+        icon: Tags,
     },
 ];
 
@@ -56,7 +49,7 @@ const TENANT_NAV_ITEMS: NavItem[] = [
         icon: Layers,
     },
     {
-        label: 'Producción',
+        label: 'Produccion',
         path: '/produccion',
         icon: Factory,
     },
@@ -66,7 +59,7 @@ const TENANT_NAV_ITEMS: NavItem[] = [
         icon: Beaker,
     },
     {
-        label: 'Más',
+        label: 'Mas',
         path: '/mas',
         icon: Menu,
     },
@@ -76,7 +69,8 @@ export const MobileBottomNav: React.FC = () => {
     const { user } = useAuth();
     const location = useLocation();
 
-    const items = user?.is_super_admin ? NAV_ITEMS : TENANT_NAV_ITEMS;
+    const items = user?.is_super_admin ? SUPER_ADMIN_NAV_ITEMS : TENANT_NAV_ITEMS;
+    const currentTab = new URLSearchParams(location.search).get('tab') || 'overview';
 
     return (
         <nav
@@ -86,13 +80,19 @@ export const MobileBottomNav: React.FC = () => {
                 safe-area-bottom lg:hidden
             "
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-            aria-label="Navegación principal móvil"
+            aria-label="Navegacion principal movil"
         >
             <div className="flex items-center justify-around h-16 px-2">
                 {items.map((item) => {
                     const Icon = item.icon;
-                    const isActive = location.pathname === item.path ||
-                        (item.path !== '/' && item.path !== '/mas' && location.pathname.startsWith(item.path));
+                    const itemUrl = new URL(item.path, 'http://localhost');
+                    const targetTab = itemUrl.searchParams.get('tab');
+                    const isActive = user?.is_super_admin
+                        ? itemUrl.pathname === '/control-center'
+                            ? location.pathname === '/control-center' && currentTab === targetTab
+                            : location.pathname === itemUrl.pathname
+                        : location.pathname === item.path ||
+                          (item.path !== '/' && item.path !== '/mas' && location.pathname.startsWith(item.path));
 
                     return (
                         <NavLink

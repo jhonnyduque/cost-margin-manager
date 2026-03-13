@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Edit2, Search, PlayCircle, Info, Layers, TrendingUp, CheckCircle2, X, ChevronRight, AlertTriangle, RotateCcw, Ruler, History, Copy, Package, PackageSearch, Printer, Archive, MoreVertical } from 'lucide-react';
-import { useStore, calculateProductCost, calculateFifoCost, getFifoBreakdown, hasProductGeneratedActiveDebt, calculateProductStock } from '../store';
+import { useStore, calculateProductCost, calculateFifoCost, hasProductGeneratedActiveDebt, calculateProductStock } from '../store';
 import { calculateFinancialMetrics } from '@/core/financialMetricsEngine';
 import { Product, Unit, RawMaterial, MaterialBatch, DEFAULT_TARGET_MARGIN } from '@/types';
 import { Button } from '@/components/ui/Button';
@@ -17,7 +17,7 @@ import { UniversalPageHeader } from '@/components/ui/UniversalPageHeader';
 
 const Products: React.FC = () => {
   const navigate = useNavigate();
-  const { currentCompanyId, currentUserRole, products, productMovements, rawMaterials, batches, movements, addProduct, deleteProduct, discontinueProduct, updateProduct, consumeStock, consumeStockBatch, unitsOfMeasure } = useStore();
+  const { currentCompanyId, currentUserRole, products, productMovements, rawMaterials, batches, movements, addProduct, deleteProduct, discontinueProduct, updateProduct, unitsOfMeasure } = useStore();
   // Roles allowed to perform write operations. 'super_admin' is a system role
   // defined in UserRole — previously missing from the type caused this check to
   // always return false for super admins.
@@ -34,81 +34,7 @@ const Products: React.FC = () => {
   const [menuState, setMenuState] = useState<{ productId: string; rect: DOMRect } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const [productionModal, setProductionModal] = useState<{ isOpen: boolean; productId: string; quantity: number; cost: number; targetPrice: number; productName: string }>({ isOpen: false, productId: '', quantity: 1, cost: 0, targetPrice: 0, productName: '' });
-  const [missingStockModal, setMissingStockModal] = useState<{ isOpen: boolean; productId: string; missingItems: any[]; quantity: number; targetPrice: number; maxCoveredProduction: number; fullBreakdown: any[]; showFullBreakdown: boolean }>({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0, maxCoveredProduction: 0, fullBreakdown: [], showFullBreakdown: false });
-  const [successModal, setSuccessModal] = useState<{ isOpen: boolean; productName: string; cost: number; quantity: number } | null>(null);
 
-  const handleConfirmBatchProduction = () => {
-    const { productId, quantity, targetPrice } = productionModal;
-    const product = products.find(p => p.id === productId);
-    if (!product || quantity <= 0) return;
-
-    const missingItems: any[] = [];
-    const fullBreakdown: any[] = [];
-    let totalCostForBatch = 0;
-    let maxCoveredProduction = quantity;
-
-    product.materials?.forEach(pm => {
-      let qtyPerUnit = pm.quantity;
-      if (pm.mode === 'pieces' && pm.pieces) {
-        const latestBatch = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-        const width = latestBatch?.width || 140;
-        const totalAreaCm2 = pm.pieces.reduce((acc: number, p: any) => acc + (p.length * p.width), 0);
-        qtyPerUnit = (totalAreaCm2 / width) / 100;
-      }
-
-      const availableMaterialStock = batches.filter(b => b.material_id === pm.material_id).reduce((acc, b) => acc + b.remaining_quantity, 0);
-      const possibleUnits = qtyPerUnit > 0 ? Math.floor(availableMaterialStock / qtyPerUnit) : quantity;
-      if (possibleUnits < maxCoveredProduction) {
-        maxCoveredProduction = Math.max(0, possibleUnits);
-      }
-
-      const effectiveQty = qtyPerUnit * quantity;
-
-      const breakdown = getFifoBreakdown(pm.material_id, effectiveQty, pm.consumption_unit, batches, rawMaterials, unitsOfMeasure);
-      const totalMissing = breakdown.filter((b: any) => b.is_missing).reduce((acc, b: any) => acc + b.quantity_used, 0);
-
-      breakdown.forEach(b => { totalCostForBatch += b.subtotal; });
-
-      if (totalMissing > 0) {
-        const material = rawMaterials.find(m => m.id === pm.material_id);
-        const lastBatchCost = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]?.unit_cost || 0;
-
-        missingItems.push({
-          materialName: material?.name || 'Insumo desconocido',
-          missingQuantity: totalMissing,
-          unit: pm.consumption_unit,
-          unitCost: lastBatchCost,
-          totalDebt: lastBatchCost * totalMissing
-        });
-      }
-
-      const material = rawMaterials.find(m => m.id === pm.material_id);
-      const coveredQty = effectiveQty - totalMissing;
-      const lastBatchCost = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]?.unit_cost || 0;
-
-      fullBreakdown.push({
-        materialName: material?.name || 'Insumo desconocido',
-        requiredQuantity: effectiveQty,
-        coveredQuantity: coveredQty,
-        missingQuantity: totalMissing,
-        unit: pm.consumption_unit,
-        unitCost: lastBatchCost
-      });
-    });
-
-    if (missingItems.length > 0) {
-      setMissingStockModal({ isOpen: true, productId, missingItems, quantity, targetPrice, maxCoveredProduction, fullBreakdown, showFullBreakdown: false });
-      setProductionModal({ ...productionModal, isOpen: false });
-    } else {
-      consumeStockBatch(productId, quantity, targetPrice).then(() => {
-        setProductionModal({ ...productionModal, isOpen: false });
-        setSuccessModal({ isOpen: true, productName: product.name, cost: totalCostForBatch, quantity });
-      }).catch(err => {
-        alert('Error registrando producción: ' + err.message);
-      });
-    }
-  };
 
   const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -462,7 +388,7 @@ const Products: React.FC = () => {
                 <History size={14} className={colors.textMuted} /> Ver Historial
               </button>
               <div className={`border-t ${colors.borderSubtle} my-1.5`} />
-              <button className={`flex w-full items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.statusSuccess} hover:${colors.bgSuccess} transition-colors`} onClick={() => { setMenuState(null); setProductionModal({ isOpen: true, productId: product.id, productName: product.name, quantity: 1, targetPrice: product.price, cost }); }}>
+              <button className={`flex w-full items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.statusSuccess} hover:${colors.bgSuccess} transition-colors`} onClick={() => { setMenuState(null); navigate(`/produccion?productId=${product.id}`); }}>
                 <PlayCircle size={14} /> Producir
               </button>
               <button className={`flex w-full items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.textSecondary} hover:${colors.bgMain} transition-colors`} onClick={() => { setMenuState(null); navigate(`/productos/editar/${product.id}`); }}>
@@ -513,57 +439,6 @@ const Products: React.FC = () => {
         )
       }
 
-      {
-        (missingStockModal.isOpen || productionModal.isOpen || (successModal && successModal.isOpen)) && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-6" style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}>
-            {productionModal.isOpen && (
-              <Card className={`w-full max-w-md ${spacing.pLg} ${shadows.xl} border ${colors.borderStandard} ${colors.bgSurface}`}>
-                <h3 className={`${typography.sectionTitle} ${colors.textPrimary} mb-6`}>Nuevo Lote de {productionModal.productName}</h3>
-                <div className="space-y-4">
-                  <Input label="Cantidad a fabricar" type="number" value={productionModal.quantity} onChange={e => setProductionModal({ ...productionModal, quantity: Number(e.target.value) || 1 })} />
-                  <Input label="Precio Venta (Unid.)" type="number" value={productionModal.targetPrice} onChange={e => setProductionModal({ ...productionModal, targetPrice: Number(e.target.value) || 1 })} />
-                  <Button variant="primary" fullWidth size="lg" onClick={handleConfirmBatchProduction} icon={<CheckCircle2 size={20} />}>Confirmar Producción</Button>
-                  <Button variant="ghost" fullWidth onClick={() => setProductionModal({ ...productionModal, isOpen: false })}>Cancelar</Button>
-                </div>
-              </Card>
-            )}
-
-            {missingStockModal.isOpen && (
-              <Card className={`w-full max-w-xl ${spacing.pLg} ${shadows.xl} border border-red-200 ${colors.bgSurface} space-y-6`}>
-                <div className={`flex items-center gap-4 ${colors.statusDanger}`}>
-                  <AlertTriangle size={28} />
-                  <h3 className={`${typography.sectionTitle}`}>Faltante de Inventario</h3>
-                </div>
-                <p className={`${typography.body} ${colors.textSecondary}`}>No tienes stock suficiente de algunos insumos. Se registrará una deuda de inventario.</p>
-                <div className="flex gap-4 pt-4">
-                  <Button variant="ghost" className="flex-1" onClick={() => setMissingStockModal({ ...missingStockModal, isOpen: false })}>Cancelar</Button>
-                  <Button fullWidth variant="danger" onClick={() => {
-                    consumeStockBatch(missingStockModal.productId, missingStockModal.quantity, missingStockModal.targetPrice).then(() => {
-                      const product = products.find(p => p.id === missingStockModal.productId);
-                      const baseCost = calculateProductCost(product!, batches, rawMaterials, unitsOfMeasure);
-                      setMissingStockModal({ ...missingStockModal, isOpen: false });
-                      setSuccessModal({ isOpen: true, productName: product?.name || '', cost: baseCost * missingStockModal.quantity, quantity: missingStockModal.quantity });
-                      // 🔴 FIX: Previously missing — if production fails here the modal
-                      // closes silently with no feedback to the user.
-                    }).catch(err => {
-                      alert('Error registrando producción con deuda: ' + err.message);
-                    });
-                  }}>Aceptar y Generar Deuda</Button>
-                </div>
-              </Card>
-            )}
-
-            {successModal && successModal.isOpen && (
-              <Card className="w-full max-w-sm space-y-6 p-8 text-center">
-                <CheckCircle2 size={48} className="mx-auto text-slate-600" />
-                <h3 className={typography.sectionTitle}>¡Producción Exitosa!</h3>
-                <p className={`${typography.body} text-gray-600`}>El lote ha sido ingresado al inventario.</p>
-                <Button fullWidth onClick={() => setSuccessModal(null)}>Entendido</Button>
-              </Card>
-            )}
-          </div>
-        )
-      }
     </PageContainer>
   );
 };

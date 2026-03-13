@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Plus, Trash2, Edit2, Search, PlayCircle, Info, Layers, TrendingUp, CheckCircle2, X, ChevronRight, AlertTriangle, RotateCcw, Ruler, History, Copy, Package, PackageSearch, Printer, Archive } from 'lucide-react';
+import { Plus, Trash2, Edit2, Search, Info, Layers, TrendingUp, CheckCircle2, X, ChevronRight, AlertTriangle, RotateCcw, Ruler, History, Copy, Package, PackageSearch, Printer, Archive } from 'lucide-react';
 import { useStore, calculateProductCost, calculateFifoCost, getFifoBreakdown, hasProductGeneratedActiveDebt } from '../store';
 import { calculateFinancialMetrics } from '@/core/financialMetricsEngine';
 import { getEffectiveQuantity, calculatePiecesAreaM2, getLatestRollWidth, calculatePiecesToLinearMeters } from '@/utils/materialCalculations';
@@ -43,7 +43,7 @@ interface ProductMaterialUI extends ProductMaterial {
 const ProductBuilder = () => {
   const navigate = useNavigate();
   const { id } = useParams(); // For editing an existing product
-  const { currentCompanyId, currentUserRole, products, productMovements, rawMaterials, batches, movements, unitsOfMeasure, addProduct, deleteProduct, discontinueProduct, updateProduct, consumeStock, consumeStockBatch } = useStore();
+  const { currentCompanyId, currentUserRole, products, productMovements, rawMaterials, batches, movements, unitsOfMeasure, addProduct, deleteProduct, discontinueProduct, updateProduct } = useStore();
 
   // ✅ RBAC eliminado del frontend — ahora se aplica mediante RLS en Supabase
   // Policies: 20260303211300_rbac_role_policies_v2.sql
@@ -52,8 +52,6 @@ const ProductBuilder = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedMaterial, setExpandedMaterial] = useState<number | null>(null);
 
-  const [missingStockModal, setMissingStockModal] = useState<{ isOpen: boolean; productId: string; missingItems: any[]; quantity: number; targetPrice: number; maxCoveredProduction: number; fullBreakdown: any[]; showFullBreakdown: boolean }>({ isOpen: false, productId: '', missingItems: [], quantity: 1, targetPrice: 0, maxCoveredProduction: 0, fullBreakdown: [], showFullBreakdown: false });
-  const [successModal, setSuccessModal] = useState<{ isOpen: boolean; productName: string; cost: number; quantity: number } | null>(null);
   const [selectorModal, setSelectorModal] = useState<{ isOpen: boolean; forIndex: number | null }>({ isOpen: false, forIndex: null });
   const [selectorSearch, setSelectorSearch] = useState('');
 
@@ -64,7 +62,6 @@ const ProductBuilder = () => {
 
   const [minStock, setMinStock] = useState<number | null>(null);
 
-  const [productionModal, setProductionModal] = useState<{ isOpen: boolean; productId: string; quantity: number; cost: number; targetPrice: number; productName: string }>({ isOpen: false, productId: '', quantity: 1, cost: 0, targetPrice: 0, productName: '' });
 
   // Utilidad para manejar la coma del teclado numérico
   const handleNumberInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -341,80 +338,6 @@ const ProductBuilder = () => {
 
   const primaryActionLabel = editingId ? "Guardar Cambios" : "Crear Producto";
 
-  const handleConfirmBatchProduction = () => {
-    const { productId, quantity, targetPrice } = productionModal;
-    const product = products.find(p => p.id === productId);
-    if (!product || quantity <= 0) return;
-
-    const missingItems: any[] = [];
-    const fullBreakdown: any[] = [];
-    let totalCostForBatch = 0;
-    let maxCoveredProduction = quantity;
-
-    product.materials?.forEach(pm => {
-      const uom = unitsOfMeasure.find(u => u.symbol === pm.consumption_unit);
-
-      // 🟢 Stock validation in BASE UNITS using the new refactored helper
-      const baseQtyPerUnit = getEffectiveQuantity(pm, batches, pm.material_id, uom);
-      const qtyPerUnit = getEffectiveQuantity(pm, batches, pm.material_id); // Visual qty
-
-      const availableBaseStock = batches
-        .filter(b => b.material_id === pm.material_id)
-        .reduce((acc, b) => acc + (b.base_remaining_quantity || 0), 0);
-
-      const possibleUnits = baseQtyPerUnit > 0 ? Math.floor(availableBaseStock / baseQtyPerUnit) : quantity;
-      if (possibleUnits < maxCoveredProduction) {
-        maxCoveredProduction = Math.max(0, possibleUnits);
-      }
-
-      const effectiveQty = qtyPerUnit * quantity;
-      // 🟢 getFifoBreakdown updated with 6th param unitsOfMeasure
-      const breakdown = getFifoBreakdown(pm.material_id, effectiveQty, pm.consumption_unit, batches, rawMaterials, unitsOfMeasure);
-      const totalMissing = breakdown.filter((b: any) => b.is_missing).reduce((acc, b) => acc + b.quantity_used, 0);
-
-      breakdown.forEach(b => { totalCostForBatch += b.subtotal; });
-
-      if (totalMissing > 0) {
-        const material = rawMaterials.find(m => m.id === pm.material_id);
-        // Usar cost_per_base_unit si es posible, o el legacy unit_cost del último lote
-        const lastBatch = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-        const lastBatchCost = lastBatch?.unit_cost || 0;
-
-        missingItems.push({
-          materialName: material?.name || 'Insumo desconocido',
-          missingQuantity: totalMissing,
-          unit: pm.consumption_unit,
-          unitCost: lastBatchCost,
-          totalDebt: lastBatchCost * totalMissing
-        });
-      }
-
-      const material = rawMaterials.find(m => m.id === pm.material_id);
-      const coveredQty = effectiveQty - totalMissing;
-      const lastBatchCost = batches.filter(b => b.material_id === pm.material_id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]?.unit_cost || 0;
-
-      fullBreakdown.push({
-        materialName: material?.name || 'Insumo desconocido',
-        requiredQuantity: effectiveQty,
-        coveredQuantity: coveredQty,
-        missingQuantity: totalMissing,
-        unit: pm.consumption_unit,
-        unitCost: lastBatchCost
-      });
-    });
-
-    if (missingItems.length > 0) {
-      setMissingStockModal({ isOpen: true, productId, missingItems, quantity, targetPrice, maxCoveredProduction, fullBreakdown, showFullBreakdown: false });
-      setProductionModal({ ...productionModal, isOpen: false });
-    } else {
-      consumeStockBatch(productId, quantity, targetPrice).then(() => {
-        setProductionModal({ ...productionModal, isOpen: false });
-        setSuccessModal({ isOpen: true, productName: product.name, cost: totalCostForBatch, quantity });
-      }).catch(err => {
-        alert('Error registrando producción: ' + translateError(err));
-      });
-    }
-  };
 
   return (
     <PageContainer>
@@ -861,24 +784,6 @@ const ProductBuilder = () => {
                     >
                       {primaryActionLabel}
                     </Button>
-                    {editingId && totalCurrentCost > 0 && productionReadiness.ready && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="w-full bg-indigo-50 font-bold text-indigo-700 hover:bg-indigo-100"
-                        onClick={() => setProductionModal({
-                          isOpen: true,
-                          productId: editingId,
-                          quantity: 1,
-                          cost: totalCurrentCost,
-                          targetPrice: formData.price || 0,
-                          productName: formData.name
-                        })}
-                        icon={<PlayCircle size={18} />}
-                      >
-                        REGISTRAR PRODUCCIÓN
-                      </Button>
-                    )}
                   </div>
                 </div>
               </Card>
@@ -924,119 +829,6 @@ const ProductBuilder = () => {
       </div>
 
       {/* ── MODALS OPERATIVOS ── */}
-      {productionModal.isOpen && (
-        <div className="animate-in fade-in fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm duration-300">
-          <Card className={`w-full max-w-md ${spacing.pLg} ${shadows.xl} ${colors.bgSurface} animate-in zoom-in-95 space-y-6 border-0 duration-200`}>
-            <div className="space-y-2 text-center">
-              <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-indigo-50">
-                <Package size={32} className="text-indigo-600" />
-              </div>
-              <h3 className={`${typography.text.section} ${colors.textPrimary}`}>Registrar Producción</h3>
-              <p className={`${typography.text.caption} ${colors.textSecondary} font-bold uppercase tracking-widest`}>{productionModal.productName}</p>
-            </div>
-
-            <div className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50 p-4">
-              <Input
-                label="Cantidad a Producir"
-                type="number"
-                min="1"
-                value={productionModal.quantity}
-                onChange={e => setProductionModal({ ...productionModal, quantity: parseInt(e.target.value) || 1 })}
-                className="h-12 bg-white text-center text-xl font-bold"
-              />
-              <div className="flex items-center justify-between px-1">
-                <span className={`${typography.text.caption} font-bold uppercase text-slate-500`}>Costo Total Est.</span>
-                <span className={`${typography.text.body} text-lg font-black text-slate-900`}>
-                  {formatCurrency(productionModal.cost * productionModal.quantity)}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <Button variant="primary" fullWidth size="lg" className="font-black uppercase tracking-widest" onClick={handleConfirmBatchProduction}>
-                CONFIRMAR INGRESO
-              </Button>
-              <Button variant="ghost" fullWidth className="font-bold text-slate-400" onClick={() => setProductionModal({ ...productionModal, isOpen: false })}>
-                CANCELAR
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {missingStockModal.isOpen && (
-        <div className="animate-in fade-in fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-md duration-300">
-          <Card className={`w-full max-w-xl ${spacing.pLg} ${shadows.xl} border-2 border-red-100 ${colors.bgSurface} animate-in zoom-in-95 space-y-6 duration-200`}>
-            <div className="flex items-center gap-4 text-red-600">
-              <div className="h-14 w-14 flex items-center justify-center rounded-3xl bg-red-50">
-                <AlertTriangle size={32} />
-              </div>
-              <div>
-                <h3 className={`${typography.text.section} leading-tight`}>Déficit de Inventario</h3>
-                <p className={`${typography.text.caption} font-black uppercase tracking-widest text-red-400`}>ALERTA DE SEGURIDAD</p>
-              </div>
-            </div>
-            <div className="rounded-2xl border border-red-100 bg-red-50/50 p-4">
-              <p className={`${typography.text.body} font-medium text-red-800`}>
-                No tienes stock suficiente para este lote. Se registrará una <span className="font-black underline">DEUDA TÉCNICA</span> en tu inventario.
-              </p>
-            </div>
-
-            {/* List missing items */}
-            <div className="custom-scrollbar max-h-[200px] space-y-3 overflow-y-auto pr-2">
-              {missingStockModal.missingItems.map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between rounded-xl border border-slate-100 bg-white p-3">
-                  <div className="min-w-0 flex-1">
-                    <p className={`${typography.text.body} truncate font-bold text-slate-700`}>{item.materialName}</p>
-                    <p className={`${typography.text.caption} font-bold text-slate-400`}>Déficit: {item.missingQuantity.toFixed(2)} {item.unit}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className={`${typography.text.body} font-black text-red-600`}>{formatCurrency(item.totalDebt)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex gap-4 pt-2">
-              <Button variant="ghost" className="flex-1 font-bold text-slate-500" onClick={() => setMissingStockModal({ ...missingStockModal, isOpen: false })}>
-                CANCELAR
-              </Button>
-              <Button variant="danger" className="flex-1 font-black uppercase tracking-wider" onClick={() => {
-                consumeStockBatch(missingStockModal.productId, missingStockModal.quantity, missingStockModal.targetPrice).then(() => {
-                  const product = products.find(p => p.id === missingStockModal.productId);
-                  const baseCost = calculateProductCost(product!, batches, rawMaterials, unitsOfMeasure);
-                  setMissingStockModal({ ...missingStockModal, isOpen: false });
-                  setSuccessModal({ isOpen: true, productName: product?.name || '', cost: baseCost * missingStockModal.quantity, quantity: missingStockModal.quantity });
-                });
-              }}>
-                GENERAR DEUDA
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {successModal && successModal.isOpen && (
-        <div className="animate-in fade-in fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm duration-300">
-          <Card className="animate-in zoom-in-95 w-full max-w-sm space-y-6 border-2 border-emerald-100 bg-white p-10 text-center duration-300">
-            <div className="h-24 w-24 mx-auto mb-2 flex items-center justify-center rounded-full bg-emerald-50">
-              <CheckCircle2 size={56} className="text-emerald-500" />
-            </div>
-            <div className="space-y-2">
-              <h3 className={`${typography.text.section} font-black text-slate-900`}>¡Éxito!</h3>
-              <p className={`${typography.text.body} text-slate-500`}>
-                Lote de <span className="font-bold text-slate-900">{successModal.productName}</span> ingresado correctamente.
-              </p>
-            </div>
-            <Button variant="primary" size="lg" fullWidth className="font-black uppercase tracking-widest shadow-emerald-200" style={{ backgroundColor: '#059669', borderColor: '#059669' }} onClick={() => {
-              setSuccessModal(null);
-              navigate('/productos');
-            }}>
-              FINALIZAR
-            </Button>
-          </Card>
-        </div>
-      )}
 
       {/* ── MATERIAL SELECTOR MODAL (Shopify Style) ── */}
       {selectorModal.isOpen && (

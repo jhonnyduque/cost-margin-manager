@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Product, RawMaterial, Unit, ProductMaterial, MaterialBatch, StockMovement, UserRole, ProductMovement, STOCK_MOVEMENT_REF, UomCategory, UnitOfMeasure, MaterialType, Client, Dispatch, DispatchItem, Supplier, SupplierMaterial, PurchaseOrder, PurchaseOrderItem } from '@/types';
+import { Product, RawMaterial, Unit, ProductMaterial, MaterialBatch, StockMovement, UserRole, ProductMovement, STOCK_MOVEMENT_REF, UomCategory, UnitOfMeasure, MaterialType, Client, Dispatch, DispatchItem, Supplier, SupplierMaterial, PurchaseOrder, PurchaseOrderItem, ProductionOrder, ProductionStatus } from '@/types';
 import { supabase } from './services/supabase';
 import { fetchProductsFromSupabase } from './services/products.service';
 import { calculatePiecesToLinearMeters, getLatestRollWidth } from '@/utils/materialCalculations';
@@ -11,7 +11,6 @@ const getActorId = async (): Promise<string | null> => {
   const { data } = await supabase.auth.getUser();
   return data.user?.id ?? null;
 };
-
 interface AppState {
   // 🔹 TENANT CONTEXT
   currentCompanyId: string | null;
@@ -27,6 +26,7 @@ interface AppState {
   batches: MaterialBatch[];
   movements: StockMovement[];
   productMovements: ProductMovement[];
+  productionOrders: ProductionOrder[];
 
   addProduct: (product: Product) => Promise<void>;
   updateProduct: (product: Product) => Promise<void>;
@@ -38,6 +38,7 @@ interface AppState {
   loadBatchesFromSupabase: () => Promise<void>;
   loadMovementsFromSupabase: () => Promise<void>;
   loadProductMovementsFromSupabase: () => Promise<void>;
+  loadProductionOrdersFromSupabase: () => Promise<void>;
   logout: () => void;
 
   clients: Client[];
@@ -56,8 +57,8 @@ interface AppState {
   deleteBatch: (id: string) => Promise<void>;
   updateBatch: (batch: MaterialBatch) => Promise<void>;
   updateBatchRemaining: (id: string, newQty: number) => Promise<void>;
-  consumeStock: (productId: string) => Promise<void>;
-  consumeStockBatch: (productId: string, quantity: number, targetPrice?: number) => Promise<void>;
+  consumeStockBatch: (productId: string, quantity: number, targetPrice?: number, initialStatus?: ProductionStatus) => Promise<void>;
+  transitionProductionOrder: (orderId: string, newStatus: ProductionStatus) => Promise<void>;
   registerFinishedGoodOutput: (productId: string, quantity: number, type: string, reference: string) => Promise<void>;
   registerBulkFinishedGoodOutput: (outputs: { productId: string; quantity: number; type: string; reference: string }[]) => Promise<void>;
 
@@ -281,6 +282,7 @@ export const useStore = create<AppState>()(
         get().loadSuppliersFromSupabase();
         get().loadSupplierMaterialsFromSupabase();
         get().loadPurchaseOrdersFromSupabase();
+        get().loadProductionOrdersFromSupabase();
       },
 
       setImpersonation: (active, companyId) => {
@@ -300,6 +302,7 @@ export const useStore = create<AppState>()(
       suppliers: [],
       supplierMaterials: [],
       purchaseOrders: [],
+      productionOrders: [],
 
       loadUomMetadata: async () => {
         const { data: catData } = await supabase.from('uom_categories').select('*').order('name');
@@ -371,6 +374,18 @@ export const useStore = create<AppState>()(
         if (!error && data) set({ productMovements: data as ProductMovement[] });
       },
 
+      loadProductionOrdersFromSupabase: async () => {
+        const companyId = get().currentCompanyId;
+        if (!companyId) return;
+        const { data, error } = await supabase
+          .from('production_orders')
+          .select('*')
+          .eq('company_id', companyId)
+          .order('created_at', { ascending: false })
+          .limit(50);
+        if (!error && data) set({ productionOrders: data as ProductionOrder[] });
+      },
+
       logout: () => {
         set({
           currentCompanyId: null,
@@ -387,6 +402,7 @@ export const useStore = create<AppState>()(
           suppliers: [],
           supplierMaterials: [],
           purchaseOrders: [],
+          productionOrders: [],
         });
       },
 
@@ -794,227 +810,67 @@ export const useStore = create<AppState>()(
         }
       },
 
-      consumeStock: async (productId) => {
-        const companyId = get().currentCompanyId;
-        const product = get().products.find(p => p.id === productId);
-        if (!product || !companyId) return;
-        const actorId = await getActorId();
-
-        let currentBatches = [...get().batches];
-        const syncMovements: any[] = [];
-        const now = new Date().toISOString();
-
-        product.materials?.forEach(pm => {
-          // 🟢 AUDIT FIX #3: Soporte modo pieces via getEffectiveQuantity
-          const effectiveQty = pm.mode === 'pieces' && Array.isArray(pm.pieces) && pm.pieces.length > 0
-            ? calculatePiecesToLinearMeters(pm.pieces, getLatestRollWidth(pm.material_id, currentBatches))
-            : pm.quantity;
-
-          const breakdown = getFifoBreakdown(
-            pm.material_id,
-            effectiveQty,
-            pm.consumption_unit,
-            currentBatches,
-            get().rawMaterials,
-            get().unitsOfMeasure
-          );
-
-          breakdown.forEach(item => {
-            if (item.batch_id !== 'faltante') {
-              currentBatches = currentBatches.map(b => {
-                if (b.id === item.batch_id) {
-                  const newBaseRemaining = Math.max(0, (b.base_remaining_quantity ?? 0) - (item as any).base_quantity_consumed);
-                  const material = get().rawMaterials.find(m => m.id === b.material_id);
-                  const baseUnit = get().unitsOfMeasure.find(u => u.id === material?.base_unit_id);
-                  const receivedUnit = get().unitsOfMeasure.find(u => u.id === b.received_unit_id) || baseUnit;
-                  const newLegacyRemaining = receivedUnit ? UnitConverter.fromBase(newBaseRemaining, receivedUnit) : b.remaining_quantity;
-
-                  return {
-                    ...b,
-                    base_remaining_quantity: newBaseRemaining,
-                    base_consumed_quantity: (b.base_consumed_quantity ?? 0) + (item as any).base_quantity_consumed,
-                    remaining_quantity: newLegacyRemaining
-                  };
-                }
-                return b;
-              });
-            }
-
-            syncMovements.push({
-              id: crypto.randomUUID(),
-              company_id: companyId,
-              material_id: pm.material_id,
-              batch_id: item.batch_id === 'faltante' ? null : item.batch_id,
-              date: now,
-              type: (item as any).is_missing ? 'egreso_asumido' : 'egreso',
-              quantity: item.quantity_used,
-              unit_cost: item.unit_cost,
-              reference: (item as any).is_missing
-                ? STOCK_MOVEMENT_REF.egresoAsumido(product.id, product.name)
-                : STOCK_MOVEMENT_REF.egreso(product.name),
-              created_at: now
-            });
-          });
-        });
-
-        // 🟢 AUDIT FIX #1: Persist to DB with await + error handling
-        for (const batch of currentBatches) {
-          const original = get().batches.find(b => b.id === batch.id);
-          if (original && (Number(original.base_remaining_quantity) !== Number(batch.base_remaining_quantity))) {
-            const { error } = await supabase.from('material_batches')
-              .update({
-                remaining_quantity: batch.remaining_quantity,
-                base_remaining_quantity: batch.base_remaining_quantity,
-                base_consumed_quantity: batch.base_consumed_quantity,
-                updated_at: now,
-                updated_by: actorId
-              })
-              .eq('id', batch.id)
-              .eq('company_id', companyId);
-            if (error) {
-              console.error(`[store] consumeStock batch update failed for ${batch.id}:`, error.message);
-              throw error;
-            }
-          }
-        }
-
-        if (syncMovements.length > 0) {
-          const { error } = await supabase.from('stock_movements').insert(syncMovements);
-          if (error) {
-            console.error('[store] consumeStock movements insert failed:', error.message);
-            throw error;
-          }
-        }
-
-        set((state) => ({
-          batches: currentBatches,
-          movements: [...state.movements, ...syncMovements] as StockMovement[],
-        }));
-      },
-
-      consumeStockBatch: async (productId: string, quantity: number, targetPrice?: number) => {
+      consumeStockBatch: async (productId: string, quantity: number, targetPrice?: number, initialStatus: ProductionStatus = 'finished') => {
         const companyId = get().currentCompanyId;
         const product = get().products.find(p => p.id === productId);
         if (!product || !companyId || quantity <= 0) return;
+
         const actorId = await getActorId();
 
-        let currentBatches = [...get().batches];
-        const syncMovements: any[] = [];
-        const now = new Date().toISOString();
-        let totalCostForBatch = 0;
-        let hasMissingMaterials = false;
-
-        product.materials?.forEach(pm => {
-          // 🟠 AUDIT FIX: Usar calculatePiecesToLinearMeters centralizado
-          let reqQty = pm.quantity * quantity;
-          if (pm.mode === 'pieces' && pm.pieces) {
-            const rollWidth = getLatestRollWidth(pm.material_id, currentBatches);
-            reqQty = calculatePiecesToLinearMeters(pm.pieces, rollWidth) * quantity;
-          }
-
-          const breakdown = getFifoBreakdown(
-            pm.material_id,
-            reqQty,
-            pm.consumption_unit,
-            currentBatches,
-            get().rawMaterials,
-            get().unitsOfMeasure
-          );
-
-          breakdown.forEach(item => {
-            if (item.batch_id !== 'faltante') {
-              currentBatches = currentBatches.map(b => {
-                if (b.id === item.batch_id) {
-                  const newBaseRemaining = Math.max(0, (b.base_remaining_quantity ?? 0) - (item as any).base_quantity_consumed);
-
-                  const material = get().rawMaterials.find(m => m.id === b.material_id);
-                  const baseUnit = get().unitsOfMeasure.find(u => u.id === material?.base_unit_id);
-                  const receivedUnit = get().unitsOfMeasure.find(u => u.id === b.received_unit_id) || baseUnit;
-                  const newLegacyRemaining = receivedUnit ? UnitConverter.fromBase(newBaseRemaining, receivedUnit) : b.remaining_quantity;
-
-                  return {
-                    ...b,
-                    base_remaining_quantity: newBaseRemaining,
-                    base_consumed_quantity: (b.base_consumed_quantity ?? 0) + (item as any).base_quantity_consumed,
-                    remaining_quantity: newLegacyRemaining
-                  };
-                }
-                return b;
-              });
-            }
-            totalCostForBatch += item.subtotal;
-            syncMovements.push({
-              id: crypto.randomUUID(),
-              company_id: companyId,
-              material_id: pm.material_id,
-              batch_id: item.batch_id === 'faltante' ? null : item.batch_id,
-              date: now,
-              type: (item as any).is_missing ? 'egreso_asumido' : 'egreso',
-              quantity: item.quantity_used,
-              unit_cost: item.unit_cost,
-              reference: (item as any).is_missing
-                ? STOCK_MOVEMENT_REF.egresoAsumidoLote(product.id)
-                : STOCK_MOVEMENT_REF.egresoLote(product.name),
-              created_at: now
-            });
-            if ((item as any).is_missing) hasMissingMaterials = true;
-          });
+        // 🚀 FASE 4: Flujo Planificado (RPC v4)
+        const { error } = await supabase.rpc('create_production_order_v4', {
+          p_product_id: productId,
+          p_quantity: quantity,
+          p_company_id: companyId,
+          p_actor_id: actorId,
+          p_status: initialStatus
         });
 
-        const perUnitCost = totalCostForBatch / quantity;
-
-        const productMovement: ProductMovement = {
-          id: crypto.randomUUID(),
-          company_id: companyId,
-          product_id: productId,
-          type: 'ingreso_produccion',
-          quantity: quantity,
-          unit_cost: perUnitCost,
-          reference: `Lote Producción: ${quantity} uds`,
-          created_at: now,
-          produced_with_debt: hasMissingMaterials
-        };
-
-        for (const batch of currentBatches) {
-          const original = get().batches.find(b => b.id === batch.id);
-          if (original && (Number(original.base_remaining_quantity) !== Number(batch.base_remaining_quantity))) {
-            const { error } = await supabase.from('material_batches')
-              .update({
-                remaining_quantity: batch.remaining_quantity,
-                base_remaining_quantity: batch.base_remaining_quantity,
-                base_consumed_quantity: batch.base_consumed_quantity,
-                updated_at: now,
-                updated_by: actorId
-              })
-              .eq('id', batch.id)
-              .eq('company_id', companyId);
-            if (error) {
-              console.error(`[store] consumeStockBatch batch update failed for ${batch.id}:`, error.message);
-              throw error;
-            }
-          }
+        if (error) {
+          console.error('[Store] consumeStockBatch RPC failed:', error.message);
+          throw error;
         }
 
-        if (syncMovements.length > 0) {
-          const { error } = await supabase.from('stock_movements').insert(syncMovements);
-          if (error) {
-            console.error('[store] consumeStockBatch movements insert failed:', error.message);
-            throw error;
-          }
+        // Si se pidió un precio objetivo y se finalizó de inmediato
+        if (targetPrice !== undefined && initialStatus === 'finished') {
+           await get().updateProduct({ ...product, price: targetPrice });
         }
 
-        await supabase.from('product_movements').insert([productMovement]);
+        // Recargar datos
+        await Promise.all([
+          get().loadBatchesFromSupabase(),
+          get().loadMovementsFromSupabase(),
+          get().loadProductMovementsFromSupabase(),
+          get().loadProductionOrdersFromSupabase(),
+          ...(targetPrice !== undefined ? [get().loadProductsFromSupabase()] : [])
+        ]);
+      },
 
-        if (targetPrice !== undefined && targetPrice !== product.price) {
-          await supabase.from('products').update({ price: targetPrice }).eq('id', productId).eq('company_id', companyId);
-          await get().updateProduct({ ...product, price: targetPrice });
+      transitionProductionOrder: async (orderId: string, newStatus: ProductionStatus) => {
+        const companyId = get().currentCompanyId;
+        if (!companyId) return;
+
+        const actorId = await getActorId();
+
+        const { error } = await supabase.rpc('transition_production_order', {
+          p_order_id: orderId,
+          p_new_status: newStatus,
+          p_company_id: companyId,
+          p_actor_id: actorId
+        });
+
+        if (error) {
+          console.error('[Store] transitionProductionOrder failed:', error.message);
+          throw error;
         }
 
-        set((state) => ({
-          batches: currentBatches,
-          movements: [...state.movements, ...syncMovements] as StockMovement[],
-          productMovements: [productMovement, ...state.productMovements]
-        }));
+        // Recargar todo para asegurar consistencia
+        await Promise.all([
+          get().loadBatchesFromSupabase(),
+          get().loadMovementsFromSupabase(),
+          get().loadProductMovementsFromSupabase(),
+          get().loadProductionOrdersFromSupabase()
+        ]);
       },
 
       registerFinishedGoodOutput: async (productId, quantity, type, reference) => {

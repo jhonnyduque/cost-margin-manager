@@ -29,6 +29,7 @@ import ProductBuilder from '@/pages/ProductBuilder';
 import ProductDetail from '@/pages/ProductDetail';
 import Suppliers from '@/pages/Suppliers';
 import Purchases from '@/pages/Purchases';
+import Production from '@/pages/Production';
 
 // Pages (New in Src)
 import PlatformAdmin from './pages/PlatformAdmin';
@@ -165,7 +166,7 @@ const AppContent: React.FC = () => {
                 <Route path="/despachos" element={<Dispatches />} />
 
                 {/* ── Módulos Próximamente ── */}
-                <Route path="/produccion" element={<PlaceholderPage />} />
+                <Route path="/produccion" element={<Production />} />
                 <Route path="/compras" element={<Purchases />} />
                 <Route path="/proveedores" element={<Suppliers />} />
                 <Route path="/reportes" element={<PlaceholderPage />} />
@@ -219,3 +220,5 @@ const App: React.FC = () => {
 };
 
 export default App;
+
+

@@ -226,3 +226,22 @@ export interface PurchaseOrder {
     // relación local (no en DB)
     items?: PurchaseOrderItem[];
 }
+
+export type ProductionStatus = 'planned' | 'preparation' | 'processing' | 'finished' | 'cancelled';
+
+export interface ProductionOrder {
+  id: string;
+  company_id: string;
+  product_id: string;
+  quantity: number;
+  unit_cost: number;
+  total_cost: number;
+  actor_id?: string | null;
+  debt_generated: boolean;
+  status: ProductionStatus;
+  materials_snapshot?: any;
+  started_at?: string | null;
+  completed_at?: string | null;
+  created_at: string;
+  updated_at?: string;
+}

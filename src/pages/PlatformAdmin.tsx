@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/services/supabase';
 import {
     Server, Users, AlertTriangle, Layers, CreditCard,
     UserPlus, ChevronRight, Megaphone, Send, Activity,
-    TrendingUp, ShieldCheck, Globe, Zap, Clock, Info, ExternalLink, ArrowUpRight, Tags
+    TrendingUp, ShieldCheck, Globe, Zap, Clock, ExternalLink, ArrowUpRight, Tags
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { eventBusService } from '@/services/eventBusService';
@@ -350,7 +350,15 @@ function TaxonomySection({
 export default function PlatformAdmin() {
     const { user, enterCompanyAsFounder, refreshAuth } = useAuth();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'overview' | 'tenants' | 'billing' | 'ops' | 'taxonomies'>('overview');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const requestedTab = searchParams.get('tab');
+    const activeTab: 'overview' | 'tenants' | 'billing' | 'ops' | 'taxonomies' =
+        requestedTab === 'tenants' ||
+        requestedTab === 'billing' ||
+        requestedTab === 'ops' ||
+        requestedTab === 'taxonomies'
+            ? requestedTab
+            : 'overview';
     const {
         materialTypes, uomCategories, unitsOfMeasure,
         addMaterialType, updateMaterialType, deleteMaterialType,
@@ -385,6 +393,14 @@ export default function PlatformAdmin() {
     const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [fetchingTenants, setFetchingTenants] = useState(false);
+
+    const changeTab = (tab: 'overview' | 'tenants' | 'billing' | 'ops' | 'taxonomies') => {
+        setSearchParams(prev => {
+            const next = new URLSearchParams(prev);
+            next.set('tab', tab);
+            return next;
+        }, { replace: true });
+    };
 
     useEffect(() => {
         loadData();
@@ -580,7 +596,7 @@ export default function PlatformAdmin() {
     }
 
     const tabs = [
-        { id: 'overview', label: 'Estrategia', icon: TrendingUp },
+        { id: 'overview', label: 'Resumen', icon: TrendingUp },
         { id: 'tenants', label: 'Empresas', icon: Globe },
         { id: 'billing', label: 'Finanzas', icon: CreditCard },
         { id: 'ops', label: 'Operaciones', icon: Zap },
@@ -591,7 +607,7 @@ export default function PlatformAdmin() {
         <PageContainer className="space-y-8 pb-12">
             {/* Header Estratégico (BETO OS v3.0) */}
             <UniversalPageHeader
-                title="Control Center v2.0"
+                title="Consola de Plataforma"
                 breadcrumbs={
                     <>
                         <span>BETO OS</span>
@@ -614,7 +630,7 @@ export default function PlatformAdmin() {
                             {tabs.map(tab => (
                                 <button
                                     key={tab.id}
-                                    onClick={() => setActiveTab(tab.id as any)}
+                                    onClick={() => changeTab(tab.id as 'overview' | 'tenants' | 'billing' | 'ops' | 'taxonomies')}
                                     className={`flex items-center gap-2 px-3 sm:px-4 py-2 ${radius.lg} ${typography.uiLabel} transition-all ${activeTab === tab.id
                                         ? `bg-indigo-600 text-white ${shadows.md}`
                                         : `${colors.textSecondary} hover:${colors.textPrimary} hover:${colors.bgMain}`
@@ -633,92 +649,150 @@ export default function PlatformAdmin() {
             />
 
             {activeTab === 'overview' && (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
-                    {/* Columna Principal: Métricas y Gráficos */}
-                    <div className="lg:col-span-8 space-y-8 min-w-0">
-                        {/* Grid de KPIs Premium */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <MetricCard
-                                title="North Star: MRR"
-                                value={`$${metrics?.totalMRR.toLocaleString()}`}
-                                description="Ingresos Mensuales Recurrentes. Mide el dinero que entra de forma estable cada mes por suscripciones. Es el indicador de salud financiera número uno."
-                                trend={{ value: 15.2, label: 'MoM', isPositive: true }}
-                                icon={<TrendingUp size={24} />}
-                                sparklineData={growthData.map(d => ({ value: d.realMrr }))}
-                                variant="primary"
-                                size="lg"
-                                loading={loading}
-                            />
+                <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.45fr)_360px] gap-8 lg:gap-10">
+                    <div className="space-y-8 min-w-0">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+                            <div className={`${radius['3xl']} border ${colors.borderStandard} ${colors.bgSurface} ${spacing.pLg} ${shadows.sm}`}>
+                                <p className={`${typography.uiLabel} ${colors.textMuted}`}>MRR actual</p>
+                                <div className="mt-4 flex items-end justify-between gap-4">
+                                    <div>
+                                        <div className={`${typography.metric} ${colors.textPrimary}`}>
+                                            ${metrics?.totalMRR.toLocaleString()}
+                                        </div>
+                                        <p className={`${typography.caption} ${colors.textSecondary} mt-2`}>
+                                            Ingreso recurrente mensual estabilizado.
+                                        </p>
+                                    </div>
+                                    <span className={`${typography.uiLabel} font-semibold ${colors.statusSuccess}`}>
+                                        +15.2%
+                                    </span>
+                                </div>
+                            </div>
 
-                            <MetricCard
-                                title="Churn Rate (MM)"
-                                value={`${metrics?.churnRate}%`}
-                                description="Tasa de cancelación. Mide cuántos clientes perdemos cada mes. Nuestro objetivo es que sea inferior al 3% para un crecimiento saludable."
-                                trend={{ value: 0.3, label: 'improving', isPositive: true }}
-                                icon={<Users size={20} />}
-                                visualType="gauge"
-                                variant="success"
-                                progressValue={metrics?.churnRate || 0}
-                                loading={loading}
-                            />
-                            <MetricCard
-                                title="Active Tenants"
-                                value={metrics?.activeTenants || 0}
-                                description="Número de empresas activas usando la plataforma. Cada empresa puede tener múltiples usuarios contratados."
-                                trend={{ value: 4, label: 'new this month', isPositive: true }}
-                                icon={<Globe size={20} />}
-                                loading={loading}
-                            />
+                            <div className={`${radius['3xl']} border ${colors.borderStandard} ${colors.bgSurface} ${spacing.pLg} ${shadows.sm}`}>
+                                <p className={`${typography.uiLabel} ${colors.textMuted}`}>Tenants activos</p>
+                                <div className="mt-4 flex items-end justify-between gap-4">
+                                    <div>
+                                        <div className={`${typography.metric} ${colors.textPrimary}`}>
+                                            {metrics?.activeTenants || 0}
+                                        </div>
+                                        <p className={`${typography.caption} ${colors.textSecondary} mt-2`}>
+                                            Empresas facturando o usando la plataforma.
+                                        </p>
+                                    </div>
+                                    <span className={`${typography.uiLabel} font-semibold ${colors.statusSuccess}`}>
+                                        +{metrics?.newTenantsMonth || 0}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className={`${radius['3xl']} border ${colors.borderStandard} ${colors.bgSurface} ${spacing.pLg} ${shadows.sm}`}>
+                                <p className={`${typography.uiLabel} ${colors.textMuted}`}>Churn mensual</p>
+                                <div className="mt-4 flex items-end justify-between gap-4">
+                                    <div>
+                                        <div className={`${typography.metric} ${colors.textPrimary}`}>
+                                            {metrics?.churnRate || 0}%
+                                        </div>
+                                        <p className={`${typography.caption} ${colors.textSecondary} mt-2`}>
+                                            Salida neta de clientes durante el mes.
+                                        </p>
+                                    </div>
+                                    <span className={`${typography.uiLabel} font-semibold ${(metrics?.churnRate || 0) <= 3 ? colors.statusSuccess : colors.statusDanger}`}>
+                                        {(metrics?.churnRate || 0) <= 3 ? 'Saludable' : 'Atender'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className={`${radius['3xl']} border ${colors.borderStandard} ${colors.bgSurface} ${spacing.pLg} ${shadows.sm}`}>
+                                <p className={`${typography.uiLabel} ${colors.textMuted}`}>LTV estimado</p>
+                                <div className="mt-4 flex items-end justify-between gap-4">
+                                    <div>
+                                        <div className={`${typography.metric} ${colors.textPrimary}`}>
+                                            ${Math.round(metrics?.ltv || 0).toLocaleString()}
+                                        </div>
+                                        <p className={`${typography.caption} ${colors.textSecondary} mt-2`}>
+                                            Valor total proyectado por cuenta activa.
+                                        </p>
+                                    </div>
+                                    <span className={`${typography.uiLabel} font-semibold ${colors.textSecondary}`}>
+                                        Estable
+                                    </span>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Gráfico de Crecimiento Avanzado */}
-                        <div className={`${radius['3xl']} border ${colors.borderStandard} ${colors.bgSurface} ${spacing.pLg} lg:${spacing.pXl} ${shadows.sm} transition-all hover:${shadows.xl}`}>
-                            <div className="flex items-center justify-between mb-10">
+                        <div className={`${radius['3xl']} border ${colors.borderStandard} ${colors.bgSurface} ${spacing.pLg} lg:${spacing.pXl} ${shadows.sm}`}>
+                            <div className="flex items-center justify-between gap-4 mb-10">
                                 <div>
-                                    <h3 className={`${typography.sectionTitle} ${colors.textPrimary} tracking-tighter`}>Performance de Plataforma</h3>
-                                    <p className={`${typography.caption} ${colors.textSecondary} font-medium`}>Trayectoria de MRR Real vs Metas Proyectadas</p>
+                                    <h3 className={`${typography.sectionTitle} ${colors.textPrimary}`}>Performance de plataforma</h3>
+                                    <p className={`${typography.caption} ${colors.textSecondary}`}>
+                                        Evolución de MRR real frente al comportamiento proyectado.
+                                    </p>
                                 </div>
-                                <div className="flex flex-wrap justify-end gap-x-6 gap-y-2">
-                                    <div className={`flex items-center gap-2 ${typography.uiLabel} text-slate-500 whitespace-nowrap`}>
-                                        <div className="w-3 h-1 bg-indigo-600 rounded-full" /> MRR Real
-                                    </div>
-                                    <div className={`flex items-center gap-2 ${typography.uiLabel} text-slate-500 whitespace-nowrap`}>
-                                        <div className="w-3 h-1 bg-slate-200 rounded-full border border-dashed border-slate-400" /> Proyectado
-                                    </div>
+                                <div className="flex flex-wrap justify-end gap-x-5 gap-y-2">
+                                    <span className={`flex items-center gap-2 ${typography.caption} ${colors.textSecondary}`}>
+                                        <span className="w-3 h-1 rounded-full bg-indigo-600" />
+                                        Real
+                                    </span>
+                                    <span className={`flex items-center gap-2 ${typography.caption} ${colors.textSecondary}`}>
+                                        <span className="w-3 h-1 rounded-full bg-slate-200 border border-dashed border-slate-400" />
+                                        Proyectado
+                                    </span>
                                 </div>
                             </div>
                             <MainGrowthChart data={growthData} />
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            {/* VIP Tenants Section */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             <div className={`${radius['3xl']} border ${colors.borderStandard} ${colors.bgSurface} ${spacing.pLg} ${shadows.sm}`}>
                                 <div className="flex items-center justify-between mb-8">
-                                    <h3 className={`${typography.sectionTitle} ${colors.textPrimary} tracking-tighter`}>Top 5 VIP Tenants</h3>
-                                    <button onClick={() => setActiveTab('tenants')} className={`${typography.uiLabel} text-indigo-600 hover:underline`}>VER TODOS</button>
+                                    <div>
+                                        <h3 className={`${typography.sectionTitle} ${colors.textPrimary}`}>Top tenants</h3>
+                                        <p className={`${typography.caption} ${colors.textSecondary}`}>
+                                            Cuentas con mejor desempeño y mayor uso activo.
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => changeTab('tenants')}
+                                        className={`${typography.uiLabel} text-indigo-600 hover:underline`}
+                                    >
+                                        Ver todos
+                                    </button>
                                 </div>
-                                <div className="space-y-6">
+                                <div className="space-y-4">
                                     {vipTenants.map((tenant) => (
-                                        <div key={tenant.id} className={`flex items-center justify-between group ${spacing.pSm} hover:${colors.bgMain} transition-all ${radius.xl}`}>
-                                            <div className="flex items-center gap-3">
-                                                <div className={`size-10 ${radius.xl} ${colors.bgMain} border ${colors.borderStandard} flex items-center justify-center font-semibold ${colors.textSecondary} group-hover:${colors.bgSurface} group-hover:text-indigo-600 transition-all`}>
+                                        <div
+                                            key={tenant.id}
+                                            className={`flex items-center justify-between gap-4 ${spacing.pSm} ${radius.xl} hover:${colors.bgMain} transition-all`}
+                                        >
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className={`size-10 ${radius.xl} ${colors.bgMain} border ${colors.borderStandard} flex items-center justify-center font-semibold ${colors.textSecondary}`}>
                                                     {tenant.name[0]}
                                                 </div>
-                                                <div className="flex flex-col">
-                                                    <span className={`${typography.body} font-bold ${colors.textPrimary}`}>{tenant.name}</span>
-                                                    <span className={`${typography.caption} uppercase tracking-tighter ${colors.textMuted}`}>{tenant.plan}</span>
+                                                <div className="min-w-0">
+                                                    <p className={`${typography.body} font-semibold ${colors.textPrimary} truncate`}>
+                                                        {tenant.name}
+                                                    </p>
+                                                    <p className={`${typography.caption} ${colors.textMuted}`}>
+                                                        {tenant.plan} · {Math.round(tenant.usage)}% uso
+                                                    </p>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-4">
-                                                <div className="text-right flex flex-col justify-center">
-                                                    <div className={`${typography.body} font-bold ${colors.textPrimary}`}>${tenant.mrr}</div>
-                                                    <div className={`${typography.caption} font-bold ${colors.statusSuccess}`}>{Math.round(tenant.usage)}% usage</div>
+                                            <div className="flex items-center gap-4 shrink-0">
+                                                <div className="text-right">
+                                                    <p className={`${typography.body} font-semibold ${colors.textPrimary}`}>
+                                                        ${tenant.mrr}
+                                                    </p>
+                                                    <p className={`${typography.caption} ${colors.textSecondary}`}>
+                                                        MRR
+                                                    </p>
                                                 </div>
                                                 <button
                                                     onClick={() => handleTenantAccess(tenant.id)}
-                                                    className={`flex items-center gap-1.5 px-3 py-1.5 ${radius.xl} ${colors.bgMain} text-indigo-600 ${typography.uiLabel} opacity-0 group-hover:opacity-100 transition-all hover:bg-indigo-600 hover:text-white`}
+                                                    className={`inline-flex items-center gap-1.5 px-3 py-2 ${radius.xl} border ${colors.borderStandard} ${typography.uiLabel} ${colors.textPrimary} hover:${colors.bgMain} transition-all`}
                                                 >
-                                                    Acceder <ExternalLink size={12} />
+                                                    Entrar
+                                                    <ExternalLink size={12} />
                                                 </button>
                                             </div>
                                         </div>
@@ -726,74 +800,67 @@ export default function PlatformAdmin() {
                                 </div>
                             </div>
 
-                            <div className="space-y-8">
-                                <div className={`${radius['3xl']} border ${colors.borderStandard} ${colors.bgSurface} ${spacing.pLg} ${shadows.sm}`}>
-                                    <h3 className={`${typography.sectionTitle} ${colors.textPrimary} tracking-tighter mb-8`}>Distribución de Planes</h3>
-                                    <PlanDonutChart data={planData} />
+                            <div className={`${radius['3xl']} border ${colors.borderStandard} ${colors.bgSurface} ${spacing.pLg} ${shadows.sm}`}>
+                                <div className="mb-8">
+                                    <h3 className={`${typography.sectionTitle} ${colors.textPrimary}`}>Distribución de planes</h3>
+                                    <p className={`${typography.caption} ${colors.textSecondary}`}>
+                                        Mezcla actual entre tiers contratados y densidad comercial.
+                                    </p>
                                 </div>
-                                <div className={`${radius['3xl']} border ${colors.borderStandard} bg-indigo-600 ${spacing.pLg} ${shadows.xl} shadow-indigo-100 text-white group cursor-pointer overflow-hidden relative`}>
-                                    <Zap className="absolute -right-4 -top-4 w-32 h-32 opacity-10 group-hover:rotate-12 transition-transform" />
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <h3 className={`${typography.uiLabel} opacity-60`}>Lifetime Value (LTV)</h3>
-                                        <div className="relative group/ltv">
-                                            <Info size={12} className="opacity-40 hover:opacity-100 cursor-help transition-opacity" />
-                                            <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-slate-800 text-xs text-white rounded-lg shadow-xl opacity-0 group-hover/ltv:opacity-100 pointer-events-none transition-opacity z-50 font-medium leading-tight">
-                                                Estimación total de ingresos por cliente antes de cancelar. Ayuda a calcular cuánto podemos invertir en captar nuevos usuarios.
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className={`${typography.metric} mb-4`}>${Math.round(metrics?.ltv || 0).toLocaleString()}</div>
-                                    <p className={`${typography.caption} font-bold opacity-80 leading-relaxed`}>Valor proyectado promedio por empresa basado en churn actual y ticket promedio.</p>
-                                </div>
+                                <PlanDonutChart data={planData} />
                             </div>
                         </div>
                     </div>
 
-                    {/* Columna Lateral: Realtime Activity */}
-                    <div className="lg:col-span-4 space-y-8 min-w-0">
-                        {/* Acciones Rápidas Pro */}
+                    <div className="space-y-6 min-w-0">
                         <div className={`${radius['3xl']} border ${colors.borderStandard} ${colors.bgSurface} ${spacing.pLg} ${shadows.sm}`}>
-                            <h3 className={`${typography.sectionTitle} ${colors.textPrimary} tracking-tighter mb-8`}>Operaciones</h3>
-                            <div className="grid grid-cols-2 gap-4">
-                                <button onClick={() => navigate('/platform/environments')} className={`flex flex-col items-center justify-center gap-3 ${spacing.pLg} ${radius['2xl']} ${colors.bgMain} border ${colors.borderStandard} hover:${colors.bgSurface} hover:${colors.borderBrand} hover:${shadows.xl} hover:shadow-indigo-50 hover:text-indigo-600 transition-all group`}>
-                                    <Layers size={24} className={`${colors.textMuted} group-hover:text-indigo-500 group-hover:scale-110 transition-all`} />
-                                    <span className={`${typography.uiLabel}`}>Entornos</span>
-                                </button>
-                                <button onClick={() => navigate('/platform/users')} className={`flex flex-col items-center justify-center gap-3 ${spacing.pLg} ${radius['2xl']} ${colors.bgMain} border ${colors.borderStandard} hover:${colors.bgSurface} hover:${colors.borderBrand} hover:${shadows.xl} hover:shadow-indigo-50 hover:text-indigo-600 transition-all group`}>
-                                    <UserPlus size={24} className={`${colors.textMuted} group-hover:text-indigo-500 group-hover:scale-110 transition-all`} />
-                                    <span className={`${typography.uiLabel}`}>Equipo</span>
-                                </button>
-                                <button onClick={() => navigate('/platform/billing')} className={`flex flex-col items-center justify-center gap-3 ${spacing.pLg} ${radius['2xl']} ${colors.bgMain} border ${colors.borderStandard} hover:${colors.bgSurface} hover:${colors.borderBrand} hover:${shadows.xl} hover:shadow-indigo-50 hover:text-indigo-600 transition-all group`}>
-                                    <CreditCard size={24} className={`${colors.textMuted} group-hover:text-indigo-500 group-hover:scale-110 transition-all`} />
-                                    <span className={`${typography.uiLabel}`}>Facturación</span>
-                                </button>
-                                <div onClick={() => setActiveTab('taxonomies')} className={`flex flex-col items-center justify-center gap-3 ${spacing.pLg} ${radius['2xl']} ${colors.bgMain} border ${colors.borderStandard} hover:${colors.bgSurface} hover:${colors.borderBrand} hover:${shadows.xl} hover:shadow-indigo-50 hover:text-indigo-600 transition-all group cursor-pointer`}>
-                                    <Tags size={24} className={`${colors.textMuted} group-hover:text-indigo-500 group-hover:scale-110 transition-all`} />
-                                    <span className={`${typography.uiLabel}`}>Taxonomías</span>
+                            <div className="mb-6">
+                                <h3 className={`${typography.sectionTitle} ${colors.textPrimary}`}>Señales clave</h3>
+                                <p className={`${typography.caption} ${colors.textSecondary}`}>
+                                    Estado resumido para decisiones rápidas de plataforma.
+                                </p>
+                            </div>
+                            <div className="space-y-4">
+                                <div className={`${radius['2xl']} border ${colors.borderStandard} ${spacing.pMd}`}>
+                                    <p className={`${typography.uiLabel} ${colors.textMuted}`}>System health</p>
+                                    <p className={`${typography.bodyLg} font-semibold ${(metrics?.systemHealth || 'healthy') === 'healthy' ? colors.statusSuccess : colors.statusDanger}`}>
+                                        {(metrics?.systemHealth || 'healthy') === 'healthy' ? 'Healthy' : 'Atender'}
+                                    </p>
                                 </div>
-                                <div className={`flex flex-col items-center justify-center gap-3 ${spacing.pLg} ${radius['2xl']} bg-indigo-600 text-white cursor-pointer hover:bg-indigo-700 hover:shadow-2xl hover:shadow-indigo-500/20 transition-all shadow-lg active:scale-95 group`}>
-                                    <ShieldCheck size={24} className="group-hover:scale-110 transition-all" />
-                                    <span className={`${typography.uiLabel}`}>Auditoría</span>
+                                <div className={`${radius['2xl']} border ${colors.borderStandard} ${spacing.pMd}`}>
+                                    <p className={`${typography.uiLabel} ${colors.textMuted}`}>Seats activos</p>
+                                    <p className={`${typography.bodyLg} font-semibold ${colors.textPrimary}`}>
+                                        {metrics?.activeSeats || 0}
+                                    </p>
+                                    <p className={`${typography.caption} ${colors.textSecondary}`}>
+                                        Utilización {metrics?.seatUtilization || 0}%
+                                    </p>
+                                </div>
+                                <div className={`${radius['2xl']} border ${colors.borderStandard} ${spacing.pMd}`}>
+                                    <p className={`${typography.uiLabel} ${colors.textMuted}`}>Nuevos tenants</p>
+                                    <p className={`${typography.bodyLg} font-semibold ${colors.textPrimary}`}>
+                                        +{metrics?.newTenantsMonth || 0}
+                                    </p>
+                                    <p className={`${typography.caption} ${colors.textSecondary}`}>
+                                        Altas registradas este mes.
+                                    </p>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Live Activity Feed */}
-                        <div className={`${radius['3xl']} border ${colors.borderStandard} ${colors.bgSurface} ${spacing.pLg} ${shadows.sm} flex-1 flex flex-col min-h-[500px]`}>
-                            <div className="flex items-center justify-between mb-10">
-                                <div className="flex items-center gap-2">
-                                    <Activity size={18} className="text-indigo-500" />
-                                    <h3 className={`${typography.sectionTitle} ${colors.textPrimary} tracking-tighter`}>Actividad en Vivo</h3>
-                                </div>
-                                <span className={`flex h-2.5 w-2.5 rounded-full ${colors.bgSuccess} border-2 border-white shadow-[0_0_8px_#10b981] animate-pulse`} />
+
+                        <div className={`${radius['3xl']} border ${colors.borderStandard} ${colors.bgSurface} ${spacing.pLg} ${shadows.sm}`}>
+                            <div className="mb-5">
+                                <h3 className={`${typography.sectionTitle} ${colors.textPrimary}`}>Actividad reciente</h3>
+                                <p className={`${typography.caption} ${colors.textSecondary}`}>
+                                    Eventos y movimientos relevantes en tiempo cercano.
+                                </p>
                             </div>
                             <ActivityFeed />
                         </div>
                     </div>
                 </div>
-            )}
-
-            {activeTab === 'billing' && (
+            )}            {activeTab === 'billing' && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
                     <GlobalFilterBar
                         dateRange={dateRange}
@@ -996,3 +1063,7 @@ export default function PlatformAdmin() {
         </PageContainer>
     );
 }
+
+
+
+

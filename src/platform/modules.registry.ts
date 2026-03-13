@@ -21,7 +21,7 @@ export const MODULES = {
         icon: Factory,
         requiredCapability: 'view_products',
         tenantOnly: true,
-        comingSoon: true
+        comingSoon: false
     },
     products: {
         id: 'products',

@@ -127,15 +127,27 @@ const getUserRoleLabel = (
 // ============================================================================
 
 const PLATFORM_SECTIONS: Record<string, string> = {
-    '/control-center': 'Control Center',
-    '/platform/environments': 'Environments',
-    '/platform/users': 'Equipo',
-    '/platform/billing': 'Facturación',
+    '/platform/environments': 'Entornos',
+    '/platform/users': 'Usuarios',
+    '/platform/billing': 'Finanzas',
     '/settings': 'Settings',
     '/mas': 'Más',
 };
 
-const getSectionName = (pathname: string): string | null => {
+const PLATFORM_TABS: Record<string, string> = {
+    overview: 'Resumen',
+    tenants: 'Empresas',
+    billing: 'Finanzas',
+    ops: 'Operaciones',
+    taxonomies: 'Taxonomías',
+};
+
+const getSectionName = (pathname: string, search: string): string | null => {
+    if (pathname === '/control-center') {
+        const activeTab = new URLSearchParams(search).get('tab') || 'overview';
+        return PLATFORM_TABS[activeTab] || 'Resumen';
+    }
+
     for (const [route, name] of Object.entries(PLATFORM_SECTIONS)) {
         if (pathname === route || pathname.startsWith(route + '/')) return name;
     }
@@ -206,7 +218,7 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
     const menuRef = useRef<HTMLDivElement>(null);
     const notificationsRef = useRef<HTMLDivElement>(null);
 
-    const sectionName = getSectionName(location.pathname);
+    const sectionName = getSectionName(location.pathname, location.search);
 
     // ✅ Calcular user info una vez por render
     const userInitials = getUserInitials(user);
@@ -383,7 +395,7 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
                         <>
                             <ChevronRight size={14} className={`${colors.textMuted} flex-shrink-0 opacity-40`} />
                             <span className={`${typography.bodySm} ${colors.textSecondary} font-medium`}>Platform Control</span>
-                            {sectionName && sectionName !== 'Control Center' && (
+                            {sectionName && (
                                 <>
                                     <ChevronRight size={14} className={`${colors.textMuted} flex-shrink-0 opacity-40`} />
                                     <span className={`${typography.bodySm} font-semibold ${colors.textPrimary} truncate`}>
@@ -739,4 +751,6 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
         </header>
     );
 };
+
+
 

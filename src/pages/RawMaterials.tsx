@@ -471,31 +471,41 @@ const RawMaterials: React.FC = () => {
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-3 pt-6 border-t border-slate-100">
-          <div className="relative flex-1 min-w-[300px]">
-            <Search size={16} className={`absolute left-4 top-1/2 -translate-y-1/2 ${colors.textMuted}`} />
+        <div className="mt-8 flex flex-col gap-4 border-t border-slate-100 pt-8 lg:flex-row lg:items-center lg:justify-between">
+          <div className="relative w-full lg:max-w-2xl">
+            <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 text-slate-400`} />
             <input
               type="text"
-              placeholder="Buscar por nombre o proveedor..."
+              placeholder="Buscar por nombre, proveedor o tipo..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl ${typography.text.body} transition-all focus:ring-2 focus:ring-slate-400 focus:bg-white`}
+              className={`h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 ${typography.text.body} transition-all focus:bg-white focus:ring-2 focus:ring-slate-300`}
             />
           </div>
-          <Select
-            className="w-48"
-            value={unitFilter}
-            onChange={(e) => setUnitFilter(e.target.value)}
-          >
-            <option value="todos">Todas las unidades</option>
-            {unitsOfMeasure.map(u => (
-              <option key={u.id} value={u.symbol}>{u.name} ({u.symbol})</option>
-            ))}
-          </Select>
+          <div className="flex items-center gap-3">
+             <Select
+              className="w-full lg:w-56 h-11 bg-slate-50 border-slate-200 rounded-xl"
+              value={unitFilter}
+              onChange={(e) => setUnitFilter(e.target.value)}
+            >
+              <option value="todos">Unidades: Todas</option>
+              {unitsOfMeasure.map(u => (
+                <option key={u.id} value={u.symbol}>{u.name} ({u.symbol})</option>
+              ))}
+            </Select>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={colors.textSecondary}
+              onClick={handlePrint}
+              title="Imprimir catálogo"
+              icon={<Printer size={20} />}
+            />
+          </div>
         </div>
       </SectionBlock>
 
-      <div className={`space-y-3 md:hidden`}>
+      <div className="space-y-4 md:hidden mt-6">
         {filteredMaterials.length === 0 ? (
           <div className={`${radius.xl} border border-dashed ${colors.borderStandard} ${colors.bgSurface} ${spacing.pLg} text-center`}>
             <Package size={48} className={`mx-auto mb-3 ${colors.textMuted}`} />
@@ -556,20 +566,20 @@ const RawMaterials: React.FC = () => {
       </div>
 
       {/* ========== DESKTOP: Table ========== */}
-      <div className="hidden md:block">
-        <div className={`table-container ${radius.xl} border ${colors.borderStandard} overflow-hidden ${shadows.sm}`}>
+      <div className="hidden md:block mt-8">
+        <div className={`table-container rounded-2xl border ${colors.borderStandard} ${colors.bgSurface} overflow-hidden ${shadows.sm}`}>
           <table className="w-full text-left table-fixed">
             <thead className={`${colors.bgMain} border-b ${colors.borderStandard}`}>
               <tr>
-                <th className={`w-[25%] ${spacing.pxLg} py-3 ${typography.uiLabel} ${colors.textSecondary} truncate`}>Materia Prima</th>
-                <th className={`w-[12%] ${spacing.pxLg} py-3 ${typography.uiLabel} ${colors.textSecondary} truncate`}>Categoría</th>
-                <th className={`w-[18%] ${spacing.pxLg} py-3 ${typography.uiLabel} ${colors.textSecondary} truncate text-right`}>Disponible / Deuda</th>
-                <th className={`w-[15%] ${spacing.pxLg} py-3 ${typography.uiLabel} ${colors.textSecondary} truncate text-right`}>Valor en Bodega</th>
-                <th className={`w-[15%] ${spacing.pxLg} py-3 ${typography.uiLabel} ${colors.textSecondary} truncate text-right`}>Costo Promedio</th>
-                <th className={`w-[10%] ${spacing.pxLg} py-3 ${typography.uiLabel} ${colors.textSecondary} text-right`}>Acciones</th>
+                <th className={`w-[25%] ${spacing.pxLg} py-4 ${typography.text.caption} font-bold uppercase text-slate-500 truncate`}>Materia Prima</th>
+                <th className={`w-[13%] ${spacing.pxLg} py-4 ${typography.text.caption} font-bold uppercase text-slate-500 truncate`}>Categoría</th>
+                <th className={`w-[18%] ${spacing.pxLg} py-4 ${typography.text.caption} font-bold uppercase text-slate-500 truncate text-right`}>Disponible / Deuda</th>
+                <th className={`w-[16%] ${spacing.pxLg} py-4 ${typography.text.caption} font-bold uppercase text-slate-500 truncate text-right`}>Valor en Bodega</th>
+                <th className={`w-[16%] ${spacing.pxLg} py-4 ${typography.text.caption} font-bold uppercase text-slate-500 truncate text-right`}>Costo Promedio</th>
+                <th className={`w-[12%] ${spacing.pxLg} py-4 ${typography.text.caption} font-bold uppercase text-slate-500 text-center`}>Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/50">
+            <tbody className="divide-y divide-slate-100">
               {filteredMaterials.map((m) => {
                 const { totalRemainingQty, weightedAvgCost } = batchStatsByMaterial[m.id] ?? getBatchStats(m.id);
                 const debtInfo = getMaterialDebt(m.id, movements);
@@ -579,17 +589,17 @@ const RawMaterials: React.FC = () => {
 
                 return (
                   <React.Fragment key={m.id}>
-                    <tr className={`table-row ${expandedMaterialId === m.id ? `${colors.bgMain}/50` : colors.bgSurface}`}>
-                      <td className={`${spacing.pxLg} py-3 truncate`}>
+                    <tr className={`group transition-all hover:bg-slate-50/50 ${expandedMaterialId === m.id ? `${colors.bgMain}/50` : colors.bgSurface}`}>
+                      <td className={`${spacing.pxLg} py-4 truncate`}>
                         <div className="flex flex-col" title={`${m.name} - ${m.provider || 'Varios'}`}>
-                          <span className={`${typography.body} font-bold ${colors.textPrimary} truncate`} title={m.name}>{m.name}</span>
-                          <span className={`${typography.caption} font-medium ${colors.textSecondary} truncate mt-0.5`} title={m.provider || 'Varios'}>{m.provider || 'Varios'}</span>
+                          <span className={`${typography.text.body} font-black ${colors.textPrimary} truncate`} title={m.name}>{m.name}</span>
+                          <span className={`${typography.text.caption} font-bold text-slate-500 truncate mt-0.5`} title={m.provider || 'Varios'}>{m.provider || 'Varios'}</span>
                         </div>
                       </td>
-                      <td className={`${spacing.pxLg} py-3 truncate`}>
+                      <td className={`${spacing.pxLg} py-4 truncate`}>
                         <span className={`${typography.text.caption} font-bold uppercase tracking-wider text-slate-500`} title={m.type}>{m.type}</span>
                       </td>
-                      <td className={`${spacing.pxLg} py-3 truncate text-right`}>
+                      <td className={`${spacing.pxLg} py-4 truncate text-right`}>
                         <div className="flex justify-end items-center" title={`Stock Actual (Base)`}>
                           <span className={`${typography.text.body} font-bold tabular-nums ${displayStock > 0 ? colors.statusSuccess : displayStock < 0 ? colors.statusDanger : colors.textSecondary}`}>
                             {UnitConverter.formatFromBase(
@@ -601,18 +611,18 @@ const RawMaterials: React.FC = () => {
                           </span>
                         </div>
                       </td>
-                      <td className={`${spacing.pxLg} py-3 truncate text-right`}>
+                      <td className={`${spacing.pxLg} py-4 truncate text-right`}>
                         <span className={`${typography.text.body} font-bold tabular-nums ${valuation < 0 ? colors.statusDanger : colors.textPrimary}`} title={`Valorización: ${formatCurrency(valuation)}`}>
                           {formatCurrency(valuation)}
                         </span>
                       </td>
-                      <td className={`${spacing.pxLg} py-3 truncate text-right`}>
-                        <span className={`${typography.text.body} font-bold tabular-nums ${colors.textSecondary}`} title={`Costo Promedio FIFO: ${formatCurrency(weightedAvgCost)}`}>
+                      <td className={`${spacing.pxLg} py-4 truncate text-right`}>
+                        <span className={`${typography.text.body} font-bold tabular-nums text-slate-500`} title={`Costo Promedio FIFO: ${formatCurrency(weightedAvgCost)}`}>
                           {formatCurrency(weightedAvgCost)}
                         </span>
                       </td>
-                      <td className={`${spacing.pxLg} py-3 text-right`}>
-                        <div className="flex justify-end items-center">
+                      <td className={`${spacing.pxLg} py-4 text-center`}>
+                        <div className="flex justify-center items-center">
                           <button
                             data-kebab-trigger
                             className={`rounded-lg p-2 transition-all border border-transparent ${menuState?.materialId === m.id ? 'bg-slate-200 text-slate-700 border-slate-300' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}
