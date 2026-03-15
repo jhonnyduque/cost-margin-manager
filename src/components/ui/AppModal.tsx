@@ -1,78 +1,78 @@
-import React, { useEffect, useRef, ReactNode } from 'react';
+import React, { useEffect, ReactNode } from 'react';
 import { X, Pencil, Plus, AlertTriangle, Settings } from 'lucide-react';
-import { typography } from '@/design/typography';
 import { Button } from './Button';
 
-// ─── Decision Tier System (UX Plan v1.2) ─────────────────────────────────────
-// T1 — Micro:       No modal. Feedback inline. (filtros, toggles)
+// AppModal consume clases CSS de global.css exclusivamente.
+// El sistema de tiers se preserva — controla comportamiento UX, no estilos inventados.
+// Colores de tier se expresan con variables CSS de global.css.
+//
+// ─── Decision Tier System (UX Plan v1.2) ──────────────────────────────────────
 // T2 — Táctico:     Modal estándar. Ctrl+G guarda. Confirm si dirty.
 // T3 — Estratégico: Modal con badge de impacto. Confirm siempre.
-// T4 — Estructural: Modal amplio. Sin Escape en pasos avanzados. (futuro: wizard)
+// T4 — Estructural: Modal amplio. Sin Escape en pasos avanzados.
 
 export type ModalTier = 2 | 3 | 4;
 export type ModalSize = 'sm' | 'md' | 'lg' | 'xl';
 
 export interface AppModalProps {
-    // — Core —
     isOpen: boolean;
     onClose: () => void;
     onSave?: () => void | Promise<void>;
     title: string;
     description?: string;
     children: ReactNode;
-
-    // — Tier & Behavior —
-    tier?: ModalTier;           // default: 2
-    isDirty?: boolean;          // activa "¿Descartar cambios?" en T2+
+    tier?: ModalTier;
+    isDirty?: boolean;
     loading?: boolean;
-
-    // — Visual —
-    size?: ModalSize;           // default: 'md'
-    icon?: ReactNode;           // ícono en el header (auto según tier si no se pasa)
-    saveLabel?: string;         // default: 'Guardar'
-    cancelLabel?: string;       // default: 'Cancelar'
-
-    // — Footer custom —
-    footer?: ReactNode;         // reemplaza el footer por defecto
+    size?: ModalSize;
+    icon?: ReactNode;
+    saveLabel?: string;
+    cancelLabel?: string;
+    footer?: ReactNode;
     hideFooter?: boolean;
 }
 
-const sizeClasses: Record<ModalSize, string> = {
-    sm: 'max-w-sm',
-    md: 'max-w-md',
-    lg: 'max-w-2xl',
-    xl: 'max-w-5xl',
+// Ancho máximo por tamaño usando variables CSS de contenedores
+const sizeStyle: Record<ModalSize, React.CSSProperties> = {
+    sm: { maxWidth: '24rem' },
+    md: { maxWidth: '32rem' },
+    lg: { maxWidth: '42rem' },
+    xl: { maxWidth: '64rem' },
 };
 
-const tierOverlayClasses: Record<ModalTier, string> = {
-    2: 'bg-black/40',
-    3: 'bg-black/60',
-    4: 'bg-black/80',
+// Opacidad del overlay por tier
+const tierOverlayOpacity: Record<ModalTier, string> = {
+    2: 'rgba(15, 23, 42, 0.40)',
+    3: 'rgba(15, 23, 42, 0.60)',
+    4: 'rgba(15, 23, 42, 0.80)',
 };
 
+// Ícono por defecto por tier
 const tierDefaultIcons: Record<ModalTier, ReactNode> = {
     2: <Plus size={16} />,
     3: <AlertTriangle size={16} />,
     4: <Settings size={16} />,
 };
 
-const tierIconBg: Record<ModalTier, string> = {
-    2: 'bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100',
-    3: 'bg-amber-50 text-amber-600 ring-1 ring-amber-100',
-    4: 'bg-slate-100 text-slate-600 ring-1 ring-slate-200',
+// Color del ícono de header por tier — usando variables CSS del sistema
+const tierIconStyle: Record<ModalTier, React.CSSProperties> = {
+    2: { background: 'var(--color-primary-soft)', color: 'var(--color-primary)' },
+    3: { background: 'var(--color-warning-soft)', color: 'var(--color-warning)' },
+    4: { background: 'var(--color-neutral-100)', color: 'var(--color-neutral-700)' },
 };
 
-const tierSaveVariant: Record<ModalTier, any> = {
+// Badge de tier T3+
+const tierBadgeStyle: Record<ModalTier, React.CSSProperties> = {
+    2: {},
+    3: { background: 'var(--color-warning-soft)', color: 'var(--color-warning)' },
+    4: { background: 'var(--color-neutral-100)', color: 'var(--color-neutral-700)' },
+};
+
+// Variante del botón Guardar por tier
+const tierSaveVariant: Record<ModalTier, 'primary' | 'secondary' | 'danger' | 'ghost'> = {
     2: 'primary',
-    3: 'warning', // Assuming I might add 'warning' to Button later, or just style accordingly
+    3: 'primary',
     4: 'secondary',
-};
-
-// Map tiers to custom classes if needed for special colors
-const tierSaveBg: Record<ModalTier, string> = {
-    2: 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100',
-    3: 'bg-amber-600 hover:bg-amber-700 shadow-amber-100',
-    4: 'bg-slate-800 hover:bg-slate-900 shadow-slate-100',
 };
 
 export function AppModal({
@@ -94,39 +94,28 @@ export function AppModal({
 }: AppModalProps) {
     const resolvedIcon = icon ?? tierDefaultIcons[tier];
 
-    // — Prevent body scroll ────────────────────────────────────────────────────
+    // Bloquear scroll del body
     useEffect(() => {
-        if (isOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = '';
-        }
+        document.body.style.overflow = isOpen ? 'hidden' : '';
         return () => { document.body.style.overflow = ''; };
     }, [isOpen]);
 
-    // — Keyboard shortcuts ─────────────────────────────────────────────────────
+    // Atajos de teclado
     useEffect(() => {
         if (!isOpen) return;
-
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Ctrl+G → Guardar
             if (e.ctrlKey && e.key === 'g') {
                 e.preventDefault();
                 if (onSave && !loading) onSave();
             }
-            // Escape → Cerrar (T4 podría bloquearlo, aquí lo dejamos libre)
-            if (e.key === 'Escape') {
-                handleClose();
-            }
+            if (e.key === 'Escape') handleClose();
         };
-
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [isOpen, onSave, loading, isDirty]);
 
     if (!isOpen) return null;
 
-    // — Close con confirm si hay cambios sin guardar ───────────────────────────
     const handleClose = () => {
         if (isDirty && tier >= 2) {
             if (!window.confirm('Hay cambios sin guardar. ¿Descartar y cerrar?')) return;
@@ -134,81 +123,147 @@ export function AppModal({
         onClose();
     };
 
-    // — Backdrop click ─────────────────────────────────────────────────────────
     const handleBackdropClick = (e: React.MouseEvent) => {
         if (e.target === e.currentTarget) handleClose();
     };
 
     return (
         <div
-            className={`fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 ${tierOverlayClasses[tier]} backdrop-blur-sm`}
             onClick={handleBackdropClick}
+            style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 100,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 'var(--space-16)',
+                background: tierOverlayOpacity[tier],
+                backdropFilter: 'blur(4px)',
+            }}
         >
-            {/* Modal panel */}
+            {/* Panel del modal */}
             <div
-                className={`
-          animate-in zoom-in-95 duration-200
-          w-full ${sizeClasses[size]}
-          flex flex-col overflow-hidden
-          rounded-2xl bg-white shadow-2xl
-          max-h-[90vh]
-        `}
+                className="modal-card"
+                style={{
+                    ...sizeStyle[size],
+                    width: '100%',
+                    maxHeight: '90vh',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    padding: 0,           // padding lo manejan header/body/footer
+                }}
             >
-                {/* ── Header ──────────────────────────────────────────────────────── */}
-                <div className="flex flex-shrink-0 items-center gap-3 border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4">
-                    <div className={`flex size-9 flex-shrink-0 items-center justify-center rounded-xl ${tierIconBg[tier]}`}>
+                {/* Header */}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--space-12)',
+                    padding: 'var(--space-16) var(--space-24)',
+                    borderBottom: 'var(--border-default)',
+                    flexShrink: 0,
+                }}>
+                    {/* Ícono de tier */}
+                    <span style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '2.25rem',
+                        height: '2.25rem',
+                        borderRadius: 'var(--radius-lg)',
+                        flexShrink: 0,
+                        ...tierIconStyle[tier],
+                    }}>
                         {resolvedIcon}
-                    </div>
+                    </span>
 
-                    <div className="min-w-0 flex-1">
-                        <h3 className={`truncate ${typography.cardTitle} text-slate-900`}>{title}</h3>
+                    {/* Título y descripción */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <h4 style={{
+                            margin: 0,
+                            fontSize: 'var(--text-h3-size)',
+                            fontWeight: 'var(--text-h3-weight)' as any,
+                            color: 'var(--color-neutral-900)',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                        }}>
+                            {title}
+                        </h4>
                         {description && (
-                            <p className={`truncate ${typography.caption} text-slate-500`}>{description}</p>
+                            <p className="text-small text-muted" style={{ marginTop: 'var(--space-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {description}
+                            </p>
                         )}
                     </div>
 
-                    {/* Tier badge — solo T3+ */}
+                    {/* Badge de tier T3+ */}
                     {tier >= 3 && (
-                        <span className={`hidden sm:inline-flex items-center rounded-lg px-2 py-0.5 ${typography.uiLabel} font-black 
-              ${tier === 3 ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-500'}`}>
+                        <span className="badge" style={tierBadgeStyle[tier]}>
                             {tier === 3 ? 'Alto Impacto' : 'Sistema'}
                         </span>
                     )}
 
+                    {/* Botón cerrar */}
                     <button
                         onClick={handleClose}
                         aria-label="Cerrar"
-                        className="flex size-9 min-h-[36px] min-w-[36px] flex-shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-600"
+                        className="btn-ghost btn-sm"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '2.25rem',
+                            height: '2.25rem',
+                            flexShrink: 0,
+                            padding: 0,
+                        }}
                     >
                         <X size={18} />
                     </button>
                 </div>
 
-                {/* ── Scrollable body ─────────────────────────────────────────────── */}
-                <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+                {/* Body scrollable */}
+                <div style={{
+                    flex: 1,
+                    overflowY: 'auto',
+                    padding: 'var(--space-24)',
+                }}>
                     {children}
                 </div>
 
-                {/* ── Footer sticky ───────────────────────────────────────────────── */}
+                {/* Footer */}
                 {!hideFooter && (
-                    <div className="flex flex-shrink-0 items-center gap-3 border-t border-slate-100 bg-white px-4 py-3 sm:px-6 sm:py-4">
-                        {footer ? footer : (
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 'var(--space-12)',
+                        padding: 'var(--space-16) var(--space-24)',
+                        borderTop: 'var(--border-default)',
+                        background: 'var(--color-neutral-0)',
+                        flexShrink: 0,
+                    }}>
+                        {footer ?? (
                             <>
                                 <Button
                                     variant="secondary"
                                     onClick={handleClose}
-                                    className="flex-1"
+                                    style={{ flex: 1 }}
                                 >
                                     {cancelLabel}
                                 </Button>
-
                                 {onSave && (
                                     <Button
+                                        variant={tierSaveVariant[tier]}
                                         onClick={() => onSave()}
                                         isLoading={loading}
-                                        className={`flex-[1.5] ${tierSaveBg[tier]}`}
+                                        style={{ flex: 1.5 }}
                                     >
-                                        {!loading && (tier === 2 ? <Pencil size={14} /> : tier === 3 ? <AlertTriangle size={14} /> : <Settings size={14} />)}
+                                        {!loading && (
+                                            tier === 2 ? <Pencil size={14} /> :
+                                                tier === 3 ? <AlertTriangle size={14} /> :
+                                                    <Settings size={14} />
+                                        )}
                                         {saveLabel}
                                     </Button>
                                 )}
