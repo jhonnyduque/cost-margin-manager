@@ -1,15 +1,25 @@
 /**
  * ╔══════════════════════════════════════════════════════════════════════╗
- * ║  BETO OS — Design Tokens v1.0                                      ║
- * ║  Single source of truth for visual identity.                       ║
- * ║  Governance: design_system_governance.md                           ║
- * ║  Last updated: 2026-03-03                                          ║
+ * ║  BETO OS — Design Tokens v2.0                                      ║
+ * ║  Índice central de todos los tokens de diseño.                     ║
+ * ║                                                                    ║
+ * ║  Fuente de verdad visual: src/styles/global.css                    ║
+ * ║  Estos tokens son un puente TypeScript → variables CSS.            ║
+ * ║  Last updated: 2026-03-15                                          ║
  * ╚══════════════════════════════════════════════════════════════════════╝
  *
- * REGLAS:
- * 1. NUNCA hardcodear colores/tamaños en páginas — usar tokens.
- * 2. Si necesitas un valor Tailwind, usa las utilities al final.
- * 3. Para agregar tokens, documentar en design_system_governance.md.
+ * USO CORRECTO:
+ *
+ *   // En componentes — con style prop:
+ *   import { colors, spacing, radius } from '@/design/design-tokens';
+ *   <div style={{ color: colors.textPrimary, padding: spacing.card }}>
+ *
+ *   // En componentes — con clases CSS (preferido):
+ *   <div className="card">
+ *   <p className="text-muted">
+ *
+ * REGLA: Si el valor que necesitas no existe aquí ni en global.css,
+ * propónlo primero. No lo inventes.
  */
 
 import { colors } from './colors';
@@ -23,18 +33,39 @@ export const tokens = {
     typography,
     spacing,
     radius,
-    shadow: shadows,
+    shadows,
 } as const;
 
-export type Token = typeof tokens;
-export type StatusColor = 'success' | 'warning' | 'error' | 'info';
+// ── STATUS HELPER ──────────────────────────────────────────────────────────
+export type StatusColor = 'success' | 'warning' | 'danger' | 'info';
 
-/** Status classes helper consuming semantic tokens */
-export const getStatusClasses = (status: StatusColor) => ({
-    success: { text: colors.success, bg: colors.bgSuccess, border: colors.borderSuccess },
-    warning: { text: colors.warning, bg: colors.bgWarning, border: colors.borderWarning },
-    error: { text: colors.danger, bg: colors.bgDanger, border: colors.borderDanger },
-    info: { text: colors.info, bg: colors.bgInfo, border: colors.borderInfo },
+export const getStatusColors = (status: StatusColor) => ({
+    success: {
+        text: colors.success,
+        bg: colors.bgSuccess,
+        border: colors.borderSuccess,
+    },
+    warning: {
+        text: colors.warning,
+        bg: colors.bgWarning,
+        border: colors.borderWarning,
+    },
+    danger: {
+        text: colors.danger,
+        bg: colors.bgDanger,
+        border: colors.borderDanger,
+    },
+    info: {
+        text: colors.info,
+        bg: colors.bgInfo,
+        border: colors.borderInfo,
+    },
 })[status];
 
+// ── EXPORTS INDIVIDUALES ───────────────────────────────────────────────────
 export { colors, typography, spacing, radius, shadows };
+export type { ColorToken } from './colors';
+export type { SpacingToken } from './spacing';
+export type { RadiusToken } from './radius';
+export type { ShadowToken } from './shadows';
+export type { TypographyToken } from './typography';

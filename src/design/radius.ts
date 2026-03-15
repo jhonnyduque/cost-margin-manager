@@ -1,21 +1,31 @@
 /**
- * 🟢 BETO OS — Border Radius System v1.0
- * Governance: GOV-RADIUS-001
+ * ╔══════════════════════════════════════════════════════════════════════╗
+ * ║  BETO OS — Border Radius Tokens v2.0                               ║
+ * ║  Fuente de verdad: src/styles/global.css                           ║
+ * ║  Governance: GOV-RADIUS-001                                        ║
+ * ║                                                                    ║
+ * ║  REGLA: Estos tokens apuntan a variables CSS de global.css.        ║
+ * ║  No hardcodear px o rem aquí. No usar clases Tailwind.             ║
+ * ╚══════════════════════════════════════════════════════════════════════╝
  */
 
 export const radius = {
-    /** 4px - Small buttons, inputs, badges */
-    sm: "rounded-md", // md is 6px in tailwind, rounded-sm is 2px. 
 
-    /** 8px - Standard components */
-    md: "rounded-lg", // lg is 8px in tailwind
+    /** 6px — badges, chips, detalles pequeños */
+    sm: 'var(--radius-sm)',
 
-    /** 12px - Cards, main containers */
-    lg: "rounded-2xl", // 2xl is 16px. xl is 12px.
+    /** 8px — botones, inputs, nav items */
+    md: 'var(--radius-md)',
 
-    /** 16px - Large sections */
-    xl: "rounded-2xl",
+    /** 12px — metric cards, panels internos */
+    lg: 'var(--radius-lg)',
 
-    /** Full round - Pills */
-    pill: "rounded-full",
+    /** 16px — cards principales, modales */
+    xl: 'var(--radius-xl)',
+
+    /** 9999px — pills, avatares */
+    pill: '9999px',
+
 } as const;
+
+export type RadiusToken = keyof typeof radius;

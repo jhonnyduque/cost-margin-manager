@@ -1,23 +1,33 @@
 /**
- * 🌑 BETO OS — Depth & Shadows v1.0
- * Governance: GOV-SHADOW-001
+ * ╔══════════════════════════════════════════════════════════════════════╗
+ * ║  BETO OS — Shadow Tokens v2.0                                      ║
+ * ║  Fuente de verdad: src/styles/global.css                           ║
+ * ║  Governance: GOV-SHADOW-001                                        ║
+ * ║                                                                    ║
+ * ║  REGLA: Estos tokens apuntan a variables CSS de global.css.        ║
+ * ║  No hardcodear valores de sombra aquí. No usar clases Tailwind.    ║
+ * ╚══════════════════════════════════════════════════════════════════════╝
  */
 
 export const shadows = {
-    /** Barely visible depth for subtle elements */
-    sm: "shadow-sm",
 
-    /** Standard Card depth */
-    card: "shadow-sm border-slate-200/60",
+    /** Sombra sutil — cards estándar */
+    sm: 'var(--shadow-sm)',
 
-    /** Elevated popovers and dropdowns */
-    popover: "shadow-md border-slate-200/80",
+    /** Sombra estándar — popovers, dropdowns elevados */
+    md: 'var(--shadow-md)',
 
-    /** High elevation for modals */
-    modal: "shadow-xl border-white/10",
+    /** Sombra alta — modales, overlays */
+    lg: 'var(--shadow-lg)',
 
-    // ── LEGACY COMPATIBILITY ──────────────────────────────────────────────
-    md: "shadow",
-    lg: "shadow-md",
-    xl: "shadow-lg",
+    // ── ALIAS SEMÁNTICOS ───────────────────────────────────────────────────
+    /** Cards — alias de sm */
+    card: 'var(--shadow-sm)',
+    /** Popovers y dropdowns — alias de md */
+    popover: 'var(--shadow-md)',
+    /** Modales — alias de lg */
+    modal: 'var(--shadow-lg)',
+
 } as const;
+
+export type ShadowToken = keyof typeof shadows;

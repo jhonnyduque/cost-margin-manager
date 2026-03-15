@@ -1,58 +1,80 @@
 /**
- * 🎨 BETO OS — Color System v2.0
- * Semantic Color Governance
- *
- * Governance: GOV-COLOR-001
+ * ╔══════════════════════════════════════════════════════════════════════╗
+ * ║  BETO OS — Color Tokens v2.0                                       ║
+ * ║  Fuente de verdad: src/styles/global.css                           ║
+ * ║  Governance: GOV-COLOR-001                                         ║
+ * ║                                                                    ║
+ * ║  REGLA: Estos tokens apuntan a variables CSS de global.css.        ║
+ * ║  No hardcodear hex aquí. No usar clases Tailwind.                  ║
+ * ║  Si necesitas un color nuevo, primero agrégalo a global.css.       ║
+ * ╚══════════════════════════════════════════════════════════════════════╝
  */
 
 export const colors = {
-    // ── CORE SEMANTIC TOKENS ────────────────────────────────────────────────
-    /** Main brand identity color */
-    brand: "text-indigo-600",
-    bgBrand: "bg-indigo-600",
-    bgBrandSubtle: "bg-indigo-50",
-    borderBrand: "border-indigo-200",
 
-    /** Base surfaces */
-    surface: "bg-white",
-    surfaceMuted: "bg-slate-50",
-    surfaceElevated: "bg-white shadow-lg",
+    // ── BRAND ─────────────────────────────────────────────────────────────
+    /** Acciones principales, estados activos */
+    brand: 'var(--color-primary)',
+    brandSoft: 'var(--color-primary-soft)',
 
-    /** Text Hierarchy */
-    textPrimary: "text-slate-900",    // Titles, main values
-    textSecondary: "text-slate-600",  // Descriptions, labels
-    textMuted: "text-slate-500",      // Captions, hints
-    textInverted: "text-white",       // Text on dark/brand backgrounds
+    // ── SUPERFICIES ────────────────────────────────────────────────────────
+    /** Fondo blanco base — cards, modales */
+    surface: 'var(--color-neutral-0)',
+    /** Canvas de página */
+    surfacePage: 'var(--color-neutral-50)',
+    /** Superficie muted — headers de tabla, fondos inset */
+    surfaceMuted: 'var(--color-neutral-100)',
 
-    /** Borders & Dividers */
-    borderSubtle: "border-slate-100",
-    borderStandard: "border-slate-200",
-    borderStrong: "border-slate-300",
+    // ── TEXTO ──────────────────────────────────────────────────────────────
+    /** Títulos, valores principales */
+    textPrimary: 'var(--color-neutral-900)',
+    /** Descripciones, labels */
+    textSecondary: 'var(--color-neutral-700)',
+    /** Captions, hints, placeholders */
+    textMuted: 'var(--color-neutral-400)',
+    /** Texto sobre fondos oscuros o de marca */
+    textInverted: 'var(--color-neutral-0)',
 
-    /** Functional States — Monochrome */
-    success: "text-slate-700",
-    bgSuccess: "bg-slate-50",
-    borderSuccess: "border-slate-200",
+    // ── BORDES ─────────────────────────────────────────────────────────────
+    /** Borde estándar — cards, inputs, divisores */
+    borderDefault: 'var(--color-neutral-200)',
+    /** Borde sutil — separadores internos */
+    borderSubtle: 'var(--color-neutral-100)',
+    /** Borde fuerte — hover, énfasis */
+    borderStrong: 'var(--color-neutral-400)',
 
-    warning: "text-slate-600",
-    bgWarning: "bg-slate-50",
-    borderWarning: "border-slate-200",
+    // ── ESTADOS SEMÁNTICOS ─────────────────────────────────────────────────
+    success: 'var(--color-success)',
+    successSoft: 'var(--color-success-soft)',
 
-    danger: "text-red-600",
-    bgDanger: "bg-red-50",
-    borderDanger: "border-red-200",
+    warning: 'var(--color-warning)',
+    warningSoft: 'var(--color-warning-soft)',
 
-    info: "text-slate-600",
-    bgInfo: "bg-slate-50",
-    borderInfo: "border-slate-200",
+    danger: 'var(--color-danger)',
+    dangerSoft: 'var(--color-danger-soft)',
 
-    // ── LEGACY COMPATIBILITY ────────────────────────────────────────────────
-    statusSuccess: "text-slate-700",
-    statusWarning: "text-slate-600",
-    statusDanger: "text-slate-500",
-    statusInfo: "text-slate-600",
-    bgMain: "bg-slate-50",
-    bgSurface: "bg-white",
+    info: 'var(--color-info)',
+    infoSoft: 'var(--color-info-soft)',
+
+    // ── HELPERS DE ESTADO (para style prop en componentes) ─────────────────
+    bgSuccess: 'var(--color-success-soft)',
+    bgWarning: 'var(--color-warning-soft)',
+    bgDanger: 'var(--color-danger-soft)',
+    bgInfo: 'var(--color-info-soft)',
+
+    borderSuccess: 'var(--color-success)',
+    borderWarning: 'var(--color-warning)',
+    borderDanger: 'var(--color-danger)',
+    borderInfo: 'var(--color-info)',
+
+    // ── CHARTS ─────────────────────────────────────────────────────────────
+    chartA: 'var(--color-chart-a)',
+    chartB: 'var(--color-chart-b)',
+    chartC: 'var(--color-chart-c)',
+    chartD: 'var(--color-chart-d)',
+    chartE: 'var(--color-chart-e)',
+
 } as const;
 
-export type TextColorVariant = keyof typeof colors;
+export type ColorToken = keyof typeof colors;
+export type StatusColor = 'success' | 'warning' | 'danger' | 'info';

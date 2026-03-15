@@ -1,55 +1,57 @@
 /**
- * 📏 BETO OS — Spacing System v1.0
- * Governance: GOV-SPACE-001
+ * ╔══════════════════════════════════════════════════════════════════════╗
+ * ║  BETO OS — Spacing Tokens v2.0                                     ║
+ * ║  Fuente de verdad: src/styles/global.css                           ║
+ * ║  Governance: GOV-SPACE-001                                         ║
+ * ║                                                                    ║
+ * ║  REGLA: Estos tokens apuntan a variables CSS de global.css.        ║
+ * ║  No hardcodear px o rem aquí. No usar clases Tailwind.             ║
+ * ╚══════════════════════════════════════════════════════════════════════╝
  */
 
 export const spacing = {
-    // ── 8px GRID SYSTEM ────────────────────────────────────────────────────
-    /** 4px - Micro adjustments */
-    xs: "gap-1",
-    pXs: "p-1",
-    pxXs: "px-1",
-    pyXs: "py-1",
 
-    /** 8px - Compact */
-    sm: "gap-2",
-    pSm: "p-2",
-    pxSm: "px-2",
-    pySm: "py-2",
+    // ── VALORES BASE (para style prop) ────────────────────────────────────
+    /** 2px — micro ajustes */
+    s2: 'var(--space-2)',
+    /** 4px — gaps mínimos */
+    s4: 'var(--space-4)',
+    /** 8px — compacto */
+    s8: 'var(--space-8)',
+    /** 12px — padding interno pequeño */
+    s12: 'var(--space-12)',
+    /** 16px — padding estándar */
+    s16: 'var(--space-16)',
+    /** 24px — padding de cards, gaps de sección */
+    s24: 'var(--space-24)',
+    /** 32px — padding de contenido */
+    s32: 'var(--space-32)',
+    /** 48px — separación entre secciones */
+    s48: 'var(--space-48)',
+    /** 64px — separación mayor */
+    s64: 'var(--space-64)',
 
-    /** 16px - Standard UI Padding/Gap */
-    md: "gap-4",
-    pMd: "p-4",
-    pxMd: "px-4",
-    pyMd: "py-4",
+    // ── ALIAS SEMÁNTICOS ───────────────────────────────────────────────────
+    /** Padding interno de componentes pequeños */
+    componentSm: 'var(--space-8)',
+    /** Padding interno estándar de componentes */
+    component: 'var(--space-16)',
+    /** Padding de cards */
+    card: 'var(--space-24)',
+    /** Padding del área de contenido */
+    content: 'var(--space-32)',
+    /** Separación entre secciones de página */
+    section: 'var(--space-48)',
 
-    /** 24px - Section Inner Padding */
-    lg: "gap-6",
-    pLg: "p-6",
-    pxLg: "px-6",
-    pyLg: "py-6",
-
-    /** 32px - Module Spacing */
-    xl: "gap-8",
-    pXl: "p-8",
-    pxXl: "px-8",
-    pyXl: "py-8",
-
-    /** 48px - Page Margin */
-    '2xl': "gap-12",
-    p2xl: "p-12",
-    px2xl: "px-12",
-    py2xl: "py-12",
-
-    // ── CONTAINER WIDTHS ───────────────────────────────────────────────────
+    // ── CONTENEDORES ──────────────────────────────────────────────────────
     container: {
-        sm: "max-w-[640px]",
-        md: "max-w-[768px]",
-        lg: "max-w-[1024px]",
-        xl: "max-w-[1280px]",
-        full: "max-w-full",
+        sm: 'var(--container-sm)',
+        md: 'var(--container-md)',
+        lg: 'var(--container-lg)',
+        /** 1280px — max-width de BETO OS */
+        xl: 'var(--container-xl)',
     },
 
-    // ── LEGACY COMPATIBILITY ──────────────────────────────────────────────
-    page: "p-12",
 } as const;
+
+export type SpacingToken = keyof typeof spacing;
