@@ -1,5 +1,7 @@
 import React from 'react';
-import { colors, typography, spacing, radius, shadows } from '@/design/design-tokens';
+
+// Input consume clases CSS de global.css exclusivamente.
+// No usar clases Tailwind directas ni valores hardcodeados aquí.
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
     label?: string;
@@ -12,28 +14,25 @@ export const Input: React.FC<InputProps> = ({
     error,
     fullWidth = true,
     className = '',
+    id,
     ...props
 }) => {
+    const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
+
     return (
-        <div className={`flex flex-col ${spacing.xs} ${fullWidth ? 'w-full' : ''} ${className}`}>
+        <div className={`field ${fullWidth ? 'w-full' : ''} ${className}`.trim()}>
             {label && (
-                <label className={`${typography.text.caption} ${colors.textSecondary} ml-1`}>
+                <label className="field-label" htmlFor={inputId}>
                     {label}
                 </label>
             )}
             <input
-                className={`
-                    h-10 ${spacing.pxMd} ${radius.md} outline-none transition-all duration-200
-                    ${colors.surface} ${colors.textPrimary}
-                    placeholder:${colors.textMuted}
-                    border ${colors.borderStandard}
-                    focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-600
-                    ${error ? `border-red-500 focus:ring-red-500/10 focus:border-red-600` : ''}
-                `}
+                id={inputId}
+                className={`input ${error ? 'is-error' : ''}`.trim()}
                 {...props}
             />
             {error && (
-                <span className={`${typography.text.secondary} ${colors.danger} font-medium ml-1`}>
+                <span className="field-error">
                     {error}
                 </span>
             )}

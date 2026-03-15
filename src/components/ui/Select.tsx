@@ -1,6 +1,8 @@
 import React from 'react';
 import { ChevronDown } from 'lucide-react';
-import { typography } from '@/design/typography';
+
+// Select consume clases CSS de global.css exclusivamente.
+// No usar clases Tailwind directas ni valores hardcodeados aquí.
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
     label?: string;
@@ -13,36 +15,45 @@ export const Select: React.FC<SelectProps> = ({
     error,
     fullWidth = true,
     className = '',
+    id,
     children,
     ...props
 }) => {
+    const selectId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
+
     return (
-        <div className={`flex flex-col gap-1.5 ${fullWidth ? 'w-full' : ''} ${className}`}>
+        <div className={`field ${fullWidth ? 'w-full' : ''} ${className}`.trim()}>
             {label && (
-                <label className={`${typography.uiLabel} text-slate-500`}>
+                <label className="field-label" htmlFor={selectId}>
                     {label}
                 </label>
             )}
-            <div className="relative">
+            <div style={{ position: 'relative' }}>
                 <select
-                    className={`
-                        h-11 w-full pl-4 pr-10 rounded-xl outline-none transition-all duration-200
-                        bg-white text-slate-700 appearance-none cursor-pointer
-                        ring-1 ring-inset ring-slate-200
-                        focus:ring-2 focus:ring-indigo-500 focus:shadow-sm
-                        ${typography.body}
-                        ${error ? 'ring-red-200 focus:ring-red-500' : ''}
-                    `}
+                    id={selectId}
+                    className={`select ${error ? 'is-error' : ''}`.trim()}
+                    style={{ paddingRight: 'var(--space-32)', appearance: 'none' }}
                     {...props}
                 >
                     {children}
                 </select>
-                <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-                    <ChevronDown size={18} />
-                </div>
+                <span
+                    aria-hidden="true"
+                    style={{
+                        position: 'absolute',
+                        right: 'var(--space-12)',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        pointerEvents: 'none',
+                        color: 'var(--color-neutral-400)',
+                        display: 'flex',
+                    }}
+                >
+                    <ChevronDown size={16} />
+                </span>
             </div>
             {error && (
-                <span className={`${typography.caption} text-red-500 font-medium`}>
+                <span className="field-error">
                     {error}
                 </span>
             )}
