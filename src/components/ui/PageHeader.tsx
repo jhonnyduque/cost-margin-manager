@@ -1,5 +1,7 @@
 import React from 'react';
-import { typography } from '@/design/typography';
+
+// PageHeader consume clases CSS de global.css exclusivamente.
+// No usar clases Tailwind directas ni valores hardcodeados aquí.
 
 interface PageHeaderProps {
     title: string;
@@ -9,18 +11,22 @@ interface PageHeaderProps {
 
 export const PageHeader: React.FC<PageHeaderProps> = ({ title, description, actions }) => {
     return (
-        <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:pb-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="page-header">
             <div>
-                <h1 className={`${typography.pageTitle} text-slate-900`}>
+                <h1 className="text-h1">
                     {title}
                 </h1>
                 {description && (
-                    <p className={`mt-1 ${typography.body} text-slate-500`}>
+                    <p className="text-body text-secondary" style={{ marginTop: 'var(--space-4)' }}>
                         {description}
                     </p>
                 )}
             </div>
-            {actions && <div className="flex gap-3">{actions}</div>}
+            {actions && (
+                <div className="row">
+                    {actions}
+                </div>
+            )}
         </div>
     );
 };

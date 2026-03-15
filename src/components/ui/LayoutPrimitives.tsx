@@ -1,55 +1,66 @@
 import React from 'react';
-import { spacing } from '@/design/design-tokens';
+
+// LayoutPrimitives consume variables CSS de global.css exclusivamente.
+// No usar tokens de spacing como clases Tailwind — generan clases dinámicas
+// que Tailwind no puede purgar y causan inconsistencias.
 
 /**
- * 🧱 PageContainer
- * Standard viewport padding and max-width for all pages.
+ * PageContainer
+ * Padding y max-width estándar para todas las páginas.
  */
-export const PageContainer: React.FC<{ children: React.ReactNode; className?: string }> = ({
-    children,
-    className = ''
-}) => (
-    <div className={`w-full mx-auto ${spacing.pyLg} md:${spacing.pyXl} animate-in fade-in duration-500 ${className}`}>
+export const PageContainer: React.FC<{
+    children: React.ReactNode;
+    className?: string;
+}> = ({ children, className = '' }) => (
+    <div
+        className={className}
+        style={{
+            width: '100%',
+            maxWidth: 'var(--container-xl)',
+            margin: '0 auto',
+            padding: 'var(--space-32)',
+        }}
+    >
         {children}
     </div>
 );
 
 /**
- * 🧱 SectionBlock
- * Standard vertical spacing between dashboard sections.
+ * SectionBlock
+ * Espaciado vertical estándar entre secciones del dashboard.
  */
-export const SectionBlock: React.FC<{ children: React.ReactNode; className?: string }> = ({
-    children,
-    className = ''
-}) => (
-    <section className={`flex flex-col ${spacing.xl} ${className}`}>
+export const SectionBlock: React.FC<{
+    children: React.ReactNode;
+    className?: string;
+}> = ({ children, className = '' }) => (
+    <section
+        className={`section ${className}`.trim()}
+    >
         {children}
     </section>
 );
 
 /**
- * 🧱 CardGrid
- * Responsive grid for cards based on the 8px grid system.
+ * CardGrid
+ * Grid responsivo para cards basado en el sistema de 12 columnas.
+ * cols: 1 | 2 | 3 | 4
  */
 export const CardGrid: React.FC<{
     children: React.ReactNode;
     cols?: 1 | 2 | 3 | 4;
     className?: string;
-}> = ({
-    children,
-    cols = 4,
-    className = ''
-}) => {
-        const gridCols = {
-            1: "grid-cols-1",
-            2: "grid-cols-1 md:grid-cols-2",
-            3: "grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
-            4: "grid-cols-1 md:grid-cols-2 lg:grid-cols-4"
-        };
+}> = ({ children, cols = 4, className = '' }) => {
 
-        return (
-            <div className={`grid ${gridCols[cols]} ${spacing.lg} ${className}`}>
-                {children}
-            </div>
-        );
+    const gridClass: Record<number, string> = {
+        1: 'grid',
+        2: 'grid grid-2',
+        3: 'grid grid-3',
+        4: 'grid grid-4',
     };
+
+    return (
+        <div className={`${gridClass[cols]} ${className}`.trim()}>
+            {children}
+        </div>
+    );
+};

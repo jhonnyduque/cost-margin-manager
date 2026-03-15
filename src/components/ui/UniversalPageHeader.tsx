@@ -1,16 +1,18 @@
 import React, { ReactNode } from 'react';
-import { colors, typography, spacing } from '@/design/design-tokens';
+
+// UniversalPageHeader consume clases CSS de global.css exclusivamente.
+// No usar tokens como clases Tailwind ni valores hardcodeados aquí.
 
 export interface UniversalPageHeaderProps {
-    /** Main title of the page (e.g. "Control Center") */
+    /** Título principal de la página */
     title: string;
-    /** Current context path (e.g. BETO OS / Platform / Control Center) */
+    /** Ruta de breadcrumbs (e.g. BETO OS / Módulo / Vista) */
     breadcrumbs?: ReactNode;
-    /** Array of metadata items to display below the title */
+    /** Items de metadata debajo del título */
     metadata?: ReactNode[];
-    /** Semantic status indicator (e.g. "Healthy") */
+    /** Indicador de estado semántico */
     status?: ReactNode;
-    /** Action buttons group (primary, secondary) */
+    /** Acciones principales */
     actions?: ReactNode;
 }
 
@@ -22,49 +24,74 @@ export const UniversalPageHeader: React.FC<UniversalPageHeaderProps> = ({
     actions,
 }) => {
     return (
-        <header className={`w-full mb-6 flex flex-col gap-4`}>
-            {/* 1. Breadcrumbs */}
+        <header style={{
+            width: '100%',
+            marginBottom: 'var(--space-24)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--space-8)',
+        }}>
+
+            {/* Breadcrumbs */}
             {breadcrumbs && (
-                <div className={`${typography.text.caption} ${colors.textMuted} flex flex-wrap items-center gap-2`}>
+                <nav className="breadcrumbs">
                     {breadcrumbs}
-                </div>
+                </nav>
             )}
 
-            {/* 2. Main Header Row (Title + Actions) */}
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 w-full">
-                {/* Left Side: Title & Metadata */}
-                <div className="flex flex-col gap-2 min-w-0">
-                    <h1 className={`${typography.pageTitle} ${colors.textPrimary} truncate`}>
+            {/* Fila principal — título + acciones */}
+            <div style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'space-between',
+                gap: 'var(--space-16)',
+                flexWrap: 'wrap',
+            }}>
+                {/* Izquierda — título y metadata */}
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 'var(--space-8)',
+                    minWidth: 0,
+                }}>
+                    <h1 className="text-h1" style={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                    }}>
                         {title}
                     </h1>
 
-                    {/* 3 & 4. Metadata Strip and Status */}
+                    {/* Metadata strip + status */}
                     {(metadata.length > 0 || status) && (
-                        <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 ${typography.text.caption} ${colors.textSecondary}`}>
+                        <div className="text-small text-secondary" style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            alignItems: 'center',
+                            gap: 'var(--space-8)',
+                        }}>
                             {metadata.map((item, idx) => (
                                 <React.Fragment key={idx}>
-                                    <div className="flex items-center whitespace-nowrap">
+                                    <span style={{ whiteSpace: 'nowrap' }}>
                                         {item}
-                                    </div>
-                                    {/* Separator · for all except the last item, unless there's a status */}
+                                    </span>
                                     {(idx < metadata.length - 1 || status) && (
-                                        <span className={colors.textMuted}>&bull;</span>
+                                        <span className="text-muted" aria-hidden="true">•</span>
                                     )}
                                 </React.Fragment>
                             ))}
-
                             {status && (
-                                <div className="flex items-center whitespace-nowrap">
+                                <span style={{ whiteSpace: 'nowrap' }}>
                                     {status}
-                                </div>
+                                </span>
                             )}
                         </div>
                     )}
                 </div>
 
-                {/* 5. Actions Group */}
+                {/* Derecha — acciones */}
                 {actions && (
-                    <div className="flex flex-wrap items-center gap-3 shrink-0">
+                    <div className="row" style={{ flexShrink: 0, flexWrap: 'wrap' }}>
                         {actions}
                     </div>
                 )}
