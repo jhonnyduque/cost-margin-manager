@@ -1,7 +1,9 @@
 import React from 'react';
 import { Card } from './Card';
 import { LucideIcon } from 'lucide-react';
-import { typography } from '@/design/typography';
+
+// StatCard consume clases CSS de global.css exclusivamente.
+// No usar clases Tailwind directas ni valores hardcodeados aquí.
 
 interface StatCardProps {
     title: string;
@@ -23,46 +25,77 @@ export const StatCard: React.FC<StatCardProps> = ({
     trend,
     subtitle,
     onClick,
-    className = ''
+    className = '',
 }) => {
     const Wrapper = onClick ? 'button' : 'div';
 
     return (
         <Card
-            className={`flex flex-col gap-2 ${onClick ? 'cursor-pointer transition-all hover:border-indigo-200 hover:shadow-md active:scale-[0.98]' : ''} ${className}`}
+            className={className}
+            style={onClick ? { cursor: 'pointer' } : undefined}
         >
             <Wrapper
                 onClick={onClick}
-                className={onClick ? 'text-left w-full' : undefined}
+                className={onClick ? 'w-full text-left' : undefined}
             >
-                <div className="flex items-center justify-between">
-                    <span className={`${typography.uiLabel} text-slate-500`}>
+                {/* Header — título e ícono */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span className="text-small" style={{ color: 'var(--color-neutral-700)', fontWeight: 500 }}>
                         {title}
                     </span>
                     {Icon && (
-                        <div className="rounded-full p-2 bg-slate-50 text-slate-500">
+                        <span style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '2rem',
+                            height: '2rem',
+                            borderRadius: 'var(--radius-lg)',
+                            background: 'var(--color-neutral-100)',
+                            color: 'var(--color-neutral-400)',
+                            flexShrink: 0,
+                        }}>
                             <Icon size={16} />
-                        </div>
+                        </span>
                     )}
                 </div>
 
-                <div className="flex items-baseline gap-2 mt-1">
-                    <span className={`${typography.metric} text-slate-900 leading-none`}>
+                {/* Valor principal */}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    gap: 'var(--space-8)',
+                    marginTop: 'var(--space-4)',
+                }}>
+                    <span className="metric-value" style={{ fontSize: 'var(--text-h2-size)' }}>
                         {value}
                     </span>
                     {trend && (
-                        <span className={`${typography.caption} font-bold ${trend.positive ? 'text-slate-700' : 'text-slate-500'}`}>
+                        <span
+                            className={trend.positive ? 'text-success' : 'text-muted'}
+                            style={{ fontWeight: 600 }}
+                        >
                             {trend.positive ? '+' : ''}{trend.value}%
                         </span>
                     )}
                 </div>
 
+                {/* Subtítulo */}
                 {subtitle && (
-                    <p className={`${typography.caption} mt-1`}>{subtitle}</p>
+                    <p className="text-small text-muted" style={{ marginTop: 'var(--space-4)' }}>
+                        {subtitle}
+                    </p>
                 )}
 
+                {/* CTA cuando es clickeable */}
                 {onClick && (
-                    <p className={`${typography.caption} text-slate-500 font-bold mt-2 uppercase tracking-wider`}>Ver detalles →</p>
+                    <p className="text-small" style={{
+                        marginTop: 'var(--space-8)',
+                        color: 'var(--color-primary)',
+                        fontWeight: 600,
+                    }}>
+                        Ver detalles →
+                    </p>
                 )}
             </Wrapper>
         </Card>
