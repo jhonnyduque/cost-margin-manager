@@ -8,7 +8,6 @@ import { useStore } from '../store';
 import { getPricingInsights } from '../services/geminiService';
 import { runProtectionEngine, type ProtectedAction, type ProtectionStatus } from '../services/protectionEngine';
 import { useAuth } from '@/hooks/useAuth';
-import { colors, typography } from '@/design/design-tokens';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { PageContainer, SectionBlock, CardGrid } from '@/components/ui/LayoutPrimitives';
@@ -39,29 +38,26 @@ const STATUS_CFG: Record<ProtectionStatus, { Icon: typeof Shield; tone: string; 
 };
 
 const KpiCard: React.FC<{ title: string; value: string; riskLevel: string; trend: string }> = ({ title, value, riskLevel, trend }) => {
-  const trendLabel = trend === 'up' ? 'Sube' : trend === 'down' ? 'Baja' : 'Sin cambio';
+  const trendLabel = trend === 'up' ? 'Sube vs. período anterior' : trend === 'down' ? 'Baja vs. período anterior' : 'Se mantiene estable';
   const trendTone =
-    riskLevel === 'ok'
-      ? 'text-emerald-600'
-      : riskLevel === 'medio'
-        ? 'text-amber-600'
-        : 'text-slate-500';
+    riskLevel === 'ok' ? 'text-emerald-600' :
+      riskLevel === 'medio' ? 'text-amber-600' :
+        riskLevel === 'alto' || riskLevel === 'critico' ? 'text-red-600' :
+          'text-slate-500';
 
   return (
-    <Card className="min-h-[128px]">
-      <Card.Content className="pt-5">
-        <div className="space-y-3">
-          <p className={`${typography.text.caption} font-bold uppercase tracking-[0.12em] text-slate-400`}>
+    <Card className="min-h-[110px]">
+      <Card.Content className="pt-4">
+        <div className="flex flex-col gap-0.5">
+          <p className="text-small" style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--color-neutral-400)' }}>
             {title}
           </p>
-          <div className="flex items-baseline gap-3">
-            <span className={`${typography.text.title} text-slate-900`}>
-              {value}
-            </span>
-            <span className={`${typography.text.caption} font-semibold ${trendTone}`}>
-              {trendLabel}
-            </span>
+          <div style={{ fontSize: 'var(--text-h2-size)', fontWeight: 700, color: 'var(--color-neutral-900)', letterSpacing: '-0.02em', lineHeight: 1, padding: '4px 0' }}>
+            {value}
           </div>
+          <span className={`text-small ${trendTone}`} style={{ fontWeight: 600 }}>
+            {trendLabel}
+          </span>
         </div>
       </Card.Content>
     </Card>
@@ -75,47 +71,49 @@ const PriorityRow: React.FC<{ action: ProtectedAction; onNavigate: (route: strin
   const urgencyLabel = days === 0 ? 'Hoy' : days === 1 ? 'Mañana' : `${days} días`;
   const categoryLabel = SIGNAL_TYPE_LABEL[action.signal.type] || action.signal.type;
   const urgencyTone =
-    (SEV_BADGE[severity] || 'neutral') === 'error'
-      ? 'text-red-600'
-      : (SEV_BADGE[severity] || 'neutral') === 'warning'
-        ? 'text-amber-600'
-        : 'text-slate-500';
+    (SEV_BADGE[severity] || 'neutral') === 'error' ? 'text-red-600' :
+      (SEV_BADGE[severity] || 'neutral') === 'warning' ? 'text-amber-600' :
+        'text-slate-500';
 
   return (
     <Card noPadding className="transition-all duration-200 hover:border-slate-300">
       <div className="px-5 py-4 flex items-start gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-3 mb-2">
-            <span className={`${typography.text.caption} font-semibold uppercase tracking-[0.12em] ${urgencyTone}`}>
+            <span className={`text-small font-semibold uppercase ${urgencyTone}`} style={{ letterSpacing: '0.12em' }}>
               {urgencyLabel}
             </span>
-            <span className={`${typography.text.caption} font-semibold uppercase tracking-[0.12em] text-slate-400`}>
+            <span className="text-small font-semibold uppercase text-muted" style={{ letterSpacing: '0.12em' }}>
               {categoryLabel}
             </span>
             {confidence && (
-              <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-tighter ${confidence === 'high'
-                ? 'bg-emerald-50 text-emerald-600'
-                : confidence === 'medium'
-                  ? 'bg-amber-50 text-amber-600'
-                  : 'bg-slate-100 text-slate-500'
+              <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-tighter ${confidence === 'high' ? 'bg-emerald-50 text-emerald-600' :
+                  confidence === 'medium' ? 'bg-amber-50 text-amber-600' :
+                    'bg-slate-100 text-slate-500'
                 }`}>
-                {confidence === 'high' ? <ShieldCheck size={10} /> : confidence === 'medium' ? <ShieldAlert size={10} /> : <Shield size={10} />}
-                {confidence === 'high' ? 'Confianza alta' : confidence === 'medium' ? 'Confianza media' : 'Datos limitados'}
+                {confidence === 'high' ? <ShieldCheck size={10} /> :
+                  confidence === 'medium' ? <ShieldAlert size={10} /> :
+                    <Shield size={10} />}
+                {confidence === 'high' ? 'Confianza alta' :
+                  confidence === 'medium' ? 'Confianza media' :
+                    'Datos limitados'}
               </div>
             )}
           </div>
-          <p className={`${typography.text.body} font-semibold ${colors.textPrimary} tracking-tight`}>
+          <p className="text-body" style={{ fontWeight: 600, color: 'var(--color-neutral-900)', letterSpacing: '-0.01em' }}>
             {action.title}
           </p>
-          <p className={`${typography.text.caption} text-slate-500 mt-1 leading-relaxed max-w-[54ch]`}>
+          <p className="text-small text-muted" style={{ marginTop: 'var(--space-4)', lineHeight: 1.6, maxWidth: '54ch' }}>
             {action.actionScenario.narrative}
           </p>
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
           <div className="hidden md:flex flex-col items-end px-4 border-r border-slate-100">
-            <span className={`${typography.text.caption} ${colors.textMuted}`}>Impacto</span>
-            <span className={`${typography.text.body} font-semibold ${colors.textPrimary}`}>{fmt$(action.signal.estimatedImpact)}</span>
+            <span className="text-small text-muted">Impacto</span>
+            <span className="text-body" style={{ fontWeight: 600, color: 'var(--color-neutral-900)' }}>
+              {fmt$(action.signal.estimatedImpact)}
+            </span>
           </div>
           <Button
             variant="secondary"
@@ -167,13 +165,15 @@ const Dashboard: React.FC = () => {
             <>
               <span>BETO OS</span>
               <span>/</span>
-              <span className={colors.textPrimary}>{currentCompany?.name || 'Empresa'}</span>
+              <span style={{ color: 'var(--color-neutral-900)', fontWeight: 600 }}>
+                {currentCompany?.name || 'Empresa'}
+              </span>
             </>
           }
           metadata={[
             <span key="1">Resumen diario de margen, inventario y riesgos</span>,
             <span key="2">Actualizado a las {new Date(report.generatedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>,
-            <span key="3">Impacto identificado: {fmt$(report.totalProtectedValue)}</span>
+            <span key="3">Impacto identificado: {fmt$(report.totalProtectedValue)}</span>,
           ]}
           status={
             <span className={`flex items-center gap-1.5 font-semibold ${STATUS_CFG[report.protectionStatus].tone}`}>
@@ -210,10 +210,10 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.45fr)_360px] gap-6">
           <div className="space-y-4">
             <div className="space-y-1">
-              <h2 className={`${typography.text.section} ${colors.textPrimary} tracking-tight`}>
+              <h2 style={{ fontSize: 'var(--text-h3-size)', fontWeight: 600, color: 'var(--color-neutral-900)', letterSpacing: '-0.01em' }}>
                 Qué requiere atención hoy
               </h2>
-              <p className={`${typography.text.caption} text-slate-500`}>
+              <p className="text-small text-muted">
                 Prioridades ordenadas por impacto y cercanía.
               </p>
             </div>
@@ -230,10 +230,10 @@ const Dashboard: React.FC = () => {
                   <div className="flex items-start gap-3">
                     <Shield size={18} className="text-emerald-600 mt-0.5" />
                     <div>
-                      <p className={`${typography.text.body} font-semibold text-emerald-700`}>
+                      <p className="text-body" style={{ fontWeight: 600, color: '#065f46' }}>
                         Todo en orden por ahora
                       </p>
-                      <p className={`${typography.text.caption} text-emerald-600 mt-1`}>
+                      <p className="text-small" style={{ color: '#059669', marginTop: 'var(--space-4)' }}>
                         No detectamos riesgos inmediatos en margen, stock o inventario.
                       </p>
                     </div>
@@ -252,7 +252,7 @@ const Dashboard: React.FC = () => {
               />
               <Card.Content className="pt-4 space-y-4">
                 {!aiRequested ? (
-                  <p className={`${typography.text.caption} text-slate-500 leading-relaxed`}>
+                  <p className="text-small text-muted" style={{ lineHeight: 1.6 }}>
                     Genera una lectura compacta para detectar señales de margen y prioridades comerciales.
                   </p>
                 ) : loadingAi ? (
@@ -262,7 +262,7 @@ const Dashboard: React.FC = () => {
                     ))}
                   </div>
                 ) : (
-                  <p className={`${typography.text.caption} text-slate-600 whitespace-pre-line leading-relaxed`}>
+                  <p className="text-small" style={{ color: 'var(--color-neutral-700)', whiteSpace: 'pre-line', lineHeight: 1.6 }}>
                     {aiAnalysis || 'Análisis no disponible en este momento.'}
                   </p>
                 )}
@@ -288,5 +288,3 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
-
-
