@@ -2,68 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * BETO OS — index.css
+ *
+ * Este archivo solo carga Tailwind y la fuente Inter.
+ * Todos los estilos visuales viven en src/styles/global.css.
+ *
+ * NO agregar estilos aquí. NO usar @layer components aquí.
+ * Si necesitas un estilo nuevo → agregarlo a global.css.
+ */
+
 @font-face {
     font-family: "Inter";
     src: url("/fonts/inter-var.woff2") format("woff2");
     font-weight: 100 900;
     font-display: swap;
-}
-
-@layer base {
-
-    html {
-        font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-        @apply text-slate-900 antialiased;
-    }
-
-    body {
-        font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-        @apply text-slate-900 antialiased;
-    }
-}
-
-@layer components {
-
-    /* ── SUPERFICIES & CARDS ─────────────────────────────────────── */
-    .surface-card {
-        @apply bg-bg-card border border-border rounded-md shadow-subtle p-6;
-    }
-
-    .surface-modal {
-        @apply bg-bg-card border border-border rounded-lg shadow-elevated p-6;
-    }
-
-    /* ── PATRÓN: CONCEPTO ↔ VALOR ────────────────────────────────── */
-    .kv-row {
-        @apply flex justify-between items-baseline;
-    }
-
-    .kv-concept {
-        @apply text-label text-text-secondary uppercase font-semibold;
-    }
-
-    .kv-value {
-        @apply text-lg font-extrabold text-text-primary tabular-nums;
-    }
-
-    /* ── TABLAS ──────────────────────────────────────────────────── */
-    .table-container {
-        @apply w-full border-collapse text-left table-fixed;
-    }
-
-    .table-header {
-        @apply uppercase text-xs font-semibold text-text-muted border-b border-border bg-bg-page/50 backdrop-blur-sm;
-    }
-
-    .table-header-cell {
-        @apply px-4 h-12 truncate;
-    }
-
-    .table-row {
-        @apply border-b border-border/50 hover:bg-bg-page transition-colors;
-    }
-
-    .table-cell {
-        @apply px-4 h-12 truncate;
-    }
 }
