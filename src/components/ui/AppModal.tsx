@@ -56,16 +56,16 @@ const tierDefaultIcons: Record<ModalTier, ReactNode> = {
 
 // Color del ícono de header por tier — usando variables CSS del sistema
 const tierIconStyle: Record<ModalTier, React.CSSProperties> = {
-    2: { background: 'var(--color-primary-soft)', color: 'var(--color-primary)' },
-    3: { background: 'var(--color-warning-soft)', color: 'var(--color-warning)' },
-    4: { background: 'var(--color-neutral-100)', color: 'var(--color-neutral-700)' },
+    2: { background: 'var(--surface-primary-soft)', color: 'var(--state-primary)' },
+    3: { background: 'var(--surface-warning-soft)', color: 'var(--state-warning)' },
+    4: { background: 'var(--surface-muted)', color: 'var(--text-secondary)' },
 };
 
 // Badge de tier T3+
 const tierBadgeStyle: Record<ModalTier, React.CSSProperties> = {
     2: {},
-    3: { background: 'var(--color-warning-soft)', color: 'var(--color-warning)' },
-    4: { background: 'var(--color-neutral-100)', color: 'var(--color-neutral-700)' },
+    3: { background: 'var(--surface-warning-soft)', color: 'var(--state-warning)' },
+    4: { background: 'var(--surface-muted)', color: 'var(--text-secondary)' },
 };
 
 // Variante del botón Guardar por tier
@@ -183,7 +183,7 @@ export function AppModal({
                             margin: 0,
                             fontSize: 'var(--text-h3-size)',
                             fontWeight: 'var(--text-h3-weight)' as any,
-                            color: 'var(--color-neutral-900)',
+                            color: 'var(--text-primary)',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
@@ -240,7 +240,7 @@ export function AppModal({
                         gap: 'var(--space-12)',
                         padding: 'var(--space-16) var(--space-24)',
                         borderTop: 'var(--border-default)',
-                        background: 'var(--color-neutral-0)',
+                        background: 'var(--surface-card)',
                         flexShrink: 0,
                     }}>
                         {footer ?? (

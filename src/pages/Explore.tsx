@@ -147,18 +147,18 @@ const Explore: React.FC = () => {
                 .ticker-track:hover { animation-play-state: paused; }
             `}</style>
 
-            <div style={{ minHeight: '100vh', background: 'var(--color-neutral-50)', fontFamily: 'var(--font-sans)' }}>
+            <div style={{ minHeight: '100vh', background: 'var(--surface-page)', fontFamily: 'var(--font-sans)' }}>
 
                 {/* Hero */}
                 <section style={{ padding: 'var(--space-64) var(--space-24)', maxWidth: '80rem', margin: '0 auto', textAlign: 'center' }}>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-8)', padding: 'var(--space-4) var(--space-12)', background: 'var(--color-primary-soft)', border: '1px solid rgba(37,99,235,0.2)', borderRadius: 'var(--radius-pill)', marginBottom: 'var(--space-24)' }}>
-                        <Sparkles size={12} style={{ color: 'var(--color-primary)' }} />
-                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)' }}>Para cualquier negocio con inventario</span>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-8)', padding: 'var(--space-4) var(--space-12)', background: 'var(--surface-primary-soft)', border: '1px solid rgba(37,99,235,0.2)', borderRadius: 'var(--radius-pill)', marginBottom: 'var(--space-24)' }}>
+                        <Sparkles size={12} style={{ color: 'var(--state-primary)' }} />
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--state-primary)' }}>Para cualquier negocio con inventario</span>
                     </div>
-                    <h1 style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', fontWeight: 900, color: 'var(--color-neutral-900)', letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 'var(--space-24)' }}>
+                    <h1 style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 'var(--space-24)' }}>
                         Toma el control de<br />tus costos e inventario
                     </h1>
-                    <p style={{ fontSize: 'var(--text-body-size)', color: 'var(--color-neutral-700)', maxWidth: '36rem', margin: '0 auto var(--space-32)', lineHeight: 1.6 }}>
+                    <p style={{ fontSize: 'var(--text-body-size)', color: 'var(--text-secondary)', maxWidth: '36rem', margin: '0 auto var(--space-32)', lineHeight: 1.6 }}>
                         BETO OS es el sistema operativo para negocios con inventario. FIFO automático, trazabilidad de lotes, control de márgenes en tiempo real.
                     </p>
                     <div style={{ display: 'flex', gap: 'var(--space-12)', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -172,12 +172,12 @@ const Explore: React.FC = () => {
                 </section>
 
                 {/* Ticker */}
-                <div style={{ overflow: 'hidden', borderTop: 'var(--border-default)', borderBottom: 'var(--border-default)', background: 'var(--color-neutral-0)', padding: 'var(--space-12) 0' }}>
+                <div style={{ overflow: 'hidden', borderTop: 'var(--border-default)', borderBottom: 'var(--border-default)', background: 'var(--surface-card)', padding: 'var(--space-12) 0' }}>
                     <div className="ticker-track" style={{ display: 'flex', gap: 'var(--space-32)', width: 'max-content' }}>
                         {[...TICKER_ITEMS, ...TICKER_ITEMS].map((item, i) => (
                             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-8)', whiteSpace: 'nowrap' }}>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-primary)', flexShrink: 0 }} dangerouslySetInnerHTML={{ __html: item.icon }} />
-                                <span style={{ fontSize: 'var(--text-small-size)', fontWeight: 600, color: 'var(--color-neutral-700)' }}>{item.label}</span>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--state-primary)', flexShrink: 0 }} dangerouslySetInnerHTML={{ __html: item.icon }} />
+                                <span style={{ fontSize: 'var(--text-small-size)', fontWeight: 600, color: 'var(--text-secondary)' }}>{item.label}</span>
                             </div>
                         ))}
                     </div>
@@ -191,7 +191,7 @@ const Explore: React.FC = () => {
                         { value: `${c3}%`, label: 'Uptime garantizado' },
                     ].map(stat => (
                         <div key={stat.label} className="card" style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: 'var(--text-display-size)', fontWeight: 900, color: 'var(--color-primary)', letterSpacing: '-0.02em' }}>{stat.value}</div>
+                            <div style={{ fontSize: 'var(--text-display-size)', fontWeight: 900, color: 'var(--state-primary)', letterSpacing: '-0.02em' }}>{stat.value}</div>
                             <p className="text-small text-muted">{stat.label}</p>
                         </div>
                     ))}
@@ -200,7 +200,7 @@ const Explore: React.FC = () => {
                 {/* Simulator */}
                 <section style={{ maxWidth: '48rem', margin: '0 auto', padding: 'var(--space-48) var(--space-24)' }}>
                     <div className="card">
-                        <h2 style={{ fontSize: 'var(--text-h2-size)', fontWeight: 700, color: 'var(--color-neutral-900)', marginBottom: 'var(--space-24)' }}>
+                        <h2 style={{ fontSize: 'var(--text-h2-size)', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 'var(--space-24)' }}>
                             Simulador de margen
                         </h2>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--space-16)', marginBottom: 'var(--space-24)' }}>
@@ -220,15 +220,15 @@ const Explore: React.FC = () => {
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-12)' }}>
                             <div className="metric-card">
                                 <div className="metric-label">Margen anterior</div>
-                                <div className="metric-value" style={{ fontSize: 'var(--text-h2-size)', color: 'var(--color-success)' }}>{marginOld.toFixed(1)}%</div>
+                                <div className="metric-value" style={{ fontSize: 'var(--text-h2-size)', color: 'var(--state-success)' }}>{marginOld.toFixed(1)}%</div>
                             </div>
                             <div className="metric-card">
                                 <div className="metric-label">Margen nuevo</div>
-                                <div className="metric-value" style={{ fontSize: 'var(--text-h2-size)', color: marginNew < 10 ? 'var(--color-danger)' : 'var(--color-warning)' }}>{marginNew.toFixed(1)}%</div>
+                                <div className="metric-value" style={{ fontSize: 'var(--text-h2-size)', color: marginNew < 10 ? 'var(--state-danger)' : 'var(--state-warning)' }}>{marginNew.toFixed(1)}%</div>
                             </div>
                             <div className="metric-card">
                                 <div className="metric-label">Impacto mensual</div>
-                                <div className="metric-value" style={{ fontSize: 'var(--text-h2-size)', color: 'var(--color-danger)' }}>-${fmt(monthlyImpact)}</div>
+                                <div className="metric-value" style={{ fontSize: 'var(--text-h2-size)', color: 'var(--state-danger)' }}>-${fmt(monthlyImpact)}</div>
                             </div>
                         </div>
                     </div>
@@ -236,7 +236,7 @@ const Explore: React.FC = () => {
 
                 {/* Planes */}
                 <section id="planes" style={{ maxWidth: '80rem', margin: '0 auto', padding: 'var(--space-48) var(--space-24)' }}>
-                    <h2 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 900, color: 'var(--color-neutral-900)', textAlign: 'center', marginBottom: 'var(--space-48)' }}>
+                    <h2 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 900, color: 'var(--text-primary)', textAlign: 'center', marginBottom: 'var(--space-48)' }}>
                         Elige tu plan
                     </h2>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-16)' }}>
@@ -245,7 +245,7 @@ const Explore: React.FC = () => {
                             const isPlanLoading = loadingPlan === plan.key;
                             return (
                                 <Card key={plan.key}
-                                    style={plan.recommended ? { border: '2px solid var(--color-primary)', cursor: 'pointer' } : { cursor: 'pointer' }}
+                                    style={plan.recommended ? { border: '2px solid var(--state-primary)', cursor: 'pointer' } : { cursor: 'pointer' }}
                                     onClick={() => setSelectedPlan(plan.key)}
                                 >
                                     {plan.recommended && (
@@ -267,7 +267,7 @@ const Explore: React.FC = () => {
                                         </div>
                                         <p className="text-small text-muted" style={{ marginBottom: 'var(--space-8)' }}>{plan.description}</p>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
-                                            <Users size={11} style={{ color: 'var(--color-neutral-400)' }} />
+                                            <Users size={11} style={{ color: 'var(--text-muted)' }} />
                                             <span className="text-small text-muted">
                                                 {plan.seatLimit >= 999 ? 'Usuarios ilimitados' : `Hasta ${plan.seatLimit} usuarios`}
                                             </span>
@@ -276,8 +276,8 @@ const Explore: React.FC = () => {
                                     <ul style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-8)', listStyle: 'none', padding: 0, margin: 0 }}>
                                         {plan.features.map((f, i) => (
                                             <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-8)' }}>
-                                                <Check size={12} style={{ color: 'var(--color-primary)', marginTop: 2, flexShrink: 0 }} />
-                                                <span className="text-small" style={{ color: 'var(--color-neutral-700)' }}>{f}</span>
+                                                <Check size={12} style={{ color: 'var(--state-primary)', marginTop: 2, flexShrink: 0 }} />
+                                                <span className="text-small" style={{ color: 'var(--text-secondary)' }}>{f}</span>
                                             </li>
                                         ))}
                                     </ul>
@@ -305,7 +305,7 @@ const Explore: React.FC = () => {
                             <div key={t.title} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-12)' }}>
                                 <span style={{ fontSize: '1.25rem' }}>{t.icon}</span>
                                 <div>
-                                    <p style={{ fontSize: 'var(--text-small-size)', fontWeight: 700, color: 'var(--color-neutral-900)' }}>{t.title}</p>
+                                    <p style={{ fontSize: 'var(--text-small-size)', fontWeight: 700, color: 'var(--text-primary)' }}>{t.title}</p>
                                     <p className="text-small text-muted">{t.sub}</p>
                                 </div>
                             </div>
@@ -314,15 +314,15 @@ const Explore: React.FC = () => {
                 </section>
 
                 {/* Footer */}
-                <footer style={{ borderTop: 'var(--border-default)', background: 'var(--color-neutral-50)', padding: 'var(--space-32) var(--space-24)' }}>
+                <footer style={{ borderTop: 'var(--border-default)', background: 'var(--surface-page)', padding: 'var(--space-32) var(--space-24)' }}>
                     <div style={{ maxWidth: '80rem', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-16)' }}>
-                        <span style={{ fontSize: 'var(--text-body-size)', fontWeight: 900, color: 'var(--color-neutral-900)' }}>
-                            BETO<span style={{ color: 'var(--color-primary)' }}>OS</span>
+                        <span style={{ fontSize: 'var(--text-body-size)', fontWeight: 900, color: 'var(--text-primary)' }}>
+                            BETO<span style={{ color: 'var(--state-primary)' }}>OS</span>
                         </span>
                         <p className="text-small text-muted">© {new Date().getFullYear()} BETO OS. Todos los derechos reservados.</p>
                         <div style={{ display: 'flex', gap: 'var(--space-24)' }}>
-                            <Link to="/login" className="text-small" style={{ fontWeight: 700, color: 'var(--color-neutral-700)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Login</Link>
-                            <a href="mailto:sales@beto.com" className="text-small" style={{ fontWeight: 700, color: 'var(--color-neutral-700)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Contacto</a>
+                            <Link to="/login" className="text-small" style={{ fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Login</Link>
+                            <a href="mailto:sales@beto.com" className="text-small" style={{ fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Contacto</a>
                         </div>
                     </div>
                 </footer>

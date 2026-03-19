@@ -51,7 +51,7 @@ const Dispatches: React.FC = () => {
             <SectionBlock>
                 <UniversalPageHeader
                     title="Despachos"
-                    breadcrumbs={<><span>BETO OS</span><span>/</span><span style={{ color: 'var(--color-neutral-900)', fontWeight: 600 }}>Registro de Stock</span></>}
+                    breadcrumbs={<><span>BETO OS</span><span>/</span><span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Registro de Stock</span></>}
                     metadata={[
                         <span key="1">Registro formal de salidas de stock</span>,
                         <span key="2">{dispatches.length} despachos registrados</span>,
@@ -78,14 +78,14 @@ const Dispatches: React.FC = () => {
                 <div className="card" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-16)', flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-16)', flex: 1 }}>
                         <div style={{ position: 'relative', flex: 1, maxWidth: '20rem' }}>
-                            <Search style={{ position: 'absolute', left: 'var(--space-12)', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-neutral-400)' }} size={16} />
+                            <Search style={{ position: 'absolute', left: 'var(--space-12)', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} size={16} />
                             <input type="text" placeholder="Buscar por número o cliente..."
                                 value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
                                 className="input" style={{ paddingLeft: 'var(--space-32)' }} />
                         </div>
 
                         {/* Filter tabs */}
-                        <div style={{ display: 'flex', alignItems: 'center', background: 'var(--color-neutral-100)', padding: 'var(--space-4)', borderRadius: 'var(--radius-lg)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', background: 'var(--surface-muted)', padding: 'var(--space-4)', borderRadius: 'var(--radius-lg)' }}>
                             {(['todos', 'borrador', 'confirmado', 'anulado'] as const).map(status => (
                                 <button key={status} onClick={() => setFilterStatus(status)}
                                     className={filterStatus === status ? 'tab is-active' : 'tab'}
@@ -113,7 +113,7 @@ const Dispatches: React.FC = () => {
                         {!searchTerm && <Button variant="primary" icon={<Plus size={18} />} onClick={handleNew}>REGISTRAR PRIMER DESPACHO</Button>}
                     </div>
                 ) : (
-                    <div style={{ background: 'var(--color-neutral-0)', borderRadius: 'var(--radius-xl)', border: 'var(--border-default)', overflow: 'hidden' }}>
+                    <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--radius-xl)', border: 'var(--border-default)', overflow: 'hidden' }}>
                         <div style={{ overflowX: 'auto' }}>
                             <table className="table">
                                 <thead>
@@ -132,7 +132,7 @@ const Dispatches: React.FC = () => {
                                         <tr key={dispatch.id}>
                                             <td><span className="font-mono text-small" style={{ fontWeight: 700 }}>{dispatch.number}</span></td>
                                             <td>
-                                                <div className="text-small" style={{ fontWeight: 500, color: 'var(--color-neutral-700)' }}>
+                                                <div className="text-small" style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>
                                                     {format(new Date(dispatch.date), 'dd MMM yyyy', { locale: es })}
                                                 </div>
                                                 <div className="text-small text-muted">
@@ -140,7 +140,7 @@ const Dispatches: React.FC = () => {
                                                 </div>
                                             </td>
                                             <td>
-                                                <div style={{ fontWeight: 700, color: 'var(--color-neutral-900)' }}>{dispatch.client_name || 'Sin Cliente'}</div>
+                                                <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{dispatch.client_name || 'Sin Cliente'}</div>
                                                 {dispatch.notes && <div className="text-small text-muted" style={{ overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>{dispatch.notes}</div>}
                                             </td>
                                             <td style={{ textAlign: 'center' }}>

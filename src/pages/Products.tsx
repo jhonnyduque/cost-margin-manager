@@ -1,141 +1,205 @@
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, Edit2, Search, PlayCircle, Info, Layers, TrendingUp, CheckCircle2, X, ChevronRight, AlertTriangle, RotateCcw, Ruler, History, Copy, Package, PackageSearch, Printer, Archive, MoreVertical } from 'lucide-react';
-import { useStore, calculateProductCost, calculateFifoCost, hasProductGeneratedActiveDebt, calculateProductStock } from '../store';
+import {
+  Plus,
+  Trash2,
+  Edit2,
+  Search,
+  PlayCircle,
+  Layers,
+  X,
+  History,
+  Copy,
+  Printer,
+  Archive,
+  MoreVertical,
+} from 'lucide-react';
+import {
+  useStore,
+  calculateProductCost,
+  calculateProductStock,
+} from '../store';
 import { calculateFinancialMetrics } from '@/core/financialMetricsEngine';
-import { Product, Unit, RawMaterial, MaterialBatch, DEFAULT_TARGET_MARGIN } from '@/types';
+import { Product, DEFAULT_TARGET_MARGIN } from '@/types';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Badge } from '@/components/ui/Badge';
-import { Card } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Select';
-import { colors, typography, spacing, radius, shadows } from '@/design/design-tokens';
+import { Card } from '@/components/ui/Card';
 import { useCurrency } from '@/hooks/useCurrency';
-import { translateError } from '@/utils/errorHandler';
 import { PageContainer, SectionBlock } from '@/components/ui/LayoutPrimitives';
 import { UniversalPageHeader } from '@/components/ui/UniversalPageHeader';
 
+// Kebab dropdown styles — usa variables CSS del sistema
+const dropdownStyle: React.CSSProperties = {
+  background: 'var(--surface-card)',
+  border: 'var(--border-default)',
+  borderRadius: 'var(--radius-lg)',
+  boxShadow: 'var(--shadow-md)',
+  paddingTop: 'var(--space-4)',
+  paddingBottom: 'var(--space-4)',
+  minWidth: '11rem',
+};
+
+const dropdownBtnBase: React.CSSProperties = {
+  display: 'flex',
+  width: '100%',
+  alignItems: 'center',
+  gap: 'var(--space-8)',
+  padding: 'var(--space-8) var(--space-16)',
+  fontSize: 'var(--text-small-size)',
+  fontWeight: 500,
+  background: 'transparent',
+  border: 'none',
+  cursor: 'pointer',
+  color: 'var(--text-secondary)',
+  transition: 'background var(--transition-fast)',
+};
+
 const Products: React.FC = () => {
   const navigate = useNavigate();
-  const { currentCompanyId, currentUserRole, products, productMovements, rawMaterials, batches, movements, addProduct, deleteProduct, discontinueProduct, updateProduct, unitsOfMeasure } = useStore();
-  // Roles allowed to perform write operations. 'super_admin' is a system role
-  // defined in UserRole — previously missing from the type caused this check to
-  // always return false for super admins.
+  const {
+    currentUserRole,
+    products,
+    productMovements,
+    rawMaterials,
+    batches,
+    unitsOfMeasure,
+    deleteProduct,
+    discontinueProduct,
+  } = useStore();
+
   const allowedRoles = ['super_admin', 'admin', 'owner', 'manager'];
   const canManage = allowedRoles.includes((currentUserRole as string) || '');
-  // Keep semantic aliases for readability in JSX — they all share the same rule for now.
   const canCreate = canManage;
-  const canEdit = canManage;
-  const canDelete = canManage;
-  const { formatCurrency, currencySymbol } = useCurrency();
+
+  const { formatCurrency } = useCurrency();
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'activa' | 'inactiva' | 'todos'>('activa');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [menuState, setMenuState] = useState<{ productId: string; rect: DOMRect } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  const filteredProducts = products
+    .filter(
+      (p) =>
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.reference.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .filter((p) => (statusFilter === 'todos' ? true : (p.status || 'activa') === statusFilter));
 
-
-  const filteredProducts = products.filter(p =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.reference.toLowerCase().includes(searchTerm.toLowerCase())
-  ).filter(p => {
-    if (statusFilter === 'todos') return true;
-    const currentStatus = p.status || 'activa'; // 🔴 FIX: Fallback a activa para productos antiguos sin estado
-    return currentStatus === statusFilter;
-  });
-
-  const handleDuplicate = (product: Product) => {
-    // 🔴 FIX: Previously this function ignored the `product` argument and navigated
-    // to an empty form. Now it passes the source product via router state so the
-    // new product form can pre-populate all fields from the original.
+  const handleDuplicate = (product: Product) =>
     navigate('/productos/nuevo', { state: { duplicateFrom: product } });
-  };
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const handlePrint = () => window.print();
 
-  // ── Click outside closes kebab menu ──
   useEffect(() => {
     if (!menuState) return;
+
     const handler = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      // Skip if click is on a kebab trigger — let openMenu handle toggle
       if (target.closest('[data-kebab-trigger]')) return;
-      if (menuRef.current && !menuRef.current.contains(target)) {
-        setMenuState(null);
-      }
+      if (menuRef.current && !menuRef.current.contains(target)) setMenuState(null);
     };
+
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [menuState]);
 
-  // ── Toggle selection ──
-  const toggleSelect = (id: string) => {
-    setSelectedIds(prev => {
+  const toggleSelect = (id: string) =>
+    setSelectedIds((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
-  };
-  const toggleSelectAll = () => {
-    if (selectedIds.size === filteredProducts.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(filteredProducts.map(p => p.id)));
-    }
-  };
 
-  // ── Batch actions ──
+  const toggleSelectAll = () =>
+    selectedIds.size === filteredProducts.length
+      ? setSelectedIds(new Set())
+      : setSelectedIds(new Set(filteredProducts.map((p) => p.id)));
+
   const handleBatchDiscontinue = async () => {
     if (!confirm(`¿Discontinuar ${selectedIds.size} producto(s)?`)) return;
     for (const id of selectedIds) {
-      try { await discontinueProduct(id); } catch (e) { console.error(e); }
+      try {
+        await discontinueProduct(id);
+      } catch (e) {
+        console.error(e);
+      }
     }
     setSelectedIds(new Set());
   };
+
   const handleBatchDelete = async () => {
     if (!confirm(`¿Eliminar ${selectedIds.size} producto(s)? Esta acción es irreversible.`)) return;
     const errors: string[] = [];
+
     for (const id of selectedIds) {
-      try { await deleteProduct(id); } catch (e: any) { errors.push(e.message); }
+      try {
+        await deleteProduct(id);
+      } catch (e: any) {
+        errors.push(e.message);
+      }
     }
-    if (errors.length > 0) alert(`No se pudieron eliminar algunos productos:\n${errors.join('\n')}`);
+
+    if (errors.length > 0) {
+      alert(`No se pudieron eliminar algunos productos:\n${errors.join('\n')}`);
+    }
+
     setSelectedIds(new Set());
   };
 
-  // ── Single actions from kebab ──
   const handleDiscontinue = async (id: string) => {
     setMenuState(null);
     if (!confirm('¿Discontinuar este producto?')) return;
-    try { await discontinueProduct(id); } catch (e: any) { alert(e.message); }
+    try {
+      await discontinueProduct(id);
+    } catch (e: any) {
+      alert(e.message);
+    }
   };
+
   const handleDelete = async (id: string) => {
     setMenuState(null);
     if (!confirm('¿Eliminar este producto? Esta acción es irreversible.')) return;
-    try { await deleteProduct(id); } catch (e: any) { alert(e.message); }
+    try {
+      await deleteProduct(id);
+    } catch (e: any) {
+      alert(e.message);
+    }
   };
 
-  // ── Open kebab with fixed positioning ──
   const openMenu = (productId: string, e: React.MouseEvent<HTMLButtonElement>) => {
     if (menuState?.productId === productId) {
       setMenuState(null);
       return;
     }
-    const rect = e.currentTarget.getBoundingClientRect();
-    setMenuState({ productId, rect });
+    setMenuState({ productId, rect: e.currentTarget.getBoundingClientRect() });
   };
 
   return (
     <PageContainer>
       <style>{`
-      @media print {
-        body * { visibility: hidden; }
-        #print-area, #print-area * { visibility: visible; }
-        #print-area { position: absolute; left: 0; top: 0; width: 100%; }
-        .no-print { display: none !important; }
-      }
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+
+          #print-area,
+          #print-area * {
+            visibility: visible;
+          }
+
+          #print-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+          }
+
+          .no-print {
+            display: none !important;
+          }
+        }
       `}</style>
 
       <SectionBlock>
@@ -145,12 +209,14 @@ const Products: React.FC = () => {
             <>
               <span>BETO OS</span>
               <span>/</span>
-              <span className={colors.textPrimary}>Productos</span>
+              <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                Productos
+              </span>
             </>
           }
           metadata={[
             <span key="1">Gestión de Escandallos (Costos FIFO)</span>,
-            <span key="2">{products.length} productos registrados</span>
+            <span key="2">{products.length} productos registrados</span>,
           ]}
           actions={
             canCreate && (
@@ -162,6 +228,7 @@ const Products: React.FC = () => {
                 >
                   <span className="hidden sm:inline">NUEVO INSUMO</span>
                 </Button>
+
                 <Button
                   variant="primary"
                   onClick={() => navigate('/productos/nuevo')}
@@ -174,22 +241,46 @@ const Products: React.FC = () => {
           }
         />
 
-        {/* UNIFIED TOOLBAR */}
-        <div className="no-print mt-6 flex flex-wrap items-center gap-4 border-t border-slate-100 pt-6">
-          <div className="relative min-w-[300px] flex-1">
-            <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 ${colors.textMuted}`} />
-            <input
-              type="text"
-              placeholder="Buscar por nombre o SKU..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className={`h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 ${typography.text.body} transition-all focus:bg-white focus:ring-2 focus:ring-slate-400`}
-            />
-          </div>
+        <div
+          className="no-print"
+          style={{
+            marginTop: 'var(--space-32)',
+            borderTop: 'var(--border-default)',
+            paddingTop: 'var(--space-32)',
+          }}
+        >
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0, 1fr) auto auto',
+              alignItems: 'center',
+              gap: 'var(--space-12)',
+            }}
+          >
+            <div style={{ position: 'relative', minWidth: 0 }}>
+              <Search
+                size={18}
+                style={{
+                  position: 'absolute',
+                  left: 'var(--space-16)',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--text-muted)',
+                }}
+              />
 
-          <div className="flex items-center gap-3">
+              <input
+                type="text"
+                placeholder="Buscar por nombre o SKU..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="input"
+                style={{ paddingLeft: 'var(--space-48)', width: '100%' }}
+              />
+            </div>
+
             <Select
-              className="w-48"
+              style={{ width: '12rem' }}
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
             >
@@ -197,78 +288,155 @@ const Products: React.FC = () => {
               <option value="inactiva">Discontinuados</option>
               <option value="todos">Todos los productos</option>
             </Select>
+
             <Button
               variant="ghost"
-              size="icon"
-              className={colors.textSecondary}
+              size="sm"
               onClick={handlePrint}
               title="Imprimir Catálogo"
-              icon={<Printer size={20} />}
+              icon={<Printer size={18} />}
+              style={{ flexShrink: 0 }}
             />
           </div>
         </div>
       </SectionBlock>
 
-      <div className="space-y-4">
-        {/* ✅ MÓVIL - Layout Cards */}
-        <div className="space-y-4 md:hidden">
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 'var(--space-16)',
+          marginTop: 'var(--space-32)',
+        }}
+      >
+        {/* Móvil — Cards */}
+        <div
+          className="md:hidden"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--space-16)',
+          }}
+        >
           {filteredProducts.map((p) => {
             const cost = calculateProductCost(p, batches, rawMaterials, unitsOfMeasure);
             const metrics = calculateFinancialMetrics(
               cost,
               p.price,
-              // 🔴 FIX: target_margin is stored as PERCENTAGE (e.g. 30), not decimal (0.3).
-              // Divide by 100 to convert to the decimal format financialMetricsEngine expects.
               (p.target_margin ?? DEFAULT_TARGET_MARGIN) / 100
             );
+            const marginOk =
+              metrics.realMargin >= (p.target_margin ?? DEFAULT_TARGET_MARGIN) / 100;
+
             return (
-              <Card key={p.id} className="border border-slate-200">
-                <Card.Header className="mb-4">
-                  <div className="flex min-w-0 flex-1 items-start gap-3" onClick={() => navigate(`/productos/detalle/${p.id}`)}>
+              <Card key={p.id}>
+                <Card.Header>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 'var(--space-12)',
+                      flex: 1,
+                      minWidth: 0,
+                    }}
+                    onClick={() => navigate(`/productos/detalle/${p.id}`)}
+                  >
                     <input
                       type="checkbox"
                       checked={selectedIds.has(p.id)}
-                      onChange={(e) => { e.stopPropagation(); toggleSelect(p.id); }}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        toggleSelect(p.id);
+                      }}
                       onClick={(e) => e.stopPropagation()}
-                      className={`mt-1 size-4 shrink-0 rounded-md accent-indigo-600`}
+                      style={{ marginTop: 4, flexShrink: 0, accentColor: 'var(--state-primary)' }}
                       aria-label={`Seleccionar ${p.name}`}
                     />
-                    <div className="min-w-0">
-                      <h3 className={`${typography.text.section} ${colors.textPrimary} truncate`}>{p.name}</h3>
-                      <p className={`${typography.text.caption} ${colors.textSecondary} mt-0.5`}>{p.reference || 'SIN REF'}</p>
+
+                    <div style={{ minWidth: 0 }}>
+                      <h3
+                        style={{
+                          fontWeight: 700,
+                          color: 'var(--text-primary)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {p.name}
+                      </h3>
+                      <p className="text-small text-muted">{p.reference || 'SIN REF'}</p>
                     </div>
                   </div>
-                  <span className={`${typography.text.caption} font-bold tabular-nums ${metrics.realMargin >= (p.target_margin ?? DEFAULT_TARGET_MARGIN) / 100 ? colors.statusSuccess : colors.statusWarning}`}>
+
+                  <span
+                    className={marginOk ? 'text-success' : 'text-warning'}
+                    style={{
+                      fontWeight: 700,
+                      fontVariantNumeric: 'tabular-nums',
+                      flexShrink: 0,
+                    }}
+                  >
                     {(metrics.realMargin * 100).toFixed(1)}%
                   </span>
                 </Card.Header>
 
-                <Card.Content className="grid grid-cols-3 gap-4 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
-                  <div className="flex flex-col">
-                    <span className={`${typography.text.caption} font-bold uppercase text-slate-500`}>Stock</span>
-                    <span className={`${typography.text.body} font-bold ${colors.textPrimary}`}>
-                      {calculateProductStock(p.id, productMovements)}
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <span className={`${typography.text.caption} font-bold uppercase text-slate-500`}>Costo (FIFO)</span>
-                    <span className={`${typography.text.body} font-bold ${colors.textPrimary}`}>{formatCurrency(cost)}</span>
-                  </div>
-                  <div className="flex flex-col items-end text-right">
-                    <span className={`${typography.text.caption} font-bold uppercase text-slate-500`}>Precio Venta</span>
-                    <span className={`${typography.text.body} font-black text-slate-800`}>{formatCurrency(p.price)}</span>
+                <Card.Content>
+                  <div
+                    className="inset-card"
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(3, 1fr)',
+                      gap: 'var(--space-16)',
+                    }}
+                  >
+                    <div>
+                      <span
+                        className="text-small text-muted"
+                        style={{ fontWeight: 700, textTransform: 'uppercase', display: 'block' }}
+                      >
+                        Stock
+                      </span>
+                      <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                        {calculateProductStock(p.id, productMovements)}
+                      </span>
+                    </div>
+
+                    <div style={{ textAlign: 'center' }}>
+                      <span
+                        className="text-small text-muted"
+                        style={{ fontWeight: 700, textTransform: 'uppercase', display: 'block' }}
+                      >
+                        Costo FIFO
+                      </span>
+                      <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                        {formatCurrency(cost)}
+                      </span>
+                    </div>
+
+                    <div style={{ textAlign: 'right' }}>
+                      <span
+                        className="text-small text-muted"
+                        style={{ fontWeight: 700, textTransform: 'uppercase', display: 'block' }}
+                      >
+                        Precio
+                      </span>
+                      <span style={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+                        {formatCurrency(p.price)}
+                      </span>
+                    </div>
                   </div>
                 </Card.Content>
 
-                <Card.Footer className="mt-4 flex justify-end border-t border-slate-100 pt-4">
-                  <div className="relative">
+                <Card.Footer>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                     <button
                       data-kebab-trigger
-                      className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100"
-                      onClick={(e) => openMenu(p.id, e)}
+                      className="btn-ghost btn-sm"
+                      onClick={(e) => openMenu(p.id, e as any)}
                       aria-label="Más opciones"
                     >
-                      <MoreVertical size={18} />
+                      <MoreVertical size={16} />
                     </button>
                   </div>
                 </Card.Footer>
@@ -277,86 +445,152 @@ const Products: React.FC = () => {
           })}
         </div>
 
-        {/* ✅ ESCRITORIO - Tabla normal */}
+        {/* Escritorio — Tabla */}
         <div id="print-area" className="hidden md:block">
-          <div className={`table-container rounded-2xl ${colors.bgSurface} border ${colors.borderStandard} overflow-hidden ${shadows.sm}`}>
-            <table className="w-full table-fixed text-left">
-              <thead className={`${colors.bgMain} border-b ${colors.borderStandard}`}>
+          <div
+            style={{
+              background: 'var(--surface-card)',
+              borderRadius: 'var(--radius-xl)',
+              border: 'var(--border-default)',
+              overflow: 'hidden',
+            }}
+          >
+            <table className="table" style={{ tableLayout: 'fixed' }}>
+              <thead>
                 <tr>
-                  <th className={`w-12 ${spacing.pxLg} py-4`}>
+                  <th style={{ width: '3rem' }}>
                     <input
                       type="checkbox"
-                      checked={filteredProducts.length > 0 && selectedIds.size === filteredProducts.length}
+                      checked={
+                        filteredProducts.length > 0 &&
+                        selectedIds.size === filteredProducts.length
+                      }
                       onChange={toggleSelectAll}
-                      className={`size-4 rounded accent-indigo-600`}
+                      style={{ accentColor: 'var(--state-primary)' }}
                       aria-label="Seleccionar todos"
                     />
                   </th>
-                  <th className={`w-[22%] ${spacing.pxLg} truncate py-4 ${typography.text.caption} font-bold uppercase text-slate-500`}>Producto</th>
-                  <th className={`w-[14%] ${spacing.pxLg} truncate py-4 ${typography.text.caption} font-bold uppercase text-slate-500`}>Referencia / SKU</th>
-                  <th className={`w-[10%] ${spacing.pxLg} truncate py-4 text-right ${typography.text.caption} font-bold uppercase text-slate-500`}>Stock</th>
-                  <th className={`w-[13%] ${spacing.pxLg} truncate py-4 text-right ${typography.text.caption} font-bold uppercase text-slate-500`}>Costo (FIFO)</th>
-                  <th className={`w-[13%] ${spacing.pxLg} truncate py-4 text-right ${typography.text.caption} font-bold uppercase text-slate-500`}>Precio Venta</th>
-                  <th className={`w-[10%] ${spacing.pxLg} truncate py-4 text-center ${typography.text.caption} font-bold uppercase text-slate-500`}>Margen</th>
-                  <th className={`w-[13%] min-w-[120px] ${spacing.pxLg} py-4 text-center ${typography.text.caption} font-bold uppercase text-slate-500`}>Acciones</th>
+                  <th style={{ width: '22%' }}>Producto</th>
+                  <th style={{ width: '14%' }}>Referencia / SKU</th>
+                  <th style={{ width: '10%', textAlign: 'right' }}>Stock</th>
+                  <th style={{ width: '13%', textAlign: 'right' }}>Costo (FIFO)</th>
+                  <th style={{ width: '13%', textAlign: 'right' }}>Precio Venta</th>
+                  <th style={{ width: '10%', textAlign: 'center' }}>Margen</th>
+                  <th style={{ width: '13%', textAlign: 'center' }}>Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+
+              <tbody>
                 {filteredProducts.map((p) => {
                   const cost = calculateProductCost(p, batches, rawMaterials, unitsOfMeasure);
                   const metrics = calculateFinancialMetrics(
                     cost,
                     p.price,
-                    // 🔴 FIX: target_margin is stored as PERCENTAGE (e.g. 30), not decimal (0.3).
-                    // Divide by 100 to convert to the decimal format financialMetricsEngine expects.
                     (p.target_margin ?? DEFAULT_TARGET_MARGIN) / 100
                   );
+                  const marginOk =
+                    metrics.realMargin >= (p.target_margin ?? DEFAULT_TARGET_MARGIN) / 100;
+
                   return (
-                    <tr key={p.id} className={`group transition-all hover:bg-slate-50/50 ${selectedIds.has(p.id) ? `bg-slate-50` : colors.bgSurface}`}>
-                      <td className={`${spacing.pxLg} py-4`}>
+                    <tr
+                      key={p.id}
+                      style={{
+                        background: selectedIds.has(p.id)
+                          ? 'var(--surface-page)'
+                          : 'var(--surface-card)',
+                      }}
+                    >
+                      <td>
                         <input
                           type="checkbox"
                           checked={selectedIds.has(p.id)}
                           onChange={() => toggleSelect(p.id)}
-                          className={`size-4 rounded accent-indigo-600`}
+                          style={{ accentColor: 'var(--state-primary)' }}
                           aria-label={`Seleccionar ${p.name}`}
                         />
                       </td>
+
                       <td
-                        className={`${spacing.pxLg} py-4 ${typography.text.body} font-black ${colors.textPrimary} cursor-pointer truncate capitalize transition-colors hover:text-slate-600`}
+                        style={{
+                          fontWeight: 800,
+                          color: 'var(--text-primary)',
+                          cursor: 'pointer',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          textTransform: 'capitalize',
+                        }}
                         title={p.name}
                         onClick={() => navigate(`/productos/detalle/${p.id}`)}
                       >
                         {p.name}
                       </td>
-                      <td className={`${spacing.pxLg} py-4 ${typography.text.secondary} truncate font-bold tabular-nums text-slate-500`} title={p.reference || '---'}>
+
+                      <td
+                        className="text-small tabular"
+                        style={{
+                          fontWeight: 700,
+                          color: 'var(--text-muted)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                        title={p.reference || '---'}
+                      >
                         {p.reference || '---'}
                       </td>
-                      <td className={`${spacing.pxLg} py-4 text-right ${typography.text.body} font-bold tabular-nums ${colors.textPrimary}`}>
+
+                      <td className="align-right" style={{ fontWeight: 700 }}>
                         {calculateProductStock(p.id, productMovements)}
                       </td>
 
-
-                      <td className={`${spacing.pxLg} py-4 text-right ${typography.text.body} font-bold ${colors.textPrimary} truncate tabular-nums`}>
+                      <td
+                        className="align-right"
+                        style={{ fontWeight: 700, color: 'var(--text-primary)' }}
+                      >
                         {formatCurrency(cost)}
                       </td>
-                      <td className={`${spacing.pxLg} py-4 text-right ${typography.text.body} truncate font-bold tabular-nums text-slate-800`}>
+
+                      <td className="align-right" style={{ fontWeight: 700 }}>
                         {formatCurrency(p.price)}
                       </td>
-                      <td className={`${spacing.pxLg} py-4 text-center ${typography.text.body} font-bold tabular-nums ${metrics.realMargin >= (p.target_margin ?? DEFAULT_TARGET_MARGIN) / 100 ? colors.statusSuccess : colors.statusWarning}`}>
+
+                      <td
+                        style={{
+                          textAlign: 'center',
+                          fontWeight: 700,
+                          fontVariantNumeric: 'tabular-nums',
+                          color: marginOk ? 'var(--state-success)' : 'var(--state-warning)',
+                        }}
+                      >
                         {(metrics.realMargin * 100).toFixed(1)}%
                       </td>
-                      <td className={`${spacing.pxLg} py-4`}>
-                        <div className="flex items-center justify-center">
-                          <button
-                            data-kebab-trigger
-                            className={`rounded-lg border border-transparent p-2 transition-all ${menuState?.productId === p.id ? 'border-slate-300 bg-slate-200 text-slate-700' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}
-                            onClick={(e) => openMenu(p.id, e)}
-                            aria-label="Más opciones"
-                          >
-                            <MoreVertical size={18} />
-                          </button>
-                        </div>
+
+                      <td style={{ textAlign: 'center' }}>
+                        <button
+                          data-kebab-trigger
+                          style={{
+                            borderRadius: 'var(--radius-md)',
+                            border:
+                              menuState?.productId === p.id
+                                ? 'var(--border-default)'
+                                : '1px solid transparent',
+                            padding: 'var(--space-8)',
+                            transition: 'all var(--transition-fast)',
+                            color:
+                              menuState?.productId === p.id
+                                ? 'var(--text-primary)'
+                                : 'var(--text-muted)',
+                            background:
+                              menuState?.productId === p.id
+                                ? 'var(--surface-muted)'
+                                : 'transparent',
+                            cursor: 'pointer',
+                          }}
+                          onClick={(e) => openMenu(p.id, e)}
+                          aria-label="Más opciones"
+                        >
+                          <MoreVertical size={16} />
+                        </button>
                       </td>
                     </tr>
                   );
@@ -367,78 +601,183 @@ const Products: React.FC = () => {
         </div>
       </div>
 
-      {/* ── FIXED KEBAB DROPDOWN (escapes all overflow) ── */}
-      {
-        menuState && (() => {
-          const product = products.find(pp => pp.id === menuState.productId);
+      {/* Kebab dropdown */}
+      {menuState &&
+        (() => {
+          const product = products.find((pp) => pp.id === menuState.productId);
           if (!product) return null;
-          const cost = calculateProductCost(product, batches, rawMaterials, unitsOfMeasure);
+
           const { rect } = menuState;
           const menuHeight = 164;
           const openUpward = rect.bottom + menuHeight > window.innerHeight;
+
           const style: React.CSSProperties = {
+            ...dropdownStyle,
             position: 'fixed',
             right: window.innerWidth - rect.right,
             zIndex: 9999,
-            ...(openUpward ? { bottom: window.innerHeight - rect.top + 4 } : { top: rect.bottom + 4 }),
+            ...(openUpward
+              ? { bottom: window.innerHeight - rect.top + 4 }
+              : { top: rect.bottom + 4 }),
           };
+
           return (
-            <div ref={menuRef} className={`${radius.xl} border ${colors.borderStandard} ${colors.bgSurface} ${shadows.xl} py-1.5`} style={style}>
-              <button className={`flex w-full items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.textSecondary} hover:${colors.bgMain} transition-colors`} onClick={() => { setMenuState(null); navigate(`/productos/detalle/${product.id}`); }}>
-                <History size={14} className={colors.textMuted} /> Ver Historial
+            <div ref={menuRef} style={style}>
+              <button
+                style={dropdownBtnBase}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-page)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                onClick={() => {
+                  setMenuState(null);
+                  navigate(`/productos/detalle/${product.id}`);
+                }}
+              >
+                <History size={14} style={{ color: 'var(--text-muted)' }} />
+                Ver Historial
               </button>
-              <div className={`border-t ${colors.borderSubtle} my-1.5`} />
-              <button className={`flex w-full items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.statusSuccess} hover:${colors.bgSuccess} transition-colors`} onClick={() => { setMenuState(null); navigate(`/produccion?productId=${product.id}`); }}>
-                <PlayCircle size={14} /> Producir
+
+              <div style={{ borderTop: 'var(--border-default)', margin: 'var(--space-4) 0' }} />
+
+              <button
+                style={dropdownBtnBase}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-page)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                onClick={() => {
+                  setMenuState(null);
+                  navigate(`/produccion?productId=${product.id}`);
+                }}
+              >
+                <PlayCircle size={14} style={{ color: 'var(--state-success)' }} />
+                Producir
               </button>
-              <button className={`flex w-full items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.textSecondary} hover:${colors.bgMain} transition-colors`} onClick={() => { setMenuState(null); navigate(`/productos/editar/${product.id}`); }}>
-                <Edit2 size={14} className={colors.textMuted} /> Editar
+
+              <button
+                style={dropdownBtnBase}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-page)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                onClick={() => {
+                  setMenuState(null);
+                  navigate(`/productos/editar/${product.id}`);
+                }}
+              >
+                <Edit2 size={14} style={{ color: 'var(--text-muted)' }} />
+                Editar
               </button>
+
               {canCreate && (
-                <button className={`flex w-full items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.textSecondary} hover:${colors.bgMain} transition-colors`} onClick={() => { setMenuState(null); handleDuplicate(product); }}>
-                  <Copy size={14} className={colors.textMuted} /> Duplicar
+                <button
+                  style={dropdownBtnBase}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-page)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  onClick={() => {
+                    setMenuState(null);
+                    handleDuplicate(product);
+                  }}
+                >
+                  <Copy size={14} style={{ color: 'var(--text-muted)' }} />
+                  Duplicar
                 </button>
               )}
+
               {product.status === 'activa' && (
-                <button className={`flex w-full items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.textSecondary} hover:${colors.bgMain} transition-colors`} onClick={() => handleDiscontinue(product.id)}>
-                  <Archive size={14} className={colors.textMuted} /> Discontinuar
+                <button
+                  style={dropdownBtnBase}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-page)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  onClick={() => handleDiscontinue(product.id)}
+                >
+                  <Archive size={14} style={{ color: 'var(--text-muted)' }} />
+                  Discontinuar
                 </button>
               )}
-              <div className={`border-t ${colors.borderSubtle} my-1.5`} />
-              <button className={`flex w-full items-center gap-2 ${spacing.pxMd} py-1.5 ${typography.uiLabel} font-medium ${colors.statusDanger} hover:${colors.bgDanger} transition-colors`} onClick={() => handleDelete(product.id)}>
-                <Trash2 size={14} /> Eliminar
+
+              <div style={{ borderTop: 'var(--border-default)', margin: 'var(--space-4) 0' }} />
+
+              <button
+                style={{ ...dropdownBtnBase, color: 'var(--state-danger)' }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = 'var(--surface-danger-soft)')
+                }
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                onClick={() => handleDelete(product.id)}
+              >
+                <Trash2 size={14} />
+                Eliminar
               </button>
             </div>
           );
-        })()
-      }
+        })()}
 
-      {/* ── BATCH TOOLBAR ── */}
-      {
-        selectedIds.size > 0 && (
-          <div className={`fixed inset-x-0 bottom-0 z-50 border-t ${colors.borderStandard} ${colors.bgSurface} ${shadows.xl} no-print`}>
-            <div className={`mx-auto max-w-7xl ${spacing.pxLg} flex items-center justify-between py-3`}>
-              <div className="flex items-center gap-3">
-                <input type="checkbox" checked readOnly className={`size-4 ${radius.sm} accent-indigo-600`} />
-                <span className={`${typography.body} font-semibold ${colors.textPrimary}`}>{selectedIds.size} seleccionado{selectedIds.size > 1 ? 's' : ''}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="secondary" size="sm" onClick={handleBatchDiscontinue} className={typography.bodySm}>
-                  <Archive size={15} className="mr-1.5" /> Discontinuar
-                </Button>
-                <Button variant="ghost" size="icon" onClick={handlePrint} className={colors.textSecondary} title="Imprimir"><Printer size={18} /></Button>
-                <Button variant="secondary" size="sm" onClick={handleBatchDelete} className={`${typography.bodySm} ${colors.statusDanger} hover:${colors.bgDanger} border-red-200`}>
-                  <Trash2 size={15} className="mr-1.5" /> Eliminar
-                </Button>
-                <button className={`ml-2 p-1.5 ${radius.lg} hover:${colors.bgMain} ${colors.textMuted} transition-colors`} onClick={() => setSelectedIds(new Set())} aria-label="Deseleccionar">
-                  <X size={16} />
-                </button>
-              </div>
+      {/* Batch toolbar */}
+      {selectedIds.size > 0 && (
+        <div
+          className="no-print"
+          style={{
+            position: 'fixed',
+            inset: '0 0 auto 0',
+            bottom: 0,
+            zIndex: 50,
+            borderTop: 'var(--border-default)',
+            background: 'var(--surface-card)',
+            boxShadow: 'var(--shadow-lg)',
+          }}
+        >
+          <div
+            style={{
+              maxWidth: 'var(--container-xl)',
+              margin: '0 auto',
+              padding: 'var(--space-12) var(--space-24)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--space-12)',
+              }}
+            >
+              <input type="checkbox" checked readOnly style={{ accentColor: 'var(--state-primary)' }} />
+              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                {selectedIds.size} seleccionado{selectedIds.size > 1 ? 's' : ''}
+              </span>
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--space-8)',
+              }}
+            >
+              <Button variant="secondary" size="sm" onClick={handleBatchDiscontinue}>
+                <Archive size={14} style={{ marginRight: 4 }} />
+                Discontinuar
+              </Button>
+
+              <Button variant="ghost" size="sm" onClick={handlePrint} title="Imprimir">
+                <Printer size={16} />
+              </Button>
+
+              <Button variant="danger" size="sm" onClick={handleBatchDelete}>
+                <Trash2 size={14} style={{ marginRight: 4 }} />
+                Eliminar
+              </Button>
+
+              <button
+                className="btn-ghost btn-sm"
+                style={{ marginLeft: 'var(--space-8)' }}
+                onClick={() => setSelectedIds(new Set())}
+                aria-label="Deseleccionar"
+              >
+                <X size={16} />
+              </button>
             </div>
           </div>
-        )
-      }
-
+        </div>
+      )}
     </PageContainer>
   );
 };

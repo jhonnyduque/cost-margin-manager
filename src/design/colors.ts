@@ -1,78 +1,72 @@
 /**
  * ╔══════════════════════════════════════════════════════════════════════╗
- * ║  BETO OS — Color Tokens v2.0                                       ║
+ * ║  BETO OS — Color Tokens v4.0                                       ║
  * ║  Fuente de verdad: src/styles/global.css                           ║
  * ║  Governance: GOV-COLOR-001                                         ║
  * ║                                                                    ║
- * ║  REGLA: Estos tokens apuntan a variables CSS de global.css.        ║
- * ║  No hardcodear hex aquí. No usar clases Tailwind.                  ║
+ * ║  REGLA: Estos tokens apuntan a variables CSS semánticas de         ║
+ * ║  global.css. No hardcodear hex. No usar clases Tailwind.           ║
  * ║  Si necesitas un color nuevo, primero agrégalo a global.css.       ║
  * ╚══════════════════════════════════════════════════════════════════════╝
  */
 
 export const colors = {
 
-    // ── BRAND ─────────────────────────────────────────────────────────────
-    /** Acciones principales, estados activos */
-    brand: 'var(--color-primary)',
-    brandSoft: 'var(--color-primary-soft)',
+    // ── MARCA ─────────────────────────────────────────────────────────────
+    brand: 'var(--state-primary)',
+    brandSoft: 'var(--surface-primary-soft)',
+    brandHover: 'var(--state-primary-hover)',
+    brandActive: 'var(--state-primary-active)',
 
     // ── SUPERFICIES ────────────────────────────────────────────────────────
-    /** Fondo blanco base — cards, modales */
-    surface: 'var(--color-neutral-0)',
-    /** Canvas de página */
-    surfacePage: 'var(--color-neutral-50)',
-    /** Superficie muted — headers de tabla, fondos inset */
-    surfaceMuted: 'var(--color-neutral-100)',
+    surface: 'var(--surface-card)',
+    surfacePage: 'var(--surface-page)',
+    surfaceMuted: 'var(--surface-muted)',
+    surfaceInverse: 'var(--surface-inverse)',
 
     // ── TEXTO ──────────────────────────────────────────────────────────────
-    /** Títulos, valores principales */
-    textPrimary: 'var(--color-neutral-900)',
-    /** Descripciones, labels */
-    textSecondary: 'var(--color-neutral-700)',
-    /** Captions, hints, placeholders */
-    textMuted: 'var(--color-neutral-400)',
-    /** Texto sobre fondos oscuros o de marca */
-    textInverted: 'var(--color-neutral-0)',
+    textPrimary: 'var(--text-primary)',
+    textSecondary: 'var(--text-secondary)',
+    textMuted: 'var(--text-muted)',
+    textSoft: 'var(--text-soft)',
+    textInverse: 'var(--text-inverse)',
+    textLink: 'var(--text-link)',
 
     // ── BORDES ─────────────────────────────────────────────────────────────
-    /** Borde estándar — cards, inputs, divisores */
-    borderDefault: 'var(--color-neutral-200)',
-    /** Borde sutil — separadores internos */
-    borderSubtle: 'var(--color-neutral-100)',
-    /** Borde fuerte — hover, énfasis */
-    borderStrong: 'var(--color-neutral-400)',
+    borderDefault: 'var(--border-color-default)',
+    borderStrong: 'var(--border-color-strong)',
+    borderPrimary: 'var(--border-color-primary)',
 
-    // ── ESTADOS SEMÁNTICOS ─────────────────────────────────────────────────
-    success: 'var(--color-success)',
-    successSoft: 'var(--color-success-soft)',
+    // ── ESTADOS ────────────────────────────────────────────────────────────
+    success: 'var(--state-success)',
+    successSoft: 'var(--surface-success-soft)',
+    borderSuccess: 'var(--border-color-success)',
 
-    warning: 'var(--color-warning)',
-    warningSoft: 'var(--color-warning-soft)',
+    warning: 'var(--state-warning)',
+    warningSoft: 'var(--surface-warning-soft)',
+    borderWarning: 'var(--border-color-warning)',
 
-    danger: 'var(--color-danger)',
-    dangerSoft: 'var(--color-danger-soft)',
+    danger: 'var(--state-danger)',
+    dangerSoft: 'var(--surface-danger-soft)',
+    dangerHover: 'var(--state-danger-hover)',
+    borderDanger: 'var(--border-color-danger)',
 
-    info: 'var(--color-info)',
-    infoSoft: 'var(--color-info-soft)',
+    info: 'var(--state-info)',
+    infoSoft: 'var(--surface-info-soft)',
+    borderInfo: 'var(--border-color-info)',
 
-    // ── HELPERS DE ESTADO (para style prop en componentes) ─────────────────
-    bgSuccess: 'var(--color-success-soft)',
-    bgWarning: 'var(--color-warning-soft)',
-    bgDanger: 'var(--color-danger-soft)',
-    bgInfo: 'var(--color-info-soft)',
-
-    borderSuccess: 'var(--color-success)',
-    borderWarning: 'var(--color-warning)',
-    borderDanger: 'var(--color-danger)',
-    borderInfo: 'var(--color-info)',
+    // ── HELPERS (alias) ────────────────────────────────────────────────────
+    bgSuccess: 'var(--surface-success-soft)',
+    bgWarning: 'var(--surface-warning-soft)',
+    bgDanger: 'var(--surface-danger-soft)',
+    bgInfo: 'var(--surface-info-soft)',
 
     // ── CHARTS ─────────────────────────────────────────────────────────────
-    chartA: 'var(--color-chart-a)',
-    chartB: 'var(--color-chart-b)',
-    chartC: 'var(--color-chart-c)',
-    chartD: 'var(--color-chart-d)',
-    chartE: 'var(--color-chart-e)',
+    chartA: 'var(--chart-a)',
+    chartB: 'var(--chart-b)',
+    chartC: 'var(--chart-c)',
+    chartD: 'var(--chart-d)',
+    chartE: 'var(--chart-e)',
 
 } as const;
 

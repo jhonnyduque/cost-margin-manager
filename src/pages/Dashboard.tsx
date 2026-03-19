@@ -49,10 +49,10 @@ const KpiCard: React.FC<{ title: string; value: string; riskLevel: string; trend
     <Card className="min-h-[110px]">
       <Card.Content className="pt-4">
         <div className="flex flex-col gap-0.5">
-          <p className="text-small" style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--color-neutral-400)' }}>
+          <p className="text-small" style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-muted)' }}>
             {title}
           </p>
-          <div style={{ fontSize: 'var(--text-h2-size)', fontWeight: 700, color: 'var(--color-neutral-900)', letterSpacing: '-0.02em', lineHeight: 1, padding: '4px 0' }}>
+          <div style={{ fontSize: 'var(--text-h2-size)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1, padding: '4px 0' }}>
             {value}
           </div>
           <span className={`text-small ${trendTone}`} style={{ fontWeight: 600 }}>
@@ -100,7 +100,7 @@ const PriorityRow: React.FC<{ action: ProtectedAction; onNavigate: (route: strin
               </div>
             )}
           </div>
-          <p className="text-body" style={{ fontWeight: 600, color: 'var(--color-neutral-900)', letterSpacing: '-0.01em' }}>
+          <p className="text-body" style={{ fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
             {action.title}
           </p>
           <p className="text-small text-muted" style={{ marginTop: 'var(--space-4)', lineHeight: 1.6, maxWidth: '54ch' }}>
@@ -111,7 +111,7 @@ const PriorityRow: React.FC<{ action: ProtectedAction; onNavigate: (route: strin
         <div className="flex items-center gap-3 shrink-0">
           <div className="hidden md:flex flex-col items-end px-4 border-r border-slate-100">
             <span className="text-small text-muted">Impacto</span>
-            <span className="text-body" style={{ fontWeight: 600, color: 'var(--color-neutral-900)' }}>
+            <span className="text-body" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
               {fmt$(action.signal.estimatedImpact)}
             </span>
           </div>
@@ -165,7 +165,7 @@ const Dashboard: React.FC = () => {
             <>
               <span>BETO OS</span>
               <span>/</span>
-              <span style={{ color: 'var(--color-neutral-900)', fontWeight: 600 }}>
+              <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
                 {currentCompany?.name || 'Empresa'}
               </span>
             </>
@@ -210,7 +210,7 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.45fr)_360px] gap-6">
           <div className="space-y-4">
             <div className="space-y-1">
-              <h2 style={{ fontSize: 'var(--text-h3-size)', fontWeight: 600, color: 'var(--color-neutral-900)', letterSpacing: '-0.01em' }}>
+              <h2 style={{ fontSize: 'var(--text-h3-size)', fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
                 Qué requiere atención hoy
               </h2>
               <p className="text-small text-muted">
@@ -262,7 +262,7 @@ const Dashboard: React.FC = () => {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-small" style={{ color: 'var(--color-neutral-700)', whiteSpace: 'pre-line', lineHeight: 1.6 }}>
+                  <p className="text-small" style={{ color: 'var(--text-secondary)', whiteSpace: 'pre-line', lineHeight: 1.6 }}>
                     {aiAnalysis || 'Análisis no disponible en este momento.'}
                   </p>
                 )}
