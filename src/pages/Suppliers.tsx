@@ -1,12 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import {
     Search, Plus, Building2, Phone, Mail, MapPin,
-    ChevronDown, ChevronUp, Filter, Printer,
-    CreditCard, Clock, Package, AlertCircle, Edit2, Archive, Ban,
-    CheckCircle2, FileText, Link2
+    ChevronDown, ChevronUp, Printer, CreditCard, Clock,
+    Package, AlertCircle, Edit2, Archive, Ban, CheckCircle2,
+    FileText, Link2,
 } from 'lucide-react';
 import { useStore } from '../store';
-import { colors, typography, spacing, radius, shadows } from '@/design/design-tokens';
 import { PageContainer, SectionBlock } from '@/components/ui/LayoutPrimitives';
 import { UniversalPageHeader } from '@/components/ui/UniversalPageHeader';
 import { Button } from '@/components/ui/Button';
@@ -17,9 +16,9 @@ import SupplierModal from '@/components/suppliers/SupplierModal';
 import SupplierMaterialsModal from '@/components/suppliers/SupplierMaterialsModal';
 
 const statusConfig = {
-    activo: { label: 'Activo', class: 'text-slate-800' },
-    inactivo: { label: 'Inactivo', class: 'text-slate-400' },
-    bloqueado: { label: 'Bloqueado', class: 'text-slate-400' },
+    activo: { label: 'Activo', variant: 'success' as const },
+    inactivo: { label: 'Inactivo', variant: 'neutral' as const },
+    bloqueado: { label: 'Bloqueado', variant: 'danger' as const },
 };
 
 export default function Suppliers() {
@@ -32,32 +31,35 @@ export default function Suppliers() {
     const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
     const [materialsModalSupplier, setMaterialsModalSupplier] = useState<Supplier | null>(null);
 
-    const stats = useMemo(() => {
-        const active = suppliers.filter(s => s.status === 'activo').length;
-        const withMaterials = new Set(supplierMaterials.map(sm => sm.supplier_id)).size;
-        const withCredit = suppliers.filter(s => (s.payment_terms_days || 0) > 0).length;
-        return { active, withMaterials, withCredit };
-    }, [suppliers, supplierMaterials]);
+    const stats = useMemo(() => ({
+        active: suppliers.filter(s => s.status === 'activo').length,
+        withMaterials: new Set(supplierMaterials.map(sm => sm.supplier_id)).size,
+        withCredit: suppliers.filter(s => (s.payment_terms_days || 0) > 0).length,
+    }), [suppliers, supplierMaterials]);
 
-    const filteredSuppliers = useMemo(() => {
-        return suppliers.filter(s => {
-            const matchesSearch =
-                s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (s.email && s.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                (s.tax_id && s.tax_id.toLowerCase().includes(searchTerm.toLowerCase()));
-            const matchesStatus = statusFilter === 'all' || s.status === statusFilter;
-            return matchesSearch && matchesStatus;
+    const filteredSuppliers = useMemo(() => suppliers.filter(s => {
+        const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || (s.email && s.email.toLowerCase().includes(searchTerm.toLowerCase())) || (s.tax_id && s.tax_id.toLowerCase().includes(searchTerm.toLowerCase()));
+        const matchesStatus = statusFilter === 'all' || s.status === statusFilter;
+        return matchesSearch && matchesStatus;
+    }), [suppliers, searchTerm, statusFilter]);
+
+    const handleEdit = (supplier: Supplier) => { setEditingSupplier(supplier); setModalOpen(true); };
+    const handleNewSupplier = () => { setEditingSupplier(null); setModalOpen(true); };
+
+    const exportToCSV = () => {
+        if (filteredSuppliers.length === 0) return;
+        const escape = (v: string | number) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+        const headers = ['Proveedor', 'ID Fiscal', 'Email', 'Telefono', 'Direccion', 'Plazo Pago', 'Materias Vinculadas', 'Cantidad Materias', 'Estado', 'Notas'];
+        const rows = filteredSuppliers.map(s => {
+            const linked = rawMaterials.filter(rm => supplierMaterials.some(sm => sm.supplier_id === s.id && sm.raw_material_id === rm.id));
+            return [s.name || '', s.tax_id || '', s.email || '', s.phone || '', s.address || '', (s.payment_terms_days || 0) > 0 ? `${s.payment_terms_days} días` : 'Contado', linked.map(m => m.name).join(', '), linked.length, s.status || '', s.notes || ''];
         });
-    }, [suppliers, searchTerm, statusFilter]);
-
-    const handleEdit = (supplier: Supplier) => {
-        setEditingSupplier(supplier);
-        setModalOpen(true);
-    };
-
-    const handleNewSupplier = () => {
-        setEditingSupplier(null);
-        setModalOpen(true);
+        const csv = [headers.map(escape).join(';'), ...rows.map(r => r.map(escape).join(';'))].join('\n');
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url; link.download = `proveedores-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(link); link.click(); document.body.removeChild(link); window.URL.revokeObjectURL(url);
     };
 
     return (
@@ -65,57 +67,25 @@ export default function Suppliers() {
             <SectionBlock>
                 <UniversalPageHeader
                     title="Proveedores"
-                    breadcrumbs={
-                        <>
-                            <span>BETO OS</span>
-                            <span>/</span>
-                            <span className={colors.textPrimary}>Proveedores</span>
-                        </>
-                    }
+                    breadcrumbs={<><span>BETO OS</span><span>/</span><span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Proveedores</span></>}
                     metadata={[
-                        <span key="1" className="flex items-center gap-1">
-                            <Building2 size={14} className="text-slate-500" />
-                            {stats.active} activos
-                        </span>,
-                        <span key="2" className="flex items-center gap-1">
-                            <Package size={14} className="text-slate-500" />
-                            {stats.withMaterials} con materiales
-                        </span>,
-                        <span key="3" className="flex items-center gap-1">
-                            <CreditCard size={14} className="text-slate-500" />
-                            {stats.withCredit} con crédito
-                        </span>
+                        <span key="1" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-4)' }}><Building2 size={14} style={{ color: 'var(--text-muted)' }} />{stats.active} activos</span>,
+                        <span key="2" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-4)' }}><Package size={14} style={{ color: 'var(--text-muted)' }} />{stats.withMaterials} con materiales</span>,
+                        <span key="3" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-4)' }}><CreditCard size={14} style={{ color: 'var(--text-muted)' }} />{stats.withCredit} con crédito</span>,
                     ]}
-                    actions={
-                        <div className="flex items-center gap-3">
-                            <Button variant="secondary" icon={<Printer size={16} />} className="hidden sm:flex">
-                                EXPORTAR
-                            </Button>
-                            <Button variant="primary" onClick={handleNewSupplier} icon={<Plus size={16} />}>
-                                NUEVO PROVEEDOR
-                            </Button>
-                        </div>
-                    }
+                    actions={<>
+                        <Button variant="secondary" icon={<Printer size={16} />} onClick={exportToCSV}>EXPORTAR</Button>
+                        <Button variant="primary" onClick={handleNewSupplier} icon={<Plus size={16} />}>NUEVO PROVEEDOR</Button>
+                    </>}
                 />
 
-                <div className="flex flex-col sm:flex-row items-center gap-4 mt-8">
-                    <div className="relative flex-1 group w-full">
-                        <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 ${colors.textMuted} group-focus-within:text-slate-600 transition-colors`} />
-                        <input
-                            type="text"
-                            placeholder="Buscar por nombre, email o identificación..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className={`w-full h-11 pl-11 pr-4 bg-white border border-slate-200 rounded-xl ${typography.text.body} transition-all focus:ring-2 focus:ring-slate-400/10 focus:border-slate-400 outline-none`}
-                        />
-                    </div>
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <Filter size={16} className="text-slate-400" />
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value as any)}
-                            className={`h-11 px-4 bg-white border border-slate-200 rounded-xl ${typography.text.body} focus:ring-2 focus:ring-slate-400/10 focus:border-slate-400 outline-none min-w-[140px] appearance-none`}
-                        >
+                <div style={{ marginTop: 'var(--space-32)', borderTop: 'var(--border-default)', paddingTop: 'var(--space-32)' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 14rem', gap: 'var(--space-12)', alignItems: 'center' }}>
+                        <div style={{ position: 'relative', minWidth: 0 }}>
+                            <Search size={18} style={{ position: 'absolute', left: 'var(--space-16)', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                            <input type="text" placeholder="Buscar por nombre, email o identificación..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="input" style={{ paddingLeft: 'var(--space-48)', width: '100%' }} />
+                        </div>
+                        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)} className="input" style={{ width: '100%' }}>
                             <option value="all">Todos los estados</option>
                             <option value="activo">Activos</option>
                             <option value="inactivo">Inactivos</option>
@@ -125,109 +95,78 @@ export default function Suppliers() {
                 </div>
             </SectionBlock>
 
-            <Card noPadding className="mt-6 overflow-hidden border-slate-200 shadow-sm">
+            <Card style={{ marginTop: 'var(--space-24)', padding: 0, overflow: 'hidden' }}>
                 {filteredSuppliers.length === 0 ? (
-                    <div className="p-20 text-center">
-                        <div className="h-20 w-20 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-                            <Building2 size={40} />
-                        </div>
-                        <h3 className={`${typography.sectionTitle} text-slate-900 mb-2`}>Sin proveedores registrados</h3>
-                        <p className="text-slate-500 text-sm max-w-sm mx-auto">
-                            {searchTerm ? 'Prueba con otros términos de búsqueda.' : 'Inicia registrando tu primer proveedor para gestionar tus compras.'}
+                    <div className="empty-state" style={{ padding: 'var(--space-48)' }}>
+                        <div className="empty-state-icon"><Building2 size={40} /></div>
+                        <h3 style={{ fontSize: 'var(--text-h3-size)', fontWeight: 700, color: 'var(--text-primary)' }}>Sin proveedores registrados</h3>
+                        <p className="text-small text-muted" style={{ maxWidth: '28rem' }}>
+                            {searchTerm ? 'Prueba con otros términos.' : 'Registra tu primer proveedor para gestionar tus compras.'}
                         </p>
-                        {!searchTerm && (
-                            <Button variant="primary" className="mt-6" onClick={handleNewSupplier} icon={<Plus size={18} />}>
-                                AGREGAR PROVEEDOR
-                            </Button>
-                        )}
+                        {!searchTerm && <Button variant="primary" style={{ marginTop: 'var(--space-24)' }} onClick={handleNewSupplier} icon={<Plus size={18} />}>AGREGAR PROVEEDOR</Button>}
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                    <div style={{ overflowX: 'auto' }}>
+                        <table className="table">
                             <thead>
-                                <tr className={`bg-slate-50/80 border-b border-slate-100 ${typography.text.caption} text-slate-500 font-bold uppercase`}>
-                                    <th className="px-6 py-4">Proveedor</th>
-                                    <th className="px-6 py-4">Contacto</th>
-                                    <th className="px-6 py-4">Dirección</th>
-                                    <th className="px-6 py-4">Plazo Pago</th>
-                                    <th className="px-6 py-4">Mat. Vinculadas</th>
-                                    <th className="px-6 py-4">Estado</th>
-                                    <th className="px-6 py-4 text-right">Acciones</th>
+                                <tr>
+                                    <th>Proveedor</th>
+                                    <th>Contacto</th>
+                                    <th>Dirección</th>
+                                    <th>Plazo Pago</th>
+                                    <th>Mat. Vinculadas</th>
+                                    <th>Estado</th>
+                                    <th className="align-right">Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {filteredSuppliers.map((supplier) => {
+                            <tbody>
+                                {filteredSuppliers.map(supplier => {
                                     const isExpanded = expandedSupplierId === supplier.id;
-                                    const linkedMaterials = rawMaterials.filter(rm =>
-                                        supplierMaterials.some(sm => sm.supplier_id === supplier.id && sm.raw_material_id === rm.id)
-                                    );
+                                    const linkedMaterials = rawMaterials.filter(rm => supplierMaterials.some(sm => sm.supplier_id === supplier.id && sm.raw_material_id === rm.id));
                                     const status = statusConfig[supplier.status] || statusConfig.inactivo;
 
                                     return (
                                         <React.Fragment key={supplier.id}>
-                                            <tr
-                                                className={`hover:bg-slate-50/80 transition-colors group cursor-pointer ${isExpanded ? 'bg-slate-50/50' : ''}`}
-                                                onClick={() => setExpandedSupplierId(isExpanded ? null : supplier.id)}
-                                            >
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="size-10 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center font-bold border border-slate-200 group-hover:bg-slate-200 group-hover:text-slate-600 transition-colors">
+                                            <tr style={{ cursor: 'pointer' }} onClick={() => setExpandedSupplierId(isExpanded ? null : supplier.id)}>
+                                                <td>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-12)' }}>
+                                                        <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: 'var(--radius-lg)', background: 'var(--surface-muted)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, border: 'var(--border-default)', flexShrink: 0 }}>
                                                             {supplier.name.charAt(0).toUpperCase()}
                                                         </div>
                                                         <div>
-                                                            <p className={`${typography.text.body} font-black ${colors.textPrimary}`}>{supplier.name}</p>
-                                                            <p className={`${typography.text.micro} text-slate-400 font-mono`}>{supplier.tax_id || 'Sin ID fiscal'}</p>
+                                                            <p style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{supplier.name}</p>
+                                                            <p className="font-mono text-small text-muted" style={{ fontWeight: 700 }}>{supplier.tax_id || 'Sin ID fiscal'}</p>
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-col gap-1">
-                                                        {supplier.email && (
-                                                            <div className="flex items-center gap-1.5">
-                                                                <Mail size={12} className="text-slate-300" />
-                                                                <span className={typography.text.caption}>{supplier.email}</span>
-                                                            </div>
-                                                        )}
-                                                        {supplier.phone && (
-                                                            <div className="flex items-center gap-1.5">
-                                                                <Phone size={12} className="text-slate-300" />
-                                                                <span className={typography.text.caption}>{supplier.phone}</span>
-                                                            </div>
-                                                        )}
-                                                        {!supplier.email && !supplier.phone && (
-                                                            <span className="text-xs text-slate-300">Sin contacto</span>
-                                                        )}
+                                                <td>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+                                                        {supplier.email && <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}><Mail size={12} style={{ color: 'var(--text-muted)' }} /><span className="text-small text-secondary">{supplier.email}</span></div>}
+                                                        {supplier.phone && <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}><Phone size={12} style={{ color: 'var(--text-muted)' }} /><span className="text-small text-secondary">{supplier.phone}</span></div>}
+                                                        {!supplier.email && !supplier.phone && <span className="text-small text-muted">Sin contacto</span>}
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-1.5 text-slate-500">
-                                                        <MapPin size={12} className="flex-shrink-0" />
-                                                        <span className={`${typography.text.caption} truncate max-w-[150px]`}>{supplier.address || '—'}</span>
+                                                <td>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', color: 'var(--text-secondary)' }}>
+                                                        <MapPin size={12} style={{ flexShrink: 0, color: 'var(--text-muted)' }} />
+                                                        <span className="text-small text-secondary" style={{ display: 'inline-block', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{supplier.address || '—'}</span>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4">
+                                                <td>
                                                     {(supplier.payment_terms_days || 0) > 0 ? (
-                                                        <div className="flex items-center gap-1.5 text-slate-600 w-fit">
+                                                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-4)', color: 'var(--text-secondary)' }}>
                                                             <Clock size={12} />
-                                                            <span className="text-[10px] font-black uppercase text-slate-600">{supplier.payment_terms_days} DÍAS</span>
+                                                            <span className="text-small" style={{ fontWeight: 800, textTransform: 'uppercase' }}>{supplier.payment_terms_days} días</span>
                                                         </div>
                                                     ) : (
-                                                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Contado</span>
+                                                        <span className="text-small text-muted" style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Contado</span>
                                                     )}
                                                 </td>
-                                                <td className="px-6 py-4">
-                                                    <Badge variant={linkedMaterials.length > 0 ? 'info' : 'neutral'}>
-                                                        {linkedMaterials.length} MATS
-                                                    </Badge>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`text-[10px] font-black uppercase ${status.class}`}>
-                                                        {status.label}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <div className="flex items-center justify-end">
-                                                        <div className={`p-2 rounded-lg ${isExpanded ? 'bg-slate-200 text-slate-700' : 'text-slate-300 group-hover:text-slate-500'}`}>
+                                                <td><Badge variant={linkedMaterials.length > 0 ? 'info' : 'neutral'}>{linkedMaterials.length} MATS</Badge></td>
+                                                <td><Badge variant={status.variant}>{status.label}</Badge></td>
+                                                <td className="align-right">
+                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                                                        <div style={{ padding: 'var(--space-8)', borderRadius: 'var(--radius-md)', background: isExpanded ? 'var(--surface-muted)' : 'transparent', color: isExpanded ? 'var(--text-primary)' : 'var(--text-muted)' }}>
                                                             {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                                                         </div>
                                                     </div>
@@ -235,66 +174,46 @@ export default function Suppliers() {
                                             </tr>
 
                                             {isExpanded && (
-                                                <tr className="bg-slate-50/50">
-                                                    <td colSpan={7} className="p-0 border-b border-indigo-100">
-                                                        <div className="px-8 py-6 animate-in slide-in-from-top-2 duration-200">
-                                                            <div className="flex items-center gap-3 mb-6">
-                                                                <Button variant="secondary" size="sm" icon={<Edit2 size={14} />} onClick={(e) => { e.stopPropagation(); handleEdit(supplier); }}>
-                                                                    EDITAR
-                                                                </Button>
-                                                                <Button
-                                                                    variant="secondary"
-                                                                    size="sm"
-                                                                    icon={<Link2 size={14} />}
-                                                                    onClick={(e) => { e.stopPropagation(); setMaterialsModalSupplier(supplier); }}
-                                                                >
-                                                                    VINCULAR MATERIAS
-                                                                </Button>
-                                                                {supplier.status === 'activo' && (
-                                                                    <Button variant="ghost" size="sm" icon={<Archive size={14} />} onClick={(e) => { e.stopPropagation(); archiveSupplier(supplier.id, 'inactivo'); }}>
-                                                                        DESACTIVAR
-                                                                    </Button>
-                                                                )}
-                                                                {supplier.status === 'inactivo' && (
-                                                                    <Button variant="ghost" size="sm" icon={<CheckCircle2 size={14} />} onClick={(e) => { e.stopPropagation(); archiveSupplier(supplier.id, 'activo'); }}>
-                                                                        ACTIVAR
-                                                                    </Button>
-                                                                )}
-                                                                {supplier.status !== 'bloqueado' && (
-                                                                    <Button variant="ghost" size="sm" className="text-slate-500 hover:bg-slate-100 hover:text-slate-700" icon={<Ban size={14} />} onClick={(e) => { e.stopPropagation(); archiveSupplier(supplier.id, 'bloqueado'); }}>
-                                                                        BLOQUEAR
-                                                                    </Button>
-                                                                )}
+                                                <tr style={{ background: 'var(--surface-page)' }}>
+                                                    <td colSpan={7} style={{ padding: 0, borderTop: 'var(--border-default)' }}>
+                                                        <div style={{ padding: 'var(--space-32)' }}>
+                                                            {/* Action buttons */}
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-12)', marginBottom: 'var(--space-24)', flexWrap: 'wrap' }}>
+                                                                <Button variant="secondary" size="sm" icon={<Edit2 size={14} />} onClick={e => { e.stopPropagation(); handleEdit(supplier); }}>EDITAR</Button>
+                                                                <Button variant="secondary" size="sm" icon={<Link2 size={14} />} onClick={e => { e.stopPropagation(); setMaterialsModalSupplier(supplier); }}>VINCULAR MATERIAS</Button>
+                                                                {supplier.status === 'activo' && <Button variant="ghost" size="sm" icon={<Archive size={14} />} onClick={e => { e.stopPropagation(); archiveSupplier(supplier.id, 'inactivo'); }}>DESACTIVAR</Button>}
+                                                                {supplier.status === 'inactivo' && <Button variant="ghost" size="sm" icon={<CheckCircle2 size={14} />} onClick={e => { e.stopPropagation(); archiveSupplier(supplier.id, 'activo'); }}>ACTIVAR</Button>}
+                                                                {supplier.status !== 'bloqueado' && <Button variant="ghost" size="sm" icon={<Ban size={14} />} onClick={e => { e.stopPropagation(); archiveSupplier(supplier.id, 'bloqueado'); }}>BLOQUEAR</Button>}
                                                             </div>
 
-                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                                <div className="p-4 bg-white rounded-xl border border-slate-100 shadow-sm">
-                                                                    <div className="flex items-center gap-2 mb-2">
-                                                                        <FileText size={14} className="text-slate-400" />
-                                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Notas Internas</p>
+                                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-24)' }}>
+                                                                {/* Notas */}
+                                                                <div className="inset-card">
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-8)', marginBottom: 'var(--space-8)' }}>
+                                                                        <FileText size={14} style={{ color: 'var(--text-muted)' }} />
+                                                                        <p className="text-small text-muted" style={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Notas Internas</p>
                                                                     </div>
-                                                                    <p className="text-sm text-slate-600 leading-relaxed">
-                                                                        {supplier.notes || 'Sin notas adicionales para este proveedor.'}
-                                                                    </p>
+                                                                    <p className="text-small text-secondary">{supplier.notes || 'Sin notas adicionales para este proveedor.'}</p>
                                                                 </div>
 
-                                                                <div className="flex flex-col">
-                                                                    <div className="flex items-center gap-2 mb-3">
-                                                                        <Package size={14} className="text-slate-400" />
-                                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                                                            Materias Primas Vinculadas
-                                                                        </p>
+                                                                {/* Materias */}
+                                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-8)', marginBottom: 'var(--space-12)' }}>
+                                                                        <Package size={14} style={{ color: 'var(--text-muted)' }} />
+                                                                        <p className="text-small text-muted" style={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Materias Primas Vinculadas</p>
                                                                     </div>
                                                                     {linkedMaterials.length === 0 ? (
-                                                                        <div className="flex items-center gap-2 p-4 bg-white rounded-xl border border-slate-100 border-dashed">
-                                                                            <AlertCircle size={14} className="text-slate-300" />
-                                                                            <p className="text-sm text-slate-400">Sin materias vinculadas actualmente.</p>
+                                                                        <div className="inset-card">
+                                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-8)' }}>
+                                                                                <AlertCircle size={14} style={{ color: 'var(--text-muted)' }} />
+                                                                                <p className="text-small text-muted">Sin materias vinculadas actualmente.</p>
+                                                                            </div>
                                                                         </div>
                                                                     ) : (
-                                                                        <div className="flex flex-wrap gap-2">
+                                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-8)' }}>
                                                                             {linkedMaterials.map(m => (
-                                                                                <span key={m.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 shadow-sm">
-                                                                                    <div className="size-1.5 rounded-full bg-slate-400" />
+                                                                                <span key={m.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-4)', padding: 'var(--space-8) var(--space-12)', background: 'var(--surface-card)', border: 'var(--border-default)', borderRadius: 'var(--radius-md)', fontSize: 'var(--text-small-size)', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                                                                    <span style={{ width: '0.375rem', height: '0.375rem', borderRadius: '999px', background: 'var(--text-muted)' }} />
                                                                                     {m.name}
                                                                                 </span>
                                                                             ))}
@@ -315,19 +234,8 @@ export default function Suppliers() {
                 )}
             </Card>
 
-            <SupplierModal
-                isOpen={modalOpen}
-                onClose={() => setModalOpen(false)}
-                editingSupplier={editingSupplier}
-            />
-
-            {materialsModalSupplier && (
-                <SupplierMaterialsModal
-                    isOpen={!!materialsModalSupplier}
-                    onClose={() => setMaterialsModalSupplier(null)}
-                    supplier={materialsModalSupplier}
-                />
-            )}
+            <SupplierModal isOpen={modalOpen} onClose={() => setModalOpen(false)} editingSupplier={editingSupplier} />
+            {materialsModalSupplier && <SupplierMaterialsModal isOpen={!!materialsModalSupplier} onClose={() => setMaterialsModalSupplier(null)} supplier={materialsModalSupplier} />}
         </PageContainer>
     );
 }

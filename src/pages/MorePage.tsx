@@ -2,28 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import {
-    Settings,
-    HelpCircle,
-    ChevronRight,
-    Shield,
-    Activity,
-    Lock,
-    Scale,
-    ShieldCheck,
-    Search,
-    Hexagon,
-    LucideIcon,
-    Users,
-    BarChart3,
-    Boxes,
-    ShoppingCart,
-    Building2,
-    Contact2,
-    Truck,
-    Bot,
-    CreditCard,
+    Settings, HelpCircle, ChevronRight, Shield, Activity,
+    Lock, Scale, ShieldCheck, Search, Hexagon, LucideIcon,
+    Users, BarChart3, Boxes, ShoppingCart, Building2, Contact2,
+    Truck, Bot, CreditCard,
 } from 'lucide-react';
-import { colors, typography } from '@/design/design-tokens';
 import { PageContainer, SectionBlock } from '@/components/ui/LayoutPrimitives';
 import { UniversalPageHeader } from '@/components/ui/UniversalPageHeader';
 import { Card } from '@/components/ui/Card';
@@ -38,7 +21,7 @@ interface MenuItem {
     path?: string;
     onClick?: () => void;
     badge?: string;
-    badgeVariant?: 'neutral' | 'info' | 'success' | 'warning' | 'error';
+    badgeVariant?: 'neutral' | 'info' | 'success' | 'warning' | 'danger';
     comingSoon?: boolean;
 }
 
@@ -64,232 +47,104 @@ export default function MorePage() {
         : (fullName && !isGenericName(fullName) ? fullName.slice(0, 2).toUpperCase() : 'OS');
     const isSuperAdmin = user?.is_super_admin;
 
+    // Icon background / color pairs — usando CSS vars
+    const ic = {
+        blue: { bg: 'var(--surface-primary-soft)', color: 'var(--state-primary)' },
+        green: { bg: 'var(--surface-success-soft)', color: 'var(--state-success)' },
+        amber: { bg: 'var(--surface-warning-soft)', color: 'var(--state-warning)' },
+        red: { bg: 'var(--surface-danger-soft)', color: 'var(--state-danger)' },
+        info: { bg: 'var(--surface-info-soft)', color: 'var(--state-info)' },
+        slate: { bg: 'var(--surface-muted)', color: 'var(--text-secondary)' },
+        orange: { bg: '#fff7ed', color: '#ea580c' },
+        violet: { bg: '#f5f3ff', color: '#7c3aed' },
+        cyan: { bg: '#ecfeff', color: '#0891b2' },
+        sky: { bg: '#f0f9ff', color: '#0284c7' },
+        fuchsia: { bg: '#fdf4ff', color: '#c026d3' },
+        emerald: { bg: '#f0fdf4', color: '#059669' },
+    };
+
     const sections: MenuSection[] = [
         {
             title: 'Cuenta y acceso',
             items: [
-                {
-                    label: 'Equipo',
-                    description: 'Gestión de usuarios y permisos',
-                    icon: Users,
-                    iconBg: colors.bgInfo,
-                    iconColor: colors.info,
-                    path: '/equipo'
-                },
-                {
-                    label: 'Facturación',
-                    description: 'Suscripción, planes y pagos',
-                    icon: CreditCard,
-                    iconBg: 'bg-indigo-50',
-                    iconColor: 'text-indigo-600',
-                    path: '/platform/billing'
-                },
-                {
-                    label: 'Settings',
-                    description: 'Preferencias y seguridad',
-                    icon: Settings,
-                    iconBg: colors.bgBrandSubtle,
-                    iconColor: colors.brand,
-                    path: '/settings'
-                },
+                { label: 'Equipo', description: 'Gestión de usuarios y permisos', icon: Users, iconBg: ic.info.bg, iconColor: ic.info.color, path: '/equipo' },
+                { label: 'Facturación', description: 'Suscripción, planes y pagos', icon: CreditCard, iconBg: ic.blue.bg, iconColor: ic.blue.color, path: '/platform/billing' },
+                { label: 'Settings', description: 'Preferencias y seguridad', icon: Settings, iconBg: ic.blue.bg, iconColor: ic.blue.color, path: '/settings' },
                 ...(isSuperAdmin ? [{
-                    label: 'Admin Panel',
-                    description: 'Gobernanza de la plataforma',
-                    icon: Shield,
-                    iconBg: colors.bgInfo,
-                    iconColor: colors.info,
-                    path: '/control-center',
-                    badge: 'ADMIN',
-                    badgeVariant: 'neutral' as const
-                } as MenuItem] : [])
-            ]
+                    label: 'Admin Panel', description: 'Gobernanza de la plataforma',
+                    icon: Shield, iconBg: ic.info.bg, iconColor: ic.info.color,
+                    path: '/control-center', badge: 'ADMIN', badgeVariant: 'neutral' as const,
+                } as MenuItem] : []),
+            ],
         },
         {
             title: 'Operación extendida',
             items: [
-                {
-                    label: 'Stock',
-                    description: 'Inventario de productos terminados',
-                    icon: Boxes,
-                    iconBg: 'bg-amber-50',
-                    iconColor: 'text-amber-600',
-                    path: '/stock'
-                },
-                {
-                    label: 'Compras',
-                    description: 'Órdenes y abastecimiento',
-                    icon: ShoppingCart,
-                    iconBg: 'bg-orange-50',
-                    iconColor: 'text-orange-600',
-                    path: '/compras'
-                },
-                {
-                    label: 'Proveedores',
-                    description: 'Gestión de proveedores y acuerdos',
-                    icon: Building2,
-                    iconBg: 'bg-slate-100',
-                    iconColor: 'text-slate-600',
-                    path: '/proveedores'
-                },
-                {
-                    label: 'Clientes',
-                    description: 'Base comercial y contactos',
-                    icon: Contact2,
-                    iconBg: 'bg-violet-50',
-                    iconColor: 'text-violet-600',
-                    path: '/clientes'
-                },
-                {
-                    label: 'Despachos',
-                    description: 'Entregas y salidas operativas',
-                    icon: Truck,
-                    iconBg: 'bg-cyan-50',
-                    iconColor: 'text-cyan-600',
-                    path: '/despachos'
-                },
-                {
-                    label: 'AI Consultants',
-                    description: 'Asistencia inteligente para decisiones',
-                    icon: Bot,
-                    iconBg: 'bg-fuchsia-50',
-                    iconColor: 'text-fuchsia-600',
-                    path: '/ai'
-                }
-            ]
+                { label: 'Stock', description: 'Inventario de productos terminados', icon: Boxes, iconBg: ic.amber.bg, iconColor: ic.amber.color, path: '/stock' },
+                { label: 'Compras', description: 'Órdenes y abastecimiento', icon: ShoppingCart, iconBg: ic.orange.bg, iconColor: ic.orange.color, path: '/compras' },
+                { label: 'Proveedores', description: 'Gestión de proveedores y acuerdos', icon: Building2, iconBg: ic.slate.bg, iconColor: ic.slate.color, path: '/proveedores' },
+                { label: 'Clientes', description: 'Base comercial y contactos', icon: Contact2, iconBg: ic.violet.bg, iconColor: ic.violet.color, path: '/clientes' },
+                { label: 'Despachos', description: 'Entregas y salidas operativas', icon: Truck, iconBg: ic.cyan.bg, iconColor: ic.cyan.color, path: '/despachos' },
+                { label: 'AI Consultants', description: 'Asistencia inteligente', icon: Bot, iconBg: ic.fuchsia.bg, iconColor: ic.fuchsia.color, path: '/ai' },
+            ],
         },
         {
             title: 'Herramientas',
             items: [
-                {
-                    label: 'Reportes',
-                    description: 'Ventas, márgenes y exportaciones',
-                    icon: BarChart3,
-                    iconBg: 'bg-emerald-50',
-                    iconColor: 'text-emerald-600',
-                    path: '/reportes',
-                    comingSoon: true
-                },
-                {
-                    label: 'Analytics',
-                    description: 'Métricas y análisis del negocio',
-                    icon: Activity,
-                    iconBg: 'bg-cyan-50',
-                    iconColor: 'text-cyan-600',
-                    path: '/analytics'
-                }
-            ]
+                { label: 'Reportes', description: 'Ventas, márgenes y exportaciones', icon: BarChart3, iconBg: ic.emerald.bg, iconColor: ic.emerald.color, path: '/reportes', comingSoon: true },
+                { label: 'Analytics', description: 'Métricas y análisis del negocio', icon: Activity, iconBg: ic.cyan.bg, iconColor: ic.cyan.color, path: '/analytics' },
+            ],
         },
         {
             title: 'Legal y cumplimiento',
             items: [
-                {
-                    label: 'Derechos de Datos',
-                    description: 'Privacidad y GDPR',
-                    icon: Lock,
-                    iconBg: colors.bgDanger,
-                    iconColor: colors.danger,
-                    path: '/legal/privacy'
-                },
-                {
-                    label: 'Asuntos Legales',
-                    description: 'Términos y responsabilidad',
-                    icon: Scale,
-                    iconBg: colors.surfaceMuted,
-                    iconColor: colors.textSecondary,
-                    path: '/legal/terms'
-                },
-                {
-                    label: 'Cumplimiento',
-                    description: 'Protocolos de integridad AI',
-                    icon: ShieldCheck,
-                    iconBg: colors.bgInfo,
-                    iconColor: colors.info,
-                    path: '/legal/compliance',
-                    badge: 'VERIFIED',
-                    badgeVariant: 'success'
-                }
-            ]
+                { label: 'Derechos de Datos', description: 'Privacidad y GDPR', icon: Lock, iconBg: ic.red.bg, iconColor: ic.red.color, path: '/legal/privacy' },
+                { label: 'Asuntos Legales', description: 'Términos y responsabilidad', icon: Scale, iconBg: ic.slate.bg, iconColor: ic.slate.color, path: '/legal/terms' },
+                { label: 'Cumplimiento', description: 'Protocolos de integridad AI', icon: ShieldCheck, iconBg: ic.info.bg, iconColor: ic.info.color, path: '/legal/compliance', badge: 'VERIFIED', badgeVariant: 'success' },
+            ],
         },
         {
             title: 'Soporte y sistema',
             items: [
-                {
-                    label: 'Ayuda',
-                    description: 'Documentación y soporte',
-                    icon: HelpCircle,
-                    iconBg: 'bg-sky-50',
-                    iconColor: 'text-sky-600',
-                    path: '/help'
-                },
-                {
-                    label: 'Estado del sistema',
-                    description: 'Uptime 99.9% · Build v1.0.0',
-                    icon: Activity,
-                    iconBg: colors.bgSuccess,
-                    iconColor: colors.success,
-                    path: '/status'
-                }
-            ]
-        }
+                { label: 'Ayuda', description: 'Documentación y soporte', icon: HelpCircle, iconBg: ic.sky.bg, iconColor: ic.sky.color, path: '/help' },
+                { label: 'Estado del sistema', description: 'Uptime 99.9% · Build v1.0.0', icon: Activity, iconBg: ic.green.bg, iconColor: ic.green.color, path: '/status' },
+            ],
+        },
     ];
 
     const filteredSections = search.trim()
-        ? sections
-            .map(s => ({
-                ...s,
-                items: s.items.filter(
-                    item =>
-                        item.label.toLowerCase().includes(search.toLowerCase()) ||
-                        item.description?.toLowerCase().includes(search.toLowerCase())
-                )
-            }))
-            .filter(s => s.items.length > 0)
+        ? sections.map(s => ({ ...s, items: s.items.filter(i => i.label.toLowerCase().includes(search.toLowerCase()) || i.description?.toLowerCase().includes(search.toLowerCase())) })).filter(s => s.items.length > 0)
         : sections;
 
     const MenuItemRow = ({ item }: { item: MenuItem }) => (
         <button
-            onClick={() => {
-                if (item.comingSoon) return;
-                if (item.onClick) item.onClick();
-                else if (item.path) navigate(item.path);
-            }}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors group
-                ${item.comingSoon
-                    ? 'opacity-40 cursor-not-allowed'
-                    : 'hover:bg-slate-50 active:bg-slate-100'
-                }`}
+            onClick={() => { if (item.comingSoon) return; if (item.onClick) item.onClick(); else if (item.path) navigate(item.path); }}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 'var(--space-12)', padding: 'var(--space-12) var(--space-16)', textAlign: 'left', background: 'transparent', border: 'none', cursor: item.comingSoon ? 'not-allowed' : 'pointer', opacity: item.comingSoon ? 0.4 : 1, transition: 'background var(--transition-fast)' }}
+            onMouseEnter={e => { if (!item.comingSoon) e.currentTarget.style.background = 'var(--surface-page)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
         >
-            <div className={`
-                flex size-9 items-center justify-center rounded-xl flex-shrink-0
-                ${item.iconBg} ${item.iconColor}
-                border border-white/50 shadow-sm
-                ${!item.comingSoon ? 'transition-transform duration-150 group-hover:scale-105' : ''}
-            `}>
+            <div style={{ width: '2.25rem', height: '2.25rem', borderRadius: 'var(--radius-lg)', background: item.iconBg, color: item.iconColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid rgba(255,255,255,0.5)', boxShadow: 'var(--shadow-sm)' }}>
                 <item.icon size={16} />
             </div>
-            <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                    <span className={`${typography.text.body} font-bold ${colors.textPrimary} truncate`}>
+            <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-8)' }}>
+                    <span style={{ fontSize: 'var(--text-body-size)', fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {item.label}
                     </span>
-                    {item.badge && (
-                        <Badge variant={item.badgeVariant || 'neutral'}>{item.badge}</Badge>
-                    )}
+                    {item.badge && <Badge variant={item.badgeVariant || 'neutral'}>{item.badge}</Badge>}
                     {item.comingSoon && (
-                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md">
+                        <span style={{ fontSize: '9px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', background: 'var(--surface-muted)', padding: '2px var(--space-6)', borderRadius: 'var(--radius-xs)' }}>
                             Pronto
                         </span>
                     )}
                 </div>
                 {item.description && (
-                    <span className={`${typography.text.secondary} ${colors.textSecondary} truncate block`}>
+                    <span className="text-small text-muted" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {item.description}
                     </span>
                 )}
             </div>
-            {!item.comingSoon && (
-                <ChevronRight size={14} className={`${colors.textMuted} flex-shrink-0 transition-transform duration-150 group-hover:translate-x-0.5`} />
-            )}
+            {!item.comingSoon && <ChevronRight size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />}
         </button>
     );
 
@@ -298,109 +153,71 @@ export default function MorePage() {
             <SectionBlock>
                 <UniversalPageHeader
                     title="Más"
-                    breadcrumbs={
-                        <>
-                            <span>BETO OS</span>
-                            <span>/</span>
-                            <span className={colors.textPrimary}>Más</span>
-                        </>
-                    }
-                    metadata={[
-                        <span key="1">Perfil, módulos y configuración</span>
-                    ]}
+                    breadcrumbs={<><span>BETO OS</span><span>/</span><span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Más</span></>}
+                    metadata={[<span key="1">Perfil, módulos y configuración</span>]}
                 />
 
-                <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-slate-100 mb-4">
-                    <div className="flex items-center gap-2.5 px-3 py-2 bg-white rounded-xl border border-slate-100 shadow-sm flex-shrink-0">
-                        <div className={`
-                            flex size-8 items-center justify-center rounded-xl flex-shrink-0
-                            ${colors.bgBrandSubtle} ${colors.brand}
-                            font-black uppercase text-xs border border-indigo-100
-                        `}>
+                {/* Toolbar */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--space-12)', paddingTop: 'var(--space-16)', borderTop: 'var(--border-default)', marginBottom: 'var(--space-16)' }}>
+                    {/* User chip */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-10)', padding: 'var(--space-8) var(--space-12)', background: 'var(--surface-card)', borderRadius: 'var(--radius-lg)', border: 'var(--border-default)', boxShadow: 'var(--shadow-sm)', flexShrink: 0 }}>
+                        <div style={{ width: '2rem', height: '2rem', borderRadius: 'var(--radius-lg)', background: 'var(--surface-primary-soft)', color: 'var(--state-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.75rem', textTransform: 'uppercase', border: '1px solid rgba(37,99,235,0.15)', flexShrink: 0 }}>
                             {userInitials}
                         </div>
-                        <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                                <span className={`${typography.text.secondary} font-bold ${colors.textPrimary} truncate max-w-[140px]`}>
-                                    {userName}
-                                </span>
+                        <div style={{ minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-6)' }}>
+                                <span style={{ fontSize: 'var(--text-small-size)', fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '9rem' }}>{userName}</span>
                                 {isSuperAdmin && <Badge variant="warning">SUPER ADMIN</Badge>}
                             </div>
-                            <span className={`${typography.text.micro} ${colors.textMuted} truncate block`}>{userEmail}</span>
+                            <span className="text-small text-muted" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userEmail}</span>
                         </div>
-                        <div className="flex items-center gap-1 ml-2 flex-shrink-0">
-                            <div className="size-1.5 rounded-full bg-emerald-500" />
-                            <span className={`${typography.text.micro} ${colors.textMuted} font-bold uppercase tracking-wider`}>Activo</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginLeft: 'var(--space-8)', flexShrink: 0 }}>
+                            <div style={{ width: '0.375rem', height: '0.375rem', borderRadius: '50%', background: 'var(--state-success)' }} />
+                            <span className="text-small text-muted" style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Activo</span>
                         </div>
                     </div>
 
-                    <div className="relative flex-1 min-w-[180px]">
-                        <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${colors.textMuted}`} />
-                        <input
-                            type="text"
-                            placeholder="Buscar módulo o configuración..."
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            className={`w-full h-9 pl-9 pr-4 bg-slate-50 border border-slate-200 rounded-xl ${typography.text.body} transition-all focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none`}
-                        />
+                    {/* Search */}
+                    <div style={{ position: 'relative', flex: 1, minWidth: '11rem' }}>
+                        <Search size={14} style={{ position: 'absolute', left: 'var(--space-12)', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                        <input type="text" placeholder="Buscar módulo o configuración..." value={search} onChange={e => setSearch(e.target.value)}
+                            className="input" style={{ paddingLeft: 'var(--space-32)', height: '2.25rem' }} />
                     </div>
                 </div>
 
                 {filteredSections.length === 0 ? (
-                    <div className="text-center py-10">
-                        <p className={`${typography.text.body} ${colors.textMuted}`}>Sin resultados para "{search}"</p>
+                    <div className="empty-state">
+                        <p className="text-muted">Sin resultados para "{search}"</p>
                     </div>
                 ) : (
-                    <>
-                        <div className="hidden lg:grid lg:grid-cols-2 gap-4">
-                            {filteredSections.map((section) => (
-                                <div key={section.title}>
-                                    <p className={`${typography.text.caption} ${colors.textMuted} px-1 mb-2`}>
-                                        {section.title}
-                                    </p>
-                                    <Card noPadding className="overflow-hidden">
-                                        <div className="divide-y divide-slate-100">
-                                            {section.items.map(item => (
-                                                <MenuItemRow key={item.label} item={item} />
-                                            ))}
-                                        </div>
-                                    </Card>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="lg:hidden space-y-4 pb-20">
-                            {filteredSections.map((section) => (
-                                <div key={section.title}>
-                                    <p className={`${typography.text.caption} ${colors.textMuted} px-1 mb-2`}>
-                                        {section.title}
-                                    </p>
-                                    <Card noPadding className="overflow-hidden">
-                                        <div className="divide-y divide-slate-100">
-                                            {section.items.map(item => (
-                                                <MenuItemRow key={item.label} item={item} />
-                                            ))}
-                                        </div>
-                                    </Card>
-                                </div>
-                            ))}
-                        </div>
-                    </>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 'var(--space-16)' }}>
+                        {filteredSections.map(section => (
+                            <div key={section.title}>
+                                <p className="text-small text-muted" style={{ padding: '0 var(--space-4)', marginBottom: 'var(--space-8)' }}>{section.title}</p>
+                                <Card style={{ padding: 0, overflow: 'hidden' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                                        {section.items.map((item, i) => (
+                                            <div key={item.label} style={{ borderTop: i > 0 ? 'var(--border-default)' : 'none' }}>
+                                                <MenuItemRow item={item} />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </Card>
+                            </div>
+                        ))}
+                    </div>
                 )}
 
-                <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                        <Hexagon className="h-6 w-6 text-indigo-500 fill-indigo-500/10 flex-shrink-0" />
+                {/* Footer */}
+                <div style={{ marginTop: 'var(--space-24)', paddingTop: 'var(--space-16)', borderTop: 'var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-10)' }}>
+                        <Hexagon style={{ width: '1.5rem', height: '1.5rem', color: 'var(--state-primary)', flexShrink: 0 }} />
                         <div>
-                            <p className={`${typography.text.body} font-black ${colors.textPrimary} leading-none`}>BETO OS</p>
-                            <p className={`${typography.text.micro} ${colors.textMuted} leading-none mt-1`}>
-                                Gestión inteligente para tu negocio
-                            </p>
+                            <p style={{ fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1, fontSize: 'var(--text-body-size)' }}>BETO OS</p>
+                            <p className="text-small text-muted" style={{ lineHeight: 1, marginTop: 'var(--space-4)' }}>Gestión inteligente para tu negocio</p>
                         </div>
                     </div>
-                    <span className={`${typography.text.micro} ${colors.textMuted} font-medium uppercase`}>
-                        v1.0.0 · {new Date().getFullYear()}
-                    </span>
+                    <span className="text-small text-muted" style={{ fontWeight: 500, textTransform: 'uppercase' }}>v1.0.0 · {new Date().getFullYear()}</span>
                 </div>
             </SectionBlock>
         </PageContainer>
