@@ -6,13 +6,17 @@ export const PlaceholderPage: React.FC = () => {
     const location = useLocation();
 
     return (
-        <div className="flex flex-col items-center justify-center p-12 text-center">
-            <div className="rounded-full bg-slate-100 p-4 text-slate-500 mb-4">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-48)', textAlign: 'center' }}>
+            <div style={{ borderRadius: '50%', background: 'var(--surface-muted)', padding: 'var(--space-16)', color: 'var(--text-muted)', marginBottom: 'var(--space-16)' }}>
                 <Construction size={48} />
             </div>
-            <h2 className="text-xl font-semibold text-slate-800">Module Under Construction</h2>
-            <p className="text-slate-500 mt-2">
-                The requested module <span className="font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-700">{location.pathname}</span> is not yet fully implemented in Phase 11.
+            <h2 style={{ fontSize: 'var(--text-h3-size)', fontWeight: 600, color: 'var(--text-primary)' }}>Module Under Construction</h2>
+            <p style={{ color: 'var(--text-muted)', marginTop: 'var(--space-8)', fontSize: 'var(--text-body-size)' }}>
+                The requested module{' '}
+                <span style={{ fontFamily: 'var(--font-mono)', background: 'var(--surface-muted)', padding: '2px var(--space-8)', borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)' }}>
+                    {location.pathname}
+                </span>{' '}
+                is not yet fully implemented in Phase 11.
             </p>
         </div>
     );
