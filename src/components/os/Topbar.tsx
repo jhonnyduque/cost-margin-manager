@@ -1,16 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-    Bell,
-    ChevronDown,
-    ChevronRight,
-    Settings,
-    LogOut,
-    Layout,
-    Hexagon,
-    CheckCheck,
-    Info,
-    AlertTriangle,
-    AlertOctagon
+    Bell, ChevronDown, ChevronRight, Settings, LogOut, Layout,
+    Hexagon, CheckCheck, Info, AlertTriangle, AlertOctagon,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { UserRole } from '@/types';
@@ -20,189 +11,159 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { es } from 'date-fns/locale';
 import { formatDistanceToNow } from 'date-fns';
 import { notificationService } from '@/services/notificationService';
-import { colors, typography, spacing, radius, shadows } from '@/design/design-tokens';
 
-interface TopbarProps {
-    sidebarCollapsed?: boolean;
-}
+interface TopbarProps { sidebarCollapsed?: boolean; }
 
 type NotificationItem = {
-    id: string;
-    title: string;
-    message: string;
-    created_at: string;
-    read_at?: string | null;
-    action_url?: string | null;
-    type?: string | null;
-    priority?: string | null;
+    id: string; title: string; message: string; created_at: string;
+    read_at?: string | null; action_url?: string | null;
+    type?: string | null; priority?: string | null;
 };
 
-// ============================================================================
-// ✅ HELPERS PARA USER INFO (Eliminan "User" y "U" genéricos)
-// ============================================================================
+/* ── Shared styles — all via CSS vars v4 ── */
+const topbarStyle: React.CSSProperties = {
+    background: 'var(--surface-card)',
+    borderBottom: 'var(--border-default)',
+    boxShadow: 'var(--shadow-sm)',
+};
 
-/**
- * Obtiene iniciales profesionales para el avatar:
- * - Si hay full_name: "Juan Pérez" → "JP"
- * - Si hay email: "juan@empresa.com" → "JU" 
- * - Fallback seguro: nunca muestra "U" solo
- */
+const surfaceButtonStyle: React.CSSProperties = {
+    background: 'var(--surface-card)',
+    border: 'var(--border-default)',
+    borderRadius: 'var(--radius-xl)',
+    boxShadow: 'var(--shadow-sm)',
+    transition: 'all var(--transition-fast)',
+};
+
+const dropdownStyle: React.CSSProperties = {
+    background: 'var(--surface-card)',
+    border: 'var(--border-default)',
+    borderRadius: 'var(--radius-xl)',
+    boxShadow: 'var(--shadow-lg)',
+    overflow: 'hidden',
+};
+
+const dropdownBtnStyle: React.CSSProperties = {
+    display: 'flex', width: '100%', alignItems: 'center',
+    gap: 'var(--space-8)', padding: 'var(--space-12) var(--space-16)',
+    fontSize: 'var(--text-body-size)', fontWeight: 500,
+    color: 'var(--text-secondary)', background: 'transparent',
+    border: 'none', cursor: 'pointer',
+    transition: 'background var(--transition-fast)',
+};
+
+const subtleBadgeStyle: React.CSSProperties = {
+    display: 'inline-flex', alignItems: 'center',
+    minHeight: '1.625rem', padding: '0 var(--space-8)',
+    borderRadius: '999px', fontSize: 'var(--text-small-size)', fontWeight: 600,
+    background: 'var(--surface-muted)', color: 'var(--text-secondary)',
+    border: '1px solid var(--border-color-default)', whiteSpace: 'nowrap',
+};
+
+/* ── Helpers ── */
 const getUserInitials = (user: any): string => {
     const fullName = user?.user_metadata?.full_name;
     const email = user?.email || '';
-
-    if (fullName && fullName.trim()) {
+    if (fullName?.trim()) {
         const names = fullName.trim().split(/\s+/).filter(Boolean);
-        if (names.length >= 2) {
-            // Primera letra del primer nombre + primera del apellido
-            return (names[0][0] + names[names.length - 1][0]).toUpperCase();
-        }
-        // Nombre solo: primeras 2 letras
-        return names[0].slice(0, 2).toUpperCase();
+        return names.length >= 2 ? (names[0][0] + names[names.length - 1][0]).toUpperCase() : names[0].slice(0, 2).toUpperCase();
     }
-
     if (email) {
-        const emailName = email.split('@')[0];
-        if (emailName.length >= 2) {
-            return (emailName[0] + emailName[1]).toUpperCase();
-        }
-        return emailName[0].toUpperCase();
+        const n = email.split('@')[0];
+        return n.length >= 2 ? (n[0] + n[1]).toUpperCase() : n[0].toUpperCase();
     }
-
-    return 'US'; // Fallback más profesional que "U"
+    return 'US';
 };
 
-/**
- * Obtiene texto para mostrar en el topbar:
- * - Prioriza full_name si existe
- * - Fallback a email (sin dominio si es largo)
- * - Nunca muestra "User" genérico
- */
 const getUserDisplayName = (user: any): string => {
     const fullName = user?.user_metadata?.full_name;
     const email = user?.email || '';
-
-    if (fullName && fullName.trim()) {
-        return fullName.trim();
-    }
-
+    if (fullName?.trim()) return fullName.trim();
     if (email) {
-        const [name, domain] = email.split('@');
-        // Si el nombre del email es razonable, mostrarlo
-        if (name && name.length <= 20 && !/^[0-9]+$/.test(name)) {
-            return name;
-        }
-        // Si es muy largo o numérico, mostrar email completo truncado
+        const [name] = email.split('@');
+        if (name && name.length <= 20 && !/^[0-9]+$/.test(name)) return name;
         return email.length > 24 ? `${email.slice(0, 21)}...` : email;
     }
-
-    return 'Invitado'; // Mejor que "User"
+    return 'Invitado';
 };
 
-/**
- * Obtiene label de rol para badge
- */
 const ROLE_LABELS: Record<UserRole, string> = {
-    owner: 'Owner',
-    admin: 'Admin',
-    manager: 'Manager',
-    operator: 'Operator',
-    viewer: 'Viewer',
-    super_admin: 'Super Admin',
+    owner: 'Owner', admin: 'Admin', manager: 'Manager',
+    operator: 'Operator', viewer: 'Viewer', super_admin: 'Super Admin',
 };
 
-const getUserRoleLabel = (
-    user: any,
-    mode: string,
-    userRole: UserRole | null
-): string => {
+const getUserRoleLabel = (user: any, mode: string, userRole: UserRole | null): string => {
     if (user?.is_super_admin) return ROLE_LABELS.super_admin;
     if (mode === 'platform') return 'Platform';
     if (userRole) return ROLE_LABELS[userRole] || userRole;
     return 'Member';
 };
 
-// ============================================================================
-// MAPPINGS Y UTILIDADES EXISTENTES
-// ============================================================================
+const PLATFORM_SECTIONS = [
+    { match: '/platform/environments', label: 'Entornos', path: '/platform/environments' },
+    { match: '/platform/users', label: 'Usuarios', path: '/platform/users' },
+    { match: '/platform/billing', label: 'Finanzas', path: '/platform/billing' },
+    { match: '/settings', label: 'Settings', path: '/settings' },
+    { match: '/mas', label: 'Más', path: '/mas' },
+];
 
-const PLATFORM_SECTIONS: Record<string, string> = {
-    '/platform/environments': 'Entornos',
-    '/platform/users': 'Usuarios',
-    '/platform/billing': 'Finanzas',
-    '/settings': 'Settings',
-    '/mas': 'Más',
+const PLATFORM_TABS: Record<string, { label: string; path: string }> = {
+    overview: { label: 'Resumen', path: '/control-center?tab=overview' },
+    tenants: { label: 'Empresas', path: '/control-center?tab=tenants' },
+    billing: { label: 'Finanzas', path: '/control-center?tab=billing' },
+    ops: { label: 'Operaciones', path: '/control-center?tab=ops' },
+    taxonomies: { label: 'Taxonomías', path: '/control-center?tab=taxonomies' },
 };
 
-const PLATFORM_TABS: Record<string, string> = {
-    overview: 'Resumen',
-    tenants: 'Empresas',
-    billing: 'Finanzas',
-    ops: 'Operaciones',
-    taxonomies: 'Taxonomías',
-};
+const COMPANY_SECTIONS = [
+    { match: '/dashboard', label: 'Dashboard', path: '/dashboard' },
+    { match: '/productos', label: 'Productos', path: '/productos' },
+    { match: '/stock', label: 'Stock', path: '/stock' },
+    { match: '/materias-primas', label: 'Materias Primas', path: '/materias-primas' },
+    { match: '/compras', label: 'Compras', path: '/compras' },
+    { match: '/proveedores', label: 'Proveedores', path: '/proveedores' },
+    { match: '/clientes', label: 'Clientes', path: '/clientes' },
+    { match: '/despachos', label: 'Despachos', path: '/despachos' },
+    { match: '/produccion', label: 'Producción', path: '/produccion' },
+    { match: '/equipo', label: 'Equipo', path: '/equipo' },
+    { match: '/settings', label: 'Settings', path: '/settings' },
+    { match: '/mas', label: 'Más', path: '/mas' },
+    { match: '/help', label: 'Ayuda', path: '/help' },
+    { match: '/status', label: 'Estado', path: '/status' },
+];
 
-const getSectionName = (pathname: string, search: string): string | null => {
+const getSectionMeta = (pathname: string, search: string) => {
     if (pathname === '/control-center') {
         const activeTab = new URLSearchParams(search).get('tab') || 'overview';
-        return PLATFORM_TABS[activeTab] || 'Resumen';
+        return PLATFORM_TABS[activeTab] || PLATFORM_TABS.overview;
     }
-
-    for (const [route, name] of Object.entries(PLATFORM_SECTIONS)) {
-        if (pathname === route || pathname.startsWith(route + '/')) return name;
+    for (const item of PLATFORM_SECTIONS) {
+        if (pathname === item.match || pathname.startsWith(item.match + '/')) return item;
+    }
+    for (const item of COMPANY_SECTIONS) {
+        if (pathname === item.match || pathname.startsWith(item.match + '/')) return item;
     }
     return null;
 };
 
-const getNotificationIcon = (note: NotificationItem) => {
-    const title = `${note.title || ''} ${note.message || ''}`.toLowerCase();
+const getNotificationVisual = (note: NotificationItem) => {
+    const text = `${note.title || ''} ${note.message || ''}`.toLowerCase();
     const type = (note.type || '').toLowerCase();
     const priority = (note.priority || '').toLowerCase();
 
-    if (priority === 'critical' || type.includes('critical') || title.includes('crítico') || title.includes('urgent')) {
-        return <AlertOctagon size={14} className="text-red-600" />;
-    }
-
-    if (priority === 'warning' || type.includes('warning') || title.includes('alerta') || title.includes('warning')) {
-        return <AlertTriangle size={14} className="text-amber-500" />;
-    }
-
-    if (type.includes('success') || title.includes('completado') || title.includes('aprobado') || title.includes('éxito')) {
-        return <CheckCheck size={14} className="text-emerald-600" />;
-    }
-
-    return <Info size={14} className="text-indigo-600" />;
+    if (priority === 'critical' || type.includes('critical') || text.includes('crítico') || text.includes('urgent'))
+        return { color: 'var(--state-danger)', background: 'var(--surface-danger-soft)', icon: <AlertOctagon size={14} style={{ color: 'var(--state-danger)' }} /> };
+    if (priority === 'warning' || type.includes('warning') || text.includes('alerta') || text.includes('warning'))
+        return { color: 'var(--state-warning)', background: 'var(--surface-warning-soft)', icon: <AlertTriangle size={14} style={{ color: 'var(--state-warning)' }} /> };
+    if (type.includes('success') || text.includes('completado') || text.includes('aprobado') || text.includes('éxito'))
+        return { color: 'var(--state-success)', background: 'var(--surface-success-soft)', icon: <CheckCheck size={14} style={{ color: 'var(--state-success)' }} /> };
+    return { color: 'var(--state-info)', background: 'var(--surface-info-soft)', icon: <Info size={14} style={{ color: 'var(--state-info)' }} /> };
 };
 
-const getNotificationIconBg = (note: NotificationItem) => {
-    const title = `${note.title || ''} ${note.message || ''}`.toLowerCase();
-    const type = (note.type || '').toLowerCase();
-    const priority = (note.priority || '').toLowerCase();
+const formatRelativeTime = (date: string) =>
+    formatDistanceToNow(new Date(date), { addSuffix: true, locale: es }).replace(/^alrededor de /i, '').toLowerCase();
 
-    if (priority === 'critical' || type.includes('critical') || title.includes('crítico') || title.includes('urgent')) {
-        return 'bg-red-50 border-red-100';
-    }
-
-    if (priority === 'warning' || type.includes('warning') || title.includes('alerta') || title.includes('warning')) {
-        return 'bg-amber-50 border-amber-100';
-    }
-
-    if (type.includes('success') || title.includes('completado') || title.includes('aprobado') || title.includes('éxito')) {
-        return 'bg-emerald-50 border-emerald-100';
-    }
-
-    return 'bg-indigo-50 border-indigo-100';
-};
-
-const formatRelativeTime = (date: string) => {
-    const raw = formatDistanceToNow(new Date(date), { addSuffix: true, locale: es });
-    return raw.replace(/^alrededor de /i, '').toLowerCase();
-};
-
-// ============================================================================
-// COMPONENTE PRINCIPAL
-// ============================================================================
-
+/* ── Component ── */
 export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
     const { user, currentCompany, userRole, mode, exitImpersonation, setIsSigningOut, resetState } = useAuth();
     const logout = useStore(state => state.logout);
@@ -218,123 +179,56 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
     const menuRef = useRef<HTMLDivElement>(null);
     const notificationsRef = useRef<HTMLDivElement>(null);
 
-    const sectionName = getSectionName(location.pathname, location.search);
-
-    // ✅ Calcular user info una vez por render
+    const sectionMeta = getSectionMeta(location.pathname, location.search);
     const userInitials = getUserInitials(user);
     const userDisplayName = getUserDisplayName(user);
     const userRoleLabel = getUserRoleLabel(user, mode, userRole);
 
     useEffect(() => {
-        const loadInitialData = async () => {
-            if (!user) return;
-
+        if (!user) return;
+        (async () => {
             try {
-                const [list, count] = await Promise.all([
-                    notificationService.getNotifications(12),
-                    notificationService.getUnreadCount()
-                ]);
-
-                setNotifications(list);
-                setUnreadCount(count);
-            } catch (err) {
-                console.error('Error loading notifications:', err);
-            }
-        };
-
-        loadInitialData();
-
-        const subscription = notificationService.subscribeToNotifications(
-            user.id,
-            (newNote: NotificationItem) => {
-                setNotifications(prev => {
-                    if (prev.some(n => n.id === newNote.id)) return prev;
-                    return [newNote, ...prev].slice(0, 12);
-                });
-                setUnreadCount(prev => prev + 1);
-            }
-        );
-
-        return () => {
-            subscription.unsubscribe();
-        };
+                const [list, count] = await Promise.all([notificationService.getNotifications(12), notificationService.getUnreadCount()]);
+                setNotifications(list); setUnreadCount(count);
+            } catch (err) { console.error('Error loading notifications:', err); }
+        })();
+        const subscription = notificationService.subscribeToNotifications(user.id, (newNote: NotificationItem) => {
+            setNotifications(prev => prev.some(n => n.id === newNote.id) ? prev : [newNote, ...prev].slice(0, 12));
+            setUnreadCount(prev => prev + 1);
+        });
+        return () => subscription.unsubscribe();
     }, [user]);
 
-    useEffect(() => {
-        setMenuOpen(false);
-        setNotificationsOpen(false);
-        setExpandedNoteId(null);
-    }, [location.pathname]);
+    useEffect(() => { setMenuOpen(false); setNotificationsOpen(false); setExpandedNoteId(null); }, [location.pathname, location.search]);
 
     useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-                setMenuOpen(false);
-            }
-
-            if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
-                setNotificationsOpen(false);
-                setExpandedNoteId(null);
-            }
+        const handler = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) setMenuOpen(false);
+            if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) { setNotificationsOpen(false); setExpandedNoteId(null); }
         };
-
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
     }, []);
 
     useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                setMenuOpen(false);
-                setNotificationsOpen(false);
-                setExpandedNoteId(null);
-            }
-        };
-
-        document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
+        const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') { setMenuOpen(false); setNotificationsOpen(false); setExpandedNoteId(null); } };
+        document.addEventListener('keydown', handler);
+        return () => document.removeEventListener('keydown', handler);
     }, []);
 
     const handleLogout = async () => {
         setIsSigningOut(true);
-
-        try {
-            await supabase.auth.signOut();
-            logout();
-            resetState();
-        } catch (error) {
-            console.error('Logout error:', error);
-            resetState();
-        } finally {
-            navigate('/login', { replace: true });
-        }
-    };
-
-    const handleSwitchToPlatform = () => {
-        if (mode === 'company') {
-            exitImpersonation();
-            navigate('/control-center');
-        }
-    };
-
-    const handleOpenNotifications = () => {
-        setNotificationsOpen(prev => !prev);
-        setMenuOpen(false);
+        try { await supabase.auth.signOut(); logout(); resetState(); }
+        catch { resetState(); }
+        finally { navigate('/login', { replace: true }); }
     };
 
     const handleMarkAllAsRead = async () => {
         try {
             await notificationService.markAllAsRead();
-            setNotifications(prev =>
-                prev.map(n => ({
-                    ...n,
-                    read_at: n.read_at || new Date().toISOString(),
-                }))
-            );
+            setNotifications(prev => prev.map(n => ({ ...n, read_at: n.read_at || new Date().toISOString() })));
             setUnreadCount(0);
-        } catch (error) {
-            console.error('Error marking all as read:', error);
-        }
+        } catch (err) { console.error('Error marking all as read:', err); }
     };
 
     const handleNotificationClick = async (note: NotificationItem) => {
@@ -342,155 +236,103 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
             if (!note.read_at) {
                 await notificationService.markAsRead(note.id);
                 setUnreadCount(prev => Math.max(0, prev - 1));
-                setNotifications(prev =>
-                    prev.map(n =>
-                        n.id === note.id
-                            ? { ...n, read_at: new Date().toISOString() }
-                            : n
-                    )
-                );
+                setNotifications(prev => prev.map(n => n.id === note.id ? { ...n, read_at: new Date().toISOString() } : n));
             }
-
-            const isLong = note.message.length > 85;
-
-            if (note.action_url) {
-                navigate(note.action_url);
-                setNotificationsOpen(false);
-                setExpandedNoteId(null);
-                return;
-            }
-
-            if (isLong) {
-                setExpandedNoteId(prev => (prev === note.id ? null : note.id));
-            }
-        } catch (error) {
-            console.error('Error interacting with notification:', error);
-        }
+            if (note.action_url) { navigate(note.action_url); setNotificationsOpen(false); setExpandedNoteId(null); return; }
+            if (note.message.length > 85) setExpandedNoteId(prev => prev === note.id ? null : note.id);
+        } catch (err) { console.error('Error interacting with notification:', err); }
     };
 
     return (
         <header
-            className={`
-                fixed top-0 right-0 z-50 flex h-16 w-full items-center justify-between
-                border-b ${colors.borderStandard} ${colors.bgSurface}
-                ${spacing.pxLg}
-                transition-all duration-300
-                ${sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-64'}
-            `}
+            className="fixed top-0 right-0 z-40 h-16"
+            style={{
+                ...topbarStyle,
+                left: sidebarCollapsed ? 'var(--sidebar-collapsed)' : 'var(--sidebar-expanded)',
+                transition: 'left var(--transition-slow)',
+            }}
         >
-            {/* Left side */}
-            <div className="flex items-center gap-2 min-w-0">
-                {/* Mobile: Brand */}
-                <div className="lg:hidden flex items-center gap-2">
-                    <Hexagon className="h-5 w-5 text-indigo-500 fill-indigo-500/10 flex-shrink-0" />
-                    <span className={`${typography.uiLabel} ${colors.textPrimary}`}>BETO OS</span>
-                </div>
+            <div className="h-full flex items-center justify-between gap-4 px-6">
 
-                {/* Desktop: Branding + Breadcrumb */}
-                <div className="hidden lg:flex items-center gap-2 min-w-0">
-                    <Hexagon className="h-5 w-5 text-indigo-500 fill-indigo-500/10 flex-shrink-0" />
-                    <span className={`${typography.uiLabel} ${colors.textPrimary}`}>BETO OS</span>
+                {/* Left */}
+                <div className="flex items-center gap-2 min-w-0 lg:pl-4">
+                    {/* Mobile logo */}
+                    <div className="lg:hidden flex items-center gap-2 min-w-0">
+                        <div style={{ width: '2rem', height: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--radius-lg)', background: 'var(--surface-primary-soft)', color: 'var(--state-primary)', flexShrink: 0 }}>
+                            <Hexagon size={16} />
+                        </div>
+                        <span style={{ fontSize: 'var(--text-small-size)', fontWeight: 700, color: 'var(--text-primary)' }}>BETO OS</span>
+                    </div>
 
-                    {mode === 'platform' && (
-                        <>
-                            <ChevronRight size={14} className={`${colors.textMuted} flex-shrink-0 opacity-40`} />
-                            <span className={`${typography.bodySm} ${colors.textSecondary} font-medium`}>Platform Control</span>
-                            {sectionName && (
-                                <>
-                                    <ChevronRight size={14} className={`${colors.textMuted} flex-shrink-0 opacity-40`} />
-                                    <span className={`${typography.bodySm} font-semibold ${colors.textPrimary} truncate`}>
-                                        {sectionName}
-                                    </span>
-                                </>
-                            )}
-                        </>
-                    )}
-
-                    {mode === 'company' && (
-                        <>
-                            <ChevronRight size={14} className={`${colors.textMuted} flex-shrink-0 opacity-40`} />
-                            <span className={`${typography.bodySm} font-semibold ${colors.textPrimary} truncate`}>
-                                {currentCompany?.name || 'Loading...'}
-                            </span>
-                            {currentCompany?.subscription_status && (
-                                <span
-                                    className={`
-                                        inline-flex ${radius.pill} ${colors.bgMain} ${spacing.pxSm}
-                                        py-0.5 ${typography.caption} font-medium ${colors.textSecondary}
-                                        border ${colors.borderStandard}
-                                    `}
-                                >
-                                    {currentCompany.subscription_status}
-                                </span>
-                            )}
-                        </>
-                    )}
-                </div>
-            </div>
-
-            {/* Right side */}
-            <div className="flex items-center gap-2 sm:gap-4">
-                {/* Notifications */}
-                <div className="relative" ref={notificationsRef}>
-                    <button
-                        onClick={handleOpenNotifications}
-                        aria-label="Abrir notificaciones"
-                        className={`
-                            relative h-11 w-11 ${radius.pill} transition-all flex items-center justify-center
-                            ${notificationsOpen
-                                ? `${colors.bgBrandSubtle} text-indigo-600 shadow-sm`
-                                : `${colors.textSecondary} hover:${colors.bgMain} hover:${colors.textPrimary}`
-                            }
-                        `}
-                    >
-                        <Bell size={22} />
-
-                        {unreadCount > 0 && (
-                            <div className="absolute top-[8px] right-[8px] pointer-events-none">
-                                <span
-                                    className="absolute inset-0 h-2.5 w-2.5 bg-[#ff3040] rounded-full animate-ping opacity-70"
-                                    aria-hidden="true"
-                                />
-                                <span
-                                    className="relative block h-2.5 w-2.5 bg-[#ff3040] border-2 border-white rounded-full shadow-sm"
-                                    aria-hidden="true"
-                                />
-                            </div>
+                    {/* Desktop breadcrumb */}
+                    <div className="hidden lg:flex items-center gap-2 min-w-0">
+                        {mode === 'platform' && (
+                            <>
+                                <button type="button" onClick={() => navigate('/control-center')} style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontSize: 'var(--text-body-size)', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                    Platform Control
+                                </button>
+                                {sectionMeta && (
+                                    <>
+                                        <ChevronRight size={14} style={{ color: 'var(--text-muted)', flexShrink: 0, opacity: 0.7 }} />
+                                        <span style={{ fontSize: 'var(--text-body-size)', fontWeight: 500, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sectionMeta.label}</span>
+                                    </>
+                                )}
+                            </>
                         )}
-                    </button>
 
-                    {notificationsOpen && (
-                        <div
-                            className={`
-                                absolute mt-2 origin-top-right
-                                ${radius.xl} border ${colors.borderSubtle} ${colors.bgSurface}
-                                ${shadows.xl} ring-1 ring-black/5 z-50 overflow-hidden
-                                right-0 w-[calc(100vw-1rem)]
-                                sm:w-[380px]
-                                max-w-[calc(100vw-1rem)]
-                            `}
-                        >
-                            <div className="flex flex-col">
+                        {mode === 'company' && (
+                            <>
+                                <button type="button" onClick={() => navigate('/dashboard')} style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontSize: 'var(--text-body-size)', fontWeight: 700, color: 'var(--text-primary)', maxWidth: '14rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {currentCompany?.name || 'Loading...'}
+                                </button>
+                                {sectionMeta && (
+                                    <>
+                                        <ChevronRight size={14} style={{ color: 'var(--text-muted)', flexShrink: 0, opacity: 0.7 }} />
+                                        <span style={{ fontSize: 'var(--text-body-size)', fontWeight: 500, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sectionMeta.label}</span>
+                                    </>
+                                )}
+                                {user?.is_super_admin && currentCompany?.subscription_status === 'active' && (
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', marginLeft: 'var(--space-8)', fontSize: 'var(--text-small-size)', fontWeight: 600, color: 'var(--state-success)', whiteSpace: 'nowrap' }}>
+                                        <span className="relative flex h-2 w-2">
+                                            <span className="absolute inline-flex h-full w-full rounded-full animate-ping opacity-75" style={{ background: 'var(--state-success)' }} />
+                                            <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: 'var(--state-success)' }} />
+                                        </span>
+                                        Activo
+                                    </span>
+                                )}
+                            </>
+                        )}
+                    </div>
+                </div>
+
+                {/* Right */}
+                <div className="flex items-center gap-2 sm:gap-3">
+
+                    {/* Notifications */}
+                    <div className="relative" ref={notificationsRef}>
+                        <button type="button" onClick={() => { setNotificationsOpen(p => !p); setMenuOpen(false); setExpandedNoteId(null); }}
+                            aria-label="Abrir notificaciones" aria-haspopup="menu" aria-expanded={notificationsOpen}
+                            style={{ width: '2.75rem', height: '2.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--radius-xl)', border: notificationsOpen ? 'var(--border-default)' : '1px solid transparent', background: notificationsOpen ? 'var(--surface-muted)' : 'transparent', boxShadow: notificationsOpen ? 'var(--shadow-sm)' : 'none', transition: 'all var(--transition-fast)', cursor: 'pointer' }}>
+                            <Bell size={20} style={{ color: 'var(--text-secondary)' }} />
+                            {unreadCount > 0 && (
+                                <div className="absolute top-[8px] right-[8px] pointer-events-none">
+                                    <span className="animate-ping" style={{ position: 'absolute', inset: 0, width: '0.625rem', height: '0.625rem', borderRadius: '999px', background: 'var(--state-danger)', opacity: 0.7 }} aria-hidden="true" />
+                                    <span style={{ position: 'relative', display: 'block', width: '0.625rem', height: '0.625rem', borderRadius: '999px', background: 'var(--state-danger)', border: '2px solid var(--surface-card)', boxShadow: 'var(--shadow-sm)' }} aria-hidden="true" />
+                                </div>
+                            )}
+                        </button>
+
+                        {notificationsOpen && (
+                            <div className="absolute right-0 mt-2 origin-top-right w-[calc(100vw-1rem)] sm:w-[380px] max-w-[calc(100vw-1rem)] z-50" style={dropdownStyle}>
                                 {/* Header */}
-                                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-white">
+                                <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: 'var(--border-default)' }}>
                                     <div className="min-w-0">
-                                        <h3 className="text-[15px] font-semibold text-slate-900 leading-none">
-                                            Notificaciones
-                                        </h3>
-                                        <p className="text-[11px] text-slate-500 mt-1">
-                                            {unreadCount > 0
-                                                ? `${unreadCount} pendiente${unreadCount > 1 ? 's' : ''}`
-                                                : 'Todo al día'}
-                                        </p>
+                                        <h3 style={{ fontSize: 'var(--text-body-size)', fontWeight: 700, color: 'var(--text-primary)' }}>Notificaciones</h3>
+                                        <p style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-muted)', marginTop: 'var(--space-4)' }}>{unreadCount > 0 ? `${unreadCount} pendiente${unreadCount > 1 ? 's' : ''}` : 'Todo al día'}</p>
                                     </div>
-
                                     {unreadCount > 0 && (
-                                        <button
-                                            onClick={handleMarkAllAsRead}
-                                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
-                                        >
-                                            <CheckCheck size={12} />
-                                            marcar todas
+                                        <button type="button" onClick={handleMarkAllAsRead} style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-4)', fontSize: 'var(--text-small-size)', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                            <CheckCheck size={12} /> marcar todas
                                         </button>
                                     )}
                                 </div>
@@ -498,89 +340,37 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
                                 {/* List */}
                                 <div className="max-h-[252px] overflow-y-auto overscroll-contain">
                                     {notifications.length > 0 ? (
-                                        <div className="divide-y divide-slate-100">
-                                            {notifications.map((note) => {
+                                        <div>
+                                            {notifications.map((note, index) => {
                                                 const isUnread = !note.read_at;
                                                 const isExpanded = expandedNoteId === note.id;
                                                 const isLong = note.message.length > 85;
-
+                                                const visual = getNotificationVisual(note);
                                                 return (
-                                                    <div
-                                                        key={note.id}
-                                                        onClick={() => handleNotificationClick(note)}
-                                                        className={`
-                                                            group cursor-pointer transition-colors
-                                                            ${isUnread ? 'bg-indigo-50/30' : 'bg-white'}
-                                                            hover:bg-slate-50
-                                                        `}
-                                                    >
+                                                    <div key={note.id} onClick={() => handleNotificationClick(note)}
+                                                        style={{ cursor: 'pointer', transition: 'background var(--transition-fast)', background: isUnread ? 'var(--surface-page)' : 'var(--surface-card)', borderTop: index === 0 ? 'none' : 'var(--border-default)' }}>
                                                         <div className="flex gap-3 px-4 py-3">
-                                                            {/* Icon */}
-                                                            <div
-                                                                className={`
-                                                                    mt-0.5 h-8 w-8 rounded-full border flex items-center justify-center flex-shrink-0
-                                                                    ${getNotificationIconBg(note)}
-                                                                `}
-                                                            >
-                                                                {getNotificationIcon(note)}
+                                                            <div style={{ width: '2rem', height: '2rem', borderRadius: 'var(--radius-lg)', background: visual.background, border: 'var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                                {visual.icon}
                                                             </div>
-
-                                                            {/* Content */}
                                                             <div className="min-w-0 flex-1">
                                                                 <div className="flex items-start justify-between gap-3">
                                                                     <div className="min-w-0">
-                                                                        <p
-                                                                            className={`
-                                                                                text-[13px] leading-4
-                                                                                ${isUnread ? 'font-semibold text-slate-900' : 'font-medium text-slate-800'}
-                                                                            `}
-                                                                        >
-                                                                            {note.title}
-                                                                        </p>
-
-                                                                        <p className="text-[11px] text-slate-500 mt-1">
-                                                                            {formatRelativeTime(note.created_at)}
-                                                                        </p>
+                                                                        <p style={{ fontSize: 'var(--text-body-size)', lineHeight: 1.35, fontWeight: isUnread ? 700 : 500, color: isUnread ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{note.title}</p>
+                                                                        <p style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-muted)', marginTop: 'var(--space-4)' }}>{formatRelativeTime(note.created_at)}</p>
                                                                     </div>
-
-                                                                    {isUnread && (
-                                                                        <span className="mt-1 h-2.5 w-2.5 rounded-full bg-indigo-500 flex-shrink-0" />
-                                                                    )}
+                                                                    {isUnread && <span style={{ width: '0.625rem', height: '0.625rem', borderRadius: '999px', background: 'var(--state-primary)', flexShrink: 0, marginTop: '0.25rem' }} />}
                                                                 </div>
-
-                                                                <p
-                                                                    className={`
-                                                                        text-[12px] leading-5 text-slate-600 mt-1.5 pr-1
-                                                                        ${isExpanded ? 'line-clamp-none' : 'line-clamp-2'}
-                                                                    `}
-                                                                >
-                                                                    {note.message}
-                                                                </p>
-
+                                                                <p className={isExpanded ? 'line-clamp-none' : 'line-clamp-2'} style={{ fontSize: 'var(--text-small-size)', lineHeight: 1.5, color: 'var(--text-secondary)', marginTop: 'var(--space-8)', paddingRight: 'var(--space-4)' }}>{note.message}</p>
                                                                 {(isLong || note.action_url) && (
                                                                     <div className="flex items-center gap-3 mt-2">
                                                                         {isLong && !note.action_url && (
-                                                                            <button
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    setExpandedNoteId(prev => prev === note.id ? null : note.id);
-                                                                                }}
-                                                                                className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-700"
-                                                                            >
+                                                                            <button type="button" onClick={e => { e.stopPropagation(); setExpandedNoteId(p => p === note.id ? null : note.id); }} style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontSize: 'var(--text-small-size)', fontWeight: 600, color: 'var(--text-secondary)' }}>
                                                                                 {isExpanded ? 'ver menos' : 'ver más'}
                                                                             </button>
                                                                         )}
-
                                                                         {note.action_url && (
-                                                                            <button
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    navigate(note.action_url as string);
-                                                                                    setNotificationsOpen(false);
-                                                                                    setExpandedNoteId(null);
-                                                                                }}
-                                                                                className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-700"
-                                                                            >
+                                                                            <button type="button" onClick={e => { e.stopPropagation(); navigate(note.action_url as string); setNotificationsOpen(false); setExpandedNoteId(null); }} style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontSize: 'var(--text-small-size)', fontWeight: 600, color: 'var(--text-secondary)' }}>
                                                                                 ir al detalle
                                                                             </button>
                                                                         )}
@@ -594,163 +384,73 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
                                         </div>
                                     ) : (
                                         <div className="px-6 py-10 text-center">
-                                            <div className="mx-auto h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center mb-3">
-                                                <Bell size={16} className="text-slate-400" />
+                                            <div className="mx-auto mb-3" style={{ width: '2.5rem', height: '2.5rem', borderRadius: 'var(--radius-lg)', background: 'var(--surface-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <Bell size={16} style={{ color: 'var(--text-muted)' }} />
                                             </div>
-                                            <p className="text-[13px] font-medium text-slate-700">
-                                                No tienes notificaciones
-                                            </p>
-                                            <p className="text-[11px] text-slate-500 mt-1">
-                                                Cuando ocurra algo importante, aparecerá aquí.
-                                            </p>
+                                            <p style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--text-secondary)' }}>No tienes notificaciones</p>
+                                            <p style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-muted)', marginTop: 'var(--space-4)' }}>Cuando ocurra algo importante, aparecerá aquí.</p>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Footer */}
-                                <div className="border-t border-slate-100 bg-slate-50/70 p-2">
-                                    <button
-                                        onClick={() => {
-                                            navigate('/settings?tab=notifications');
-                                            setNotificationsOpen(false);
-                                            setExpandedNoteId(null);
-                                        }}
-                                        className={`
-                                            w-full flex items-center justify-center gap-2 py-2.5
-                                            ${radius.md} text-[12px] font-semibold
-                                            ${colors.textSecondary} hover:bg-white hover:${colors.textPrimary}
-                                            border border-transparent hover:border-slate-200 transition-all
-                                        `}
-                                    >
-                                        <Settings size={14} />
-                                        gestionar preferencias
+                                <div className="p-2" style={{ borderTop: 'var(--border-default)', background: 'var(--surface-page)' }}>
+                                    <button type="button" onClick={() => { navigate('/settings?tab=notifications'); setNotificationsOpen(false); setExpandedNoteId(null); }}
+                                        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-8)', minHeight: '2.5rem', borderRadius: 'var(--radius-md)', border: '1px solid transparent', background: 'transparent', cursor: 'pointer', fontSize: 'var(--text-small-size)', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                        <Settings size={14} /> gestionar preferencias
                                     </button>
                                 </div>
                             </div>
-                        </div>
-                    )}
-                </div>
+                        )}
+                    </div>
 
-                {/* ✅ USER MENU - IMPLEMENTACIÓN PROFESIONAL */}
-                <div className="relative" ref={menuRef}>
-                    <button
-                        onClick={() => setMenuOpen(!menuOpen)}
-                        className={`
-                            flex items-center gap-2 ${radius.pill} border ${colors.borderStandard}
-                            ${colors.bgMain} py-1 pl-1 pr-2 sm:pr-3 hover:bg-slate-100
-                            transition-colors min-h-[40px]
-                        `}
-                    >
-                        {/* Avatar con iniciales inteligentes */}
-                        <div
-                            className={`
-                                h-8 w-8 ${radius.pill} ${colors.bgBrandSubtle}
-                                flex items-center justify-center text-indigo-600
-                                ${typography.uiLabel} font-semibold flex-shrink-0
-                            `}
-                            aria-label={`Perfil de ${userDisplayName}`}
-                        >
-                            {userInitials}
-                        </div>
+                    {/* User menu */}
+                    <div className="relative" ref={menuRef}>
+                        <button type="button" onClick={() => { setMenuOpen(p => !p); setNotificationsOpen(false); setExpandedNoteId(null); }}
+                            aria-haspopup="menu" aria-expanded={menuOpen}
+                            className="flex items-center gap-2 min-h-[44px]"
+                            style={{ ...surfaceButtonStyle, padding: '0.375rem 0.75rem 0.375rem 0.375rem' }}>
+                            <div style={{ width: '2rem', height: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--radius-lg)', background: 'var(--surface-primary-soft)', color: 'var(--state-primary)', fontSize: 'var(--text-small-size)', fontWeight: 700, flexShrink: 0 }} aria-label={`Perfil de ${userDisplayName}`}>
+                                {userInitials}
+                            </div>
+                            <div className="hidden md:block text-left min-w-0">
+                                <p style={{ fontSize: 'var(--text-body-size)', fontWeight: 700, color: 'var(--text-primary)', maxWidth: '9.5rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{userDisplayName}</p>
+                                <span style={subtleBadgeStyle}>{userRoleLabel}</span>
+                            </div>
+                            <ChevronDown size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                        </button>
 
-                        {/* Texto visible solo en desktop */}
-                        <div className="hidden md:block text-left min-w-0">
-                            <p className={`text-sm font-medium ${colors.textPrimary} truncate max-w-[120px]`}>
-                                {userDisplayName}
-                            </p>
-                            {/* Badge de rol compacto */}
-                            <span className={`
-                                inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium
-                                ${user?.is_super_admin
-                                    ? 'bg-purple-100 text-purple-700'
-                                    : 'bg-slate-100 text-slate-600'}
-                            `}>
-                                {userRoleLabel}
-                            </span>
-                        </div>
-
-                        <ChevronDown size={14} className={`${colors.textMuted} hidden sm:block flex-shrink-0`} />
-                    </button>
-
-                    {menuOpen && (
-                        <div
-                            className={`
-                                absolute right-0 mt-2 w-56 origin-top-right ${radius.lg}
-                                border ${colors.borderSubtle} ${colors.bgSurface}
-                                ${shadows.lg} ring-1 ring-black ring-opacity-5 py-1 z-50
-                            `}
-                        >
-                            {/* Header del dropdown con info completa */}
-                            <div className={`px-4 py-3 border-b ${colors.borderSubtle}`}>
-                                <p className={`${typography.bodySm} font-medium ${colors.textPrimary} truncate`}>
-                                    {user?.email}
-                                </p>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <p className={`${typography.caption} ${colors.textSecondary} truncate`}>
-                                        {userDisplayName}
-                                    </p>
-                                    <span className={`
-                                        inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold
-                                        ${user?.is_super_admin
-                                            ? 'bg-purple-100 text-purple-700'
-                                            : 'bg-slate-100 text-slate-600'}
-                                    `}>
-                                        {userRoleLabel}
-                                    </span>
+                        {menuOpen && (
+                            <div className="absolute right-0 mt-2 w-56 origin-top-right z-50" style={dropdownStyle}>
+                                <div className="px-4 py-3" style={{ borderBottom: 'var(--border-default)' }}>
+                                    <p style={{ fontSize: 'var(--text-body-size)', fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.email}</p>
+                                </div>
+                                <div className="py-1">
+                                    {user?.is_super_admin && mode === 'company' && (
+                                        <button type="button" onClick={() => { exitImpersonation(); navigate('/control-center'); setMenuOpen(false); }} style={dropdownBtnStyle}
+                                            onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-page)')}
+                                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                                            <Layout size={16} style={{ color: 'var(--text-muted)' }} /> Back to Platform
+                                        </button>
+                                    )}
+                                    <button type="button" style={dropdownBtnStyle} onClick={() => { navigate('/settings'); setMenuOpen(false); }}
+                                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-page)')}
+                                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                                        <Settings size={16} style={{ color: 'var(--text-muted)' }} /> Settings
+                                    </button>
+                                </div>
+                                <div className="py-1" style={{ borderTop: 'var(--border-default)' }}>
+                                    <button type="button" onClick={handleLogout} style={dropdownBtnStyle}
+                                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-page)')}
+                                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                                        <LogOut size={16} style={{ color: 'var(--text-muted)' }} /> Logout
+                                    </button>
                                 </div>
                             </div>
-
-                            <div className={`lg:hidden px-4 py-2 border-b ${colors.borderSubtle}`}>
-                                <p className={`${typography.text.caption} ${colors.textMuted}`}>
-                                    {mode === 'platform' ? 'Platform Control' : currentCompany?.name || ''}
-                                </p>
-                            </div>
-
-                            <div className="py-1">
-                                {user?.is_super_admin && mode === 'company' && (
-                                    <button
-                                        onClick={() => {
-                                            handleSwitchToPlatform();
-                                            setMenuOpen(false);
-                                        }}
-                                        className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-amber-600 hover:bg-amber-50"
-                                    >
-                                        <Layout size={16} />
-                                        Back to Platform
-                                    </button>
-                                )}
-
-                                <button
-                                    className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
-                                    onClick={() => {
-                                        navigate('/settings');
-                                        setMenuOpen(false);
-                                    }}
-                                >
-                                    <Settings size={16} />
-                                    Settings
-                                </button>
-                            </div>
-
-                            <div className="py-1 border-t border-slate-50">
-                                <button
-                                    onClick={handleLogout}
-                                    className={`
-                                        flex w-full items-center gap-2 px-4 py-2.5
-                                        ${typography.bodySm} text-red-600 hover:${colors.bgDanger}
-                                    `}
-                                >
-                                    <LogOut size={16} />
-                                    Logout
-                                </button>
-                            </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             </div>
         </header>
     );
 };
-
-
-

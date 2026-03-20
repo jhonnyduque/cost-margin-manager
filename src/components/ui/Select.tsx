@@ -45,7 +45,7 @@ export const Select: React.FC<SelectProps> = ({
                         top: '50%',
                         transform: 'translateY(-50%)',
                         pointerEvents: 'none',
-                        color: 'var(--color-neutral-400)',
+                        color: 'var(--text-muted)',
                         display: 'flex',
                     }}
                 >
