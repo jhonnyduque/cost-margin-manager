@@ -2059,6 +2059,61 @@ SECTION 18: UTILITY HELPERS [EXPANDED]
   }
 }
 
+/* ── TABLE / CARDS RESPONSIVE TOGGLE ─────────────────────── */
+.table-responsive-wrap {
+  display: none;
+}
+
+.cards-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.card-mobile-row {
+  background: var(--surface-card);
+  border: var(--border-default);
+  border-radius: var(--radius-xl);
+  padding: var(--space-16);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.card-mobile-row-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.card-mobile-row-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
+  flex-wrap: wrap;
+}
+
+.card-mobile-row-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  flex-wrap: wrap;
+  padding-top: var(--space-12);
+  border-top: var(--border-default);
+}
+
+@media (min-width: 48rem) {
+  .table-responsive-wrap {
+    display: block;
+  }
+
+  .cards-mobile {
+    display: none;
+  }
+}
+
 /* ============================================================
 SECTION 19: RESPONSIVE [STRUCTURAL] - REFINED
 ============================================================ */
@@ -2330,3 +2385,4 @@ GOBERNANZA - CAMBIOS PERMITIDOS
 ❌ NO eliminar secciones [STRUCTURAL]
 ❌ NO cambiar jerarquía de tokens
 ============================================================ */
+/* test-change-1 */
