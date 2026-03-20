@@ -47,7 +47,6 @@ export default function MorePage() {
         : (fullName && !isGenericName(fullName) ? fullName.slice(0, 2).toUpperCase() : 'OS');
     const isSuperAdmin = user?.is_super_admin;
 
-    // Icon background / color pairs — usando CSS vars
     const ic = {
         blue: { bg: 'var(--surface-primary-soft)', color: 'var(--state-primary)' },
         green: { bg: 'var(--surface-success-soft)', color: 'var(--state-success)' },
@@ -70,11 +69,7 @@ export default function MorePage() {
                 { label: 'Equipo', description: 'Gestión de usuarios y permisos', icon: Users, iconBg: ic.info.bg, iconColor: ic.info.color, path: '/equipo' },
                 { label: 'Facturación', description: 'Suscripción, planes y pagos', icon: CreditCard, iconBg: ic.blue.bg, iconColor: ic.blue.color, path: '/platform/billing' },
                 { label: 'Settings', description: 'Preferencias y seguridad', icon: Settings, iconBg: ic.blue.bg, iconColor: ic.blue.color, path: '/settings' },
-                ...(isSuperAdmin ? [{
-                    label: 'Admin Panel', description: 'Gobernanza de la plataforma',
-                    icon: Shield, iconBg: ic.info.bg, iconColor: ic.info.color,
-                    path: '/control-center', badge: 'ADMIN', badgeVariant: 'neutral' as const,
-                } as MenuItem] : []),
+                ...(isSuperAdmin ? [{ label: 'Admin Panel', description: 'Gobernanza de la plataforma', icon: Shield, iconBg: ic.info.bg, iconColor: ic.info.color, path: '/control-center', badge: 'ADMIN', badgeVariant: 'neutral' as const } as MenuItem] : []),
             ],
         },
         {
@@ -159,7 +154,6 @@ export default function MorePage() {
 
                 {/* Toolbar */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--space-12)', paddingTop: 'var(--space-16)', borderTop: 'var(--border-default)', marginBottom: 'var(--space-16)' }}>
-                    {/* User chip */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-10)', padding: 'var(--space-8) var(--space-12)', background: 'var(--surface-card)', borderRadius: 'var(--radius-lg)', border: 'var(--border-default)', boxShadow: 'var(--shadow-sm)', flexShrink: 0 }}>
                         <div style={{ width: '2rem', height: '2rem', borderRadius: 'var(--radius-lg)', background: 'var(--surface-primary-soft)', color: 'var(--state-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.75rem', textTransform: 'uppercase', border: '1px solid rgba(37,99,235,0.15)', flexShrink: 0 }}>
                             {userInitials}
@@ -177,7 +171,6 @@ export default function MorePage() {
                         </div>
                     </div>
 
-                    {/* Search */}
                     <div style={{ position: 'relative', flex: 1, minWidth: '11rem' }}>
                         <Search size={14} style={{ position: 'absolute', left: 'var(--space-12)', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                         <input type="text" placeholder="Buscar módulo o configuración..." value={search} onChange={e => setSearch(e.target.value)}
@@ -190,12 +183,13 @@ export default function MorePage() {
                         <p className="text-muted">Sin resultados para "{search}"</p>
                     </div>
                 ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 'var(--space-16)' }}>
+                    /* CSS columns — flujo masonry, sin espacios en blanco */
+                    <div style={{ columns: '2 18rem', gap: 'var(--space-16)' }}>
                         {filteredSections.map(section => (
-                            <div key={section.title}>
+                            <div key={section.title} style={{ breakInside: 'avoid', marginBottom: 'var(--space-16)' }}>
                                 <p className="text-small text-muted" style={{ padding: '0 var(--space-4)', marginBottom: 'var(--space-8)' }}>{section.title}</p>
                                 <Card style={{ padding: 0, overflow: 'hidden' }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
                                         {section.items.map((item, i) => (
                                             <div key={item.label} style={{ borderTop: i > 0 ? 'var(--border-default)' : 'none' }}>
                                                 <MenuItemRow item={item} />

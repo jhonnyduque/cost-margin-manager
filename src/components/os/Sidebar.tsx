@@ -135,6 +135,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
                         const mod = module as any;
                         if (mod.superAdminOnly) return null;
                         if (mod.id === 'settings' || mod.id === 'analytics') return null;
+                        if (mod.hiddenFromSidebar) return null;          // ← filtro nuevo
                         if (mod.id === 'billing' && !['owner', 'admin', 'manager'].includes(userRole || '')) return null;
                         if (!mod.comingSoon) {
                             const isEnabled = enabledModules.includes('*') || enabledModules.includes(mod.id);

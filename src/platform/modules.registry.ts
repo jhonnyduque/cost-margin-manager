@@ -1,6 +1,6 @@
 import {
     LayoutDashboard, Layers, Users, CreditCard, Bot, BarChart3,
-    Settings, Package, Beaker, Boxes, Contact2, Truck,
+    Settings, Package, Boxes, Contact2, Truck,
     Factory, ShoppingCart, Building2
 } from 'lucide-react';
 
@@ -43,7 +43,7 @@ export const MODULES = {
         id: 'raw_materials',
         name: 'Materias Primas',
         path: '/materias-primas',
-        icon: Beaker,
+        icon: Layers,                          // ← Beaker → Layers
         requiredCapability: 'view_raw_materials',
         tenantOnly: true
     },
@@ -69,7 +69,8 @@ export const MODULES = {
         path: '/clientes',
         icon: Contact2,
         requiredCapability: 'view_team',
-        tenantOnly: true
+        tenantOnly: true,
+        hiddenFromSidebar: true
     },
     dispatches: {
         id: 'dispatches',
@@ -77,7 +78,8 @@ export const MODULES = {
         path: '/despachos',
         icon: Truck,
         requiredCapability: 'view_products',
-        tenantOnly: true
+        tenantOnly: true,
+        hiddenFromSidebar: true
     },
     settings: {
         id: 'settings',
@@ -118,7 +120,8 @@ export const MODULES = {
         name: 'Facturación',
         path: '/platform/billing',
         icon: CreditCard,
-        requiredCapability: 'view_costs'
+        requiredCapability: 'view_costs',
+        hiddenFromSidebar: true
     },
 
     // ── Shared Modules ──
@@ -127,7 +130,8 @@ export const MODULES = {
         name: 'AI Consultants',
         path: '/ai',
         icon: Bot,
-        requiredCapability: 'view_products'
+        requiredCapability: 'view_products',
+        hiddenFromSidebar: true
     },
     analytics: {
         id: 'analytics',
