@@ -109,12 +109,7 @@ const ProductBuilder = () => {
     return calculateProductCost(tempProduct, batches, rawMaterials, unitsOfMeasure);
   }, [formData.materials, batches, rawMaterials]);
 
-  const exactSuggestedPrice = useMemo(() => {
-    const margin = formData.target_margin || 0;
-    if (margin >= 100) return 0;
-    return totalCurrentCost / (1 - margin / 100);
-  }, [totalCurrentCost, formData.target_margin]);
-
+  const exactSuggestedPrice = useMemo(() => { const margin = formData.target_margin || 0; if (margin >= 100) return 0; return totalCurrentCost / (1 - margin / 100); }, [totalCurrentCost, formData.target_margin]);
   const commercialSuggestedPrice = useMemo(() => getCommercialPrice(exactSuggestedPrice), [exactSuggestedPrice]);
 
   const updateMaterial = (idx: number, field: string, value: any) => {
@@ -138,25 +133,9 @@ const ProductBuilder = () => {
     else if (expandedMaterial !== null && expandedMaterial > idx) setExpandedMaterial(expandedMaterial - 1);
   };
 
-  const addPiece = (idx: number) => {
-    const materials = [...(formData.materials || [])];
-    const mat = materials[idx];
-    const rollWidth = getLatestRollWidth(mat.material_id, batches);
-    mat.pieces = [...(mat.pieces || []), { length: 10, width: rollWidth }];
-    setFormData({ ...formData, materials });
-  };
-
-  const updatePiece = (matIdx: number, pieceIdx: number, field: 'length' | 'width', value: number) => {
-    const materials = [...(formData.materials || [])];
-    materials[matIdx].pieces[pieceIdx][field] = value;
-    setFormData({ ...formData, materials });
-  };
-
-  const removePiece = (matIdx: number, pieceIdx: number) => {
-    const materials = [...(formData.materials || [])];
-    materials[matIdx].pieces = materials[matIdx].pieces.filter((_: any, i: number) => i !== pieceIdx);
-    setFormData({ ...formData, materials });
-  };
+  const addPiece = (idx: number) => { const materials = [...(formData.materials || [])]; const mat = materials[idx]; const rollWidth = getLatestRollWidth(mat.material_id, batches); mat.pieces = [...(mat.pieces || []), { length: 10, width: rollWidth }]; setFormData({ ...formData, materials }); };
+  const updatePiece = (matIdx: number, pieceIdx: number, field: 'length' | 'width', value: number) => { const materials = [...(formData.materials || [])]; materials[matIdx].pieces[pieceIdx][field] = value; setFormData({ ...formData, materials }); };
+  const removePiece = (matIdx: number, pieceIdx: number) => { const materials = [...(formData.materials || [])]; materials[matIdx].pieces = materials[matIdx].pieces.filter((_: any, i: number) => i !== pieceIdx); setFormData({ ...formData, materials }); };
 
   const saveProduct = useCallback(async () => {
     if (!currentCompanyId) { alert('Error: No hay una empresa activa.'); return; }
@@ -165,18 +144,12 @@ const ProductBuilder = () => {
     if ((formData.materials || []).length === 0) errors.push('Al menos un insumo en la receta');
     if (!formData.price || formData.price <= 0) errors.push('Precio de venta mayor a 0');
     if (errors.length > 0) { alert(`Faltan campos obligatorios:\n\n• ${errors.join('\n• ')}`); return; }
-
     const processedMaterials = formData.materials.map((pm: any) => {
-      if (pm.mode === 'pieces' && pm.pieces) {
-        const rollWidth = getLatestRollWidth(pm.material_id, batches);
-        return { ...pm, quantity: calculatePiecesToLinearMeters(pm.pieces, rollWidth) };
-      }
+      if (pm.mode === 'pieces' && pm.pieces) { const rollWidth = getLatestRollWidth(pm.material_id, batches); return { ...pm, quantity: calculatePiecesToLinearMeters(pm.pieces, rollWidth) }; }
       return pm;
     });
-
     const now = new Date().toISOString();
     const data = { ...formData, materials: processedMaterials, id: editingId || crypto.randomUUID(), company_id: currentCompanyId, status: formData.status || 'activa', min_stock: minStock ?? null, created_at: editingId ? (products.find(p => p.id === editingId)?.created_at) : now, updated_at: now } as Product;
-
     try {
       if (editingId) { await updateProduct(data); } else { await addProduct(data); }
       navigate('/productos');
@@ -188,19 +161,13 @@ const ProductBuilder = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === 'g') { e.preventDefault(); saveProduct(); }
-      if (e.key === 'Escape') {
-        if (selectorModal.isOpen) { setSelectorModal({ isOpen: false, forIndex: null }); }
-        else { navigate('/productos'); }
-      }
+      if (e.key === 'Escape') { if (selectorModal.isOpen) { setSelectorModal({ isOpen: false, forIndex: null }); } else { navigate('/productos'); } }
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [saveProduct, navigate, selectorModal.isOpen]);
 
-  useEffect(() => {
-    document.body.style.overflow = selectorModal.isOpen ? 'hidden' : 'auto';
-    return () => { document.body.style.overflow = 'auto'; };
-  }, [selectorModal.isOpen]);
+  useEffect(() => { document.body.style.overflow = selectorModal.isOpen ? 'hidden' : 'auto'; return () => { document.body.style.overflow = 'auto'; }; }, [selectorModal.isOpen]);
 
   const metrics = calculateFinancialMetrics(totalCurrentCost, formData.price || 0, (formData.target_margin || 30) / 100, currencySymbol);
 
@@ -224,6 +191,22 @@ const ProductBuilder = () => {
 
   return (
     <PageContainer>
+      {/* Responsive breakpoints inline */}
+      <style>{`
+        .pb-price-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-12); }
+        .pb-pieces-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-12); }
+        .pb-main-layout { display: flex; flex-direction: column; gap: var(--space-24); align-items: flex-start; }
+        .pb-sidebar { width: 100%; }
+        @media (min-width: 48rem) {
+          .pb-price-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+          .pb-pieces-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        }
+        @media (min-width: 64rem) {
+          .pb-main-layout { flex-direction: row; }
+          .pb-sidebar { width: 22rem; flex-shrink: 0; }
+        }
+      `}</style>
+
       {/* Sticky header */}
       <div style={{ position: 'sticky', top: 0, zIndex: 40, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--space-12) var(--space-24)', background: 'var(--surface-card)', borderBottom: 'var(--border-default)', boxShadow: 'var(--shadow-sm)', margin: 'calc(-1 * var(--space-24)) calc(-1 * var(--space-24)) var(--space-24)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-16)', flex: 1 }}>
@@ -243,9 +226,9 @@ const ProductBuilder = () => {
 
       <div style={{ maxWidth: 'var(--container-xl)', margin: '0 auto' }}>
         <form onSubmit={handleSubmit}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-24)', alignItems: 'flex-start' }}>
+          <div className="pb-main-layout">
 
-            {/* Left column */}
+            {/* Left column — forms */}
             <div style={{ width: '100%', flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--space-24)' }}>
 
               {/* Sección 1: Información general */}
@@ -253,7 +236,8 @@ const ProductBuilder = () => {
                 <h2 style={{ fontSize: 'var(--text-h3-size)', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 'var(--space-24)', display: 'flex', alignItems: 'center', gap: 'var(--space-8)', borderBottom: 'var(--border-default)', paddingBottom: 'var(--space-16)' }}>
                   <Package size={18} style={{ color: 'var(--text-muted)' }} /> 1. Información General
                 </h2>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-24)' }}>
+                {/* Responsive: 1 col mobile → 2 cols tablet+ */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(14rem, 1fr))', gap: 'var(--space-24)' }}>
                   <Input label="Nombre Comercial" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Ej. Bolso de Mano Primavera" required />
                   <Input label="Referencia / SKU" value={formData.reference} onChange={e => setFormData({ ...formData, reference: e.target.value })} placeholder="REF-001" />
                 </div>
@@ -261,7 +245,7 @@ const ProductBuilder = () => {
 
               {/* Sección 2: Receta */}
               <Card>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-24)', borderBottom: 'var(--border-default)', paddingBottom: 'var(--space-16)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-24)', borderBottom: 'var(--border-default)', paddingBottom: 'var(--space-16)', flexWrap: 'wrap', gap: 'var(--space-12)' }}>
                   <h2 style={{ fontSize: 'var(--text-h3-size)', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 'var(--space-8)' }}>
                     <RotateCcw size={18} style={{ color: 'var(--text-muted)' }} /> 2. Receta de Producción
                   </h2>
@@ -292,7 +276,6 @@ const ProductBuilder = () => {
                     const costRow = breakdown.reduce((acc, item) => acc + item.subtotal, 0);
                     const isExpanded = expandedMaterial === idx;
                     const hasMissingStock = breakdown.some((b: any) => b.is_missing);
-
                     const mBatches = batches.filter(b => b.material_id === pm.material_id);
                     const totalAvailableBase = mBatches.reduce((acc, b) => acc + (b.base_remaining_quantity || 0), 0);
                     const uomForStock = unitsOfMeasure.find(u => u.symbol === pm.consumption_unit);
@@ -339,20 +322,17 @@ const ProductBuilder = () => {
                             </span>
                           </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 var(--space-4)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-8)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 var(--space-4)', flexWrap: 'wrap', gap: 'var(--space-8)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-8)', flexWrap: 'wrap' }}>
                               <div style={{ display: 'flex', gap: 'var(--space-2)', borderRadius: 'var(--radius-sm)', border: 'var(--border-default)', background: 'var(--surface-card)', padding: 'var(--space-2)', fontSize: 'var(--text-caption-size)', textTransform: 'uppercase' }}>
                                 {isFabric ? (
                                   <>
-                                    <button type="button" onClick={() => updateMaterial(idx, 'mode', 'linear')}
-                                      style={{ borderRadius: '3px', padding: '2px var(--space-8)', fontWeight: 700, border: 'none', cursor: 'pointer', background: pm.mode === 'linear' ? 'var(--surface-primary-soft)' : 'transparent', color: pm.mode === 'linear' ? 'var(--state-primary)' : 'var(--text-muted)', transition: 'background var(--transition-fast)' }}>Lin</button>
-                                    <button type="button" onClick={() => updateMaterial(idx, 'mode', 'pieces')}
-                                      style={{ borderRadius: '3px', padding: '2px var(--space-8)', fontWeight: 700, border: 'none', cursor: 'pointer', background: pm.mode === 'pieces' ? 'var(--surface-primary-soft)' : 'transparent', color: pm.mode === 'pieces' ? 'var(--state-primary)' : 'var(--text-muted)', transition: 'background var(--transition-fast)' }}>Pzas</button>
+                                    <button type="button" onClick={() => updateMaterial(idx, 'mode', 'linear')} style={{ borderRadius: '3px', padding: '2px var(--space-8)', fontWeight: 700, border: 'none', cursor: 'pointer', background: pm.mode === 'linear' ? 'var(--surface-primary-soft)' : 'transparent', color: pm.mode === 'linear' ? 'var(--state-primary)' : 'var(--text-muted)', transition: 'background var(--transition-fast)' }}>Lin</button>
+                                    <button type="button" onClick={() => updateMaterial(idx, 'mode', 'pieces')} style={{ borderRadius: '3px', padding: '2px var(--space-8)', fontWeight: 700, border: 'none', cursor: 'pointer', background: pm.mode === 'pieces' ? 'var(--surface-primary-soft)' : 'transparent', color: pm.mode === 'pieces' ? 'var(--state-primary)' : 'var(--text-muted)', transition: 'background var(--transition-fast)' }}>Pzas</button>
                                   </>
                                 ) : (
                                   unitsOfMeasure.filter(u => u.category_id === material?.category_id).sort((a, b) => b.conversion_factor - a.conversion_factor).map(u => (
-                                    <button key={u.id} type="button" onClick={() => updateMaterial(idx, 'consumption_unit', u.symbol)}
-                                      style={{ borderRadius: '3px', padding: '2px var(--space-8)', fontWeight: pm.consumption_unit === u.symbol ? 700 : 400, border: 'none', cursor: 'pointer', background: pm.consumption_unit === u.symbol ? 'var(--surface-primary-soft)' : 'transparent', color: pm.consumption_unit === u.symbol ? 'var(--state-primary)' : 'var(--text-muted)', transition: 'background var(--transition-fast)' }}>{u.symbol}</button>
+                                    <button key={u.id} type="button" onClick={() => updateMaterial(idx, 'consumption_unit', u.symbol)} style={{ borderRadius: '3px', padding: '2px var(--space-8)', fontWeight: pm.consumption_unit === u.symbol ? 700 : 400, border: 'none', cursor: 'pointer', background: pm.consumption_unit === u.symbol ? 'var(--surface-primary-soft)' : 'transparent', color: pm.consumption_unit === u.symbol ? 'var(--state-primary)' : 'var(--text-muted)', transition: 'background var(--transition-fast)' }}>{u.symbol}</button>
                                   ))
                                 )}
                               </div>
@@ -370,12 +350,13 @@ const ProductBuilder = () => {
 
                         {isExpanded && (
                           <div style={{ background: 'var(--surface-card)', padding: 'var(--space-24)', display: 'flex', flexDirection: 'column', gap: 'var(--space-24)' }}>
+                            {/* FIFO table — scroll horizontal en móvil */}
                             <div>
                               <h5 style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-8)', fontSize: 'var(--text-caption-size)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-secondary)', marginBottom: 'var(--space-12)' }}>
                                 <History size={14} /> Asignación Lotes (FIFO)
                               </h5>
-                              <div style={{ border: 'var(--border-default)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
-                                <table style={{ width: '100%', fontSize: 'var(--text-caption-size)', borderCollapse: 'separate', borderSpacing: 0 }}>
+                              <div style={{ overflowX: 'auto', border: 'var(--border-default)', borderRadius: 'var(--radius-lg)' }}>
+                                <table style={{ width: '100%', minWidth: '28rem', fontSize: 'var(--text-caption-size)', borderCollapse: 'separate', borderSpacing: 0 }}>
                                   <thead>
                                     <tr style={{ background: 'var(--surface-muted)', borderBottom: 'var(--border-default)' }}>
                                       {['Lote', 'Volumen', 'Costo Und.', 'Parcial'].map((h, i) => (
@@ -399,13 +380,14 @@ const ProductBuilder = () => {
 
                             {pm.mode === 'pieces' && (
                               <div>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-16)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-16)', flexWrap: 'wrap', gap: 'var(--space-8)' }}>
                                   <h5 style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-8)', fontSize: 'var(--text-caption-size)', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
                                     <Ruler size={14} /> Trazado de Piezas
                                   </h5>
                                   <Button variant="secondary" size="sm" onClick={() => addPiece(idx)}>Añadir Pieza</Button>
                                 </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--space-12)' }}>
+                                {/* Responsive: 2 cols mobile → 3 cols tablet+ */}
+                                <div className="pb-pieces-grid">
                                   {(pm.pieces || []).map((piece: any, pIdx: number) => (
                                     <div key={pIdx} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-8)', border: 'var(--border-default)', borderRadius: 'var(--radius-lg)', background: 'var(--surface-muted)', padding: 'var(--space-8)' }}>
                                       <div style={{ flex: 1 }}>
@@ -448,8 +430,8 @@ const ProductBuilder = () => {
                     <p className="text-small text-muted">El margen y precio ideal dependen de lo que cueste fabricarlo.</p>
                   </div>
                 ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 'var(--space-12)' }}>
-                    {/* Margen objetivo */}
+                  /* Responsive: 2 cols mobile → 4 cols tablet+ */
+                  <div className="pb-price-grid">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
                       <label className="text-small text-muted" style={{ fontWeight: 700 }}>Margen Objetivo (%)</label>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', border: 'var(--border-default)', borderRadius: 'var(--radius-md)', background: 'var(--surface-page)', padding: 'var(--space-10) var(--space-12)', transition: 'border-color var(--transition-fast)' }}
@@ -463,7 +445,6 @@ const ProductBuilder = () => {
                         <span style={{ fontSize: 'var(--text-small-size)', fontWeight: 700, color: 'var(--text-muted)' }}>%</span>
                       </div>
                     </div>
-                    {/* Precio final */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
                       <label className="text-small text-muted" style={{ fontWeight: 700 }}>Precio Final</label>
                       <div style={{ position: 'relative' }}>
@@ -475,7 +456,6 @@ const ProductBuilder = () => {
                           className="input" style={{ paddingLeft: 'var(--space-32)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }} />
                       </div>
                     </div>
-                    {/* Precio exacto */}
                     <button type="button" onClick={() => setFormData({ ...formData, price: exactSuggestedPrice })}
                       style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-4)', borderRadius: 'var(--radius-xl)', border: 'var(--border-default)', background: 'var(--surface-card)', padding: 'var(--space-10) var(--space-8)', cursor: 'pointer', transition: 'border-color var(--transition-fast), background var(--transition-fast)' }}
                       onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-color-strong)'; e.currentTarget.style.background = 'var(--surface-page)'; }}
@@ -483,7 +463,6 @@ const ProductBuilder = () => {
                       <span className="text-small text-muted">Exacto</span>
                       <span style={{ fontSize: 'var(--text-caption-size)', fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }}>{formatCurrency(exactSuggestedPrice)}</span>
                     </button>
-                    {/* Precio comercial */}
                     <button type="button" onClick={() => setFormData({ ...formData, price: commercialSuggestedPrice })}
                       style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-4)', borderRadius: 'var(--radius-xl)', border: 'var(--border-default)', background: 'var(--surface-page)', padding: 'var(--space-10) var(--space-8)', cursor: 'pointer', transition: 'border-color var(--transition-fast)' }}
                       onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--border-color-strong)')}
@@ -509,8 +488,8 @@ const ProductBuilder = () => {
               </Card>
             </div>
 
-            {/* Right column — Resumen */}
-            <div style={{ width: '100%', maxWidth: '22rem' }}>
+            {/* Right column — sidebar resumen */}
+            <div className="pb-sidebar">
               <Card style={{ position: 'sticky', top: 'var(--space-64)' }}>
                 <h2 className="text-small text-muted" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-8)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 'var(--space-24)' }}>
                   <Layers size={14} style={{ color: 'var(--text-muted)' }} /> Resumen Comercial
@@ -589,9 +568,7 @@ const ProductBuilder = () => {
             <div style={{ padding: 'var(--space-16)', borderBottom: 'var(--border-default)' }}>
               <div style={{ position: 'relative' }}>
                 <Search size={18} style={{ position: 'absolute', left: 'var(--space-12)', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input autoFocus type="search" placeholder="Buscar por nombre o descripción..."
-                  className="input" style={{ paddingLeft: 'var(--space-40)' }}
-                  value={selectorSearch} onChange={e => setSelectorSearch(e.target.value)} />
+                <input autoFocus type="search" placeholder="Buscar por nombre o descripción..." className="input" style={{ paddingLeft: 'var(--space-40)' }} value={selectorSearch} onChange={e => setSelectorSearch(e.target.value)} />
               </div>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-8)' }}>
