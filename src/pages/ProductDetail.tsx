@@ -80,7 +80,6 @@ const ProductDetail: React.FC = () => {
     const relevantMovements = productMovements.filter(m => m.product_id === product.id).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     const currentStock = calculateProductStock(product.id, productMovements);
 
-    // Dropdown menu styles
     const menuStyle: React.CSSProperties = {
         position: 'absolute', right: 0, top: 'calc(100% + var(--space-8))',
         width: '14rem', background: 'var(--surface-card)',
@@ -105,8 +104,7 @@ const ProductDetail: React.FC = () => {
                 <button onClick={() => navigate('/productos')}
                     style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-8)', fontSize: 'var(--text-small-size)', fontWeight: 600, color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', transition: 'color var(--transition-fast)' }}
                     onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
-                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-secondary)')}
-                >
+                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-secondary)')}>
                     <ArrowLeft size={16} /> Volver al catálogo
                 </button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-8)' }}>
@@ -173,7 +171,8 @@ const ProductDetail: React.FC = () => {
                     }
                 />
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 'var(--space-24)', marginTop: 'var(--space-24)' }}>
+                {/* grid-responsive-detail: 1 col mobile → 1fr/2fr desktop (64rem+) */}
+                <div className="grid-responsive-detail" style={{ marginTop: 'var(--space-24)' }}>
 
                     {/* Left column */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-24)' }}>
@@ -230,7 +229,6 @@ const ProductDetail: React.FC = () => {
 
                     {/* Right column */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-24)' }}>
-
                         {/* BOM */}
                         <Card>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-24)' }}>
@@ -289,7 +287,6 @@ const ProductDetail: React.FC = () => {
                                 </h3>
                                 <Badge variant="neutral">{relevantMovements.length} registros</Badge>
                             </div>
-
                             {relevantMovements.length === 0 ? (
                                 <div className="empty-state" style={{ border: '2px dashed var(--border-color-default)', borderRadius: 'var(--radius-lg)' }}>
                                     <div className="empty-state-icon"><Archive size={24} /></div>
@@ -312,16 +309,7 @@ const ProductDetail: React.FC = () => {
                                                 <tr key={mov.id}>
                                                     <td className="text-small tabular">{new Date(mov.created_at).toLocaleDateString()}</td>
                                                     <td>
-                                                        <span style={{
-                                                            display: 'inline-flex', alignItems: 'center',
-                                                            padding: '2px var(--space-8)',
-                                                            borderRadius: 'var(--radius-sm)',
-                                                            fontSize: '10px', fontWeight: 700,
-                                                            textTransform: 'uppercase', letterSpacing: '0.06em',
-                                                            background: 'var(--surface-muted)',
-                                                            color: 'var(--text-secondary)',
-                                                            border: 'var(--border-default)',
-                                                        }}>
+                                                        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px var(--space-8)', borderRadius: 'var(--radius-sm)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', background: 'var(--surface-muted)', color: 'var(--text-secondary)', border: 'var(--border-default)' }}>
                                                             {mov.type === 'ingreso_produccion' ? 'Producción' : mov.type === 'salida_venta' ? 'Venta' : 'Ajuste'}
                                                         </span>
                                                     </td>

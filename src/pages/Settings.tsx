@@ -25,7 +25,8 @@ export default function Settings() {
 
     useEffect(() => {
         if (!user?.id) return;
-        supabase.from('users').select('full_name').eq('id', user.id).single().then(({ data }) => { if (data?.full_name) setFullName(data.full_name); });
+        supabase.from('users').select('full_name').eq('id', user.id).single()
+            .then(({ data }) => { if (data?.full_name) setFullName(data.full_name); });
     }, [user?.id]);
 
     const handleSaveProfile = async () => {
@@ -36,27 +37,38 @@ export default function Settings() {
             const { error } = await supabase.auth.updateUser(updates);
             if (error) throw error;
             if (user?.id) await supabase.from('users').update({ full_name: fullName }).eq('id', user.id);
-            setNewPassword(''); setProfileMessage({ type: 'success', text: 'Perfil actualizado con éxito.' });
-        } catch (err: any) { setProfileMessage({ type: 'error', text: err.message || 'Error al actualizar perfil.' }); }
-        finally { setProfileSaving(false); }
+            setNewPassword('');
+            setProfileMessage({ type: 'success', text: 'Perfil actualizado con éxito.' });
+        } catch (err: any) {
+            setProfileMessage({ type: 'error', text: err.message || 'Error al actualizar perfil.' });
+        } finally { setProfileSaving(false); }
     };
 
     return (
         <PageContainer>
             <SectionBlock>
                 <header style={{ marginBottom: 'var(--space-32)' }}>
-                    <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Configuración del Sistema</h1>
+                    <h1 style={{ fontSize: 'var(--text-h1-size)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+                        Configuración del Sistema
+                    </h1>
                     <p style={{ color: 'var(--text-secondary)', maxWidth: '42rem', marginTop: 'var(--space-8)' }}>
-                        {isSuperAdmin ? 'Administración global de la plataforma y preferencias de tu cuenta maestra.' : 'Personaliza tu experiencia, gestiona tu suscripción y asegura tu cuenta.'}
+                        {isSuperAdmin
+                            ? 'Administración global de la plataforma y preferencias de tu cuenta maestra.'
+                            : 'Personaliza tu experiencia, gestiona tu suscripción y asegura tu cuenta.'}
                     </p>
                 </header>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--space-32)', alignItems: 'flex-start' }}>
-                    {/* Left */}
+                {/* grid-responsive-sidebar: 1 col mobile → 2fr/1fr desktop (64rem+) */}
+                <div className="grid-responsive-sidebar">
+
+                    {/* Left column */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-24)' }}>
-                        {/* Perfil */}
                         <Card>
-                            <Card.Header title="Información Personal" description="Datos públicos y credenciales de acceso." icon={<User style={{ color: 'var(--text-muted)' }} size={20} />} />
+                            <Card.Header
+                                title="Información Personal"
+                                description="Datos públicos y credenciales de acceso."
+                                icon={<User style={{ color: 'var(--text-muted)' }} size={20} />}
+                            />
                             <Card.Content style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-24)', paddingTop: 'var(--space-16)' }}>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-16)' }}>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
@@ -88,7 +100,6 @@ export default function Settings() {
                             </Card.Footer>
                         </Card>
 
-                        {/* Plan */}
                         {!isSuperAdmin && (
                             <Card>
                                 <Card.Header title="Suscripción y Límites" description="Estado actual de tu plan y consumo de recursos." icon={<CreditCard style={{ color: 'var(--text-muted)' }} size={20} />} />
@@ -99,7 +110,7 @@ export default function Settings() {
                         <NotificationSettings />
                     </div>
 
-                    {/* Right */}
+                    {/* Right column */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-24)' }}>
                         <SectionPlaceholder icon={<Lock size={20} style={{ color: 'var(--text-muted)' }} />} title="Seguridad Avanzada" description="2FA y control de dispositivos." items={[{ icon: <Smartphone size={16} />, label: 'Autenticación en 2 pasos' }, { icon: <Lock size={16} />, label: 'Historial de sesiones' }]} />
                         {isSuperAdmin ? (
@@ -117,7 +128,6 @@ export default function Settings() {
     );
 }
 
-/* ── Notification Settings ─────────────────────────────── */
 function NotificationSettings() {
     const { user } = useAuth();
     const [preferences, setPreferences] = useState<any[]>([]);
@@ -172,8 +182,7 @@ function NotificationSettings() {
                                 ].map(t => (
                                     <div key={t.field} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-8)', borderLeft: t.border ? 'var(--border-default)' : 'none', paddingLeft: t.border ? 'var(--space-16)' : 0 }}>
                                         <span style={{ fontSize: 'var(--text-caption-size)', fontWeight: 700, color: 'var(--text-muted)' }}>{t.label}</span>
-                                        <button onClick={() => togglePreference(key, t.field, t.val)}
-                                            style={{ position: 'relative', display: 'inline-flex', height: '1.5rem', width: '2.75rem', alignItems: 'center', borderRadius: '999px', transition: 'background var(--transition-fast)', background: t.val ? 'var(--state-primary)' : 'var(--surface-muted)', border: 'none', cursor: 'pointer' }}>
+                                        <button onClick={() => togglePreference(key, t.field, t.val)} style={{ position: 'relative', display: 'inline-flex', height: '1.5rem', width: '2.75rem', alignItems: 'center', borderRadius: '999px', transition: 'background var(--transition-fast)', background: t.val ? 'var(--state-primary)' : 'var(--surface-muted)', border: 'none', cursor: 'pointer' }}>
                                             <span style={{ display: 'inline-block', width: '1rem', height: '1rem', borderRadius: '50%', background: 'var(--surface-card)', transition: 'transform var(--transition-fast)', transform: t.val ? 'translateX(1.5rem)' : 'translateX(0.25rem)' }} />
                                         </button>
                                     </div>
@@ -187,7 +196,6 @@ function NotificationSettings() {
     );
 }
 
-/* ── Section Placeholder ─────────────────────────────────── */
 function SectionPlaceholder({ icon, title, description, items }: { icon: React.ReactNode; title: string; description: string; items: { icon: React.ReactNode; label: string }[] }) {
     return (
         <Card style={{ opacity: 0.8, border: '1px dashed var(--border-color-default)', transition: 'filter var(--transition-base)' }}
@@ -197,9 +205,7 @@ function SectionPlaceholder({ icon, title, description, items }: { icon: React.R
             <Card.Content style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-8)', paddingTop: 'var(--space-16)' }}>
                 {items.map((item, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-12)', padding: 'var(--space-12) var(--space-16)', background: 'var(--surface-page)', borderRadius: 'var(--radius-lg)', fontSize: 'var(--text-caption-size)', fontWeight: 700, color: 'var(--text-muted)', border: 'var(--border-default)' }}>
-                        {item.icon}
-                        <span style={{ flex: 1 }}>{item.label}</span>
-                        <ChevronRight size={14} style={{ opacity: 0.3 }} />
+                        {item.icon}<span style={{ flex: 1 }}>{item.label}</span><ChevronRight size={14} style={{ opacity: 0.3 }} />
                     </div>
                 ))}
             </Card.Content>
