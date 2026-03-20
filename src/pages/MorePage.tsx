@@ -86,7 +86,7 @@ export default function MorePage() {
         {
             title: 'Herramientas',
             items: [
-                { label: 'Reportes', description: 'Ventas, márgenes y exportaciones', icon: BarChart3, iconBg: ic.emerald.bg, iconColor: ic.emerald.color, path: '/reportes', comingSoon: true },
+                { label: 'Reportes', description: 'Ventas, márgenes y exportaciones', icon: BarChart3, iconBg: ic.emerald.bg, iconColor: ic.emerald.color, path: '/reportes' },
                 { label: 'Analytics', description: 'Métricas y análisis del negocio', icon: Activity, iconBg: ic.cyan.bg, iconColor: ic.cyan.color, path: '/analytics' },
             ],
         },

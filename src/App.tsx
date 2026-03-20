@@ -35,6 +35,7 @@ import Production from '@/pages/Production';
 import PlatformAdmin from './pages/PlatformAdmin';
 import { EnvironmentsPage } from './pages/platform/EnvironmentsPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
+import Reports from '@/pages/reports/Reports';
 
 // Pages - Billing
 import Billing from '@/pages/platform/Billing';
@@ -169,7 +170,7 @@ const AppContent: React.FC = () => {
                 <Route path="/produccion" element={<Production />} />
                 <Route path="/compras" element={<Purchases />} />
                 <Route path="/proveedores" element={<Suppliers />} />
-                <Route path="/reportes" element={<PlaceholderPage />} />
+                <Route path="/reportes" element={<Reports />} />
 
                 {/* Equipo */}
                 <Route path="/login" element={<Login />} />
