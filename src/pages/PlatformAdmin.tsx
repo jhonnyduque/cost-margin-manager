@@ -526,22 +526,14 @@ export default function PlatformAdmin() {
             {/* Tenants */}
             {activeTab === 'tenants' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-24)' }}>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-16)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--space-16)' }}>
                         <div>
-                            <h2 style={sectionTitle}>Gestión de Environments</h2>
-                            <p style={{ fontSize: 'var(--text-caption-size)', color: 'var(--text-secondary)', fontWeight: 500 }}>Control total sobre las instancias y suscripciones de la plataforma</p>
+                            <h2 style={sectionTitle}>Gestión de Empresas</h2>
+                            <p style={{ fontSize: 'var(--text-caption-size)', color: 'var(--text-secondary)' }}>Semáforo de engagement en tiempo real</p>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-8)' }}>
-                            <div style={{ position: 'relative', minWidth: '20rem' }}>
-                                <Search size={16} style={{ position: 'absolute', left: 'var(--space-16)', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-                                <input type="text" placeholder="Buscar empresa, slug o plan..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="input" style={{ paddingLeft: 'var(--space-40)', width: '100%' }} />
-                            </div>
-                            <Button variant="primary" size="sm" onClick={() => setIsCreateModalOpen(true)} icon={<Plus size={16} />}>Nueva Empresa</Button>
-                        </div>
+                        <Button variant="primary" size="sm" onClick={() => setIsCreateModalOpen(true)} icon={<Plus size={16} />}>Nueva Empresa</Button>
                     </div>
-                    <div style={{ borderRadius: 'var(--radius-2xl)', border: 'var(--border-default)', background: 'var(--surface-card)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
-                        <EntityList config={tenantConfig} items={filteredCompanies} loading={fetchingTenants} emptyMessage="No se encontraron empresas con esos criterios." />
-                    </div>
+                    <TenantEngagementTable onAccessTenant={handleTenantAccess} onEditTenant={handleEdit} />
                     <CreateTenantModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} onSuccess={handleCreateSuccess} />
                     {selectedCompany && <EditTenantModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} company={selectedCompany} onSuccess={handleEditSuccess} />}
                 </div>

@@ -5,7 +5,6 @@ import { adminStatsService } from '@/services/adminStatsService';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Activity, UserPlus, AlertCircle, CreditCard, Box, Zap, Megaphone } from 'lucide-react';
-import { typography } from '@/design/typography';
 
 export function ActivityFeed() {
     const [events, setEvents] = useState<any[]>([]);
@@ -33,18 +32,14 @@ export function ActivityFeed() {
                         created_at: log.created_at,
                         event_key: eventKey,
                         source_module: log.resource_type,
-                        payload: {
-                            message: `Acción ${log.action} en ${log.resource_type}`
-                        },
+                        payload: { message: `Acción ${log.action} en ${log.resource_type}` },
                     };
                     setEvents(prev => [formattedEvent, ...prev].slice(0, 15));
                 }
             )
             .subscribe();
 
-        return () => {
-            supabase.removeChannel(channel);
-        };
+        return () => { supabase.removeChannel(channel); };
     }, []);
 
     const loadEvents = async () => {
@@ -61,12 +56,12 @@ export function ActivityFeed() {
     const navigate = useNavigate();
 
     const getEventIcon = (key: string) => {
-        if (key.includes('INVENTORY')) return <Box size={14} className="text-amber-500" />;
-        if (key.includes('BILLING')) return <CreditCard size={14} className="text-red-500" />;
-        if (key.includes('TEAM')) return <UserPlus size={14} className="text-blue-500" />;
-        if (key.includes('SYSTEM')) return <Zap size={14} className="text-indigo-500" />;
-        if (key.includes('NOTICE')) return <Megaphone size={14} className="text-emerald-500" />;
-        return <Activity size={14} className="text-slate-500" />;
+        if (key.includes('INVENTORY')) return <Box size={14} style={{ color: '#f59e0b' }} />;
+        if (key.includes('BILLING')) return <CreditCard size={14} style={{ color: '#ef4444' }} />;
+        if (key.includes('TEAM')) return <UserPlus size={14} style={{ color: '#3b82f6' }} />;
+        if (key.includes('SYSTEM')) return <Zap size={14} style={{ color: '#6366f1' }} />;
+        if (key.includes('NOTICE')) return <Megaphone size={14} style={{ color: '#10b981' }} />;
+        return <Activity size={14} style={{ color: '#64748b' }} />;
     };
 
     const handleEventClick = (event: any) => {
@@ -77,13 +72,13 @@ export function ActivityFeed() {
 
     if (loading) {
         return (
-            <div className="space-y-4 p-2">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-16)', padding: 'var(--space-8)' }}>
                 {[1, 2, 3].map(i => (
-                    <div key={i} className="flex gap-3 animate-pulse">
-                        <div className="w-8 h-8 rounded-full bg-slate-100" />
-                        <div className="flex-1 space-y-2 py-1">
-                            <div className="h-2 bg-slate-100 rounded w-3/4" />
-                            <div className="h-2 bg-slate-50 rounded w-1/2" />
+                    <div key={i} style={{ display: 'flex', gap: 'var(--space-12)', alignItems: 'flex-start' }}>
+                        <div style={{ width: '2rem', height: '2rem', borderRadius: '50%', background: 'var(--surface-muted)' }} />
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--space-8)', paddingTop: 'var(--space-4)' }}>
+                            <div style={{ height: '0.5rem', background: 'var(--surface-muted)', borderRadius: 'var(--radius-sm)', width: '75%' }} />
+                            <div style={{ height: '0.5rem', background: 'var(--surface-page)', borderRadius: 'var(--radius-sm)', width: '50%' }} />
                         </div>
                     </div>
                 ))}
@@ -92,11 +87,13 @@ export function ActivityFeed() {
     }
 
     return (
-        <div className="space-y-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-16)' }}>
             {events.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <Activity size={32} className="text-slate-100 mb-2" />
-                    <p className={`${typography.uiLabel} font-semibold text-slate-500 uppercase tracking-widest`}>No hay actividad</p>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-48)', textAlign: 'center' }}>
+                    <Activity size={32} style={{ color: 'var(--border-color-default)', marginBottom: 'var(--space-8)' }} />
+                    <p style={{ fontSize: 'var(--text-caption-size)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                        No hay actividad
+                    </p>
                 </div>
             ) : (
                 events.map((event) => {
@@ -108,37 +105,43 @@ export function ActivityFeed() {
                         <div
                             key={event.id}
                             onClick={() => handleEventClick(event)}
-                            className="group relative flex gap-3 pb-5 border-l-2 border-slate-50 ml-2 pl-4 last:pb-0 last:border-l-0 cursor-pointer hover:border-indigo-200 transition-all"
+                            style={{ position: 'relative', display: 'flex', gap: 'var(--space-12)', paddingBottom: 'var(--space-20)', paddingLeft: 'var(--space-16)', borderLeft: '2px solid var(--surface-muted)', marginLeft: 'var(--space-8)', cursor: 'pointer' }}
+                            onMouseEnter={e => (e.currentTarget.style.borderLeftColor = 'var(--border-color-primary)')}
+                            onMouseLeave={e => (e.currentTarget.style.borderLeftColor = 'var(--surface-muted)')}
                         >
-                            <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-white border-2 border-slate-200 flex items-center justify-center group-hover:border-indigo-400 group-hover:scale-110 transition-all z-10 shadow-sm">
+                            {/* Timeline dot */}
+                            <div style={{ position: 'absolute', left: '-0.5625rem', top: 0, width: '1rem', height: '1rem', borderRadius: '50%', background: 'var(--surface-card)', border: '2px solid var(--border-color-default)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, boxShadow: 'var(--shadow-sm)' }}>
                                 {getEventIcon(event.event_key)}
                             </div>
-                            <div className="flex-1 min-w-0">
-                                {/* Línea A: Título (Identificador del Evento o Título Personalizado) */}
-                                <p className={`${typography.uiLabel} font-bold text-slate-900 uppercase tracking-tight group-hover:text-indigo-600 transition-colors block leading-tight`}>
+
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                {/* Event title */}
+                                <p style={{ fontSize: 'var(--text-caption-size)', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1.2 }}>
                                     {event.payload?.title || event.event_key.split('.').pop()?.replace(/_/g, ' ')}
                                 </p>
 
-                                {/* Línea B: Tiempo (Notificación) */}
-                                <p className={`${typography.text.tiny} text-slate-400 font-bold mt-0.5 uppercase tracking-widest`}>
+                                {/* Timestamp */}
+                                <p style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700, marginTop: 'var(--space-2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                                     {formatDistanceToNow(new Date(event.created_at), { addSuffix: true, locale: es })}
                                 </p>
 
-                                {/* Línea C: Mensaje (Contenido) */}
-                                <p className={`${typography.text.micro} text-slate-500 mt-1 ${isExpanded ? '' : 'line-clamp-2'} leading-relaxed`}>
+                                {/* Message */}
+                                <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: 'var(--space-4)', lineHeight: 1.5, overflow: isExpanded ? 'visible' : 'hidden', display: '-webkit-box', WebkitLineClamp: isExpanded ? 'unset' : 2, WebkitBoxOrient: 'vertical' as any }}>
                                     {message}
                                     {event.companies?.name && (
-                                        <span className={`inline-flex items-center gap-1 bg-slate-50 px-1.5 py-0.5 rounded ${typography.text.tiny} font-bold text-slate-400 ml-1.5 border border-slate-100 uppercase`}>
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-4)', background: 'var(--surface-page)', padding: '1px var(--space-6)', borderRadius: 'var(--radius-xs)', fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', marginLeft: 'var(--space-6)', border: 'var(--border-default)', textTransform: 'uppercase' }}>
                                             {event.companies.name}
                                         </span>
                                     )}
                                 </p>
 
-                                {/* Línea D: Ver más (Expandir) */}
+                                {/* Expand toggle */}
                                 {isLong && (
                                     <button
                                         onClick={(e) => toggleExpand(event.id, e)}
-                                        className={`${typography.text.tiny} font-black text-indigo-500 mt-2 uppercase tracking-tighter hover:text-indigo-700 transition-colors`}
+                                        style={{ fontSize: '10px', fontWeight: 900, color: 'var(--state-primary)', marginTop: 'var(--space-6)', textTransform: 'uppercase', letterSpacing: '0.05em', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                                        onMouseEnter={e => (e.currentTarget.style.opacity = '0.7')}
+                                        onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
                                     >
                                         {isExpanded ? '... ver menos' : 'ver más...'}
                                     </button>
@@ -148,7 +151,11 @@ export function ActivityFeed() {
                     );
                 })
             )}
-            <button className={`${typography.uiLabel} w-full py-3 mt-4 font-black text-slate-500 uppercase tracking-widest hover:text-indigo-600 hover:bg-slate-50 rounded-xl transition-all border border-dashed border-slate-200`}>
+            <button
+                style={{ width: '100%', padding: 'var(--space-12)', fontSize: 'var(--text-caption-size)', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', background: 'transparent', border: '1px dashed var(--border-color-default)', borderRadius: 'var(--radius-xl)', cursor: 'pointer', transition: 'color var(--transition-fast), background var(--transition-fast)' }}
+                onMouseEnter={e => { e.currentTarget.style.color = 'var(--state-primary)'; e.currentTarget.style.background = 'var(--surface-page)'; }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent'; }}
+            >
                 Ver todos los logs
             </button>
         </div>
