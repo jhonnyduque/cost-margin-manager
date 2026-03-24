@@ -1,0 +1,30 @@
+Nombre;Ruta archivo;Ruta URL;Estado
+Dashboard;C:\Users\Beto\Documents\APP\cost-margin-manager\src\pages\Dashboard.tsx;/dashboard;Vista real
+Producción;C:\Users\Beto\Documents\APP\cost-margin-manager\src\pages\Production.tsx;/produccion;Vista real
+Productos;C:\Users\Beto\Documents\APP\cost-margin-manager\src\pages\Products.tsx;/productos;Vista real
+Nuevo / editar producto;C:\Users\Beto\Documents\APP\cost-margin-manager\src\pages\ProductBuilder.tsx;"/productos/nuevo ; /productos/editar/:id";Vista real
+Detalle de producto;C:\Users\Beto\Documents\APP\cost-margin-manager\src\pages\ProductDetail.tsx;/productos/detalle/:id;Vista real
+Stock;C:\Users\Beto\Documents\APP\cost-margin-manager\src\pages\FinishedGoods.tsx;/stock;Vista real
+Materias Primas;C:\Users\Beto\Documents\APP\cost-margin-manager\src\pages\RawMaterials.tsx;/materias-primas;Vista real
+Clientes;C:\Users\Beto\Documents\APP\cost-margin-manager\src\pages\Clients.tsx;/clientes;Vista real
+Despachos;C:\Users\Beto\Documents\APP\cost-margin-manager\src\pages\Dispatches.tsx;/despachos;Vista real
+Compras;C:\Users\Beto\Documents\APP\cost-margin-manager\src\pages\Purchases.tsx;/compras;Vista real
+Proveedores;C:\Users\Beto\Documents\APP\cost-margin-manager\src\pages\Suppliers.tsx;/proveedores;Vista real
+Reportes;C:\Users\Beto\Documents\APP\cost-margin-manager\src\pages\PlaceholderPage.tsx;/reportes;Placeholder
+Login;C:\Users\Beto\Documents\APP\cost-margin-manager\src\pages\Login.tsx;/login;Vista real
+Equipo;C:\Users\Beto\Documents\APP\cost-margin-manager\src\pages\Team.tsx;"/equipo ; /platform/users";Vista real
+Más;C:\Users\Beto\Documents\APP\cost-margin-manager\src\pages\MorePage.tsx;/mas;Vista real
+Configuración;C:\Users\Beto\Documents\APP\cost-margin-manager\src\pages\Settings.tsx;/settings;Vista real
+Ayuda;C:\Users\Beto\Documents\APP\cost-margin-manager\src\pages\HelpPage.tsx;/help;Vista real
+Estado del sistema;C:\Users\Beto\Documents\APP\cost-margin-manager\src\pages\StatusPage.tsx;/status;Vista real
+Centro de control;C:\Users\Beto\Documents\APP\cost-margin-manager\src\pages\PlatformAdmin.tsx;/control-center;Restringida a super admin
+No provisionado;C:\Users\Beto\Documents\APP\cost-margin-manager\src\pages\NotProvisioned.tsx;/not-provisioned;Estado especial
+Explore;C:\Users\Beto\Documents\APP\cost-margin-manager\src\pages\Explore.tsx;Sin ruta activa;Archivo existente no conectado
+Placeholder genérico;C:\Users\Beto\Documents\APP\cost-margin-manager\src\pages\PlaceholderPage.tsx;"/reportes ; /ai ; /analytics";Soporte temporal
+Entornos;C:\Users\Beto\Documents\APP\cost-margin-manager\src\platform\pages\EnvironmentsPage.tsx;/platform/environments;Restringida a super admin
+Billing;C:\Users\Beto\Documents\APP\cost-margin-manager\src\billing\pages\Billing.tsx;/platform/billing;Restringida por rol
+Billing Checkout;C:\Users\Beto\Documents\APP\cost-margin-manager\src\billing\pages\BillingCheckout.tsx;/platform/billing/checkout;Restringida por rol
+Billing Success;C:\Users\Beto\Documents\APP\cost-margin-manager\src\billing\pages\BillingSuccess.tsx;"/platform/billing/success ; /platform/billing/portal";Restringida por rol
+Privacy;C:\Users\Beto\Documents\APP\cost-margin-manager\src\legal\pages\PrivacyPage.tsx;/legal/privacy;Vista legal
+Terms;C:\Users\Beto\Documents\APP\cost-margin-manager\src\legal\pages\TermsPage.tsx;/legal/terms;Vista legal
+Compliance;C:\Users\Beto\Documents\APP\cost-margin-manager\src\legal\pages\CompliancePage.tsx;/legal/compliance;Vista legal

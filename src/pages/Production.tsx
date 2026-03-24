@@ -466,8 +466,8 @@ const Production: React.FC = () => {
 
           {/* Modal stock insuficiente */}
           {missingStockModal.isOpen && (
-            <Card style={{ width: '100%', maxWidth: '40rem', padding: 0, overflow: 'hidden', borderColor: 'var(--surface-danger-soft)' }}>
-              <div style={{ borderBottom: 'var(--border-default)', background: 'var(--surface-danger-soft)', padding: 'var(--space-24)' }}>
+            <Card style={{ width: '100%', maxWidth: '40rem', maxHeight: '90vh', padding: 0, overflow: 'hidden', borderColor: 'var(--surface-danger-soft)', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ borderBottom: 'var(--border-default)', background: 'var(--surface-danger-soft)', padding: 'var(--space-24)', flexShrink: 0, position: 'sticky', top: 0, zIndex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-12)' }}>
                   <AlertTriangle style={{ color: 'var(--state-danger)', marginTop: 2, flexShrink: 0 }} size={20} />
                   <div>
@@ -476,7 +476,7 @@ const Production: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <div style={{ padding: 'var(--space-24)', display: 'flex', flexDirection: 'column', gap: 'var(--space-16)' }}>
+              <div style={{ padding: 'var(--space-24)', display: 'flex', flexDirection: 'column', gap: 'var(--space-16)', overflowY: 'auto', flex: 1, minHeight: 0 }}>
                 <p className="text-body" style={{ color: 'var(--text-secondary)' }}>No hay stock suficiente para este lote completo. Puedes cancelar o continuar registrando deuda.</p>
                 <div className="inset-card">
                   <p className="text-small text-muted" style={{ fontWeight: 700, textTransform: 'uppercase' }}>Cobertura disponible</p>
@@ -494,7 +494,7 @@ const Production: React.FC = () => {
                   ))}
                 </div>
               </div>
-              <div className="modal-actions" style={{ borderTop: 'var(--border-default)', padding: 'var(--space-24)' }}>
+              <div className="modal-actions" style={{ borderTop: 'var(--border-default)', padding: 'var(--space-24)', flexShrink: 0 }}>
                 <Button variant="ghost" onClick={closeMissingStockModal}>Cancelar</Button>
                 <Button variant="danger" onClick={handleConfirmDebtProduction} icon={<ArrowRight />}>Aceptar y generar deuda</Button>
               </div>

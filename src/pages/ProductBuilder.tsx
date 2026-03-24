@@ -47,6 +47,7 @@ const ProductBuilder = () => {
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedMaterial, setExpandedMaterial] = useState<number | null>(null);
+  const materialRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const [selectorModal, setSelectorModal] = useState<{ isOpen: boolean; forIndex: number | null }>({ isOpen: false, forIndex: null });
   const [selectorSearch, setSelectorSearch] = useState('');
   const [minStock, setMinStock] = useState<number | null>(null);
@@ -282,7 +283,7 @@ const ProductBuilder = () => {
                     const displayStock = (uomForStock && totalAvailableBase > 0) ? UnitConverter.fromBase(totalAvailableBase, uomForStock) : totalAvailableBase;
 
                     return (
-                      <div key={idx} style={{ borderRadius: 'var(--radius-xl)', border: hasMissingStock ? '1px solid var(--border-color-strong)' : 'var(--border-default)', overflow: 'hidden', transition: 'border-color var(--transition-fast)' }}>
+                      <div key={idx} ref={el => { materialRefs.current[idx] = el; }} style={{ borderRadius: 'var(--radius-xl)', border: hasMissingStock ? '1px solid var(--border-color-strong)' : 'var(--border-default)', overflow: 'hidden', transition: 'border-color var(--transition-fast)' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-8)', background: 'var(--surface-muted)', padding: 'var(--space-12)', borderBottom: isExpanded ? 'var(--border-default)' : 'none' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-8)' }}>
                             <button type="button" onClick={() => { setSelectorModal({ isOpen: true, forIndex: idx }); setSelectorSearch(''); }}
@@ -414,6 +415,15 @@ const ProductBuilder = () => {
                       </div>
                     );
                   })}
+
+                  {/* Inline add — always visible after last material */}
+                  <button type="button"
+                    onClick={() => { setSelectorModal({ isOpen: true, forIndex: null }); setSelectorSearch(''); }}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-8)', padding: 'var(--space-16)', borderRadius: 'var(--radius-xl)', border: '2px dashed var(--border-color-default)', background: 'transparent', color: 'var(--text-muted)', fontWeight: 600, fontSize: 'var(--text-small-size)', cursor: 'pointer', transition: 'border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast)' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-color-primary)'; e.currentTarget.style.color = 'var(--state-primary)'; e.currentTarget.style.background = 'var(--surface-primary-soft)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-color-default)'; e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent'; }}>
+                    <Plus size={16} /> Agregar otro insumo
+                  </button>
                 </div>
               </Card>
 
@@ -584,7 +594,17 @@ const ProductBuilder = () => {
                       else {
                         const displayUnit = unitsOfMeasure.find(u => u.id === material.display_unit_id) || unitsOfMeasure.find(u => u.id === material.base_unit_id);
                         const consumptionUnit = displayUnit?.symbol ?? material.unit;
-                        setFormData({ ...formData, materials: [...(formData.materials || []), { material_id: material.id, quantity: 1, consumption_unit: consumptionUnit, mode: 'linear' as any, pieces: [] }] });
+                        setFormData(prev => {
+                          const newMaterials = [...(prev.materials || []), { material_id: material.id, quantity: 1, consumption_unit: consumptionUnit, mode: 'linear' as any, pieces: [] }];
+                          const newIndex = newMaterials.length - 1;
+                          setExpandedMaterial(newIndex);
+                          setTimeout(() => {
+                            materialRefs.current[newIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            const qtyInput = materialRefs.current[newIndex]?.querySelector('input[type="number"]') as HTMLInputElement | null;
+                            qtyInput?.focus();
+                          }, 100);
+                          return { ...prev, materials: newMaterials };
+                        });
                       }
                       setSelectorModal({ isOpen: false, forIndex: null });
                     }}

@@ -311,9 +311,8 @@ const Products: React.FC = () => {
       >
         {/* Móvil — Cards */}
         <div
-          className="md:hidden"
+          className="cards-mobile"
           style={{
-            display: 'flex',
             flexDirection: 'column',
             gap: 'var(--space-16)',
           }}
@@ -446,7 +445,7 @@ const Products: React.FC = () => {
         </div>
 
         {/* Escritorio — Tabla */}
-        <div id="print-area" className="hidden md:block">
+        <div id="print-area" className="table-responsive-wrap">
           <div
             style={{
               background: 'var(--surface-card)',

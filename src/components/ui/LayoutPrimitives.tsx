@@ -18,7 +18,7 @@ export const PageContainer: React.FC<{
             width: '100%',
             maxWidth: 'var(--container-xl)',
             margin: '0 auto',
-            padding: 'var(--space-32)',
+            padding: 'var(--space-8) var(--space-32) var(--space-32)',
         }}
     >
         {children}

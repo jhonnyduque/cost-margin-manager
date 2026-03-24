@@ -23,63 +23,85 @@ export const UniversalPageHeader: React.FC<UniversalPageHeaderProps> = ({
     status,
     actions,
 }) => {
-    return (
-        <header style={{
-            width: '100%',
-            marginBottom: 'var(--space-24)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'var(--space-8)',
-        }}>
+    const hasMetaRow = metadata.length > 0 || status;
 
+    return (
+        <header
+            style={{
+                width: '100%',
+                marginBottom: 'var(--space-8)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 'var(--space-8)',
+            }}
+        >
             {/* Breadcrumbs */}
             {breadcrumbs && (
-                <nav className="breadcrumbs">
+                <nav className="breadcrumbs" aria-label="Breadcrumb">
                     {breadcrumbs}
                 </nav>
             )}
 
             {/* Fila principal — título + acciones */}
-            <div style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                justifyContent: 'space-between',
-                gap: 'var(--space-16)',
-                flexWrap: 'wrap',
-            }}>
-                {/* Izquierda — título y metadata */}
-                <div style={{
+            <div
+                style={{
                     display: 'flex',
-                    flexDirection: 'column',
-                    gap: 'var(--space-8)',
-                    minWidth: 0,
-                }}>
-                    <h1 className="text-h1" style={{
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                    }}>
+                    alignItems: 'flex-start',
+                    justifyContent: 'space-between',
+                    gap: 'var(--space-16)',
+                    flexWrap: 'wrap',
+                    width: '100%',
+                }}
+            >
+                {/* Izquierda — título y metadata */}
+                <div
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 'var(--space-8)',
+                        minWidth: 0,
+                        flex: 1,
+                    }}
+                >
+                    <h1
+                        className="text-h1"
+                        style={{
+                            margin: 0,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                        }}
+                        title={title}
+                    >
                         {title}
                     </h1>
 
                     {/* Metadata strip + status */}
-                    {(metadata.length > 0 || status) && (
-                        <div className="text-small text-secondary" style={{
-                            display: 'flex',
-                            flexWrap: 'wrap',
-                            alignItems: 'center',
-                            gap: 'var(--space-8)',
-                        }}>
+                    {hasMetaRow && (
+                        <div
+                            className="text-small text-secondary"
+                            style={{
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                alignItems: 'center',
+                                gap: 'var(--space-8)',
+                                minWidth: 0,
+                            }}
+                        >
                             {metadata.map((item, idx) => (
                                 <React.Fragment key={idx}>
                                     <span style={{ whiteSpace: 'nowrap' }}>
                                         {item}
                                     </span>
+
                                     {(idx < metadata.length - 1 || status) && (
-                                        <span className="text-muted" aria-hidden="true">•</span>
+                                        <span className="text-muted" aria-hidden="true">
+                                            •
+                                        </span>
                                     )}
                                 </React.Fragment>
                             ))}
+
                             {status && (
                                 <span style={{ whiteSpace: 'nowrap' }}>
                                     {status}
@@ -91,7 +113,16 @@ export const UniversalPageHeader: React.FC<UniversalPageHeaderProps> = ({
 
                 {/* Derecha — acciones */}
                 {actions && (
-                    <div className="row" style={{ flexShrink: 0, flexWrap: 'wrap' }}>
+                    <div
+                        className="row"
+                        style={{
+                            flexShrink: 0,
+                            flexWrap: 'wrap',
+                            justifyContent: 'flex-end',
+                            alignItems: 'center',
+                            gap: 'var(--space-8)',
+                        }}
+                    >
                         {actions}
                     </div>
                 )}

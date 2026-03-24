@@ -31,6 +31,7 @@ import EditTenantModal from '@/components/EditTenantModal';
 import { PageContainer, SectionBlock } from '@/components/ui/LayoutPrimitives';
 import { Button } from '@/components/ui/Button';
 import { UniversalPageHeader } from '@/components/ui/UniversalPageHeader';
+import { TenantEngagementTable } from '@/components/platform/TenantEngagementTable';
 
 /* ── Estilos reutilizables ── */
 const card: React.CSSProperties = { borderRadius: 'var(--radius-2xl)', border: 'var(--border-default)', background: 'var(--surface-card)', padding: 'var(--space-24)', boxShadow: 'var(--shadow-sm)' };
@@ -319,14 +320,6 @@ export default function PlatformAdmin() {
         );
     }
 
-    const tabs = [
-        { id: 'overview', label: 'Resumen', icon: TrendingUp },
-        { id: 'tenants', label: 'Empresas', icon: Globe },
-        { id: 'billing', label: 'Finanzas', icon: CreditCard },
-        { id: 'ops', label: 'Operaciones', icon: Zap },
-        { id: 'taxonomies', label: 'Taxonomías', icon: Tags, isNew: true },
-    ];
-
     return (
         <PageContainer style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-32)', paddingBottom: 'var(--space-48)' }}>
             <UniversalPageHeader
@@ -334,21 +327,7 @@ export default function PlatformAdmin() {
                 breadcrumbs={<><span>BETO OS</span><span>/</span><span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Platform Control</span></>}
                 metadata={[<span key="1" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-6)' }}><Clock size={14} /> Actualizado en tiempo real</span>]}
                 status={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-6)', color: 'var(--state-success)', fontWeight: 700 }}><Activity size={14} /> System Health: Healthy</span>}
-                actions={
-                    <>
-                        <CommandPalette />
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', padding: 'var(--space-4)', background: 'var(--surface-card)', borderRadius: 'var(--radius-lg)', border: 'var(--border-default)', boxShadow: 'var(--shadow-sm)', flexShrink: 0, overflowX: 'auto' }}>
-                            {tabs.map(tab => (
-                                <button key={tab.id} onClick={() => changeTab(tab.id as typeof activeTab)}
-                                    style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-8)', padding: 'var(--space-8) var(--space-16)', borderRadius: 'var(--radius-md)', fontSize: 'var(--text-small-size)', fontWeight: 700, border: 'none', cursor: 'pointer', transition: 'background var(--transition-fast), color var(--transition-fast)', whiteSpace: 'nowrap', background: activeTab === tab.id ? 'var(--state-primary)' : 'transparent', color: activeTab === tab.id ? 'var(--text-inverse)' : 'var(--text-secondary)', boxShadow: activeTab === tab.id ? 'var(--shadow-md)' : 'none' }}>
-                                    <tab.icon size={16} />
-                                    {tab.label}
-                                    {(tab as any).isNew && <span style={{ width: '0.375rem', height: '0.375rem', borderRadius: '50%', background: 'var(--state-danger)', marginLeft: 'var(--space-2)' }} />}
-                                </button>
-                            ))}
-                        </div>
-                    </>
-                }
+                actions={<CommandPalette />}
             />
 
             {/* Overview */}

@@ -41,6 +41,7 @@ DECLARE
     v_has_debt BOOLEAN := FALSE;
     v_product_name TEXT;
     v_roll_width NUMERIC;
+    v_pieces_numeric NUMERIC;
     v_now TIMESTAMPTZ := NOW();
 BEGIN
     -- Get order details
@@ -51,23 +52,37 @@ BEGIN
     SELECT name, materials INTO v_product_name, v_recipe
     FROM public.products WHERE id = v_product_id;
 
-    -- Material Consumption (FIFO) - REUSED LOGIC FROM V3
+    -- Material Consumption (FIFO)
     FOR v_material IN SELECT * FROM jsonb_to_recordset(v_recipe) AS x(
         material_id UUID, 
         quantity NUMERIC, 
         mode TEXT, 
-        pieces NUMERIC,
-        consumption_unit UUID
+        pieces JSONB, -- Changed from NUMERIC to JSONB to support arrays []
+        consumption_unit TEXT
     )
     LOOP
+        -- Handle pieces: sum if it's an array, cast if it's a number, default to 0
+        v_pieces_numeric := 0;
+        IF v_material.pieces IS NOT NULL THEN
+            IF jsonb_typeof(v_material.pieces) = 'array' THEN
+                SELECT COALESCE(SUM(val::NUMERIC), 0) INTO v_pieces_numeric 
+                FROM jsonb_array_elements(v_material.pieces) AS val;
+            ELSIF jsonb_typeof(v_material.pieces) = 'number' THEN
+                v_pieces_numeric := v_material.pieces::NUMERIC;
+            END IF;
+        END IF;
+
         IF v_material.mode = 'pieces' THEN
             SELECT width INTO v_roll_width FROM public.material_batches 
             WHERE material_id = v_material.material_id AND company_id = p_company_id AND base_remaining_quantity > 0
             ORDER BY date DESC, created_at DESC LIMIT 1;
+            
             IF v_roll_width IS NULL OR v_roll_width = 0 THEN v_roll_width := 1.5; END IF;
-            v_remaining_required_base := (v_material.pieces / v_roll_width) * v_quantity;
+            
+            -- Use the calculated v_pieces_numeric
+            v_remaining_required_base := (v_pieces_numeric / v_roll_width) * v_quantity;
         ELSE
-            v_remaining_required_base := v_material.quantity * v_quantity;
+            v_remaining_required_base := COALESCE(v_material.quantity, 0) * v_quantity;
         END IF;
 
         FOR v_batch IN 
@@ -117,7 +132,7 @@ BEGIN
     -- Update order with costs and debt
     UPDATE public.production_orders
     SET 
-        unit_cost = v_total_cost / v_quantity,
+        unit_cost = CASE WHEN v_quantity > 0 THEN v_total_cost / v_quantity ELSE 0 END,
         total_cost = v_total_cost,
         debt_generated = v_has_debt,
         started_at = v_now
