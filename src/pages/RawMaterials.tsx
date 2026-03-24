@@ -28,6 +28,7 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { Badge } from '@/components/ui/Badge';
 import { translateError } from '@/utils/errorHandler';
 import { calculateBatchArea } from '@/utils/materialCalculations';
+import SupplierCombobox from '@/components/ui/SupplierCombobox';
 import { PageContainer, SectionBlock } from '@/components/ui/LayoutPrimitives';
 import { UniversalPageHeader } from '@/components/ui/UniversalPageHeader';
 
@@ -90,6 +91,14 @@ const dropdownBtn: React.CSSProperties = {
 };
 
 const getToday = () => new Date().toISOString().split('T')[0];
+const normalizeDateForInput = (value?: string | null) => {
+  if (!value) return '';
+  const trimmed = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.toISOString().split('T')[0];
+};
 
 const getEmptyFormData = (): RawMaterialFormData => ({
   name: '',
@@ -620,6 +629,24 @@ const RawMaterials: React.FC = () => {
     }
   };
 
+  const editingMaterialStats = editingId ? batchStatsByMaterial[editingId] : null;
+  const editReadOnlyUnitCost = editingMaterialStats?.weightedAvgCost || 0;
+  const editReadOnlyInvoiceCost = editingMaterialStats?.totalValue || 0;
+  const editingBatchMaterial = editingBatchData
+    ? rawMaterials.find((m) => m.id === editingBatchData.material_id)
+    : null;
+  const editingBatchIsDimensional = isMaterialDimensional(editingBatchMaterial, unitsOfMeasure);
+  const editingBatchUnitSymbol =
+    unitsOfMeasure.find((u) => u.id === editingBatchData?.received_unit_id)?.symbol || 'und';
+
+  const handleOpenBatchCostEditor = () => {
+    if (!editingId) return;
+    const materialId = editingId;
+    setIsModalOpen(false);
+    setEditingId(null);
+    setExpandedMaterialId(materialId);
+  };
+
   return (
     <PageContainer>
       <style>{`
@@ -837,72 +864,27 @@ const RawMaterials: React.FC = () => {
 
         {totalFinancialDebt > 0 && (
           <div style={{ marginTop: 'var(--space-24)' }}>
-            <Card
-              style={{
-                background: 'var(--surface-page)',
-                borderColor: 'var(--border-color-default)',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 'var(--space-16)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-16)' }}>
-                  <div
-                    style={{
-                      width: '2.5rem',
-                      height: '2.5rem',
-                      borderRadius: 'var(--radius-md)',
-                      background: 'var(--border-color-default)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'var(--text-secondary)',
-                      flexShrink: 0,
-                    }}
-                  >
-                    <AlertCircle size={18} />
-                  </div>
-                  <div>
-                    <h3
-                      style={{
-                        fontWeight: 700,
-                        color: 'var(--text-secondary)',
-                        fontSize: 'var(--text-body-size)',
-                      }}
-                    >
-                      Deuda de Inventario Detectada
-                    </h3>
-                    <p className="text-small text-muted">
-                      Producciones realizadas sin respaldo físico. Regularice para integridad
-                      contable.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="hidden sm:flex" style={{ flexDirection: 'column', alignItems: 'flex-end' }}>
-                  <span
-                    className="text-small text-muted"
-                    style={{ fontWeight: 700, textTransform: 'uppercase' }}
-                  >
-                    Valorización Estimada
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 'var(--text-h3-size)',
-                      fontWeight: 900,
-                      color: 'var(--text-primary)',
-                    }}
-                  >
-                    {formatCurrency(totalFinancialDebt)}
-                  </span>
+            <div className="alert alert-warning" style={{ alignItems: 'center', justifyContent: 'space-between', padding: 'var(--space-16) var(--space-20)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-12)' }}>
+                <AlertCircle size={20} />
+                <div>
+                  <strong style={{ fontSize: 'var(--text-body-size)' }}>
+                    Deuda de Inventario Detectada
+                  </strong>
+                  <p className="text-small" style={{ color: 'inherit', opacity: 0.8, marginTop: '2px' }}>
+                    Producciones realizadas sin respaldo físico. Regularice para integridad contable.
+                  </p>
                 </div>
               </div>
-            </Card>
+              <div className="hidden sm:flex" style={{ flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
+                <span className="text-small" style={{ fontWeight: 700, textTransform: 'uppercase', opacity: 0.75 }}>
+                  Valorización Estimada
+                </span>
+                <span style={{ fontSize: 'var(--text-h3-size)', fontWeight: 900, color: 'inherit' }}>
+                  {formatCurrency(totalFinancialDebt)}
+                </span>
+              </div>
+            </div>
           </div>
         )}
 
@@ -970,9 +952,8 @@ const RawMaterials: React.FC = () => {
 
       {/* Móvil */}
       <div
-        className="md:hidden screen-mobile-only"
+        className="cards-mobile"
         style={{
-          display: 'flex',
           flexDirection: 'column',
           gap: 'var(--space-16)',
           marginTop: 'var(--space-24)',
@@ -1124,7 +1105,7 @@ const RawMaterials: React.FC = () => {
 
       {/* Escritorio */}
       <div
-        className="hidden md:block print-desktop-area"
+        className="table-responsive-wrap print-desktop-area"
         style={{ marginTop: 'var(--space-32)' }}
         id="print-area"
       >
@@ -1406,13 +1387,13 @@ const RawMaterials: React.FC = () => {
                                       </div>
 
                                       <div style={{ flex: 1, minWidth: '10rem' }}>
-                                        <Input
+                                        <SupplierCombobox
                                           label="Proveedor / Ref."
                                           value={batchFormData.provider || ''}
-                                          onChange={(e) =>
+                                          onChange={(name) =>
                                             setBatchFormData({
                                               ...batchFormData,
-                                              provider: e.target.value,
+                                              provider: name,
                                             })
                                           }
                                         />
@@ -2036,11 +2017,10 @@ const RawMaterials: React.FC = () => {
                   )}
                 </Select>
 
-                <Input
-                  label="Proveedor"
+                <SupplierCombobox
                   value={formData.provider}
-                  onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
-                  placeholder="Ej. Textiles Premium"
+                  onChange={(name) => setFormData({ ...formData, provider: name })}
+                  placeholder="Buscar o crear proveedor..."
                 />
               </div>
 
@@ -2119,44 +2099,97 @@ const RawMaterials: React.FC = () => {
                   gap: 'var(--space-12)',
                 }}
               >
-                <div>
-                  <label className="field-label">Costo Unitario (€)</label>
-                  <Input
-                    type="number"
-                    step="0.000001"
-                    value={formData.unitCost || ''}
-                    onChange={(e) => {
-                      const uc = parseFloat(e.target.value) || 0;
-                      setFormData({
-                        ...formData,
-                        unitCost: uc,
-                        totalCost: (formData.initialQty || 0) * uc,
-                      });
-                    }}
-                    placeholder="0.00"
-                  />
-                </div>
+                {editingId ? (
+                  <>
+                    <div>
+                      <label className="field-label">Costo Unitario (€)</label>
+                      <div
+                        className="input"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          fontWeight: 700,
+                          color: 'var(--text-primary)',
+                          cursor: 'default',
+                        }}
+                      >
+                        {formatCurrency(editReadOnlyUnitCost)}
+                      </div>
+                    </div>
 
-                <div>
-                  <label className="field-label">Costo Factura (€)</label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={formData.totalCost || ''}
-                    onChange={(e) => {
-                      const total = parseFloat(e.target.value) || 0;
-                      const uc =
-                        (formData.initialQty || 0) > 0 ? total / (formData.initialQty || 0) : 0;
+                    <div>
+                      <label className="field-label">Valor total inventario (€)</label>
+                      <div
+                        className="input"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          fontWeight: 700,
+                          color: 'var(--text-primary)',
+                          cursor: 'default',
+                        }}
+                      >
+                        {formatCurrency(editReadOnlyInvoiceCost)}
+                      </div>
+                    </div>
 
-                      setFormData({
-                        ...formData,
-                        totalCost: total,
-                        unitCost: uc,
-                      });
-                    }}
-                    placeholder="0.00"
-                  />
-                </div>
+                    <div style={{ gridColumn: '1 / -1', marginTop: 'var(--space-4)' }}>
+                      <p className="text-small text-muted" style={{ marginBottom: 'var(--space-8)' }}>
+                        Los costos se gestionan por lote (FIFO).
+                      </p>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={handleOpenBatchCostEditor}
+                      >
+                        Editar costo en lote
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <label className="field-label">Costo Unitario (€)</label>
+                      <Input
+                        type="number"
+                        step="0.000001"
+                        value={formData.unitCost || ''}
+                        onChange={(e) => {
+                          const uc = parseFloat(e.target.value) || 0;
+                          setFormData({
+                            ...formData,
+                            unitCost: uc,
+                            totalCost: (formData.initialQty || 0) * uc,
+                          });
+                        }}
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="field-label">Costo Factura (€)</label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={formData.totalCost || ''}
+                        onChange={(e) => {
+                          const total = parseFloat(e.target.value) || 0;
+                          const uc =
+                            (formData.initialQty || 0) > 0
+                              ? total / (formData.initialQty || 0)
+                              : 0;
+
+                          setFormData({
+                            ...formData,
+                            totalCost: total,
+                            unitCost: uc,
+                          });
+                        }}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </>
+                )}
               </div>
 
               <div
@@ -2316,79 +2349,109 @@ const RawMaterials: React.FC = () => {
                 required
               />
 
-              <Input
+              <SupplierCombobox
                 label="Proveedor / Referencia"
                 value={editingBatchData.provider}
-                onChange={(e) =>
-                  setEditingBatchData({ ...editingBatchData, provider: e.target.value })
+                onChange={(name) =>
+                  setEditingBatchData({ ...editingBatchData, provider: name })
                 }
               />
 
-              {editingBatchData.entry_mode === 'pieza' ? (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-12)' }}>
-                  <Input
-                    label="Largo (cm)"
-                    type="number"
-                    step="0.01"
-                    disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity}
-                    value={editingBatchData.length || ''}
-                    onChange={(e) =>
-                      setEditingBatchData({
-                        ...editingBatchData,
-                        length: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                  />
-                  <Input
-                    label="Ancho (cm)"
-                    type="number"
-                    step="1"
-                    disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity}
-                    value={editingBatchData.width || ''}
-                    onChange={(e) =>
-                      setEditingBatchData({
-                        ...editingBatchData,
-                        width: parseInt(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </div>
+              {editingBatchIsDimensional ? (
+                editingBatchData.entry_mode === 'pieza' ? (
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: 'var(--space-12)',
+                    }}
+                  >
+                    <Input
+                      label="Largo (cm)"
+                      type="number"
+                      step="0.01"
+                      disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity}
+                      value={editingBatchData.length || ''}
+                      onChange={(e) =>
+                        setEditingBatchData({
+                          ...editingBatchData,
+                          length: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                    />
+                    <Input
+                      label="Ancho (cm)"
+                      type="number"
+                      step="1"
+                      disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity}
+                      value={editingBatchData.width || ''}
+                      onChange={(e) =>
+                        setEditingBatchData({
+                          ...editingBatchData,
+                          width: parseInt(e.target.value) || 0,
+                        })
+                      }
+                    />
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: 'var(--space-12)',
+                    }}
+                  >
+                    <Input
+                      label="M. Lineales"
+                      type="number"
+                      step="0.01"
+                      disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity}
+                      value={editingBatchData.initial_quantity}
+                      onChange={(e) =>
+                        setEditingBatchData({
+                          ...editingBatchData,
+                          initial_quantity: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                    />
+                    <Input
+                      label="Ancho (cm)"
+                      type="number"
+                      step="1"
+                      disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity}
+                      value={editingBatchData.width || ''}
+                      onChange={(e) =>
+                        setEditingBatchData({
+                          ...editingBatchData,
+                          width: parseInt(e.target.value) || 0,
+                        })
+                      }
+                    />
+                  </div>
+                )
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-12)' }}>
-                  <Input
-                    label="M. Lineales"
-                    type="number"
-                    step="0.01"
-                    disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity}
-                    value={editingBatchData.initial_quantity}
-                    onChange={(e) =>
-                      setEditingBatchData({
-                        ...editingBatchData,
-                        initial_quantity: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                  />
-                  <Input
-                    label="Ancho (cm)"
-                    type="number"
-                    step="1"
-                    disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity}
-                    value={editingBatchData.width || ''}
-                    onChange={(e) =>
-                      setEditingBatchData({
-                        ...editingBatchData,
-                        width: parseInt(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </div>
+                <Input
+                  label={`Cantidad (${editingBatchUnitSymbol})`}
+                  type="number"
+                  step="0.01"
+                  disabled={editingBatchData.remaining_quantity < editingBatchData.initial_quantity}
+                  value={editingBatchData.initial_quantity}
+                  onChange={(e) =>
+                    setEditingBatchData({
+                      ...editingBatchData,
+                      initial_quantity: parseFloat(e.target.value) || 0,
+                    })
+                  }
+                />
               )}
 
               <Input
                 label={
-                  editingBatchData.entry_mode === 'pieza'
-                    ? 'Costo Total (€)'
-                    : 'Costo Unitario (€/m)'
+                  !editingBatchIsDimensional
+                    ? 'Costo Unitario (€)'
+                    : editingBatchData.entry_mode === 'pieza'
+                      ? 'Costo Total (€)'
+                      : 'Costo Unitario (€/m)'
                 }
                 type="number"
                 step="0.01"
@@ -2591,7 +2654,10 @@ const RawMaterials: React.FC = () => {
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                   onClick={() => {
                     setBatchMenuState(null);
-                    setEditingBatchData(batch);
+                    setEditingBatchData({
+                      ...batch,
+                      date: normalizeDateForInput(batch.date) || getToday(),
+                    });
                   }}
                 >
                   <Pencil size={14} style={{ color: 'var(--text-muted)' }} />

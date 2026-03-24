@@ -46,6 +46,7 @@ import BillingSuccess from '@/pages/platform/BillingSuccess';
 import { useStore } from '@/store';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthProvider } from '@/hooks/AuthProvider';
+import { useSafeAutoRefresh } from '@/hooks/useSafeAutoRefresh';
 import { notificationListener } from '@/services/eventListeners/notificationListener';
 
 const AppContent: React.FC = () => {
@@ -92,6 +93,76 @@ const AppContent: React.FC = () => {
             loadPurchaseOrdersFromSupabase();
         }
     }, [user, currentCompanyId]);
+
+    // ── Route-aware auto-refresh: only reload what the current page needs ──
+    const routeLoaders: Record<string, (s: ReturnType<typeof useStore.getState>) => void> = {
+        '/dashboard': s => {
+            s.loadProductsFromSupabase();
+            s.loadRawMaterialsFromSupabase();
+            s.loadBatchesFromSupabase();
+            s.loadMovementsFromSupabase();
+            s.loadProductMovementsFromSupabase();
+        },
+        '/productos': s => {
+            s.loadProductsFromSupabase();
+            s.loadBatchesFromSupabase();
+            s.loadRawMaterialsFromSupabase();
+        },
+        '/materias-primas': s => {
+            s.loadRawMaterialsFromSupabase();
+            s.loadBatchesFromSupabase();
+            s.loadMovementsFromSupabase();
+            s.loadSuppliersFromSupabase();
+        },
+        '/stock': s => {
+            s.loadProductsFromSupabase();
+            s.loadProductMovementsFromSupabase();
+        },
+        '/clientes': s => { s.loadClientsFromSupabase(); },
+        '/despachos': s => {
+            s.loadDispatchesFromSupabase();
+            s.loadClientsFromSupabase();
+            s.loadProductsFromSupabase();
+        },
+        '/produccion': s => {
+            s.loadProductsFromSupabase();
+            s.loadBatchesFromSupabase();
+            s.loadRawMaterialsFromSupabase();
+            s.loadMovementsFromSupabase();
+            s.loadProductMovementsFromSupabase();
+            s.loadProductionOrdersFromSupabase();
+        },
+        '/compras': s => {
+            s.loadPurchaseOrdersFromSupabase();
+            s.loadSuppliersFromSupabase();
+            s.loadRawMaterialsFromSupabase();
+        },
+        '/proveedores': s => {
+            s.loadSuppliersFromSupabase();
+            s.loadSupplierMaterialsFromSupabase();
+        },
+        '/reportes': s => {
+            s.loadProductsFromSupabase();
+            s.loadRawMaterialsFromSupabase();
+            s.loadBatchesFromSupabase();
+            s.loadMovementsFromSupabase();
+            s.loadProductMovementsFromSupabase();
+        },
+        '/control-center': s => {
+            s.loadProductsFromSupabase();
+            s.loadRawMaterialsFromSupabase();
+        },
+    };
+
+    const currentRouteLoader = routeLoaders[location.pathname];
+
+    useSafeAutoRefresh({
+        enabled: Boolean(user && currentCompanyId && currentRouteLoader),
+        intervalMs: 60_000,
+        onRefresh: () => {
+            currentRouteLoader?.(useStore.getState());
+        },
+    });
 
     if (isAuthLoading) {
         return (

@@ -96,7 +96,7 @@ interface AppState {
   supplierMaterials: SupplierMaterial[];
   loadSuppliersFromSupabase: () => Promise<void>;
   loadSupplierMaterialsFromSupabase: () => Promise<void>;
-  addSupplier: (supplier: Omit<Supplier, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  addSupplier: (supplier: Omit<Supplier, 'id' | 'created_at' | 'updated_at'>) => Promise<Supplier | null>;
   updateSupplier: (id: string, updates: Partial<Supplier>) => Promise<void>;
   archiveSupplier: (id: string, status: 'activo' | 'inactivo' | 'bloqueado') => Promise<void>;
   syncSupplierMaterials: (supplier_id: string, raw_material_ids: string[]) => Promise<void>;
@@ -750,29 +750,34 @@ export const useStore = create<AppState>()(
         const companyId = get().currentCompanyId;
         const actorId = await getActorId();
 
-        const { error } = await supabase.from('material_batches').update({
-          date: batch.date,
-          provider: batch.provider,
-          initial_quantity: batch.initial_quantity,
-          remaining_quantity: batch.remaining_quantity,
-          base_initial_quantity: batch.base_initial_quantity,
-          base_remaining_quantity: batch.base_remaining_quantity,
-          base_consumed_quantity: batch.base_consumed_quantity,
-          cost_per_base_unit: batch.cost_per_base_unit,
-          received_unit_id: batch.received_unit_id,
-          unit_cost: batch.unit_cost,
-          reference: batch.reference,
-          width: batch.width,
-          length: batch.length,
-          area: batch.area,
-          entry_mode: batch.entry_mode,
-          updated_at: new Date().toISOString(),
-          updated_by: actorId,
-        })
+        const { data, error } = await supabase
+          .from('material_batches')
+          .update({
+            date: batch.date,
+            provider: batch.provider,
+            initial_quantity: batch.initial_quantity,
+            remaining_quantity: batch.remaining_quantity,
+            base_initial_quantity: batch.base_initial_quantity,
+            base_remaining_quantity: batch.base_remaining_quantity,
+            base_consumed_quantity: batch.base_consumed_quantity,
+            cost_per_base_unit: batch.cost_per_base_unit,
+            received_unit_id: batch.received_unit_id,
+            unit_cost: batch.unit_cost,
+            reference: batch.reference,
+            width: batch.width,
+            length: batch.length,
+            area: batch.area,
+            entry_mode: batch.entry_mode,
+            updated_at: new Date().toISOString(),
+            updated_by: actorId,
+          })
           .eq('id', batch.id)
-          .eq('company_id', companyId);
+          .eq('company_id', companyId)
+          .select('id')
+          .maybeSingle();
 
         if (error) throw error;
+        if (!data?.id) throw new Error('No se pudo actualizar el lote.');
 
         set((state) => {
           const updatedMovements = state.movements.map((mov) =>
@@ -1300,13 +1305,14 @@ export const useStore = create<AppState>()(
       addSupplier: async (supplier: Omit<Supplier, 'id' | 'created_at' | 'updated_at'>) => {
         const { currentCompanyId } = get();
         const user = (await supabase.auth.getUser()).data.user;
-        if (!currentCompanyId || !user) return;
+        if (!currentCompanyId || !user) return null;
         const { data, error } = await supabase
           .from('suppliers')
           .insert({ ...supplier, company_id: currentCompanyId, created_by: user.id, updated_by: user.id })
           .select()
           .single();
-        if (!error && data) set(state => ({ suppliers: [...state.suppliers, data] }));
+        if (!error && data) { set(state => ({ suppliers: [...state.suppliers, data] })); return data as Supplier; }
+        return null;
       },
 
       updateSupplier: async (id: string, updates: Partial<Supplier>) => {
