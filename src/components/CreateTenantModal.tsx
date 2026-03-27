@@ -79,6 +79,15 @@ export const CreateTenantModal: React.FC<CreateTenantModalProps> = ({ isOpen, on
         setError(null);
 
         try {
+            // 🛡️ 1. Obtener sesión y token actual
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            if (sessionError || !session?.access_token) {
+                throw new Error('No authenticated session found. Please log in again.');
+            }
+
+            // 🛡️ 2. Generar Idempotency-Key única para esta solicitud
+            const idempotencyKey = crypto.randomUUID();
+
             const { data, error } = await supabase.functions.invoke('beto-create-company', {
                 body: {
                     company_name: formData.name,
@@ -87,6 +96,10 @@ export const CreateTenantModal: React.FC<CreateTenantModalProps> = ({ isOpen, on
                     seat_limit: formData.seat_limit,
                     initial_plan: formData.initial_plan,
                     currency: formData.currency
+                },
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Idempotency-Key': idempotencyKey
                 }
             });
 
@@ -97,7 +110,25 @@ export const CreateTenantModal: React.FC<CreateTenantModalProps> = ({ isOpen, on
             onClose();
         } catch (err: any) {
             console.error('Provisioning error:', err);
-            setError(err.message || 'Failed to create environment.');
+            
+            // 🛡️ Mapeo de errores amigables (Fusión de lógica anterior y propuesta Jhonny)
+            let userMessage = 'Ocurrió un error inesperado al crear la empresa';
+            
+            if (err.message?.includes('Unauthorized') || err.status === 401) {
+                userMessage = 'Sesión expirada. Por favor, inicia sesión de nuevo.';
+            } else if (err.message?.includes('Super Admin') || err.status === 403) {
+                userMessage = 'Acceso denegado: Se requieren privilegios de Super Administrador.';
+            } else if (err.status === 409 || err.message?.includes('slug') || err.message?.includes('Duplicate Slug')) {
+                userMessage = 'Este slug de empresa ya está en uso. Prueba con uno diferente.';
+            } else if (err.message?.includes('Email Conflict')) {
+                userMessage = 'Este correo electrónico ya está asociado con otra cuenta.';
+            } else if (err.code === 'VALIDATION_ERROR' || err.status === 422) {
+                userMessage = err.message || 'Datos de entrada inválidos';
+            } else {
+                userMessage = err.message || userMessage;
+            }
+
+            setError(userMessage);
         } finally {
             setLoading(false);
         }
@@ -228,8 +259,17 @@ export const CreateTenantModal: React.FC<CreateTenantModalProps> = ({ isOpen, on
                             disabled={loading}
                             className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
                         >
-                            {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                            Provision Environment
+                            {loading ? (
+                                <>
+                                    <Loader2 size={16} className="animate-spin" />
+                                    <span>Provisioning Environment...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Save size={16} />
+                                    <span>Provision Environment</span>
+                                </>
+                            )}
                         </button>
                     </div>
                 </form>

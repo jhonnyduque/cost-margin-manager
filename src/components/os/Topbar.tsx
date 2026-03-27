@@ -192,8 +192,13 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
                 setNotifications(list); setUnreadCount(count);
             } catch (err) { console.error('Error loading notifications:', err); }
         })();
-        const subscription = notificationService.subscribeToNotifications(user.id, (newNote: NotificationItem) => {
-            setNotifications(prev => prev.some(n => n.id === newNote.id) ? prev : [newNote, ...prev].slice(0, 12));
+        const subscription = notificationService.subscribeToNotifications(user.id, (newNote: any) => {
+            // Evitar duplicados y mantener límite
+            setNotifications(prev => {
+                const exists = prev.some(n => n.id === newNote.id);
+                if (exists) return prev;
+                return [newNote, ...prev].slice(0, 12);
+            });
             setUnreadCount(prev => prev + 1);
         });
         return () => subscription.unsubscribe();
@@ -395,9 +400,9 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
 
                                 {/* Footer */}
                                 <div className="p-2" style={{ borderTop: 'var(--border-default)', background: 'var(--surface-page)' }}>
-                                    <button type="button" onClick={() => { navigate('/settings?tab=notifications'); setNotificationsOpen(false); setExpandedNoteId(null); }}
+                                    <button type="button" onClick={() => { navigate('/notificaciones'); setNotificationsOpen(false); setExpandedNoteId(null); }}
                                         style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-8)', minHeight: '2.5rem', borderRadius: 'var(--radius-md)', border: '1px solid transparent', background: 'transparent', cursor: 'pointer', fontSize: 'var(--text-small-size)', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                                        <Settings size={14} /> gestionar preferencias
+                                        Ver todas las notificaciones
                                     </button>
                                 </div>
                             </div>

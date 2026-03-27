@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-    ChevronLeft, ChevronRight, Menu,
+    ChevronLeft, ChevronRight, Menu, MessageCircle,
     LayoutDashboard, Globe, CreditCard, Zap, Tags, Layers, Users,
 } from 'lucide-react';
 import { MODULES } from '../../platform/modules.registry';
@@ -31,7 +31,7 @@ type NavItem = {
 };
 
 export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
-    const { user, userRole } = useAuth();
+    const { user, userRole, currentCompany } = useAuth();
     const { enabledModules } = useSubscription();
     const location = useLocation();
 
@@ -146,7 +146,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
             </nav>
 
             {/* Bottom nav */}
-            <div style={{ position: 'absolute', left: 0, bottom: '3rem', width: '100%', padding: 'var(--space-12)', borderTop: 'var(--border-default)', paddingTop: 'var(--space-12)' }}>
+            <div style={{ position: 'absolute', left: 0, bottom: '3rem', width: '100%', padding: 'var(--space-12)', borderTop: 'var(--border-default)', paddingTop: 'var(--space-12)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+                <a
+                    href={`https://wa.me/34604405615?text=${encodeURIComponent(`Hola Equipo BETO OS, soy ${user?.email || 'un usuario'}${currentCompany?.name ? ` de la empresa ${currentCompany.name}` : ''}. Necesito ayuda con: `)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="nav-item"
+                    style={{ ...getNavItemStyle(false, false), justifyContent: collapsed ? 'center' : 'flex-start', color: 'var(--state-success)' }}
+                    title={collapsed ? 'Soporte WhatsApp' : undefined}
+                >
+                    <MessageCircle size={20} className="flex-shrink-0" />
+                    {!collapsed && (
+                        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>Soporte</span>
+                    )}
+                </a>
+
                 <NavLink
                     to="/mas"
                     className={({ isActive }) => `nav-item${isActive ? ' is-active' : ''}`}

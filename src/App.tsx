@@ -36,6 +36,7 @@ import PlatformAdmin from './pages/PlatformAdmin';
 import { EnvironmentsPage } from './pages/platform/EnvironmentsPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 import Reports from '@/pages/reports/Reports';
+import NotificationsPage from '@/pages/NotificationsPage';
 
 // Pages - Billing
 import Billing from '@/pages/platform/Billing';
@@ -269,6 +270,7 @@ const AppContent: React.FC = () => {
                 <Route path="/ai" element={<PlaceholderPage />} />
                 <Route path="/analytics" element={<PlaceholderPage />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/notificaciones" element={<NotificationsPage />} />
 
                 {/* Legacy */}
                 <Route path="/platform" element={<Navigate to="/control-center" replace />} />

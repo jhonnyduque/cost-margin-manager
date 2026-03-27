@@ -13,6 +13,7 @@ import { EVENTS, SOURCE_MODULES } from '@/core/events';
 import { adminStatsService, PlatformMetrics, GrowthPoint, VIPStatus, RevenueMetric, MRRWaterfallPoint, CohortPoint, BillingEvent } from '@/services/adminStatsService';
 import { MetricCard } from '@/components/platform/MetricCard';
 import { ActivityFeed } from '@/components/platform/ActivityFeed';
+import { DeliveryLogsTable } from '@/components/admin/DeliveryLogsTable';
 import { MainGrowthChart, PlanDonutChart } from '@/components/platform/Charts';
 import { CommandPalette } from '@/components/platform/CommandPalette';
 import { RevenueKpiCard } from '@/components/platform/RevenueKpiCard';
@@ -32,6 +33,7 @@ import { PageContainer, SectionBlock } from '@/components/ui/LayoutPrimitives';
 import { Button } from '@/components/ui/Button';
 import { UniversalPageHeader } from '@/components/ui/UniversalPageHeader';
 import { TenantEngagementTable } from '@/components/platform/TenantEngagementTable';
+import { SupportTicketsPanel } from '@/components/platform/SupportTicketsPanel';
 
 /* ── Estilos reutilizables ── */
 const card: React.CSSProperties = { borderRadius: 'var(--radius-2xl)', border: 'var(--border-default)', background: 'var(--surface-card)', padding: 'var(--space-24)', boxShadow: 'var(--shadow-sm)' };
@@ -41,6 +43,7 @@ const sectionTitle: React.CSSProperties = { fontSize: 'var(--text-h3-size)', fon
 
 /* ── BroadcastConsole ── */
 function BroadcastConsole() {
+    const [isCritical, setIsCritical] = useState(false);
     const [title, setTitle] = useState('');
     const [message, setMessage] = useState('');
     const [sending, setSending] = useState(false);
@@ -50,9 +53,21 @@ function BroadcastConsole() {
         if (!message.trim()) return;
         setSending(true); setStatus(null);
         try {
-            await eventBusService.emitEvent({ eventKey: EVENTS.SYSTEM_BROADCAST, sourceModule: SOURCE_MODULES.SYSTEM, payload: { title: title.trim() || 'Aviso BETO OS', message: message.trim() } });
-            setTitle(''); setMessage('');
-            setStatus({ type: 'success', text: 'Mensaje global emitido con éxito.' });
+            const eventKey = isCritical ? EVENTS.SYSTEM_CRITICAL : EVENTS.SYSTEM_BROADCAST;
+            const priority = isCritical ? 'critical' : 'medium';
+            
+            await eventBusService.emitEvent({ 
+                eventKey, 
+                sourceModule: SOURCE_MODULES.SYSTEM, 
+                priority,
+                payload: { 
+                    title: title.trim() || (isCritical ? '🚨 ALERTA CRÍTICA' : 'Aviso BETO OS'), 
+                    message: message.trim() 
+                } 
+            });
+            
+            setTitle(''); setMessage(''); setIsCritical(false);
+            setStatus({ type: 'success', text: isCritical ? 'Aviso Crítico (WhatsApp) emitido.' : 'Mensaje global emitido.' });
             setTimeout(() => setStatus(null), 3000);
         } catch { setStatus({ type: 'error', text: 'Error al emitir mensaje.' }); }
         finally { setSending(false); }
@@ -65,18 +80,28 @@ function BroadcastConsole() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-12)', marginBottom: 'var(--space-24)' }}>
                 <div style={{ borderRadius: 'var(--radius-lg)', background: 'var(--surface-primary-soft)', padding: 'var(--space-10)', color: 'var(--state-primary)' }}><Megaphone size={20} /></div>
                 <div>
-                    <h2 style={{ fontSize: 'var(--text-body-size)', fontWeight: 700, color: 'var(--text-primary)' }}>Comunicación Global</h2>
-                    <p style={{ fontSize: 'var(--text-caption-size)', color: 'var(--text-secondary)' }}>Envía alertas instantáneas a toda la plataforma.</p>
+                    <h2 style={{ fontSize: 'var(--text-body-size)', fontWeight: 700, color: 'var(--text-primary)' }}>Comunicar a Plataforma</h2>
+                    <p style={{ fontSize: 'var(--text-caption-size)', color: 'var(--text-secondary)' }}>Envía alertas instantáneas a todos los entornos.</p>
                 </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-16)' }}>
-                <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Título (opcional, por defecto: Aviso BETO OS)" style={inputStyle} onFocus={e => (e.target.style.boxShadow = '0 0 0 2px var(--state-primary)')} onBlur={e => (e.target.style.boxShadow = '0 0 0 1px var(--border-color-default)')} />
-                <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Contenido del mensaje..." rows={3} style={{ ...inputStyle, resize: 'none' }} onFocus={e => (e.target.style.boxShadow = '0 0 0 2px var(--state-primary)')} onBlur={e => (e.target.style.boxShadow = '0 0 0 1px var(--border-color-default)')} />
+                <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Título del aviso..." style={inputStyle} onFocus={e => (e.target.style.boxShadow = '0 0 0 2px var(--state-primary)')} onBlur={e => (e.target.style.boxShadow = '0 0 0 1px var(--border-color-default)')} />
+                <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Escribe el contenido aquí..." rows={3} style={{ ...inputStyle, resize: 'none' }} onFocus={e => (e.target.style.boxShadow = '0 0 0 2px var(--state-primary)')} onBlur={e => (e.target.style.boxShadow = '0 0 0 1px var(--border-color-default)')} />
+                
+                {/* Switch de Alta Prioridad */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-12)', padding: 'var(--space-12) var(--space-16)', borderRadius: 'var(--radius-lg)', background: isCritical ? 'var(--surface-danger-soft)' : 'var(--surface-muted)', border: isCritical ? '1px solid var(--state-danger)' : '1px solid var(--border-color-default)', cursor: 'pointer', userSelect: 'none', transition: 'all var(--transition-fast)' }} onClick={() => setIsCritical(!isCritical)}>
+                    <input type="checkbox" checked={isCritical} readOnly style={{ width: '1.25rem', height: '1.25rem', accentColor: 'var(--state-danger)', cursor: 'pointer' }} />
+                    <div style={{ flex: 1 }}>
+                        <p style={{ fontSize: 'var(--text-small-size)', fontWeight: 700, color: isCritical ? 'var(--state-danger)' : 'var(--text-secondary)' }}>Aviso Crítico / Alta Prioridad</p>
+                        <p style={{ fontSize: '10px', color: isCritical ? 'var(--state-danger)' : 'var(--text-muted)' }}>Esto enviará una notificación de WhatsApp (Canal Crítico)</p>
+                    </div>
+                </div>
+
                 <button onClick={handleBroadcast} disabled={sending || !message.trim()}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-8)', borderRadius: 'var(--radius-lg)', background: 'var(--state-primary)', padding: 'var(--space-12)', fontSize: 'var(--text-body-size)', fontWeight: 700, color: 'var(--text-inverse)', border: 'none', cursor: 'pointer', opacity: (sending || !message.trim()) ? 0.5 : 1, transition: 'background var(--transition-fast)' }}
-                    onMouseEnter={e => { if (!sending && message.trim()) e.currentTarget.style.background = 'var(--state-primary-hover)'; }}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'var(--state-primary)')}>
-                    {sending ? 'Enviando...' : <><Send size={16} /> Enviar Broadcast</>}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-8)', borderRadius: 'var(--radius-lg)', background: isCritical ? 'var(--state-danger)' : 'var(--state-primary)', padding: 'var(--space-12)', fontSize: 'var(--text-body-size)', fontWeight: 700, color: 'var(--text-inverse)', border: 'none', cursor: 'pointer', opacity: (sending || !message.trim()) ? 0.5 : 1, transition: 'background var(--transition-fast)' }}
+                    onMouseEnter={e => { if (!sending && message.trim()) e.currentTarget.style.background = isCritical ? 'var(--state-danger-hover)' : 'var(--state-primary-hover)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = isCritical ? 'var(--state-danger)' : 'var(--state-primary)'; }}>
+                    {sending ? 'Enviando...' : <><Send size={16} /> Emitir Mensaje Global</>}
                 </button>
             </div>
             {status && (
@@ -463,8 +488,10 @@ export default function PlatformAdmin() {
 
             {/* Ops */}
             {activeTab === 'ops' && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-32)', maxWidth: '62rem' }}>
-                    <BroadcastConsole />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-32)' }}>
+                    <SupportTicketsPanel />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-32)', maxWidth: '62rem' }}>
+                        {user?.is_super_admin && <BroadcastConsole />}
                     <div style={card}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-12)', marginBottom: 'var(--space-32)' }}>
                             <div style={{ borderRadius: 'var(--radius-xl)', background: 'var(--surface-success-soft)', padding: 'var(--space-12)', color: 'var(--state-success)' }}><Zap size={24} /></div>
@@ -493,6 +520,12 @@ export default function PlatformAdmin() {
                                 </div>
                             ))}
                         </div>
+                    </div>
+                    </div>
+
+                    {/* 🟢 Auditoría de Notificaciones (Hardening Fase 2) */}
+                    <div style={{ marginTop: 'var(--space-32)' }}>
+                        <DeliveryLogsTable />
                     </div>
                 </div>
             )}

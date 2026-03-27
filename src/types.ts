@@ -35,6 +35,8 @@ export type RawMaterial = Tables<'raw_materials'> & {
   created_by?: string;
   updated_by?: string;
   deleted_at?: string | null;
+  generates_stock?: boolean;
+  standard_cost?: number | null;
   uom_category?: UomCategory;
   base_unit?: UnitOfMeasure;
   purchase_unit?: UnitOfMeasure;

@@ -44,6 +44,8 @@ interface RawMaterialFormData {
   display_unit_id: string;
   provider: string;
   status: 'activa' | 'inactiva';
+  generates_stock: boolean;
+  standard_cost: number;
   initialQty: number;
   unitCost: number;
   totalCost: number;
@@ -110,6 +112,8 @@ const getEmptyFormData = (): RawMaterialFormData => ({
   display_unit_id: '',
   provider: '',
   status: 'activa',
+  generates_stock: true,
+  standard_cost: 0,
   initialQty: 0,
   unitCost: 0,
   totalCost: 0,
@@ -408,6 +412,8 @@ const RawMaterials: React.FC = () => {
         purchase_unit_id: formData.purchase_unit_id,
         display_unit_id: formData.display_unit_id,
         provider: formData.provider,
+        generates_stock: formData.generates_stock,
+        standard_cost: formData.generates_stock ? null : formData.standard_cost,
         status: formData.status,
         company_id: currentCompanyId,
         created_at: existingMaterial?.created_at || now,
@@ -1207,20 +1213,26 @@ const RawMaterials: React.FC = () => {
                               fontWeight: 700,
                               fontVariantNumeric: 'tabular-nums',
                               color:
-                                displayStock > 0
-                                  ? 'var(--state-success)'
-                                  : displayStock < 0
-                                    ? 'var(--state-danger)'
-                                    : 'var(--text-secondary)',
+                                m.generates_stock === false
+                                  ? 'var(--text-muted)'
+                                  : displayStock > 0
+                                    ? 'var(--state-success)'
+                                    : displayStock < 0
+                                      ? 'var(--state-danger)'
+                                      : 'var(--text-secondary)',
                             }}
                           >
-                            {UnitConverter.formatFromBase(
-                              displayStock,
-                              unitsOfMeasure.find((u) => u.id === m.display_unit_id) ||
-                              unitsOfMeasure.find((u) => u.id === m.base_unit_id) || {
-                                symbol: m.unit || 'base',
-                                conversion_factor: 1,
-                              }
+                            {m.generates_stock === false ? (
+                              '-'
+                            ) : (
+                              UnitConverter.formatFromBase(
+                                displayStock,
+                                unitsOfMeasure.find((u) => u.id === m.display_unit_id) ||
+                                unitsOfMeasure.find((u) => u.id === m.base_unit_id) || {
+                                  symbol: m.unit || 'base',
+                                  conversion_factor: 1,
+                                }
+                              )
                             )}
                           </span>
                         </td>
@@ -2192,6 +2204,78 @@ const RawMaterials: React.FC = () => {
                 )}
               </div>
 
+              {/* 🔹 CONFIGURACIÓN STOCK/COSTO */}
+              <div
+                style={{
+                  background: 'var(--surface-muted)',
+                  padding: 'var(--space-16)',
+                  borderRadius: 'var(--radius-lg)',
+                  border: 'var(--border-default)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'var(--space-12)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <span style={{ display: 'block', fontWeight: 700, fontSize: 'var(--text-small-size)' }}>
+                      ¿Genera Stock Físico?
+                    </span>
+                    <span className="text-small text-muted">
+                      {formData.generates_stock 
+                        ? 'Se gestiona por lotes (FIFO)' 
+                        : 'Es un insumo de gasto (Servicios/Logística)'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, generates_stock: !formData.generates_stock })}
+                    style={{
+                      width: '3.5rem',
+                      height: '1.75rem',
+                      borderRadius: '1rem',
+                      background: formData.generates_stock ? 'var(--state-success)' : 'var(--border-color-default)',
+                      position: 'relative',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '1.25rem',
+                        height: '1.25rem',
+                        borderRadius: '50%',
+                        background: '#fff',
+                        position: 'absolute',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        left: formData.generates_stock ? 'calc(100% - 1.5rem)' : '0.25rem',
+                        transition: 'all 0.2s',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                      }}
+                    />
+                  </button>
+                </div>
+
+                {!formData.generates_stock && (
+                  <div style={{ borderTop: '1px solid var(--border-color-default)', paddingTop: 'var(--space-12)' }}>
+                    <Input
+                      label="Costo Estándar (€)"
+                      type="number"
+                      step="0.0001"
+                      value={formData.standard_cost || ''}
+                      onChange={(e) => setFormData({ ...formData, standard_cost: parseFloat(e.target.value) || 0 })}
+                      placeholder="Ej. 5.00"
+                      required
+                    />
+                    <p className="text-small text-muted" style={{ marginTop: 'var(--space-4)' }}>
+                      Este costo se usará para absorber gastos en producción sin descontar unidades.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               <div
                 style={{
                   display: 'grid',
@@ -2538,90 +2622,104 @@ const RawMaterials: React.FC = () => {
                 {expandedMaterialId === material.id ? 'Cerrar Detalles' : 'Ver Lotes'}
               </button>
 
+              <button
+                style={dropdownBtn}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-page)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                onClick={() => {
+                  setMenuState(null);
+                  setEditingId(material.id);
+                  setFormData({
+                    name: material.name,
+                    description: material.description || '',
+                    type: material.type,
+                    category_id: material.category_id || '',
+                    base_unit_id: material.base_unit_id || '',
+                    purchase_unit_id: material.purchase_unit_id || '',
+                    display_unit_id: material.display_unit_id || '',
+                    provider: material.provider || '',
+                    status: (material.status as 'activa' | 'inactiva') || 'activa',
+                    generates_stock: material.generates_stock ?? true,
+                    standard_cost: material.standard_cost || 0,
+                    initialQty: stats.totalRemainingQty,
+                    unitCost: stats.weightedAvgCost,
+                    totalCost: stats.totalRemainingQty * stats.weightedAvgCost,
+                    width: 140,
+                    unit: material.unit,
+                  });
+                  setIsModalOpen(true);
+                }}
+              >
+                <Edit2 size={14} style={{ color: 'var(--text-muted)' }} />
+                Editar Material
+              </button>
+
               <div style={{ borderTop: 'var(--border-default)', margin: 'var(--space-4) 0' }} />
 
-              {canEdit && (
+            {canDelete && (
+              <>
                 <button
-                  style={dropdownBtn}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-page)')}
+                  style={{ ...dropdownBtn, color: 'var(--state-warning)' }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.background = 'var(--surface-warning-soft)')
+                  }
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                  onClick={() => {
+                  onClick={async () => {
                     setMenuState(null);
-                    setEditingId(material.id);
-                    setFormData({
-                      name: material.name,
-                      description: material.description || '',
-                      type: material.type,
-                      category_id: material.category_id || '',
-                      base_unit_id: material.base_unit_id || '',
-                      purchase_unit_id: material.purchase_unit_id || '',
-                      display_unit_id: material.display_unit_id || '',
-                      provider: material.provider || '',
-                      status: (material.status as 'activa' | 'inactiva') || 'activa',
-                      initialQty: stats.totalRemainingQty,
-                      unitCost: stats.weightedAvgCost,
-                      totalCost: stats.totalRemainingQty * stats.weightedAvgCost,
-                      width: 140,
-                      unit: material.unit,
-                    });
-                    setIsModalOpen(true);
+
+                    if (window.confirm(`¿Archivar "${material.name}"? Pasará a estado inactivo.`)) {
+                      try {
+                        await archiveMaterial(material.id);
+                      } catch (err: any) {
+                        alert(`Error: ${translateError(err)}`);
+                      }
+                    }
                   }}
                 >
-                  <Edit2 size={14} style={{ color: 'var(--text-muted)' }} />
-                  Editar Material
+                  <Archive size={14} />
+                  Archivar Insumo
                 </button>
-              )}
 
-              {canDelete &&
-                (mustArchive ? (
-                  <button
-                    style={{ ...dropdownBtn, color: 'var(--state-warning)' }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.background = 'var(--surface-warning-soft)')
-                    }
-                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                    onClick={async () => {
-                      setMenuState(null);
+                <button
+                  style={{ ...dropdownBtn, color: 'var(--state-danger)' }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.background = 'var(--surface-danger-soft)')
+                  }
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  onClick={async () => {
+                    setMenuState(null);
 
-                      if (window.confirm(`¿Archivar "${material.name}"? Razón: ${archiveReason}.`)) {
-                        try {
-                          await archiveMaterial(material.id);
-                        } catch (err: any) {
-                          alert(`Error: ${translateError(err)}`);
-                        }
+                    if (
+                      window.confirm(
+                        `¿ELIMINAR DEFINITIVAMENTE "${material.name}"?\n\nEsta acción es irreversible y ocultará el material de todo el sistema.`
+                      )
+                    ) {
+                      try {
+                        await deleteRawMaterial(material.id);
+                      } catch (err: any) {
+                        alert(`No se pudo eliminar: ${translateError(err)}`);
                       }
+                    }
+                  }}
+                >
+                  <Trash2 size={14} />
+                  Eliminar Insumo
+                </button>
+
+                {mustArchive && (
+                  <div
+                    style={{
+                      padding: 'var(--space-8) var(--space-16)',
+                      fontSize: 'var(--text-small-size)',
+                      color: 'var(--text-muted)',
+                      borderTop: 'var(--border-default)',
                     }}
                   >
-                    <Archive size={14} />
-                    Archivar Insumo
-                  </button>
-                ) : (
-                  <button
-                    style={{ ...dropdownBtn, color: 'var(--state-danger)' }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.background = 'var(--surface-danger-soft)')
-                    }
-                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                    onClick={async () => {
-                      setMenuState(null);
-
-                      if (
-                        window.confirm(
-                          `¿Eliminar "${material.name}"? Sin stock ni productos vinculados.`
-                        )
-                      ) {
-                        try {
-                          await deleteRawMaterial(material.id);
-                        } catch (err: any) {
-                          alert(`No se pudo eliminar: ${translateError(err)}`);
-                        }
-                      }
-                    }}
-                  >
-                    <Trash2 size={14} />
-                    Eliminar Insumo
-                  </button>
-                ))}
+                    Recomendación: archivar en vez de eliminar. Motivo: {archiveReason}.
+                  </div>
+                )}
+              </>
+            )}
             </div>
           );
         })()}

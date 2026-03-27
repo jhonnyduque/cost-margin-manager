@@ -577,6 +577,8 @@ export const useStore = create<AppState>()(
           purchase_unit_id: material.purchase_unit_id,
           display_unit_id: material.display_unit_id,
           provider: material.provider,
+          generates_stock: material.generates_stock,
+          standard_cost: material.standard_cost,
           status: material.status,
           created_at: new Date().toISOString(),
           created_by: actorId,
@@ -596,7 +598,7 @@ export const useStore = create<AppState>()(
         if (!companyId) return;
         const actorId = await getActorId();
 
-        const { error } = await supabase.from('raw_materials').update({
+        const { data, error } = await supabase.from('raw_materials').update({
           name: material.name,
           description: material.description,
           type: material.type,
@@ -605,14 +607,26 @@ export const useStore = create<AppState>()(
           purchase_unit_id: material.purchase_unit_id,
           display_unit_id: material.display_unit_id,
           provider: material.provider,
+          generates_stock: material.generates_stock,
+          standard_cost: material.standard_cost,
           status: material.status,
           updated_at: new Date().toISOString(),
           updated_by: actorId,
         })
           .eq('id', material.id)
-          .eq('company_id', companyId);
+          .eq('company_id', companyId)
+          .select('id')
+          .maybeSingle();
 
-        if (error) throw error;
+        if (error) {
+          console.error('[Supabase] updateRawMaterial Error:', error.message);
+          throw error;
+        }
+
+        if (!data) {
+          throw new Error('No se pudo actualizar: El material no existe o no pertenece a esta empresa.');
+        }
+
         set((state) => ({
           rawMaterials: state.rawMaterials.map((m) => m.id === material.id ? material : m),
         }));
@@ -623,13 +637,29 @@ export const useStore = create<AppState>()(
         if (debt.pendingQty > 0) {
           throw new Error('Integridad Contable: No se puede eliminar una materia prima con deuda activa.');
         }
+
+        const companyId = get().currentCompanyId;
+        if (!companyId) throw new Error('Sesión inválida: No se encontró el ID de empresa.');
+
         const actorId = await getActorId();
-        const { error } = await supabase.from('raw_materials')
+        
+        // 🔴 AUDIT FIX: We use .select() but NOT .maybeSingle() because the RLS SELECT policy 
+        // will hide the row immediately after setting deleted_at, which would cause a 406 error.
+        const { data, error } = await supabase.from('raw_materials')
           .update({ deleted_at: new Date().toISOString(), updated_by: actorId })
           .eq('id', id)
-          .eq('company_id', get().currentCompanyId);
+          .eq('company_id', companyId)
+          .select('id');
 
-        if (error) throw error;
+        if (error) {
+          console.error('[Supabase] deleteRawMaterial Error:', error.message);
+          throw error;
+        }
+
+        // If the update worked, it's possible 'data' is still [] because RLS hides the row
+        // immediately after soft-deletion. We trust Supabase that if error is null, it worked
+        // unless it's a completely missing row (which we check earlier or ignore).
+
         set((state) => ({
           rawMaterials: state.rawMaterials.filter((m) => m.id !== id),
           batches: state.batches.filter((b) => b.material_id !== id),

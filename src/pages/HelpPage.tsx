@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
     ChevronLeft, MessageSquare, BookOpen,
     ChevronDown, ChevronUp, Mail, Clock, Package,
-    Layers, Calculator, CreditCard, Users, Settings,
+    Layers, Calculator, CreditCard, Users, Settings, Loader2,
 } from 'lucide-react';
 import { PageContainer, SectionBlock } from '@/components/ui/LayoutPrimitives';
 import { UniversalPageHeader } from '@/components/ui/UniversalPageHeader';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/services/supabase';
 
 interface FaqItem { question: string; answer: string; category: string; }
 interface DocLink { icon: React.ElementType; title: string; description: string; iconBg: string; iconColor: string; }
@@ -16,11 +18,11 @@ interface DocLink { icon: React.ElementType; title: string; description: string;
 const CATEGORIES = ['Todos', 'Inventario', 'Productos', 'Facturación', 'Cuenta'];
 
 const FAQ: FaqItem[] = [
-    { category: 'Inventario', question: '¿Cómo funciona el costeo FIFO en BETO OS?', answer: 'FIFO (First In, First Out) significa que el primer lote de materia prima que entra es el primero que se consume al producir. BETO OS gestiona esto automáticamente: al registrar una producción, el sistema descuenta primero del lote más antiguo disponible. Esto refleja el costo real del inventario y evita que lotes viejos queden "congelados".' },
+    { category: 'Inventario', question: '¿Cómo funciona el costeo FIFO en BETO OS?', answer: 'FIFO (First In, First Out) significa que el primer lote de materia prima que entra es el primero que se consume al producir. BETO OS gestiona esto automáticamente: al registrar una producción, el sistema descuenta primero del lote más antiguo disponible. Esto refleja el costo real del inventario y evita que lotes viejos queden \"congelados\".' },
     { category: 'Inventario', question: '¿Qué es el stock de seguridad y cómo configurarlo?', answer: 'El stock de seguridad es el nivel mínimo de inventario que debe mantenerse para evitar paros de producción. En BETO OS, puedes configurarlo por materia prima desde la sección de Materias Primas. Cuando el stock cae por debajo de ese umbral, el sistema genera una alerta automática en el dashboard.' },
-    { category: 'Inventario', question: '¿Puedo registrar una entrada de stock sin factura?', answer: 'Sí. Puedes registrar entradas de stock como "ajuste de inventario" sin necesidad de asociarlas a una factura de compra. Sin embargo, para un costeo FIFO preciso, recomendamos registrar siempre el precio de compra del lote para que el cálculo de costo de producción sea correcto.' },
+    { category: 'Inventario', question: '¿Puedo registrar una entrada de stock sin factura?', answer: 'Sí. Puedes registrar entradas de stock como \"ajuste de inventario\" sin necesidad de asociarlas a una factura de compra. Sin embargo, para un costeo FIFO preciso, recomendamos registrar siempre el precio de compra del lote para que el cálculo de costo de producción sea correcto.' },
     { category: 'Productos', question: '¿Cómo calcula BETO OS el margen de un producto?', answer: 'El margen se calcula como: (Precio de Venta - Costo Total) / Precio de Venta × 100. El costo total incluye materias primas (valoradas con FIFO), costos directos adicionales y el porcentaje de overhead configurado. El sistema compara automáticamente el margen real contra tu margen objetivo y alerta si hay desvíos.' },
-    { category: 'Productos', question: '¿Qué significa "drift de margen" en el dashboard?', answer: 'El drift de margen indica que el margen real de un producto se ha alejado significativamente del margen objetivo. Esto puede deberse a una subida en el costo de materias primas, un precio de venta desactualizado, o cambios en la fórmula del producto. BETO OS te muestra el impacto financiero estimado mensual para que puedas priorizar correcciones.' },
+    { category: 'Productos', question: '¿Qué significa \"drift de margen\" en el dashboard?', answer: 'El drift de margen indica que el margen real de un producto se ha alejado significativamente del margen objetivo. Esto puede deberse a una subida en el costo de materias primas, un precio de venta desactualizado, o cambios en la fórmula del producto. BETO OS te muestra el impacto financiero estimado mensual para que puedas priorizar correcciones.' },
     { category: 'Facturación', question: '¿Puedo cambiar de plan en cualquier momento?', answer: 'Sí. Puedes hacer upgrade o downgrade de plan desde la sección Billing. Los upgrades aplican inmediatamente con prorrateo del período en curso. Los downgrades aplican al inicio del siguiente ciclo de facturación. Si el nuevo plan tiene menos seats que usuarios activos, deberás eliminar usuarios antes de confirmar el downgrade.' },
     { category: 'Facturación', question: '¿Cómo obtengo una factura de mi suscripción?', answer: 'Las facturas se generan automáticamente con cada cobro y están disponibles en Billing → Historial de facturas. Puedes descargarlas en PDF. Si necesitas que la factura incluya datos fiscales específicos (NIF, razón social), actualízalos en Billing → Datos de facturación antes del próximo ciclo.' },
     { category: 'Cuenta', question: '¿Cómo invitar a un nuevo miembro del equipo?', answer: 'Ve a Equipo → Invitar Miembro. Introduce el email, nombre y rol (Operator, Manager, etc.). El invitado recibirá un email con instrucciones para crear su cuenta. El número máximo de usuarios depende de tu plan actual.' },
@@ -38,18 +40,55 @@ const DOC_LINKS: DocLink[] = [
 
 export default function HelpPage() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const { user, currentCompany } = useAuth();
     const [openFaq, setOpenFaq] = useState<number | null>(null);
     const [activeCategory, setActiveCategory] = useState('Todos');
     const [contactName, setContactName] = useState('');
     const [contactEmail, setContactEmail] = useState('');
     const [contactMessage, setContactMessage] = useState('');
     const [sent, setSent] = useState(false);
+    const [sending, setSending] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const filteredFaq = activeCategory === 'Todos' ? FAQ : FAQ.filter(f => f.category === activeCategory);
 
-    const handleContact = (e: React.MouseEvent) => {
+    const handleContact = async (e: React.MouseEvent) => {
         e.preventDefault();
-        setSent(true); setContactName(''); setContactEmail(''); setContactMessage('');
+        if (!user || !contactName.trim() || !contactEmail.trim() || !contactMessage.trim()) return;
+
+        setSending(true);
+        setError(null);
+
+        try {
+            const { error: insertError } = await supabase.from('support_tickets').insert({
+                user_id: user.id,
+                company_id: currentCompany?.id || null,
+                user_name: contactName.trim(),
+                user_email: contactEmail.trim(),
+                subject: 'Soporte General',
+                message: contactMessage.trim(),
+                priority: 'medium',
+                metadata: {
+                    page: location.pathname,
+                    company_name: currentCompany?.name || null,
+                    plan: currentCompany?.subscription_tier || null,
+                    user_agent: navigator.userAgent,
+                },
+            });
+
+            if (insertError) throw insertError;
+
+            setSent(true);
+            setContactName('');
+            setContactEmail('');
+            setContactMessage('');
+        } catch (err: any) {
+            console.error('Error creating support ticket:', err);
+            setError('No pudimos enviar tu mensaje. Intenta de nuevo.');
+        } finally {
+            setSending(false);
+        }
     };
 
     const inputCls = "input";
@@ -149,12 +188,15 @@ export default function HelpPage() {
                                 <input type="email" placeholder="Tu email" value={contactEmail} onChange={e => setContactEmail(e.target.value)} className={inputCls} />
                                 <textarea placeholder="¿En qué podemos ayudarte?" value={contactMessage} onChange={e => setContactMessage(e.target.value)} rows={4}
                                     className="input textarea" />
-                                <button onClick={handleContact} disabled={!contactName || !contactEmail || !contactMessage}
-                                    style={{ width: '100%', height: '2.75rem', background: 'var(--state-primary)', color: 'var(--text-inverse)', fontSize: 'var(--text-small-size)', fontWeight: 700, borderRadius: 'var(--radius-lg)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-8)', transition: 'background var(--transition-fast)', opacity: (!contactName || !contactEmail || !contactMessage) ? 0.4 : 1 }}
-                                    onMouseEnter={e => { if (contactName && contactEmail && contactMessage) e.currentTarget.style.background = 'var(--state-primary-hover)'; }}
+                                <button onClick={handleContact} disabled={sending || !contactName || !contactEmail || !contactMessage}
+                                    style={{ width: '100%', height: '2.75rem', background: 'var(--state-primary)', color: 'var(--text-inverse)', fontSize: 'var(--text-small-size)', fontWeight: 700, borderRadius: 'var(--radius-lg)', border: 'none', cursor: sending ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-8)', transition: 'background var(--transition-fast)', opacity: (sending || !contactName || !contactEmail || !contactMessage) ? 0.4 : 1 }}
+                                    onMouseEnter={e => { if (!sending && contactName && contactEmail && contactMessage) e.currentTarget.style.background = 'var(--state-primary-hover)'; }}
                                     onMouseLeave={e => (e.currentTarget.style.background = 'var(--state-primary)')}>
-                                    <Mail size={16} /> Enviar mensaje
+                                    {sending ? <><Loader2 size={16} className="animate-spin" /> Enviando...</> : <><Mail size={16} /> Enviar mensaje</>}
                                 </button>
+                                {error && (
+                                    <p style={{ fontSize: 'var(--text-caption-size)', color: 'var(--state-danger)', fontWeight: 600, textAlign: 'center' }}>{error}</p>
+                                )}
                             </div>
                             <div style={{ padding: 'var(--space-12) var(--space-16)', background: 'var(--surface-page)', borderTop: 'var(--border-default)', display: 'flex', alignItems: 'center', gap: 'var(--space-8)' }}>
                                 <Clock size={14} style={{ color: 'var(--text-muted)' }} />
