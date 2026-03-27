@@ -80,14 +80,14 @@ const EditTenantModal: React.FC<EditTenantModalProps> = ({ isOpen, company, onCl
             }}
         >
             <Card
-                className={`animate-in zoom-in-95 w-full max-w-xl overflow-hidden duration-200 ${tokens.shadow.modal} p-0`}
+                className={`animate-in zoom-in-95 w-full max-w-xl overflow-hidden duration-200 shadow-xl border-slate-200 p-0`}
             >
                 <header
                     className="flex items-center justify-between p-6 border-b border-slate-200 bg-white"
                 >
                     <div className="flex items-center gap-3">
                         <div
-                            className={`w-10 h-10 ${tokens.colors.bgBrand} rounded-lg flex items-center justify-center text-white`}
+                            className={`w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600`}
                         >
                             <Building2 size={20} />
                         </div>
@@ -156,7 +156,7 @@ const EditTenantModal: React.FC<EditTenantModalProps> = ({ isOpen, company, onCl
                             <span className="text-xs font-medium text-slate-500">Estado del Servicio</span>
                             {user?.is_super_admin ? (
                                 <Select
-                                    value={status}
+                                    value={status || 'trialing'}
                                     onChange={e => setStatus(e.target.value)}
                                 >
                                     <option value="active">Active</option>
@@ -174,8 +174,8 @@ const EditTenantModal: React.FC<EditTenantModalProps> = ({ isOpen, company, onCl
                                     ) : (
                                         <div className="h-2 w-2 rounded-full bg-red-500" />
                                     )}
-                                    <span className="capitalize">{status}</span>
-                                    {company.current_period_end && (
+                                    <span className="capitalize">{status || 'unknown'}</span>
+                                    {company?.current_period_end && (
                                         <span className="ml-auto text-xs text-slate-500">
                                             Vence: {new Date(company.current_period_end).toLocaleDateString()}
                                         </span>
@@ -193,8 +193,9 @@ const EditTenantModal: React.FC<EditTenantModalProps> = ({ isOpen, company, onCl
                                         const newTier = e.target.value as any;
                                         setTier(newTier);
                                         // Auto-update seat limit based on plan rules
-                                        const planConfig = subscriptionConfig.plans[newTier as keyof typeof subscriptionConfig.plans];
-                                        if (planConfig) {
+                                        const plans = subscriptionConfig.plans as any;
+                                        const planConfig = plans[newTier];
+                                        if (planConfig && typeof planConfig.seat_limit === 'number') {
                                             setSeatLimit(planConfig.seat_limit);
                                         }
                                         // Reset manual price if not enterprise

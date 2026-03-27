@@ -107,14 +107,25 @@ serve(async (req) => {
             );
         }
 
-        // ✅ FIX: desestructuración correcta de getUser()
-        const { data: { user }, error: authError } = await supabaseClient.auth.getUser(
-            authHeader.replace("Bearer ", "")
+        const token = authHeader.replace("Bearer ", "");
+        
+        // Creamos un cliente temporal solo para validar el token (sin Service Role)
+        const userClient = createClient(
+            Deno.env.get("SUPABASE_URL")!,
+            Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+            { global: { headers: { Authorization: authHeader } } }
         );
 
+        const { data: { user }, error: authError } = await userClient.auth.getUser();
+
         if (authError || !user) {
+            console.error(`[AUTHORIZATION] ❌ Auth error: ${authError?.message || "User not found"}`);
             return new Response(
-                JSON.stringify({ error: "Invalid or expired token", code: "UNAUTHORIZED" }),
+                JSON.stringify({ 
+                    error: "Invalid or expired token", 
+                    code: "UNAUTHORIZED",
+                    debug: authError?.message 
+                }),
                 { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
         }
@@ -195,18 +206,22 @@ serve(async (req) => {
             isExistingUser = true;
             console.log(`[IDENTITY] ℹ️ User already exists: ${targetUserId}`);
         } else {
-            // ✅ createUser en lugar de inviteUserByEmail — evita límite SMTP de Supabase Free
-            const { data: newUserData, error: createError } = await supabaseClient.auth.admin.createUser({
-                email: normalizedEmail,
-                email_confirm: true,
-                user_metadata: {
-                    full_name: `Admin ${normalizedName}`,
-                    company_slug: normalizedSlug
+            // ✅ Invite en lugar de createUser — dispara email oficial de Supabase
+            console.log(`[IDENTITY] 📧 Inviting new user: ${normalizedEmail}`);
+            const appUrl = Deno.env.get("APP_URL") || "http://localhost:3000";
+            const { data: inviteData, error: inviteError } = await supabaseClient.auth.admin.inviteUserByEmail(
+                normalizedEmail,
+                {
+                    data: {
+                        full_name: `Admin ${normalizedName}`,
+                        company_slug: normalizedSlug
+                    },
+                    redirectTo: `${appUrl}/reset-password`
                 }
-            });
+            );
 
-            if (createError) {
-                if (createError.message?.includes("already registered") || createError.status === 422) {
+            if (inviteError) {
+                if (inviteError.message?.includes("already registered") || inviteError.status === 422) {
                     console.log(`[IDENTITY] 🔄 User already registered, fetching ID...`);
                     await new Promise(resolve => setTimeout(resolve, 200));
 
@@ -221,11 +236,11 @@ serve(async (req) => {
                     }
                     isExistingUser = true;
                 } else {
-                    throw createError;
+                    throw inviteError;
                 }
             } else {
-                targetUserId = newUserData?.user?.id ?? null;
-                console.log(`[IDENTITY] ✅ New user created: ${targetUserId}`);
+                targetUserId = inviteData?.user?.id ?? null;
+                console.log(`[IDENTITY] ✅ Invitation sent: ${targetUserId}`);
             }
         }
 
