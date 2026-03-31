@@ -208,25 +208,6 @@ serve(async (req) => {
         } else {
             // ✅ Invite en lugar de createUser — dispara email oficial de Supabase
             console.log(`[IDENTITY] 📧 Inviting new user: ${normalizedEmail}`);
-            const appUrl = Deno.env.get("APP_URL") || "http://localhost:3000";
-            const { data: inviteData, error: inviteError } = await supabaseClient.auth.admin.inviteUserByEmail(
-                normalizedEmail,
-                {
-                    data: {
-                        full_name: `Admin ${normalizedName}`,
-                        company_slug: normalizedSlug
-                    },
-                    redirectTo: `${appUrl}/reset-password`
-                }
-            );
-
-            if (inviteError) {
-                if (inviteError.message?.includes("already registered") || inviteError.status === 422) {
-                    console.log(`[IDENTITY] 🔄 User already registered, fetching ID...`);
-                    await new Promise(resolve => setTimeout(resolve, 200));
-
-                    const recoveredUser = await getUserByEmail(supabaseClient, normalizedEmail);
-                    if (recoveredUser) {
                         targetUserId = recoveredUser.id;
                     } else {
                         const { data: profileSearch } = await supabaseClient

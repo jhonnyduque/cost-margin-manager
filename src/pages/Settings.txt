@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import { PageContainer, SectionBlock } from '@/components/ui/LayoutPrimitives';
 import { Badge } from '@/components/ui/Badge';
-import { notificationService } from '@/services/notificationService';
 
 export default function Settings() {
     const { user, currentCompany, userRole } = useAuth();
@@ -129,106 +128,7 @@ export default function Settings() {
     );
 }
 
-function NotificationSettings() {
-    const { user } = useAuth();
-    const [preferences, setPreferences] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [channelAvailability, setChannelAvailability] = useState<any>(null);
-    const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-    const eventLabels: Record<string, string> = {
-        'LOW_STOCK': 'Stock Crítico', 'COST_DEVIATION': 'Desviación de Costos',
-        'USER_INVITED': 'Invitaciones de Equipo', 'PAYMENT_FAILED': 'Errores de Cobro',
-        'INVOICE_READY': 'Facturación Lista',
-    };
-
-    useEffect(() => {
-        if (user?.id) {
-            loadPreferences();
-            notificationService.getChannelAvailability().then(setChannelAvailability);
-        }
-    }, [user?.id]);
-
-    const loadPreferences = async () => {
-        setLoading(true);
-        if (!user?.id) return;
-        await notificationService.ensureDefaultPreferences(user.id);
-        const { data, error } = await supabase.from('notification_preferences').select('*').eq('user_id', user.id);
-        if (!error && data) setPreferences(data);
-        setLoading(false);
-    };
-
-    const togglePreference = async (eventKey: string, field: 'in_app_enabled' | 'email_enabled', currentVal: boolean) => {
-        if (!user?.id) return;
-        setSaving(true); setStatusMsg(null);
-        const { error } = await supabase.from('notification_preferences').upsert({ user_id: user.id, event_key: eventKey, [field]: !currentVal }, { onConflict: 'user_id,event_key' });
-        if (!error) {
-            notificationService.invalidatePrefsCache(user.id);
-            setPreferences(prev => {
-                const existing = prev.find(p => p.event_key === eventKey);
-                if (existing) return prev.map(p => p.event_key === eventKey ? { ...p, [field]: !currentVal } : p);
-                return [...prev, { event_key: eventKey, [field]: !currentVal }];
-            });
-            setStatusMsg({ type: 'success', text: 'Preferencias guardadas' });
-        } else {
-            setStatusMsg({ type: 'error', text: 'Error al guardar preferencias' });
-        }
-        setSaving(false);
-    };
-
-    if (loading) return <Card><Card.Content><div style={{ height: '8rem', background: 'var(--surface-page)', borderRadius: 'var(--radius-lg)' }} /></Card.Content></Card>;
-
-    return (
-        <Card>
-            <Card.Header title="Canales de Notificación" description="Controla dónde quieres recibir las alertas críticas." icon={<Bell style={{ color: 'var(--text-muted)' }} size={20} />} />
-            <Card.Content style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-8)', paddingTop: 'var(--space-16)' }}>
-                {statusMsg && (
-                    <div style={{ padding: 'var(--space-10)', borderRadius: 'var(--radius-md)', background: statusMsg.type === 'success' ? 'var(--surface-success-soft)' : 'var(--surface-danger-soft)', border: 'var(--border-default)', color: statusMsg.type === 'success' ? 'var(--state-success)' : 'var(--state-danger)', fontWeight: 700, fontSize: 'var(--text-caption-size)' }}>
-                        {statusMsg.text}
-                    </div>
-                )}
-                {Object.entries(eventLabels).map(([key, label]) => {
-                    const pref = preferences.find(p => p.event_key === key) || { in_app_enabled: true, email_enabled: false };
-                    const emailAvailable = channelAvailability?.email?.available;
-                    const emailMessage = channelAvailability?.email?.message;
-                    return (
-                        <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--space-16)', background: 'var(--surface-page)', border: 'var(--border-default)', borderRadius: 'var(--radius-xl)', transition: 'background var(--transition-fast), box-shadow var(--transition-fast)' }}
-                            onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-card)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface-page)'; e.currentTarget.style.boxShadow = 'none'; }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-12)' }}>
-                                <div style={{ padding: 'var(--space-8)', background: 'var(--surface-card)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', border: 'var(--border-default)' }}>
-                                    <Bell size={16} style={{ color: 'var(--text-muted)' }} />
-                                </div>
-                                <span style={{ fontWeight: 900, color: 'var(--text-secondary)', fontSize: 'var(--text-body-size)' }}>{label}</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-16)' }}>
-                                {[
-                                    { label: 'PLATAFORMA', field: 'in_app_enabled' as const, val: pref.in_app_enabled, disabled: false },
-                                    { label: 'EMAIL', field: 'email_enabled' as const, val: pref.email_enabled, border: true, disabled: !emailAvailable, helper: emailMessage },
-                                ].map(t => (
-                                    <div key={t.field} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-8)', borderLeft: t.border ? 'var(--border-default)' : 'none', paddingLeft: t.border ? 'var(--space-16)' : 0 }}>
-                                        <span style={{ fontSize: 'var(--text-caption-size)', fontWeight: 700, color: 'var(--text-muted)' }}>{t.label}</span>
-                                        <button onClick={() => !t.disabled && togglePreference(key, t.field, t.val)} disabled={t.disabled}
-                                            style={{ position: 'relative', display: 'inline-flex', height: '1.5rem', width: '2.75rem', alignItems: 'center', borderRadius: '999px', transition: 'background var(--transition-fast)', background: t.disabled ? 'var(--surface-muted)' : (t.val ? 'var(--state-primary)' : 'var(--surface-muted)'), border: 'none', cursor: t.disabled ? 'not-allowed' : 'pointer', opacity: t.disabled ? 0.5 : 1 }}>
-                                            <span style={{ display: 'inline-block', width: '1rem', height: '1rem', borderRadius: '50%', background: 'var(--surface-card)', transition: 'transform var(--transition-fast)', transform: t.val ? 'translateX(1.5rem)' : 'translateX(0.25rem)' }} />
-                                        </button>
-                                        {t.helper && t.disabled && (
-                                            <span style={{ fontSize: 'var(--text-caption-size)', color: 'var(--text-muted)' }}>{t.helper}</span>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    );
-                })}
-                {saving && <span style={{ fontSize: 'var(--text-caption-size)', color: 'var(--text-muted)' }}>Guardando cambios...</span>}
-            </Card.Content>
-        </Card>
-    );
-}
-
-function SectionPlaceholder({ icon, title, description, items }: { icon: React.ReactNode; title: string; description: string; items: { icon: React.ReactNode; label: string }[] }) {
+REPLACEME({ icon, title, description, items }: { icon: React.ReactNode; title: string; description: string; items: { icon: React.ReactNode; label: string }[] }) {
     return (
         <Card style={{ opacity: 0.8, border: '1px dashed var(--border-color-default)', transition: 'filter var(--transition-base)' }}
             onMouseEnter={(e: any) => (e.currentTarget.style.filter = 'none')}

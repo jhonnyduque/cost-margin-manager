@@ -24,12 +24,13 @@ interface EditTenantModalProps {
 }
 
 const EditTenantModal: React.FC<EditTenantModalProps> = ({ isOpen, company, onClose, onSuccess }) => {
-    if (!isOpen) return null;
+    if (!isOpen || !company) return null;
+
     const { user } = useAuth();
-    const [name, setName] = useState(company.name);
-    const [slug, setSlug] = useState(company.slug);
-    const [status, setStatus] = useState(company.subscription_status);
-    const [tier, setTier] = useState(company.subscription_tier);
+    const [name, setName] = useState(company.name || '');
+    const [slug, setSlug] = useState(company.slug || '');
+    const [status, setStatus] = useState(company.subscription_status || 'trialing');
+    const [tier, setTier] = useState(company.subscription_tier || 'starter');
     const [seatLimit, setSeatLimit] = useState(company.seat_limit || 1);
     const [customPriceUSD, setCustomPriceUSD] = useState<string>(
         company.custom_price_cents ? (company.custom_price_cents / 100).toString() : ''
@@ -175,9 +176,9 @@ const EditTenantModal: React.FC<EditTenantModalProps> = ({ isOpen, company, onCl
                                         <div className="h-2 w-2 rounded-full bg-red-500" />
                                     )}
                                     <span className="capitalize">{status || 'unknown'}</span>
-                                    {company?.current_period_end && (
+                                    {company && (company.current_period_end || company.current_period_ends_at) && (
                                         <span className="ml-auto text-xs text-slate-500">
-                                            Vence: {new Date(company.current_period_end).toLocaleDateString()}
+                                            Vence: {new Date(company.current_period_end || company.current_period_ends_at).toLocaleDateString()}
                                         </span>
                                     )}
                                 </div>

@@ -1,5 +1,8 @@
 import { supabase } from './supabase';
-import { EventKey } from '../core/events';
+import { EventKey, EVENTS } from '../core/events';
+import { communicationConfig } from '@/config/communication.config';
+import { emailTemplates } from './emailTemplates';
+import { whatsappTemplates } from './whatsappTemplates';
 
 export type NotificationLevel = 'info' | 'warning' | 'error';
 export type NotificationScope = 'user' | 'company' | 'global';
@@ -27,12 +30,204 @@ async function getCurrentUserId(): Promise<string> {
     return user.id;
 }
 
+async function getCurrentContext(preferredCompanyId?: string | null): Promise<{ userId: string; companyId: string | null }> {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error || !user) throw new Error('[NotificationService] No active session');
+
+    const metaCompany = (user.user_metadata as any)?.company_id || (user.app_metadata as any)?.company_id || null;
+    const companyId = preferredCompanyId ?? metaCompany ?? null;
+
+    return { userId: user.id, companyId };
+}
+
 export const notificationService = {
+    _prefsCache: new Map<string, { data: any[], timestamp: number }>(),
+    _alertCooldown: new Map<string, number>(),
+
+    invalidatePrefsCache(userId: string) {
+        this._prefsCache.delete(userId);
+        console.info('[NotificationService] Prefs cache invalidated for', userId);
+    },
+
+    alertCooldownHit(key: string, ttlMs = 15 * 60 * 1000) {
+        const now = Date.now();
+        const last = this._alertCooldown.get(key);
+        if (last && now - last < ttlMs) return true;
+        this._alertCooldown.set(key, now);
+        return false;
+    },
+
+    buildEmailContent(eventKey: string, payload: any, baseUrl: string) {
+        switch (eventKey) {
+            case EVENTS.INVENTORY_LOW_STOCK:
+            case EVENTS.INVENTORY_COST_DEVIATION:
+                return emailTemplates.getInventoryAlert({
+                    productName: payload.productName || payload.materialName || 'Recurso',
+                    type: eventKey,
+                    message: payload.message || payload.deviation || 'Revisa el inventario',
+                    actionUrl: payload.actionUrl || payload.link || `${baseUrl}/stock`
+                });
+            case EVENTS.BILLING_PAYMENT_FAILED:
+                return emailTemplates.getBillingNotice({
+                    title: payload.title || 'Error de pago',
+                    message: payload.message || 'No pudimos procesar tu último pago.',
+                    actionUrl: payload.actionUrl || `${baseUrl}/settings/billing`
+                });
+            case EVENTS.BILLING_INVOICE_READY:
+                return emailTemplates.getBillingNotice({
+                    title: payload.title || 'Factura disponible',
+                    message: payload.message || 'Tu factura está lista para descargar.',
+                    actionUrl: payload.actionUrl || `${baseUrl}/settings/billing`
+                });
+            case EVENTS.BILLING_SUBSCRIPTION_RENEWED:
+                return emailTemplates.getBillingNotice({
+                    title: payload.title || 'Suscripción renovada',
+                    message: payload.message || 'Tu plan ha sido renovado.',
+                    actionUrl: payload.actionUrl || `${baseUrl}/settings/billing`
+                });
+            case EVENTS.SYSTEM_CRITICAL:
+                return emailTemplates.getSystemCritical({
+                    title: payload.title || '🚨 ALERTA CRÍTICA',
+                    message: payload.message || 'Aviso crítico del sistema.'
+                });
+            case EVENTS.SYSTEM_MAINTENANCE:
+            case EVENTS.SYSTEM_BROADCAST:
+            case EVENTS.SYSTEM_ERROR:
+            case EVENTS.SYSTEM_NEW_SIGNUP:
+                return emailTemplates.getSystemNotice({
+                    title: payload.title || 'Aviso BETO OS',
+                    message: payload.message || 'Tienes un aviso del sistema.',
+                    actionUrl: payload.actionUrl
+                });
+            case EVENTS.TEAM_USER_INVITED:
+                return emailTemplates.getTeamNotice({
+                    title: payload.title || 'Invitación enviada',
+                    message: payload.message || `Has invitado a ${payload.email || 'un usuario'}.`,
+                    actionUrl: payload.actionUrl
+                });
+            case EVENTS.TEAM_USER_JOINED:
+                return emailTemplates.getTeamNotice({
+                    title: payload.title || 'Nuevo miembro en tu equipo',
+                    message: payload.message || `${payload.userName || 'Un usuario'} se ha unido.`,
+                    actionUrl: payload.actionUrl
+                });
+            case EVENTS.TEAM_SEAT_LIMIT_REACHED:
+                return emailTemplates.getTeamNotice({
+                    title: payload.title || 'Límite de usuarios alcanzado',
+                    message: payload.message || `Has alcanzado el máximo de seats (${payload.seatLimit || 'N/A'}).`,
+                    actionUrl: payload.actionUrl || `${baseUrl}/settings/billing`
+                });
+            default:
+                return emailTemplates.getSystemNotice({
+                    title: payload.title || 'Aviso BETO OS',
+                    message: payload.message || 'Tienes una notificación pendiente.',
+                    actionUrl: payload.actionUrl
+                });
+        }
+    },
+
+    buildWhatsappText(eventKey: string, payload: any, baseUrl: string) {
+        switch (eventKey) {
+            case EVENTS.INVENTORY_LOW_STOCK:
+            case EVENTS.INVENTORY_COST_DEVIATION:
+                return whatsappTemplates.getInventoryCritical({
+                    productName: payload.productName || payload.materialName || 'Recurso',
+                    message: payload.message || 'Revisa el inventario crítico.',
+                    baseUrl
+                }).text;
+            case EVENTS.BILLING_PAYMENT_FAILED:
+            case EVENTS.BILLING_INVOICE_READY:
+            case EVENTS.BILLING_SUBSCRIPTION_RENEWED:
+                return whatsappTemplates.getBillingAlert({
+                    title: payload.title || 'Facturación',
+                    message: payload.message || 'Revisa tu cuenta de facturación.',
+                    baseUrl
+                }).text;
+            case EVENTS.SYSTEM_CRITICAL:
+            case EVENTS.SYSTEM_ERROR:
+                return whatsappTemplates.getSystemCritical({
+                    title: payload.title || 'Alerta crítica',
+                    message: payload.message || 'Revisa el sistema.'
+                }).text;
+            default:
+                return `BETO OS: ${payload.title || 'Aviso'} - ${payload.message || ''}`.trim();
+        }
+    },
+
+    async getWhatsappOptIn(userId: string, phone: string | null): Promise<{ ok: boolean; reason?: string }> {
+        if (!phone) return { ok: false, reason: 'no_phone' };
+        const phoneTrimmed = phone.trim();
+        const e164 = phoneTrimmed.startsWith('+') ? phoneTrimmed : `+${phoneTrimmed}`;
+        const valid = /^\+[1-9]\d{7,14}$/.test(e164);
+        if (!valid) return { ok: false, reason: 'invalid_phone' };
+
+        const { data, error } = await supabase
+            .from('whatsapp_optin')
+            .select('consent_at, revoked_at')
+            .eq('user_id', userId)
+            .eq('phone_e164', e164)
+            .limit(1);
+
+        if (error) return { ok: false, reason: 'optin_lookup_error' };
+        const row = data && data[0];
+        if (!row || !row.consent_at || row.revoked_at) return { ok: false, reason: 'no_opt_in' };
+
+        return { ok: true };
+    },
+
+    async checkWhatsappCaps(userId: string, eventKey: string) {
+        const now = new Date();
+        const since = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+        const { data, error } = await supabase
+            .from('delivery_logs')
+            .select('id, created_at, event_type')
+            .eq('channel', 'whatsapp')
+            .eq('is_mock', false)
+            .in('status', ['success', 'error'])
+            .eq('user_id', userId)
+            .gte('created_at', since);
+
+        if (error || !data) return { allowed: false, reason: 'caps_lookup_error' };
+
+        const dailyCap = communicationConfig.whatsapp.dailyCapPerUser || 3;
+        if (data.length >= dailyCap) return { allowed: false, reason: 'cap_exceeded' };
+
+        const cooldownMin = communicationConfig.whatsapp.cooldownCriticalMinutes || 120;
+        if (eventKey === EVENTS.SYSTEM_CRITICAL) {
+            const cutoff = new Date(now.getTime() - cooldownMin * 60 * 1000).toISOString();
+            const recentCritical = data.find(d => d.event_type === EVENTS.SYSTEM_CRITICAL && d.created_at >= cutoff);
+            if (recentCritical) return { allowed: false, reason: 'cooldown_active' };
+        }
+
+        return { allowed: true };
+    },
+
+    async ensureDefaultPreferences(userId: string) {
+        const { data, error } = await supabase.from('notification_preferences').select('event_key').eq('user_id', userId);
+        if (error) {
+            console.warn('[NotificationService] ensureDefaultPreferences skip due error', error.message);
+            return;
+        }
+        if (data && data.length > 0) return;
+
+        const eventKeys = Object.values(EVENTS);
+        const rows = eventKeys.map(key => ({
+            user_id: userId,
+            event_key: key,
+            in_app_enabled: true,
+            email_enabled: false
+        }));
+        await supabase.from('notification_preferences').insert(rows);
+        this.invalidatePrefsCache(userId);
+        console.info('[NotificationService] Default preferences seeded for', userId);
+    },
+
     /**
      * Crea una notificación en el sistema.
      * Esta función suele ser llamada por el NotificationListener.
      */
     async createNotification(dto: CreateNotificationDto) {
+        console.info('[NotificationService] Creating notification', dto.eventKey, dto.targetScope);
         const { error } = await supabase.from('notifications').insert({
             user_id: dto.userId,
             company_id: dto.companyId,
@@ -49,6 +244,8 @@ export const notificationService = {
             console.error('[NotificationService] Error creating notification:', error);
             throw error;
         }
+
+        console.info('[NotificationService] Notification created', dto.eventKey, dto.targetScope);
 
         // 🟢 NUEVO: Despachar a canales externos (Email/WhatsApp)
         // Para notificaciones globales (userId null), despachamos usando el contexto del emisor para la prueba
@@ -67,9 +264,15 @@ export const notificationService = {
      * de la tabla sin filtrar, exponiendo datos de otros usuarios y causando
      * que el estado de lectura se mezclara entre sesiones.
      */
-    async getNotifications(options?: { limit?: number; unreadOnly?: boolean }) {
-        const userId = await getCurrentUserId();
+    async getNotifications(options?: { limit?: number; unreadOnly?: boolean; companyId?: string | null }) {
+        const { userId, companyId } = await getCurrentContext(options?.companyId);
         const limitStr = options?.limit || 20;
+
+        const filters = [
+            `user_id.eq.${userId}`,
+            `target_scope.eq.global`
+        ];
+        if (companyId) filters.push(`and(target_scope.eq.company,company_id.eq.${companyId})`);
 
         const { data, error } = await supabase
             .from('notifications')
@@ -77,7 +280,7 @@ export const notificationService = {
                 *,
                 notification_reads!left(read_at)
             `)
-            .or(`user_id.eq.${userId},target_scope.in.(global,company)`)
+            .or(filters.join(','))
             .order('created_at', { ascending: false })
             .limit(limitStr);
 
@@ -102,22 +305,29 @@ export const notificationService = {
      * read_at IS NULL globales, lo que causaba que al refrescar el badge
      * mostrara un número incorrecto (suma de todos los usuarios).
      */
-    async getUnreadCount() {
-        const userId = await getCurrentUserId();
+    async getUnreadCount(companyId?: string | null) {
+        const { userId, companyId: resolvedCompanyId } = await getCurrentContext(companyId);
+
+        const filters = [
+            `user_id.eq.${userId}`,
+            `target_scope.eq.global`
+        ];
+        if (resolvedCompanyId) filters.push(`and(target_scope.eq.company,company_id.eq.${resolvedCompanyId})`);
 
         const { data: notes, error: fetchError } = await supabase
             .from('notifications')
             .select(`
                 id,
                 user_id,
+                target_scope,
+                company_id,
                 read_at,
                 notification_reads!left(read_at)
             `)
-            .or(`user_id.eq.${userId},target_scope.in.(global,company)`);
+            .or(filters.join(','));
 
         if (fetchError) throw fetchError;
 
-        // Contar las que no tienen read_at personal ni en la relación
         const unread = notes.filter(n => {
             if (n.user_id) return !n.read_at;
             return !n.notification_reads || n.notification_reads.length === 0;
@@ -171,8 +381,8 @@ export const notificationService = {
      * 🔴 FIX: Añadido filtro por user_id — antes actualizaba TODAS
      * las notificaciones sin leer de toda la tabla.
      */
-    async markAllAsRead() {
-        const userId = await getCurrentUserId();
+    async markAllAsRead(companyId?: string | null) {
+        const { userId, companyId: resolvedCompanyId } = await getCurrentContext(companyId);
 
         // 1. Marcar personales
         await supabase
@@ -181,16 +391,19 @@ export const notificationService = {
             .eq('user_id', userId)
             .is('read_at', null);
 
-        // 2. Marcar compartidas (global/company)
-        // Buscamos todas las compartidas que el usuario no ha leído aún
+        // 2. Marcar compartidas (global + company del usuario)
+        const sharedFilters = [`target_scope.eq.global`];
+        if (resolvedCompanyId) sharedFilters.push(`and(target_scope.eq.company,company_id.eq.${resolvedCompanyId})`);
+
         const { data: sharedNotes } = await supabase
             .from('notifications')
             .select(`
                 id,
+                target_scope,
+                company_id,
                 notification_reads!left(id)
             `)
-            .is('user_id', null)
-            .or('target_scope.eq.global,target_scope.eq.company');
+            .or(sharedFilters.join(','));
 
         if (sharedNotes) {
             const unreadShared = sharedNotes.filter(n => !n.notification_reads || n.notification_reads.length === 0);
@@ -219,27 +432,36 @@ export const notificationService = {
      * Nota: el canal se nombra con userId para que cada sesión tenga
      * su propio canal independiente y no haya colisiones entre usuarios.
      */
-    subscribeToNotifications(userId: string, callback: (payload: any) => void) {
-        return supabase
-            .channel(`notifications_realtime_${userId}`)
-            .on(
+    subscribeToNotifications(userId: string, companyId: string | null | undefined, callback: (payload: any) => void) {
+        const channel = supabase.channel(`notifications_realtime_${userId}`);
+
+        // Personales
+        channel.on(
+            'postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+            (payload) => callback(payload.new)
+        );
+
+        // Company scoped (solo la empresa actual)
+        if (companyId) {
+            channel.on(
                 'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'notifications'
-                },
+                { event: 'INSERT', schema: 'public', table: 'notifications', filter: `company_id=eq.${companyId}` },
                 (payload) => {
                     const newNote = payload.new;
-                    // Filtrar en cliente: si es para el usuario OR global OR de su empresa
-                    const isForMe = newNote.user_id === userId ||
-                        newNote.target_scope === 'global' ||
-                        (newNote.target_scope === 'company' && newNote.company_id); // El company_id se valida en RLS usualmente
-
-                    if (isForMe) callback(newNote);
+                    if (newNote.target_scope === 'company') callback(newNote);
                 }
-            )
-            .subscribe();
+            );
+        }
+
+        // Global
+        channel.on(
+            'postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'notifications', filter: `target_scope=eq.global` },
+            (payload) => callback(payload.new)
+        );
+
+        return channel.subscribe();
     },
 
     async getUserPreferences() {
@@ -265,6 +487,7 @@ export const notificationService = {
             }, { onConflict: 'user_id,event_key' });
         
         if (error) throw error;
+        this.invalidatePrefsCache(userId);
         return true;
     },
 
@@ -304,17 +527,23 @@ export const notificationService = {
         };
     },
 
-    // Caché de preferencias para evitar consultas excesivas (TTL: 1 min)
-    _prefsCache: new Map<string, { data: any[], timestamp: number }>(),
-
     /**
      * Determina si se debe emitir una notificación según las preferencias del usuario.
      */
-    async shouldNotify(userId: string, eventKey: string, channel: 'in_app' | 'email' | 'whatsapp'): Promise<boolean> {
+    async shouldNotify(userId: string, eventKey: string, channel: 'in_app' | 'email' | 'whatsapp', opts?: { scope?: 'user' | 'company' | 'global' }): Promise<boolean> {
+        const scope = opts?.scope || 'user';
+
         // 1. Bypass explícito para Mensajes Críticos
-        const categories = this.getNotificationCategories();
-        const category = categories.find(c => c.key === eventKey);
-        if (category?.isCritical) return true;
+        const criticalEvents = new Set([
+            'SYSTEM_CRITICAL',
+            'SYSTEM_ERROR',
+            'BILLING_PAYMENT_FAILED',
+            'SYSTEM_MAINTENANCE'
+        ]);
+        if (criticalEvents.has(eventKey)) {
+            console.info('[NotificationService][shouldNotify] bypass critical', { eventKey, channel, scope });
+            return true;
+        }
 
         // 2. Consultar Caché
         const now = Date.now();
@@ -332,11 +561,19 @@ export const notificationService = {
 
         // 3. Evaluar Preferencia
         const pref = prefs.find(p => p.event_key === eventKey);
-        if (!pref) return channel === 'in_app'; // Default: solo in-app si no hay registro
+        let decision: boolean;
+        if (!pref) {
+            decision = channel === 'in_app'; // Default seguro
+        } else if (channel === 'in_app') {
+            decision = pref.in_app_enabled;
+        } else if (channel === 'email') {
+            decision = pref.email_enabled;
+        } else {
+            decision = false;
+        }
 
-        if (channel === 'in_app') return pref.in_app_enabled;
-        if (channel === 'email') return pref.email_enabled;
-        return false; // WhatsApp siempre false por ahora
+        console.info('[NotificationService][shouldNotify] decision', { userId, eventKey, channel, scope, decision });
+        return decision;
     },
 
     /**
@@ -351,9 +588,19 @@ export const notificationService = {
         destination?: string, // renombrado
         errorMessage?: string | null, // nuevo
         metadata?: any, // renombrado
-        providerResponse?: any
+        providerResponse?: any,
+        error_type?: 'transient' | 'permanent' | null,
+        is_mock?: boolean | null
     }) {
         try {
+            const mergedMetadata = {
+                ...(options.metadata || {}),
+                _meta: {
+                    error_type: options.error_type || null,
+                    is_mock: options.is_mock ?? null,
+                    reason: options.metadata?._meta?.reason || options.metadata?._meta?.cause || null
+                }
+            };
             const { error } = await supabase.from('delivery_logs').insert({
                 user_id: options.userId,
                 company_id: options.companyId,
@@ -362,7 +609,7 @@ export const notificationService = {
                 status: options.status,
                 destination: options.destination,
                 error_message: options.errorMessage,
-                metadata: options.metadata,
+                metadata: mergedMetadata,
                 provider_response: options.providerResponse
             });
 
@@ -370,9 +617,88 @@ export const notificationService = {
                 console.error('[NotificationService] 🔴 Supabase insert error:', error.message, error.details);
             } else {
                 console.log('[NotificationService] 🟢 Log de auditoría persistido correctamente.');
+                if (options.status === 'error') {
+                    this.evaluateAlerts(options.channel, options.eventType, options.error_type, options.errorMessage, options.providerResponse);
+                }
             }
         } catch (err) {
             console.error('[NotificationService] 🔴 Exception logging delivery:', err);
+        }
+    },
+
+    async evaluateAlerts(channel: 'email' | 'whatsapp', eventType: string, errorType?: string | null, errorMessage?: string | null, providerResponse?: any) {
+        const now = Date.now();
+
+        // 1) Error rate en 1h
+        const keyRate = `errRate-${channel}`;
+        if (!this.alertCooldownHit(keyRate)) {
+            const since = new Date(now - 60 * 60 * 1000).toISOString();
+            const { data: cntData } = await supabase
+                .from('delivery_logs')
+                .select('id', { count: 'exact', head: true })
+                .eq('channel', channel)
+                .eq('status', 'error')
+                .gte('created_at', since);
+            const errCount = (cntData as any)?.length ?? 0;
+            if (errCount >= 5) {
+                await this.createSystemAlert(`ERROR_RATE_${channel.toUpperCase()}`, `WhatsApp/Email con alta tasa de errores (última hora)`, {
+                    alert_type: 'error_rate',
+                    channel,
+                    window: '1h',
+                    error_count: errCount,
+                    runbook_hint: channel === 'whatsapp' ? 'check_whatsapp_config' : 'check_email_config'
+                });
+            }
+        }
+
+        // 2) Config/token inválido (pattern simple)
+        const keyCfg = `cfg-${channel}`;
+        const msg = (errorMessage || '').toLowerCase();
+        const providerStr = JSON.stringify(providerResponse || {}).toLowerCase();
+        if (!this.alertCooldownHit(keyCfg) && (msg.includes('token') || providerStr.includes('token') || providerStr.includes('unauthorized') || providerStr.includes('invalid'))) {
+            await this.createSystemAlert(`CONFIG_${channel.toUpperCase()}`, `Config/token potencialmente inválido en canal ${channel}`, {
+                alert_type: 'config',
+                channel,
+                reason_detected: 'token_invalid',
+                runbook_hint: channel === 'whatsapp' ? 'check_whatsapp_config' : 'check_email_config'
+            });
+        }
+
+        // 3) Fallos consecutivos (últimos 3)
+        const keyConsec = `consec-${channel}`;
+        if (!this.alertCooldownHit(keyConsec)) {
+            const { data: lastLogs } = await supabase
+                .from('delivery_logs')
+                .select('status')
+                .eq('channel', channel)
+                .order('created_at', { ascending: false })
+                .limit(3);
+            if (lastLogs && lastLogs.length === 3 && lastLogs.every(l => l.status === 'error')) {
+                await this.createSystemAlert(`CONSEC_${channel.toUpperCase()}`, `Errores consecutivos en canal ${channel}`, {
+                    alert_type: 'consecutive',
+                    channel,
+                    error_count: 3,
+                    runbook_hint: channel === 'whatsapp' ? 'check_whatsapp_config' : 'check_email_config'
+                });
+            }
+        }
+    },
+
+    async createSystemAlert(code: string, message: string, meta?: Record<string, any>) {
+        if (this.alertCooldownHit(`notify-${code}`, 15 * 60 * 1000)) return;
+        try {
+            await supabase.from('notifications').insert({
+                user_id: null,
+                company_id: null,
+                event_key: EVENTS.SYSTEM_ERROR,
+                target_scope: 'global',
+                level: 'warning',
+                title: message,
+                message,
+                data: meta || {}
+            });
+        } catch (err) {
+            console.error('[NotificationService] no pudo registrar alerta', code, err);
         }
     },
 
@@ -382,122 +708,323 @@ export const notificationService = {
     async dispatchToExternalChannels(userId: string, eventKey: string, payload: any) {
         // Ejecución asíncrona (fire & forget para no bloquear la UI)
         Promise.resolve().then(async () => {
+            const baseUrl = communicationConfig.baseUrl;
+
             // 1. Validar Email
-            const shouldSendEmail = await this.shouldNotify(userId, eventKey, 'email');
+            const shouldSendEmail = communicationConfig.email.enabled && await this.shouldNotify(userId, eventKey, 'email');
+
+            const resolveEmailRecipient = async (): Promise<{ target: string | null; reason?: string }> => {
+                const explicit = payload?.data?.email || payload?.email || payload?.data?.userEmail;
+                if (explicit) return { target: explicit };
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user?.email) return { target: user.email };
+                return { target: null, reason: 'No se pudo resolver email (sin payload ni user.email)' };
+            };
 
             if (shouldSendEmail) {
                 const { emailService } = await import('./emailService');
-                
-                // Determinar plantilla según evento
-                let template: 'INVENTORY' | 'CRITICAL' = 'INVENTORY';
-                const categories = this.getNotificationCategories();
-                const cat = categories.find(c => c.key === eventKey);
-                if (cat?.isCritical) template = 'CRITICAL';
+                const { target, reason } = await resolveEmailRecipient();
+                const compiledEmail = this.buildEmailContent(eventKey, payload, baseUrl);
 
-                const emailResult: any = await emailService.sendEmail({
-                    to: 'user_email_from_auth@placeholder.com', // En Fase 2-A el servicio redirige a Beto
-                    template,
-                    data: {
-                        productName: payload.productName || 'Sistema',
-                        type: eventKey,
-                        message: payload.message || '',
-                        actionUrl: payload.actionUrl || window.location.origin,
-                        title: payload.title || 'Aviso BETO OS'
-                    }
-                });
+                if (!compiledEmail?.subject || !compiledEmail?.html) {
+                    await this.logDelivery({
+                        userId,
+                        companyId: payload.companyId,
+                        channel: 'email',
+                        eventType: eventKey,
+                        status: 'error',
+                        destination: 'unresolved',
+                        errorMessage: 'Plantilla email incompleta (subject/html requerido)',
+                        metadata: { ...payload, compiledEmail },
+                        error_type: 'permanent',
+                        is_mock: communicationConfig.email.testMode
+                    });
+                    return;
+                }
 
-                // 🟢 PERSISTIR AUDITORÍA (Fase 2-C Refinada)
-                await this.logDelivery({
-                    userId,
-                    companyId: payload.companyId,
-                    channel: 'email',
-                    eventType: eventKey,
-                    status: emailResult.success ? 'success' : 'error',
-                    destination: 'user_email_from_auth@placeholder.com',
-                    errorMessage: emailResult.success ? null : (emailResult.error || 'Unknown email error'),
-                    metadata: payload,
-                    providerResponse: emailResult
-                });
+                if (!target) {
+                    await this.logDelivery({
+                        userId,
+                        companyId: payload.companyId,
+                        channel: 'email',
+                        eventType: eventKey,
+                        status: 'error',
+                        destination: 'unresolved',
+                        errorMessage: reason || 'Email destinatario no resuelto',
+                        metadata: { ...payload, compiledEmail },
+                        error_type: 'permanent',
+                        is_mock: communicationConfig.email.testMode
+                    });
+                    return;
+                }
+
+                try {
+                    const emailResult: any = await emailService.sendEmail({
+                        to: target,
+                        template: 'INVENTORY', // template se ignora si compiled está presente
+                        data: payload,
+                        compiled: compiledEmail,
+                        useProvider: !communicationConfig.email.testMode
+                    });
+
+                    await this.logDelivery({
+                        userId,
+                        companyId: payload.companyId,
+                        channel: 'email',
+                        eventType: eventKey,
+                        status: emailResult.success ? 'success' : 'error',
+                        destination: communicationConfig.email.testMode ? communicationConfig.email.testTo : target,
+                        errorMessage: emailResult.success ? null : (emailResult.error || 'Unknown email error'),
+                        metadata: { ...payload, compiledEmail },
+                        providerResponse: emailResult,
+                        error_type: null,
+                        is_mock: communicationConfig.email.testMode
+                    });
+                } catch (err: any) {
+                    const errorType = err?.error_type
+                        || (err?.status && err.status >= 500 ? 'transient' : 'permanent');
+                    await this.logDelivery({
+                        userId,
+                        companyId: payload.companyId,
+                        channel: 'email',
+                        eventType: eventKey,
+                        status: 'error',
+                        destination: communicationConfig.email.testMode ? communicationConfig.email.testTo : target,
+                        errorMessage: err?.error || err?.message || 'Email dispatch error',
+                        metadata: { ...payload, compiledEmail },
+                        providerResponse: err?.providerResponse || err,
+                        error_type: errorType,
+                        is_mock: communicationConfig.email.testMode
+                    });
+                }
             } else {
-                // Registrar envío omitido por preferencia
                 await this.logDelivery({
                     userId,
                     companyId: payload.companyId,
                     channel: 'email',
                     eventType: eventKey,
                     status: 'omitted',
-                    destination: 'user_email_from_auth@placeholder.com',
-                    errorMessage: 'Canal desactivado por preferencias de usuario',
-                    metadata: payload
+                    destination: communicationConfig.email.testMode
+                        ? (communicationConfig.email.testTo || 'unresolved')
+                        : 'unresolved',
+                    errorMessage: communicationConfig.email.enabled
+                        ? 'Canal desactivado por preferencias de usuario'
+                        : 'Canal email deshabilitado por configuración',
+                    metadata: payload,
+                    error_type: null,
+                    is_mock: communicationConfig.email.testMode
                 });
             }
 
             // 2. Validar WhatsApp (Canal Restringido - Fase 2-B)
-            const shouldSendWA = await this.shouldNotify(userId, eventKey, 'whatsapp');
+            const shouldSendWA = communicationConfig.whatsapp.enabled && await this.shouldNotify(userId, eventKey, 'whatsapp');
             if (shouldSendWA) {
                 const categories = this.getNotificationCategories();
                 const cat = categories.find(c => c.key === eventKey);
-                
-                // CRITERIO DE ELEGIBILIDAD: Solo críticos o billing para WA en esta fase
-                const isEligible = cat?.isCritical || 
-                                   eventKey === 'BILLING_PAYMENT_FAILED' || 
-                                   eventKey === 'SUBSCRIPTION_UPDATE';
 
-                if (isEligible) {
-                    const { whatsappService } = await import('./whatsappService');
-                    
-                    let template: 'INVENTORY' | 'BILLING' | 'CRITICAL' = 'INVENTORY';
-                    if (cat?.isCritical) template = 'CRITICAL';
-                    if (eventKey.includes('BILLING') || eventKey.includes('SUBSCRIPTION')) template = 'BILLING';
-
-                    const waResult: any = await whatsappService.sendWhatsApp({
-                        to: '+34000000000', // Redirected by service in test mode
-                        template,
-                        data: {
-                            productName: payload.productName || 'Sistema',
-                            message: payload.message || '',
-                            title: payload.title || 'Aviso BETO OS'
-                        }
-                    });
-
-                    // 🟢 PERSISTIR AUDITORÍA (Fase 2-C Refinada)
-                    await this.logDelivery({
-                        userId,
-                        companyId: payload.companyId,
-                        channel: 'whatsapp',
-                        eventType: eventKey,
-                        status: waResult.success ? 'success' : 'error',
-                        destination: '+34000000000',
-                        errorMessage: waResult.success ? null : (waResult.error || 'Unknown WhatsApp error'),
-                        metadata: payload,
-                        providerResponse: waResult
-                    });
-                } else {
-                    // Omitido por falta de elegibilidad técnica/fase
+                // Elegibilidad por whitelist estricta
+                const whitelist = new Set(communicationConfig.whatsapp.whitelistEvents || []);
+                if (!whitelist.has(eventKey)) {
                     await this.logDelivery({
                         userId,
                         companyId: payload.companyId,
                         channel: 'whatsapp',
                         eventType: eventKey,
                         status: 'omitted',
-                        destination: '+34000000000',
-                        errorMessage: 'Evento no elegible para WhatsApp en esta fase',
-                        metadata: payload
+                        destination: communicationConfig.whatsapp.testMode
+                            ? (communicationConfig.whatsapp.testPhone || 'unresolved')
+                            : 'unresolved',
+                        errorMessage: 'Evento no whitelisteado para WhatsApp',
+                        metadata: { ...payload, _meta: { reason: 'event_not_whitelisted' } },
+                        is_mock: true
                     });
+                    return;
                 }
-            } else if (shouldSendWA === false) {
-                 // Registrar envío omitido por preferencia
-                 await this.logDelivery({
+
+                // Flags de activación
+                if (!communicationConfig.whatsapp.providerEnabled) {
+                    await this.logDelivery({
+                        userId,
+                        companyId: payload.companyId,
+                        channel: 'whatsapp',
+                        eventType: eventKey,
+                        status: 'omitted',
+                        destination: 'unresolved',
+                        errorMessage: 'Provider WhatsApp desactivado',
+                        metadata: { ...payload, _meta: { reason: 'provider_disabled' } },
+                        is_mock: true
+                    });
+                    return;
+                }
+
+                if (communicationConfig.whatsapp.testMode) {
+                    await this.logDelivery({
+                        userId,
+                        companyId: payload.companyId,
+                        channel: 'whatsapp',
+                        eventType: eventKey,
+                        status: 'omitted',
+                        destination: communicationConfig.whatsapp.testPhone || 'unresolved',
+                        errorMessage: 'Modo test activo',
+                        metadata: { ...payload, _meta: { reason: 'test_mode' } },
+                        is_mock: true
+                    });
+                    return;
+                }
+
+                if (communicationConfig.whatsapp.manualOnly) {
+                    await this.logDelivery({
+                        userId,
+                        companyId: payload.companyId,
+                        channel: 'whatsapp',
+                        eventType: eventKey,
+                        status: 'omitted',
+                        destination: communicationConfig.whatsapp.testPhone || 'unresolved',
+                        errorMessage: 'Modo manual-only',
+                        metadata: { ...payload, _meta: { reason: 'manual_only' } },
+                        is_mock: true
+                    });
+                    return;
+                }
+
+                // Permisos básicos: requerir usuario actual super-admin (metadata?) o servicio interno
+                const { data: currentUser } = await supabase.auth.getUser();
+                const isSuperAdmin = currentUser.user?.app_metadata?.is_super_admin === true;
+                if (!isSuperAdmin) {
+                    await this.logDelivery({
+                        userId,
+                        companyId: payload.companyId,
+                        channel: 'whatsapp',
+                        eventType: eventKey,
+                        status: 'omitted',
+                        destination: 'unresolved',
+                        errorMessage: 'Permiso denegado para WA productivo',
+                        metadata: { ...payload, _meta: { reason: 'permission_denied' } },
+                        is_mock: true
+                    });
+                    return;
+                }
+
+                // Resolver destinatario
+                const resolveWaRecipient = (): { target: string | null; reason?: string } => {
+                    const explicit = payload?.data?.phone || payload?.phone || payload?.data?.userPhone;
+                    if (explicit) return { target: explicit };
+                    if (communicationConfig.whatsapp.testPhone) return { target: communicationConfig.whatsapp.testPhone };
+                    return { target: null, reason: 'No se pudo resolver destinatario WhatsApp (sin payload.phone)' };
+                };
+                const { target: waTarget, reason: waReason } = resolveWaRecipient();
+                if (!waTarget) {
+                    await this.logDelivery({
+                        userId,
+                        companyId: payload.companyId,
+                        channel: 'whatsapp',
+                        eventType: eventKey,
+                        status: 'omitted',
+                        destination: 'unresolved',
+                        errorMessage: waReason || 'Destinatario WhatsApp no resuelto',
+                        metadata: { ...payload, _meta: { reason: 'no_phone' } },
+                        is_mock: true
+                    });
+                    return;
+                }
+
+                // Opt-in
+                const opt = await this.getWhatsappOptIn(userId, waTarget);
+                if (!opt.ok) {
+                    await this.logDelivery({
+                        userId,
+                        companyId: payload.companyId,
+                        channel: 'whatsapp',
+                        eventType: eventKey,
+                        status: 'omitted',
+                        destination: waTarget,
+                        errorMessage: opt.reason || 'Sin opt-in WhatsApp',
+                        metadata: { ...payload, _meta: { reason: opt.reason || 'no_opt_in' } },
+                        is_mock: true
+                    });
+                    return;
+                }
+
+                // Caps
+                const caps = await this.checkWhatsappCaps(userId, eventKey);
+                if (!caps.allowed) {
+                    await this.logDelivery({
+                        userId,
+                        companyId: payload.companyId,
+                        channel: 'whatsapp',
+                        eventType: eventKey,
+                        status: 'omitted',
+                        destination: waTarget,
+                        errorMessage: caps.reason || 'Cap/cooldown activo',
+                        metadata: { ...payload, _meta: { reason: caps.reason || 'cap_exceeded' } },
+                        is_mock: true
+                    });
+                    return;
+                }
+
+                // Template mapping (productivo)
+                let template: 'INVENTORY' | 'BILLING' | 'CRITICAL' = 'INVENTORY';
+                if (eventKey === EVENTS.SYSTEM_CRITICAL) template = 'CRITICAL';
+                if (eventKey === EVENTS.BILLING_PAYMENT_FAILED) template = 'BILLING';
+
+                const { whatsappService } = await import('./whatsappService');
+                const waResult: any = await whatsappService.sendWhatsApp({
+                    to: waTarget,
+                    template,
+                    data: {
+                        productName: payload.productName || 'Sistema',
+                        message: payload.message || '',
+                        title: payload.title || 'Aviso BETO OS',
+                        baseUrl
+                    }
+                });
+
+                const isMock = !!waResult.mock || !!waResult.omitted;
+                const status: 'success' | 'error' | 'omitted' = waResult.omitted
+                    ? 'omitted'
+                    : (waResult.success ? 'success' : 'error');
+
+                const errorType = waResult.error_type || (waResult.success ? null :
+                    (waResult.status && waResult.status >= 500 ? 'transient' : 'permanent'));
+
+                await this.logDelivery({
+                    userId,
+                    companyId: payload.companyId,
+                    channel: 'whatsapp',
+                    eventType: eventKey,
+                    status,
+                    destination: waTarget,
+                    errorMessage: waResult.success ? null : (waResult.reason || waResult.providerResponse?.error || 'WhatsApp dispatch error'),
+                    metadata: {
+                        ...payload,
+                        _meta: {
+                            ...(payload?._meta || {}),
+                            is_mock: isMock,
+                            reason: waResult.reason || null,
+                            waText: this.buildWhatsappText(eventKey, payload, baseUrl)
+                        }
+                    },
+                    providerResponse: waResult.providerResponse || waResult,
+                    error_type: errorType,
+                    is_mock: isMock
+                });
+            } else if (shouldSendWA === false || !communicationConfig.whatsapp.enabled) {
+                await this.logDelivery({
                     userId,
                     companyId: payload.companyId,
                     channel: 'whatsapp',
                     eventType: eventKey,
                     status: 'omitted',
-                    destination: '+34000000000',
-                    errorMessage: 'Canal desactivado por preferencias de usuario',
+                    destination: communicationConfig.whatsapp.testMode
+                        ? (communicationConfig.whatsapp.testPhone || 'unresolved')
+                        : 'unresolved',
+                    errorMessage: communicationConfig.whatsapp.enabled
+                        ? 'Canal desactivado por preferencias de usuario'
+                        : 'Canal WhatsApp deshabilitado por configuración',
                     metadata: payload
                 });
             }
         }).catch(err => console.error('[NotificationService] Error en despacho externo:', err));
-    }
+    },
+
 };

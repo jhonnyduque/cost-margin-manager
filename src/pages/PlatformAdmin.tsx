@@ -51,6 +51,11 @@ function BroadcastConsole() {
 
     const handleBroadcast = async () => {
         if (!message.trim()) return;
+        // Guardrails UI (no cambia backend)
+        if (isCritical && !title.trim()) {
+            setStatus({ type: 'error', text: 'Añade un título breve para críticos.' });
+            return;
+        }
         setSending(true); setStatus(null);
         try {
             const eventKey = isCritical ? EVENTS.SYSTEM_CRITICAL : EVENTS.SYSTEM_BROADCAST;
@@ -67,7 +72,7 @@ function BroadcastConsole() {
             });
             
             setTitle(''); setMessage(''); setIsCritical(false);
-            setStatus({ type: 'success', text: isCritical ? 'Aviso Crítico (WhatsApp) emitido.' : 'Mensaje global emitido.' });
+            setStatus({ type: 'success', text: isCritical ? 'Mensaje preparado en WhatsApp (envío manual/mock).' : 'Mensaje global emitido.' });
             setTimeout(() => setStatus(null), 3000);
         } catch { setStatus({ type: 'error', text: 'Error al emitir mensaje.' }); }
         finally { setSending(false); }
@@ -77,11 +82,24 @@ function BroadcastConsole() {
 
     return (
         <div style={card}>
+            <div style={{ marginBottom: 'var(--space-16)', padding: 'var(--space-12)', borderRadius: 'var(--radius-lg)', background: 'var(--surface-muted)', border: 'var(--border-default)' }}>
+                <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 'var(--space-6)' }}>Checklist rápido WhatsApp productivo</p>
+                <ul style={{ margin: 0, paddingLeft: '18px', color: 'var(--text-secondary)', fontSize: '12px', lineHeight: 1.5 }}>
+                    <li>Token y phone_number_id configurados (Meta Cloud).</li>
+                    <li>Número E.164 + opt-in vigente requeridos.</li>
+                    <li>Ventana 24h: mensajes libres fuera de ventana pueden no mostrarse.</li>
+                    <li>Eventos elegibles: SYSTEM_CRITICAL, BILLING_PAYMENT_FAILED.</li>
+                    <li>“Aceptado por provider” ≠ leído/entregado en dispositivo.</li>
+                </ul>
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-12)', marginBottom: 'var(--space-24)' }}>
                 <div style={{ borderRadius: 'var(--radius-lg)', background: 'var(--surface-primary-soft)', padding: 'var(--space-10)', color: 'var(--state-primary)' }}><Megaphone size={20} /></div>
                 <div>
                     <h2 style={{ fontSize: 'var(--text-body-size)', fontWeight: 700, color: 'var(--text-primary)' }}>Comunicar a Plataforma</h2>
                     <p style={{ fontSize: 'var(--text-caption-size)', color: 'var(--text-secondary)' }}>Envía alertas instantáneas a todos los entornos.</p>
+                    <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: 4 }}>
+                        WhatsApp en esta consola es <strong>mock/manual</strong>; no es un envío productivo.
+                    </p>
                 </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-16)' }}>
@@ -89,13 +107,18 @@ function BroadcastConsole() {
                 <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Escribe el contenido aquí..." rows={3} style={{ ...inputStyle, resize: 'none' }} onFocus={e => (e.target.style.boxShadow = '0 0 0 2px var(--state-primary)')} onBlur={e => (e.target.style.boxShadow = '0 0 0 1px var(--border-color-default)')} />
                 
                 {/* Switch de Alta Prioridad */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-12)', padding: 'var(--space-12) var(--space-16)', borderRadius: 'var(--radius-lg)', background: isCritical ? 'var(--surface-danger-soft)' : 'var(--surface-muted)', border: isCritical ? '1px solid var(--state-danger)' : '1px solid var(--border-color-default)', cursor: 'pointer', userSelect: 'none', transition: 'all var(--transition-fast)' }} onClick={() => setIsCritical(!isCritical)}>
-                    <input type="checkbox" checked={isCritical} readOnly style={{ width: '1.25rem', height: '1.25rem', accentColor: 'var(--state-danger)', cursor: 'pointer' }} />
-                    <div style={{ flex: 1 }}>
-                        <p style={{ fontSize: 'var(--text-small-size)', fontWeight: 700, color: isCritical ? 'var(--state-danger)' : 'var(--text-secondary)' }}>Aviso Crítico / Alta Prioridad</p>
-                        <p style={{ fontSize: '10px', color: isCritical ? 'var(--state-danger)' : 'var(--text-muted)' }}>Esto enviará una notificación de WhatsApp (Canal Crítico)</p>
-                    </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-12)', padding: 'var(--space-12) var(--space-16)', borderRadius: 'var(--radius-lg)', background: isCritical ? 'var(--surface-danger-soft)' : 'var(--surface-muted)', border: isCritical ? '1px solid var(--state-danger)' : '1px solid var(--border-color-default)', cursor: 'pointer', userSelect: 'none', transition: 'all var(--transition-fast)' }} onClick={() => setIsCritical(!isCritical)}>
+                <input type="checkbox" checked={isCritical} readOnly style={{ width: '1.25rem', height: '1.25rem', accentColor: 'var(--state-danger)', cursor: 'pointer' }} />
+                <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 'var(--text-small-size)', fontWeight: 700, color: isCritical ? 'var(--state-danger)' : 'var(--text-secondary)' }}>Aviso Crítico / Alta Prioridad</p>
+                    <p style={{ fontSize: '10px', color: isCritical ? 'var(--state-danger)' : 'var(--text-muted)' }}>Esto enviará una notificación de WhatsApp (Canal Crítico)</p>
+                    {isCritical && (
+                        <p style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: 'var(--space-4)' }}>
+                            Requisitos: número E.164 + opt-in, ventana de 24h abierta, eventos elegibles. “Aceptado por provider” no garantiza lectura.
+                        </p>
+                    )}
                 </div>
+            </div>
 
                 <button onClick={handleBroadcast} disabled={sending || !message.trim()}
                     style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-8)', borderRadius: 'var(--radius-lg)', background: isCritical ? 'var(--state-danger)' : 'var(--state-primary)', padding: 'var(--space-12)', fontSize: 'var(--text-body-size)', fontWeight: 700, color: 'var(--text-inverse)', border: 'none', cursor: 'pointer', opacity: (sending || !message.trim()) ? 0.5 : 1, transition: 'background var(--transition-fast)' }}

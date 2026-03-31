@@ -453,3 +453,155 @@ Iniciar Fase 0-A con equipo asignado y cronograma bloqueado.
 Revisión de avance: 2 semanas (criterios de aceptación).
 
 ================================================================
+
+DOCUMENTACIÖN
+================================================================
+
+Fase 0 — Foundation (Cerrada)
+- Alcance: Event Bus inicial, esquema de eventos (events.ts), notificaciones in-app básicas, guardrails de canales, criterios de aceptación por prioridad.
+- Evidencias clave: events.ts, notificationService.ts (creación básica), notificationListener.ts (arranque), governance de comunicación en este documento.
+- Estado: Cerrada. No se requieren acciones salvo dependencias futuras de Fase 2.
+
+Fase 1 — Presencia (Cerrada 28/03/2026)
+- Subfases cubiertas:
+  - 1-A Presencia inmediata: canal de soporte visible y operativo en Sidebar (WhatsApp link contextual).
+  - 1-B Notification Center UI: tabs Todas/No leídas, agrupación por fecha, empty states diferenciados, deep-link/highlight, filtro temporal (30/90/YTD/12m/Todo).
+  - 1-C / 1-C.2 Preferencias: lectura/escritura real, feedback de guardado, disponibilidad de canal en UI, caché con invalidación, bypass crítico activo.
+  - 1-D Motor de filtrado inteligente: shouldNotify con cache y bypass crítico; listener con filtro por preferencia; aislamiento de scope user/company/global en fetch, badge, mark-all y realtime.
+- Política de scope vigente:
+  - user-scoped → user_id del usuario autenticado
+  - company-scoped → company_id de la empresa actual del usuario
+  - global-scoped → target_scope = 'global'
+- Deuda menor (no bloqueante): robustecer configuración/fallback del canal de soporte (1-A) si no hay número/WA disponible.
+- Estado: Cerrada. Bloqueante de scope resuelto en getNotifications, getUnreadCount, markAllAsRead y subscribeToNotifications.
+
+Fase 2 — Valor Operativo (Cerrada 29/03/2026)
+- Subfases cubiertas:
+  - 2-A Email Engine: Edge Function `send-email` (Supabase) con Brevo; secrets backend (`BREVO_API_KEY`, `BREVO_SENDER_EMAIL`, `BREVO_SENDER_NAME`); testMode=true → mock; testMode=false → envío real vía provider; sender sin fallbacks; payload validado (`to`, `subject`, `html`); delivery_logs distinguen mock vs provider.
+  - 2-B WhatsApp Gateway: servicio en modo controlado; sin hardcodes ni fallbacks; testMode con `testPhone` obligatorio (fail-fast si falta); elegible solo para crítico/billing; logging de success/omitted/error/unresolved; sin proveedor real (decisión de alcance).
+  - 2-C Auditoría/Hardening/Observabilidad: config centralizada en `communication.config.ts`; `.env.example` sin secrets reales; logging estructurado (status, destination, error_message, provider_response); UI de auditoría en PlatformAdmin (super-admin).
+- Validación operativa:
+  - Email real entregado y visible en Brevo Logs; recepción confirmada en Gmail; firma de dominio válida.
+  - `notificationService` invoca `send-email` con payload correcto; errores del provider se registran con detalle.
+  - WhatsApp en mock controlado; delivery_logs coherentes.
+- Estado: Cerrada. No hay bloqueantes dentro del alcance definido para Fase 2; WA productivo y retries/colas quedan explícitamente para fases posteriores.
+
+Fase 3-A — Madurez Operativa (Cerrada 30/03/2026)
+- Bloques ejecutados:
+  - Generador unificado por eventKey (subject/html/text y waText), validación de plantillas y guardado en metadata para reintentos manuales.
+  - Clasificación de errores de email (transient/permanent) y persistencia en delivery_logs con `error_type` e indicador mock/real.
+  - Observabilidad UI: muestra error_type, mock vs real, provider_response/metadata expandible, filtro por evento.
+  - Reintento manual básico: solo email, solo errores transient con metadata compilada, invocando `send-email`.
+  - WhatsApp auxiliar manual: link `wa.me` en UI (sin automatizar ni integrar proveedor).
+- Validación:
+  - Email productivo intacto; reintentos manuales ejecutan la misma función `send-email`.
+  - UI de auditoría mantiene filtros previos y agrega detalle sin romper flujo.
+- Exclusiones explícitas (fase futura): WhatsApp productivo, retries automáticos/colas, multi-proveedor, dashboards avanzados.
+
+Runbook operativo (pendiente de redacción breve)
+- Responder “qué hacer si…”:
+  - Error transient (Brevo 5xx / timeout): reintento manual desde UI; si persiste, verificar estado de Brevo y secretos.
+  - Error permanent (4xx / email inválido): corregir destino o payload y reenviar.
+  - Falta de secrets: cargar en Supabase secrets y redeploy de función.
+  - Plantilla incompleta: revisar compilación por eventKey y completar subject/html.
+- Añadir en UI (opcional y liviano): aviso al reintentar si falta compiledEmail o destino (=unresolved).
+Fase 3 — Estabilización Operativa (Cerrada 31/03/2026)
+- Subfases cubiertas:
+  - 3-A Madurez Operativa: generador unificado por eventKey (email/WA), error_type transient/permanent en delivery_logs, observabilidad UI con provider_response/metadata y filtro por evento, retry manual de email solo transient, WA auxiliar manual via wa.me.
+  - 3-A.1 Corrección Semántica: WA mock marcado como status=omitted + is_mock=true + provider_response.mock=true para eliminar falsos éxitos.
+  - 3-B.0 Preparación Operativa: runbook mínimo (toggles test/prod, claves Brevo, manejo de fallas email/WA mock, escalado), timeout configurable en email, clasificación uniforme de error_type, guardrails de retry manual.
+  - 3-B Estabilización: unificación de helpers de contenido en notificationService; validación ligera de payload email (subject/html) antes del provider; observabilidad mínima añadida (filtros mock/real y búsqueda en DeliveryLogs); copy de PlatformAdmin aclarando WA mock/manual; runbook ampliado con notas de operación diaria.
+- Estado operativo final:
+  - Email productivo Brevo con timeout configurable, error_type consistente, retry manual acotado; payload básico validado.
+  - WhatsApp se mantiene solo mock/manual (status=omitted, is_mock=true, wa.me); sin riesgo de falsos “Entregado”.
+  - Logging/observabilidad: delivery_logs con provider_response/metadata/error_type/is_mock; UI con filtros canal/estado/evento/mock-real + búsqueda.
+  - Soporte: runbook vigente cubre toggles, claves, fallas comunes y criterio de reintento manual.
+- Deuda menor (no bloqueante): falta filtro por empresa/tenant en DeliveryLogs para multi-tenant complejo; validación extra en Edge Function ante llamadas externas podría reforzarse.
+- Exclusiones explícitas: WA productivo/multi-provider, retries automáticos/colas/backoff, analytics avanzados/premium.
+- Estado: Cerrada. Validación externa independiente: “Fase 3 puede considerarse cerrada a nivel productivo”.
+Fase 4-A.0 — Gobernanza y contrato operativo de WhatsApp productivo (Pendiente de provider, Cerrada en diseño)
+- Fuente de verdad de activación:
+  - Flags en communication.config.ts / env: VITE_COMM_WHATSAPP_ENABLED, VITE_COMM_WHATSAPP_TEST_MODE, VITE_COMM_WHATSAPP_MANUAL_ONLY (default true), VITE_COMM_WHATSAPP_PROVIDER_ENABLED (default false).
+  - Caps/env: VITE_COMM_WHATSAPP_DAILY_CAP_PER_USER (default 3), VITE_COMM_WHATSAPP_COOLDOWN_CRITICAL_MIN (default 120), whitelist eventos VITE_COMM_WHATSAPP_WHITELIST_EVENTS (default SYSTEM_CRITICAL,BILLING_PAYMENT_FAILED).
+  - La decisión efectiva vive en backend/config, no en frontend.
+- Permisos y responsabilidades:
+  - Habilitar provider/caps/whitelist: solo ops/owner mediante env/secrets (deployment).
+  - Disparar eventos elegibles: solo super-admin/servicio interno; usuarios regulares no pueden forzar WA.
+  - Revocar opt-in: soporte/ops via registro de opt-in (tabla whatsapp_optin) anulando revoked_at.
+- Opt-in mínimo (a crear en DB antes de encender provider): tabla whatsapp_optin {user_id, phone_e164, consent_at, revoked_at}. Envío solo si consent_at existe y revoked_at es null.
+- Caps y cómputo:
+  - Cuenta si status in (success,error) con is_mock=false. Omitted por regla no consume cupo.
+  - Ventana diaria por user: dailyCapPerUser (default 3). Cooldown para eventos críticos: cooldownCriticalMinutes (default 120) por user/event.
+- Whitelist de eventos productivos:
+  - SYSTEM_CRITICAL
+  - BILLING_PAYMENT_FAILED
+  (ningún otro eventKey puede usar WA productivo).
+- Contrato de logging:
+  - En modo provider: channel=whatsapp, is_mock=false, status según provider; error_type: 4xx→permanent, 5xx/timeout→transient; si se omite por regla, status=omitted y metadata._meta.reason ∈ {no_opt_in, cap_exceeded, event_not_whitelisted, manual_only, test_mode}.
+  - En mock/manual: is_mock=true; las acciones manuales via wa.me no registran “success” automático ni provider_response; se registran como omitted/mock o acción manual fuera del flujo automático.
+- Alcance de esta subfase:
+  - Sin integración de provider aún. Solo contrato y configuración para gobernanza previa al encendido productivo.
+  - Fase 3 no se altera; WA sigue mock/manual hasta activar provider flag.
+- Estado: Cierre de gobernanza/documento completado; integración provider queda para 4-A.x.
+
+Fase 4 — Expansión controlada de canales y visibilidad (Abierta)
+- Objetivo: habilitar capacidades premium/controladas sin perder gobernanza: WA productivo acotado, KPIs operativos y onboarding mínimo seguro.
+- Subfases previstas:
+  - 4-A.0 Gobernanza WA (cerrada en diseño, provider aún apagado)
+  - 4-A.x Integración provider WA bajo contrato (pendiente)
+  - 4-B KPIs/analytics operativos ligeros (pendiente)
+  - 4-C Onboarding mínimo con guardrails (pendiente)
+- Estado actual: fase madre abierta; solo 4-A.0 cerrada.
+- Alcance cerrado: contrato de gobernanza WA (flags, opt-in, caps, whitelist, logging); sin envío productivo todavía.
+- Pendiente: encendido provider WA conforme al contrato; KPIs ligeros; onboarding mínimo; filtro tenant en DeliveryLogs.
+Fase 4-A.1 — Enforcement backend del contrato WA (Cerrada)
+- Objetivo: aplicar efectivamente en runtime el contrato definido en 4-A.0 antes de integrar provider real.
+- Cambios aplicados:
+  - enforcement de flags providerEnabled/manualOnly/testMode
+  - permisos backend para WA productivo
+  - verificación de opt-in
+  - validación de phone_e164
+  - caps por usuario/evento
+  - whitelist estricta de eventKey
+  - omitted con reason clara ante cualquier bloqueo
+  - provider_not_implemented registrado como omitted + is_mock=true mientras no exista provider real
+- Estado final: COMPLETADA
+Fase 4-A.x — Integración real del provider WA (Cerrada)
+- Objetivo: habilitar envío WhatsApp productivo usando el contrato 4-A.0/4-A.1 sin colas ni retries automáticos.
+- Cambios aplicados: whatsappService invoca provider (Meta Cloud API) con timeout; notificationService mantiene enforcement (flags, permisos, opt-in, caps, whitelist) y registra status/error_type/is_mock; rutas mock/manual intactas.
+- Estado final: COMPLETADA.
+Fase 4-A.x — Integración saliente con provider WA (Cerrada)
+- Qué quedó cerrado: salida real desde BETO OS al provider Meta (token válido, phone_number_id correcto), autenticación OK, request real con is_mock=false, provider_response con contacts/messages/message_id, UI muestra “Aceptado por provider” (no “Entregado”).
+- Qué no quedó cerrado: no hay confirmación de recepción en dispositivo; sin webhooks de estados (delivery/read) no se afirma entrega extremo a extremo.
+
+Fase 4-A.y — Validación de recepción real en dispositivo (Pendiente)
+- Verificar recepción visible en WhatsApp real bajo reglas de plantilla/conversación.
+- Sin webhook de estados no se debe afirmar delivery/read; requiere validación manual o inbound futuro.
+- Mantener lenguaje prudente hasta confirmar delivery/read.
+
+Fase 5 — Refinamiento operativo (Cerrada)
+- Objetivo: expansión controlada sobre base estable, con visibilidad y reacción rápidas sin añadir complejidad.
+- Sub-bloques:
+  - 5-B Alertas operativas mínimas: detección por umbral (error rate, config, consecutivos), alert_type y runbook_hint en metadata, cooldown para evitar ruido.
+  - 5-C Reporting operativo corto: KPIs por rango (24h/7d/30d), breakdown por canal/mock-real, top eventos, top razones error/omitted, conteo de alertas.
+  - 5-D Soporte/diagnóstico refinado: razones legibles, hints de runbook visibles, mensajes prescriptivos (“token inválido → revisar configuración”), priorización visual ligera.
+- Estado final: COMPLETADA.
+Fase 4-A — WhatsApp productivo controlado (Cerrada)
+- Objetivo: habilitar WhatsApp productivo real desde BETO OS con gobernanza y control.
+- Implementado: integración real con Meta Cloud API; token estable de system user; phone_number_id y WABA correctos; enforcement de flags/permisos/opt-in/caps/whitelist; logging real en delivery_logs; UI semántica corregida ("Aceptado por provider").
+- Validado en runtime: request real al provider; provider_response con message id; is_mock=false; recepción visible en dispositivo final; confirmación de que la ventana de 24h afecta la entrega de mensajes libres.
+- Aprendizaje operativo: sin conversación abierta, Meta puede aceptar a nivel provider pero no garantiza visibilidad final del mensaje libre; fuera de ventana se requiere plantilla/estrategia adecuada.
+- Fuera de alcance: webhooks inbound y estados delivered/read; analytics avanzados; onboarding; multi-provider.
+- Estado final: Fase 4-A COMPLETADA.
+Fase 4-C — UX operativa y prevención de error humano (Cerrada)
+- Objetivo: reducir errores humanos y guiar uso seguro de canales (especialmente WhatsApp) mediante guardrails UI y ayuda operativa mínima.
+- Cambios aplicados:
+  - PlatformAdmin: checklist breve para WA productivo (token/config, número E.164 + opt-in, ventana 24h, eventos elegibles, “Aceptado por provider ≠ leído”).
+  - BroadcastConsole: validación UI de título obligatorio para críticos; mensajes de estatus más claros.
+  - Helper texts: avisos previos en UI sobre restricciones (ventana 24h, opt-in, elegibilidad de eventos) y semántica ajustada de éxito.
+  - Runbook: sección de diagnóstico rápido (token, ventana 24h, no_opt_in, caps, provider/test/manual, phone ausente, “Aceptado por provider” no garantiza lectura).
+- Alcance real 4-C: guardrails/pre-validaciones, ayuda visible, checklist técnico corto; evitar confusión sobre estados y restricciones del canal.
+- Ajustes complementarios (no redefinen 4-C): filtros/rangos/KPIs ligeros de DeliveryLogs pertenecen a 4-B (observabilidad), aunque se tocaron en la misma iteración.
+- Frontera 4-B vs 4-C: 4-B = observabilidad/KPIs ligeros sobre delivery_logs; 4-C = UX operativa y prevención de error humano (copys, checklist, validaciones UI mínimas).
+- Estado operativo: operador ve checklist, recibe alertas previas, entiende que “Aceptado por provider” no es lectura, y cuenta con runbook breve para causas comunes.
+- Estado final: COMPLETADA.

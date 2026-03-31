@@ -7,7 +7,8 @@ export const whatsappTemplates = {
     /**
      * Alerta de Inventario Crítica
      */
-    getInventoryCritical(data: { productName: string, message: string }) {
+    getInventoryCritical(data: { productName: string, message: string, baseUrl?: string }) {
+        const baseUrl = data.baseUrl || '';
         const text = `
 📦 *BETO OS: Alerta de Inventario*
 ---------------------------------------
@@ -15,7 +16,7 @@ export const whatsappTemplates = {
 
 📝 ${data.message}
 
-🔗 Gestionar: ${window.location.origin}/stock
+🔗 Gestionar: ${baseUrl || 'https://app.beto-os.com'}/stock
         `.trim();
         
         return { text, priority: 'high' };
@@ -24,7 +25,8 @@ export const whatsappTemplates = {
     /**
      * Billing / Suscripción (Urgente)
      */
-    getBillingAlert(data: { title: string, message: string }) {
+    getBillingAlert(data: { title: string, message: string, baseUrl?: string }) {
+        const baseUrl = data.baseUrl || '';
         const text = `
 💳 *BETO OS: Facturación*
 ---------------------------------------
@@ -32,7 +34,7 @@ export const whatsappTemplates = {
 
 ${data.message}
 
-⚙️ Revisar cuenta: ${window.location.origin}/settings/billing
+⚙️ Revisar cuenta: ${baseUrl || 'https://app.beto-os.com'}/settings/billing
         `.trim();
 
         return { text, priority: 'critical' };

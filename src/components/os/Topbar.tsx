@@ -188,11 +188,14 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
         if (!user) return;
         (async () => {
             try {
-                const [list, count] = await Promise.all([notificationService.getNotifications(12), notificationService.getUnreadCount()]);
+                const [list, count] = await Promise.all([
+                    notificationService.getNotifications({ limit: 12, companyId: currentCompany?.id }),
+                    notificationService.getUnreadCount(currentCompany?.id)
+                ]);
                 setNotifications(list); setUnreadCount(count);
             } catch (err) { console.error('Error loading notifications:', err); }
         })();
-        const subscription = notificationService.subscribeToNotifications(user.id, (newNote: any) => {
+        const subscription = notificationService.subscribeToNotifications(user.id, currentCompany?.id, (newNote: any) => {
             // Evitar duplicados y mantener límite
             setNotifications(prev => {
                 const exists = prev.some(n => n.id === newNote.id);
@@ -202,7 +205,7 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
             setUnreadCount(prev => prev + 1);
         });
         return () => subscription.unsubscribe();
-    }, [user]);
+    }, [user, currentCompany?.id]);
 
     useEffect(() => { setMenuOpen(false); setNotificationsOpen(false); setExpandedNoteId(null); }, [location.pathname, location.search]);
 
@@ -230,7 +233,7 @@ export const Topbar: React.FC<TopbarProps> = ({ sidebarCollapsed = false }) => {
 
     const handleMarkAllAsRead = async () => {
         try {
-            await notificationService.markAllAsRead();
+            await notificationService.markAllAsRead(currentCompany?.id);
             setNotifications(prev => prev.map(n => ({ ...n, read_at: n.read_at || new Date().toISOString() })));
             setUnreadCount(0);
         } catch (err) { console.error('Error marking all as read:', err); }

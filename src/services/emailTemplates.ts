@@ -72,6 +72,28 @@ function getWrappedLayout(title: string, contentHtml: string): string {
 
 export const emailTemplates = {
     /**
+     * Sistema (genérico no crítico)
+     */
+    getSystemNotice(data: { title: string; message: string; actionUrl?: string }) {
+        const html = getWrappedLayout(data.title, `
+            <p style="margin: 0 0 16px; font-size: 15px; color: ${TOKENS.neutral700}; line-height: 1.6;">
+                ${data.message}
+            </p>
+            ${data.actionUrl ? `
+            <a href="${data.actionUrl}" style="display: inline-block; background-color: ${TOKENS.primary}; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 14px;">
+                Ver detalles &rarr;
+            </a>` : ``}
+        `);
+        const text = `
+${data.title}
+------------------------------------------
+${data.message}
+${data.actionUrl ? `Detalles: ${data.actionUrl}` : ''}
+        `.trim();
+        return { html, text, subject: `[BETO OS] ${data.title}` };
+    },
+
+    /**
      * Alerta de Inventario (HTML y Texto)
      */
     getInventoryAlert(data: { productName: string, type: string, message: string, actionUrl: string }) {
@@ -129,5 +151,49 @@ ${data.message}
         `.trim();
 
         return { html, text, subject: `⚠️ [CRÍTICO] ${data.title}` };
+    },
+
+    /**
+     * Avisos de Billing
+     */
+    getBillingNotice(data: { title: string; message: string; actionUrl?: string }) {
+        const html = getWrappedLayout(data.title, `
+            <p style="margin: 0 0 16px; font-size: 15px; color: ${TOKENS.neutral700}; line-height: 1.6;">
+                ${data.message}
+            </p>
+            ${data.actionUrl ? `
+            <a href="${data.actionUrl}" style="display: inline-block; background-color: ${TOKENS.primary}; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 14px;">
+                Revisar facturación &rarr;
+            </a>` : ``}
+        `);
+        const text = `
+${data.title}
+------------------------------------------
+${data.message}
+${data.actionUrl ? `Revisar: ${data.actionUrl}` : ''}
+        `.trim();
+        return { html, text, subject: `[BETO OS] ${data.title}` };
+    },
+
+    /**
+     * Avisos de Equipo
+     */
+    getTeamNotice(data: { title: string; message: string; actionUrl?: string }) {
+        const html = getWrappedLayout(data.title, `
+            <p style="margin: 0 0 16px; font-size: 15px; color: ${TOKENS.neutral700}; line-height: 1.6;">
+                ${data.message}
+            </p>
+            ${data.actionUrl ? `
+            <a href="${data.actionUrl}" style="display: inline-block; background-color: ${TOKENS.primary}; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 14px;">
+                Ver detalle &rarr;
+            </a>` : ``}
+        `);
+        const text = `
+${data.title}
+------------------------------------------
+${data.message}
+${data.actionUrl ? `Detalle: ${data.actionUrl}` : ''}
+        `.trim();
+        return { html, text, subject: `[BETO OS] ${data.title}` };
     }
 };

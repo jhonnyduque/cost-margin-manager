@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { Bell, CheckCheck, Info, AlertTriangle, AlertOctagon, Settings as SettingsIcon, X, Smartphone, Mail, MessageSquare } from 'lucide-react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { Bell, CheckCheck, Info, AlertTriangle, AlertOctagon, Settings as SettingsIcon, Smartphone, Mail, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { notificationService } from '@/services/notificationService';
 import { useAuth } from '@/hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
-import { isToday, isYesterday, isThisWeek, format } from 'date-fns';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { isToday, isYesterday, format, subDays, startOfYear } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 interface NotificationItem {
@@ -18,6 +18,21 @@ interface Preference {
     in_app_enabled: boolean;
     email_enabled: boolean;
 }
+
+type RangeFilter = '30' | '90' | 'ytd' | '12m' | 'all';
+
+const RANGE_OPTIONS: { value: RangeFilter; label: string }[] = [
+    { value: '30', label: 'Últimos 30 días' },
+    { value: '90', label: 'Últimos 90 días' },
+    { value: 'ytd', label: 'Año a la fecha' },
+    { value: '12m', label: 'Últimos 12 meses' },
+    { value: 'all', label: 'Todo' },
+];
+
+const parseDateSafe = (value?: string) => {
+    const d = new Date(value || '');
+    return isNaN(d.getTime()) ? null : d;
+};
 
 const getNotificationVisual = (note: NotificationItem) => {
     const text = `${note.title || ''} ${note.message || ''}`.toLowerCase();
@@ -34,8 +49,9 @@ const getNotificationVisual = (note: NotificationItem) => {
 };
 
 export default function NotificationsPage() {
-    const { user } = useAuth();
+    const { user, currentCompany } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     const [notifications, setNotifications] = useState<NotificationItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all');
@@ -43,6 +59,9 @@ export default function NotificationsPage() {
     const [preferences, setPreferences] = useState<Preference[]>([]);
     const [savingPrefs, setSavingPrefs] = useState(false);
     const [channelAvailability, setChannelAvailability] = useState<any>(null);
+    const [highlightId, setHighlightId] = useState<string | null>(null);
+    const [rangeFilter, setRangeFilter] = useState<RangeFilter>('30');
+    const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
     useEffect(() => {
         if (!user) return;
@@ -50,16 +69,16 @@ export default function NotificationsPage() {
         loadPreferences();
         notificationService.getChannelAvailability().then(setChannelAvailability);
 
-        const sub = notificationService.subscribeToNotifications(user.id, (newNote) => {
+        const sub = notificationService.subscribeToNotifications(user.id, currentCompany?.id, (newNote) => {
             setNotifications(prev => prev.some(n => n.id === newNote.id) ? prev : [newNote, ...prev]);
         });
         return () => sub.unsubscribe();
-    }, [user]);
+    }, [user, currentCompany?.id]);
 
     const loadNotifications = async () => {
         try {
             setLoading(true);
-            const data = await notificationService.getNotifications({ limit: 100 });
+            const data = await notificationService.getNotifications({ limit: 100, companyId: currentCompany?.id });
             setNotifications(data as NotificationItem[]);
         } catch (err) {
             console.error('Error loading notifications:', err);
@@ -79,7 +98,7 @@ export default function NotificationsPage() {
 
     const handleMarkAllAsRead = async () => {
         try {
-            await notificationService.markAllAsRead();
+            await notificationService.markAllAsRead(currentCompany?.id);
             setNotifications(prev => prev.map(n => ({ ...n, read_at: n.read_at || new Date().toISOString() })));
         } catch (err) { console.error('Error marking all as read:', err); }
     };
@@ -117,25 +136,61 @@ export default function NotificationsPage() {
     };
 
     const filtered = useMemo(() => {
-        if (activeTab === 'all') return notifications;
-        return notifications.filter(n => !n.read_at);
-    }, [notifications, activeTab]);
+        const base = activeTab === 'all' ? notifications : notifications.filter(n => !n.read_at);
+
+        const now = new Date();
+        let threshold: Date | null = null;
+        if (rangeFilter === '30') threshold = subDays(now, 30);
+        else if (rangeFilter === '90') threshold = subDays(now, 90);
+        else if (rangeFilter === '12m') threshold = subDays(now, 365);
+        else if (rangeFilter === 'ytd') threshold = startOfYear(now);
+
+        if (!threshold) return base;
+
+        return base.filter(n => {
+            const d = parseDateSafe(n.created_at);
+            if (!d) return true; // conservar registros con fecha inválida
+            return d >= threshold;
+        });
+    }, [notifications, activeTab, rangeFilter]);
 
     const grouped = useMemo(() => {
-        const groups: Record<string, NotificationItem[]> = {
-            'Hoy': [], 'Ayer': [], 'Esta Semana': [], 'Más Antiguas': []
-        };
-        filtered.forEach(note => {
-            const date = new Date(note.created_at);
-            if (isToday(date)) groups['Hoy'].push(note);
-            else if (isYesterday(date)) groups['Ayer'].push(note);
-            else if (isThisWeek(date)) groups['Esta Semana'].push(note);
-            else groups['Más Antiguas'].push(note);
+        const sorted = [...filtered].sort((a, b) => {
+            const dA = parseDateSafe(a.created_at);
+            const dB = parseDateSafe(b.created_at);
+            const tA = dA ? dA.getTime() : -Infinity;
+            const tB = dB ? dB.getTime() : -Infinity;
+            return tB - tA;
         });
-        return groups;
+        const map: Record<string, NotificationItem[]> = {};
+        sorted.forEach(note => {
+            const date = parseDateSafe(note.created_at);
+            let label: string;
+            if (!date) {
+                label = 'Sin fecha';
+            } else if (isToday(date)) label = 'Hoy';
+            else if (isYesterday(date)) label = 'Ayer';
+            else label = format(date, "dd MMM yyyy", { locale: es });
+            if (!map[label]) map[label] = [];
+            map[label].push(note);
+        });
+        return Object.entries(map);
     }, [filtered]);
 
     const categories = notificationService.getNotificationCategories();
+    // Deep link highlight
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const targetId = params.get('id');
+        if (!targetId) return;
+        const el = itemRefs.current[targetId];
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setHighlightId(targetId);
+            const timer = setTimeout(() => setHighlightId(null), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [location.search, notifications]);
 
     return (
         <div style={{ maxWidth: '48rem', margin: '0 auto', padding: 'var(--space-32) var(--space-20)' }}>
@@ -165,11 +220,34 @@ export default function NotificationsPage() {
                         {activeTab === 'unread' && <div style={{ position: 'absolute', bottom: '-13px', left: 0, right: 0, height: '2px', background: 'var(--text-primary)', borderRadius: '2px' }} />}
                     </button>
                 </div>
-                {filtered.some(n => !n.read_at) && (
-                    <button onClick={handleMarkAllAsRead} style={{ background: 'transparent', border: 'none', padding: 0, display: 'flex', alignItems: 'center', gap: 'var(--space-8)', fontSize: 'var(--text-small-size)', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                        <CheckCheck size={16} /> Marcar todas
-                    </button>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-12)' }}>
+                    <select
+                        value={rangeFilter}
+                        onChange={e => setRangeFilter(e.target.value as RangeFilter)}
+                        aria-label="Filtrar rango de fechas"
+                        style={{
+                            appearance: 'none',
+                            padding: '0.45rem 2.25rem 0.45rem 0.75rem',
+                            borderRadius: 'var(--radius-lg)',
+                            border: 'var(--border-default)',
+                            background: 'var(--surface-page)',
+                            color: 'var(--text-secondary)',
+                            fontSize: 'var(--text-small-size)',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            position: 'relative'
+                        }}
+                    >
+                        {RANGE_OPTIONS.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                    </select>
+                    {filtered.some(n => !n.read_at) && (
+                        <button onClick={handleMarkAllAsRead} style={{ background: 'transparent', border: 'none', padding: 0, display: 'flex', alignItems: 'center', gap: 'var(--space-8)', fontSize: 'var(--text-small-size)', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                            <CheckCheck size={16} /> Marcar todas
+                        </button>
+                    )}
+                </div>
             </div>
 
             {loading ? (
@@ -177,13 +255,18 @@ export default function NotificationsPage() {
             ) : filtered.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: 'var(--space-48)', background: 'var(--surface-page)', borderRadius: 'var(--radius-2xl)', border: 'var(--border-default)' }}>
                     <div style={{ margin: '0 auto var(--space-16)', width: '3rem', height: '3rem', borderRadius: 'var(--radius-xl)', background: 'var(--surface-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Bell size={24} style={{ color: 'var(--text-muted)' }} /></div>
-                    <p style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--text-secondary)' }}>No hay notificaciones</p>
-                    <p style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-muted)' }}>Estás al día con todos tus avisos.</p>
+                    <p style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                        {activeTab === 'unread' ? 'No tienes notificaciones sin leer' : 'Aún no tienes notificaciones'}
+                    </p>
+                    <p style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-muted)' }}>
+                        {activeTab === 'unread'
+                            ? 'Estás al día con todos tus avisos.'
+                            : 'Cuando haya actividad relevante en tu cuenta, aparecerá aquí.'}
+                    </p>
                 </div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-32)' }}>
-                    {Object.entries(grouped).map(([groupName, groupNotes]) => {
-                        const notes = groupNotes as NotificationItem[];
+                    {grouped.map(([groupName, notes]) => {
                         if (notes.length === 0) return null;
                         return (
                             <div key={groupName}>
@@ -193,14 +276,34 @@ export default function NotificationsPage() {
                                         const isUnread = !note.read_at;
                                         const visual = getNotificationVisual(note);
                                         return (
-                                            <div key={note.id} onClick={() => handleRecordClick(note)} style={{ display: 'flex', gap: 'var(--space-16)', padding: 'var(--space-20)', borderTop: index > 0 ? 'var(--border-default)' : 'none', background: isUnread ? 'var(--surface-page)' : 'transparent', cursor: 'pointer', transition: 'background var(--transition-fast)' }} onMouseEnter={e => { if (!isUnread) e.currentTarget.style.background = 'var(--surface-page)' }} onMouseLeave={e => { if (!isUnread) e.currentTarget.style.background = 'transparent' }}>
+                                            <div
+                                                key={note.id}
+                                                ref={el => { itemRefs.current[note.id] = el; }}
+                                                onClick={() => handleRecordClick(note)}
+                                                style={{
+                                                    display: 'flex',
+                                                    gap: 'var(--space-16)',
+                                                    padding: 'var(--space-20)',
+                                                    borderTop: index > 0 ? 'var(--border-default)' : 'none',
+                                                    background: highlightId === note.id ? 'var(--surface-primary-soft)' : (isUnread ? 'var(--surface-page)' : 'transparent'),
+                                                    cursor: 'pointer',
+                                                    transition: 'background var(--transition-fast)'
+                                                }}
+                                                onMouseEnter={e => { if (!isUnread && highlightId !== note.id) e.currentTarget.style.background = 'var(--surface-page)'; }}
+                                                onMouseLeave={e => { if (!isUnread && highlightId !== note.id) e.currentTarget.style.background = 'transparent'; }}
+                                            >
                                                 <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: 'var(--radius-xl)', background: visual.background, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>
                                                     {visual.icon}
                                                 </div>
                                                 <div style={{ flex: 1, minWidth: 0 }}>
                                                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-16)' }}>
                                                         <h4 style={{ fontSize: 'var(--text-small-size)', fontWeight: isUnread ? 700 : 600, color: isUnread ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{note.title}</h4>
-                                                        <span style={{ fontSize: 'var(--text-caption-size)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{format(new Date(note.created_at), 'HH:mm')}</span>
+                                                    <span style={{ fontSize: 'var(--text-caption-size)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                                                        {(() => {
+                                                            const d = new Date(note.created_at || '');
+                                                            return isNaN(d.getTime()) ? '--:--' : format(d, 'HH:mm');
+                                                        })()}
+                                                    </span>
                                                     </div>
                                                     <p style={{ fontSize: 'var(--text-small-size)', lineHeight: 1.5, color: 'var(--text-secondary)', marginTop: 'var(--space-4)' }}>{note.message}</p>
                                                     {note.action_url && (
