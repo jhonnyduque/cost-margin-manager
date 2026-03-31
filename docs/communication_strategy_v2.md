@@ -569,6 +569,12 @@ Fase 4-A.1 — Enforcement backend del contrato WA (Cerrada)
 Fase 4-A.x — Integración real del provider WA (Cerrada)
 - Objetivo: habilitar envío WhatsApp productivo usando el contrato 4-A.0/4-A.1 sin colas ni retries automáticos.
 - Cambios aplicados: whatsappService invoca provider (Meta Cloud API) con timeout; notificationService mantiene enforcement (flags, permisos, opt-in, caps, whitelist) y registra status/error_type/is_mock; rutas mock/manual intactas.
+ - Estado final: COMPLETADA.
+## Nota de higiene de line endings (31-Mar-2026)
+- Se observaban warnings de Git en Windows ("LF will be replaced by CRLF") con `core.autocrlf=true`.
+- Se fijó la política del repo en `.gitattributes` (LF por defecto; PS1 en CRLF) y se cambió `core.autocrlf` global a `input` para evitar conversiones al commitear desde Windows.
+- Objetivo: reducir ruido en commits y mantener consistencia explícita por tipo de archivo.
+- No fue necesario renormalizar archivos en esta iteración; si aparecen diferencias, ejecutar `git add --renormalize .` tras aplicar las reglas.
 - Estado final: COMPLETADA.
 Fase 4-A.x — Integración saliente con provider WA (Cerrada)
 - Qué quedó cerrado: salida real desde BETO OS al provider Meta (token válido, phone_number_id correcto), autenticación OK, request real con is_mock=false, provider_response con contacts/messages/message_id, UI muestra “Aceptado por provider” (no “Entregado”).
