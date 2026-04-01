@@ -18,20 +18,22 @@ export const communicationConfig = {
     baseUrl: env.VITE_COMM_BASE_URL || 'https://app.beto-os.com',
 
     email: {
-        enabled: toBool(env.VITE_COMM_EMAIL_ENABLED, false),
-        testMode: toBool(env.VITE_COMM_EMAIL_TEST_MODE, true),
-        testTo: env.VITE_COMM_EMAIL_TEST_TO || 'jhonnydp78@gmail.com',
+        enabled: toBool(env.VITE_COMM_EMAIL_ENABLED, true),
+        // Fase real controlada: testMode por defecto en false. Usa testTo solo si se activa expresamente.
+        testMode: toBool(env.VITE_COMM_EMAIL_TEST_MODE, false),
+        testTo: env.VITE_COMM_EMAIL_TEST_TO || '',
         senderEmail: env.VITE_BREVO_SENDER_EMAIL || 'notificaciones@beto-os.com',
         senderName: env.VITE_BREVO_SENDER_NAME || 'BETO OS',
         timeoutMs: Number(env.VITE_COMM_EMAIL_TIMEOUT_MS) || 7000
     },
 
     whatsapp: {
-        enabled: toBool(env.VITE_COMM_WHATSAPP_ENABLED, false),
-        testMode: toBool(env.VITE_COMM_WHATSAPP_TEST_MODE, true),
-        manualOnly: toBool(env.VITE_COMM_WHATSAPP_MANUAL_ONLY, true),
-        providerEnabled: toBool(env.VITE_COMM_WHATSAPP_PROVIDER_ENABLED, false),
-        testPhone: env.VITE_COMM_WHATSAPP_TEST_PHONE || env.VITE_WHATSAPP_TEST_NUMBER || '+34604405615',
+        enabled: toBool(env.VITE_COMM_WHATSAPP_ENABLED, true),
+        // Fase real controlada: provider ON, testMode OFF, manualOnly OFF por defecto.
+        testMode: toBool(env.VITE_COMM_WHATSAPP_TEST_MODE, false),
+        manualOnly: toBool(env.VITE_COMM_WHATSAPP_MANUAL_ONLY, false),
+        providerEnabled: toBool(env.VITE_COMM_WHATSAPP_PROVIDER_ENABLED, true),
+        testPhone: env.VITE_COMM_WHATSAPP_TEST_PHONE || env.VITE_WHATSAPP_TEST_NUMBER || '',
         apiKey: env.VITE_WHATSAPP_API_KEY || '',
         phoneNumberId: env.VITE_WHATSAPP_PHONE_NUMBER_ID || '',
         businessAccountId: env.VITE_WHATSAPP_BUSINESS_ACCOUNT_ID || '',
