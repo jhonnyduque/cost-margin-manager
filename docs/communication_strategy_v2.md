@@ -597,7 +597,9 @@ Fase 4-A — WhatsApp productivo controlado (Cerrada)
 - Implementado: integración real con Meta Cloud API; token estable de system user; phone_number_id y WABA correctos; enforcement de flags/permisos/opt-in/caps/whitelist; logging real en delivery_logs; UI semántica corregida ("Aceptado por provider").
 - Validado en runtime: request real al provider; provider_response con message id; is_mock=false; recepción visible en dispositivo final; confirmación de que la ventana de 24h afecta la entrega de mensajes libres.
 - Aprendizaje operativo: sin conversación abierta, Meta puede aceptar a nivel provider pero no garantiza visibilidad final del mensaje libre; fuera de ventana se requiere plantilla/estrategia adecuada.
-- Fuera de alcance: webhooks inbound y estados delivered/read; analytics avanzados; onboarding; multi-provider.
+- Observación de cierre real: el envío saliente y la recepción visible en dispositivo quedaron validados. El webhook de estados de WhatsApp no quedó cerrado por una restricción externa de Meta: mientras la app permanezca sin publicar, Meta solo envía webhooks de prueba desde el panel y no entrega callbacks de producción al endpoint configurado, aunque el campo `messages` esté suscrito y el callback/verify token sean correctos.
+- Implicación operativa: BETO OS puede operar WhatsApp real controlado para destinatarios explícitos y validar entrega visible manualmente; la trazabilidad automática `sent/delivered/read` en `delivery_logs` queda supeditada a publicar la app o completar el estado productivo exigido por Meta.
+- Fuera de alcance: webhooks inbound y estados delivered/read productivos hasta que Meta habilite datos de producción; analytics avanzados; onboarding; multi-provider.
 - Estado final: Fase 4-A COMPLETADA.
 Fase 4-C — UX operativa y prevención de error humano (Cerrada)
 - Objetivo: reducir errores humanos y guiar uso seguro de canales (especialmente WhatsApp) mediante guardrails UI y ayuda operativa mínima.
