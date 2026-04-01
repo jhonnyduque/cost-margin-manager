@@ -247,8 +247,13 @@ export const DeliveryLogsTable: React.FC = () => {
   }, {});
   const topReasons = Object.entries(reasonCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
 
-  const renderErrorType = (meta: any) => {
-    const et = meta?._meta?.error_type;
+  const renderErrorType = (log: DeliveryLog) => {
+    if (log.event_type === 'webhook_status') {
+      const reason = log.metadata?._meta?.reason || log.error_message;
+      if (!reason) return null;
+      return <span className="text-[10px] font-semibold text-rose-600">{reason}</span>;
+    }
+    const et = log.metadata?._meta?.error_type;
     if (!et) return null;
     const color = et === 'transient' ? 'text-amber-600' : 'text-rose-600';
     return <span className={`text-[10px] font-semibold ${color}`}>{et}</span>;
@@ -270,7 +275,7 @@ export const DeliveryLogsTable: React.FC = () => {
   };
 
   const renderReason = (log: DeliveryLog) => {
-    const reason = log.metadata?._meta?.reason;
+    const reason = log.metadata?._meta?.reason || log.error_message;
     const errorType = log.metadata?._meta?.error_type;
     const hint = log.metadata?.runbook_hint || log.metadata?._meta?.runbook_hint;
     if (!reason && !errorType && !hint) return null;

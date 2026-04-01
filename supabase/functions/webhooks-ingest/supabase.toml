@@ -1,0 +1,3 @@
+[functions.webhooks-ingest]
+verify_jwt = false
+

@@ -31,11 +31,28 @@ function normalize(body: any): NormalizedEvent | null {
   // Meta webhook (WhatsApp)
   if (finalChannel === "whatsapp") {
     const entry = body?.entry?.[0]?.changes?.[0]?.value || body;
-    const statusRaw = (entry?.statuses?.[0]?.status || entry?.status || body?.status || "").toLowerCase();
+    const statusObj = Array.isArray(entry?.statuses) ? entry.statuses[0]
+      : Array.isArray(body?.statuses) ? body.statuses[0]
+      : null;
+
+    const statusRaw = (statusObj?.status || entry?.status || body?.status || "").toLowerCase();
     const status: NormalizedStatus = statusRaw === "read" ? "read" : statusRaw === "delivered" ? "delivered" : statusRaw === "failed" ? "error" : "sent";
-    const messageId = entry?.statuses?.[0]?.id || entry?.message_id || body?.message_id || body?.id;
-    const destination = entry?.statuses?.[0]?.recipient_id || entry?.to || body?.to;
-    const reason = entry?.statuses?.[0]?.errors?.[0]?.title || entry?.statuses?.[0]?.errors?.[0]?.code || body?.error || body?.reason || null;
+
+    const messageId = statusObj?.id
+      || entry?.message_id
+      || body?.message_id
+      || body?.id;
+
+    const destination = statusObj?.recipient_id
+      || entry?.to
+      || body?.to;
+
+    const reason = statusObj?.errors?.[0]?.title
+      || statusObj?.errors?.[0]?.code
+      || body?.error
+      || body?.reason
+      || null;
+
     return { channel: finalChannel, status, messageId: messageId || undefined, destination: destination || null, reason, raw: body };
   }
 
@@ -56,6 +73,21 @@ function normalize(body: any): NormalizedEvent | null {
 }
 
 serve(async (req) => {
+  // --- GET: Meta webhook verification ---
+  if (req.method === "GET") {
+    const url = new URL(req.url);
+    const mode = url.searchParams.get("hub.mode");
+    const token = url.searchParams.get("hub.verify_token");
+    const challenge = url.searchParams.get("hub.challenge");
+    const expected = Deno.env.get("META_WEBHOOK_VERIFY_TOKEN") || "";
+
+    if (mode === "subscribe" && token && token === expected && challenge) {
+      return new Response(challenge, { status: 200, headers: corsHeaders });
+    }
+
+    return new Response("forbidden", { status: 403, headers: corsHeaders });
+  }
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -133,7 +165,10 @@ serve(async (req) => {
         _meta: {
           reason: evt.reason || null,
         },
-        message_id: evt.messageId || null,
+        message_id: evt.messageId
+          || body?.entry?.[0]?.changes?.[0]?.value?.statuses?.[0]?.id
+          || body?.message_id
+          || null,
       },
       provider_response: evt.raw,
     }).select("id").maybeSingle();
@@ -152,4 +187,3 @@ serve(async (req) => {
     });
   }
 });
-
