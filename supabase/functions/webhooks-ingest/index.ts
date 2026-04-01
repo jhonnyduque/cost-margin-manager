@@ -19,6 +19,17 @@ interface NormalizedEvent {
   raw: any;
 }
 
+function buildMetadata(evt: NormalizedEvent, existingMetadata?: any) {
+  return {
+    ...(existingMetadata || {}),
+    _meta: {
+      ...(existingMetadata?._meta || {}),
+      reason: evt.reason || null,
+    },
+    message_id: evt.messageId || null,
+  };
+}
+
 function normalize(body: any): NormalizedEvent | null {
   const provider = (body?.provider || body?.channel || body?.source || "").toLowerCase();
   const channel: Channel | null = provider.includes("whatsapp") ? "whatsapp" : provider.includes("email") ? "email" : null;
@@ -119,13 +130,13 @@ serve(async (req) => {
       });
     }
 
-    // Idempotencia por messageId+channel cuando exista
+    // Un solo delivery_log por message_id: sent crea, delivered/read/error actualizan.
     if (evt.messageId) {
       const { data: existing, error: findError } = await supabase
         .from("delivery_logs")
-        .select("id")
+        .select("id, metadata")
         .eq("channel", evt.channel)
-        .eq("provider_response->>message_id", evt.messageId)
+        .eq("metadata->>message_id", evt.messageId)
         .maybeSingle();
 
       if (!findError && existing?.id) {
@@ -133,13 +144,9 @@ serve(async (req) => {
           .from("delivery_logs")
           .update({
             status: evt.status,
+            destination: evt.destination || null,
             error_message: evt.status === "error" ? evt.reason : null,
-            metadata: {
-              _meta: {
-                reason: evt.reason || null,
-              },
-              message_id: evt.messageId,
-            },
+            metadata: buildMetadata(evt, existing.metadata),
             provider_response: evt.raw,
           })
           .eq("id", existing.id);
@@ -161,15 +168,13 @@ serve(async (req) => {
       status: evt.status,
       destination: evt.destination || null,
       error_message: evt.status === "error" ? evt.reason : null,
-      metadata: {
-        _meta: {
-          reason: evt.reason || null,
-        },
-        message_id: evt.messageId
+      metadata: buildMetadata({
+        ...evt,
+        messageId: evt.messageId
           || body?.entry?.[0]?.changes?.[0]?.value?.statuses?.[0]?.id
           || body?.message_id
           || null,
-      },
+      }),
       provider_response: evt.raw,
     }).select("id").maybeSingle();
 
