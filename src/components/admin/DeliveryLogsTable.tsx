@@ -571,31 +571,81 @@ export const DeliveryLogsTable: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    {log.status === 'success' ? (
-                      <div className="flex items-center gap-1.5 text-emerald-600">
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span className="text-sm font-medium">
-                          {log.channel === 'whatsapp' ? 'Aceptado por provider' : 'Entregado'}
-                        </span>
-                      </div>
-                    ) : log.status === 'omitted' ? (
-                      <div className="flex items-center gap-1.5 text-slate-400">
-                        <Clock className="w-4 h-4" />
-                        <span className="text-sm font-medium">Omitido</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 text-rose-600">
-                        <XCircle className="w-4 h-4" />
-                        <div className="flex flex-col">
-                          <span className="text-sm font-medium">Fallido</span>
-                          {log.error_message && (
-                            <span className="text-[10px] opacity-70 truncate max-w-[120px]">
-                              {log.error_message}
+                    {(() => {
+                      const reason = log.metadata?._meta?.reason || log.error_message;
+                      if (log.event_type === 'webhook_status') {
+                        if (log.status === 'delivered' || log.status === 'success') {
+                          return (
+                            <div className="flex items-center gap-1.5 text-emerald-600">
+                              <CheckCircle2 className="w-4 h-4" />
+                              <span className="text-sm font-medium">Entregado (webhook)</span>
+                            </div>
+                          );
+                        }
+                        if (log.status === 'read') {
+                          return (
+                            <div className="flex items-center gap-1.5 text-emerald-600">
+                              <CheckCircle2 className="w-4 h-4" />
+                              <span className="text-sm font-medium">Leído (webhook)</span>
+                            </div>
+                          );
+                        }
+                        if (log.status === 'error') {
+                          return (
+                            <div className="flex items-center gap-1.5 text-rose-600">
+                              <XCircle className="w-4 h-4" />
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium">Error proveedor</span>
+                                {reason && (
+                                  <span className="text-[10px] opacity-70 truncate max-w-[140px]">
+                                    {reason}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        }
+                        // sent u otros
+                        return (
+                          <div className="flex items-center gap-1.5 text-slate-500">
+                            <Clock className="w-4 h-4" />
+                            <span className="text-sm font-medium">Enviado (webhook)</span>
+                          </div>
+                        );
+                      }
+
+                      if (log.status === 'success') {
+                        return (
+                          <div className="flex items-center gap-1.5 text-emerald-600">
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span className="text-sm font-medium">
+                              {log.channel === 'whatsapp' ? 'Aceptado por provider' : 'Entregado'}
                             </span>
-                          )}
+                          </div>
+                        );
+                      }
+                      if (log.status === 'omitted') {
+                        return (
+                          <div className="flex items-center gap-1.5 text-slate-400">
+                            <Clock className="w-4 h-4" />
+                            <span className="text-sm font-medium">Omitido</span>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="flex items-center gap-1.5 text-rose-600">
+                          <XCircle className="w-4 h-4" />
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium">Fallido</span>
+                            {log.error_message && (
+                              <span className="text-[10px] opacity-70 truncate max-w-[120px]">
+                                {log.error_message}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </td>
                   <td className="px-6 py-4">
                     {renderMock(log.metadata)}
